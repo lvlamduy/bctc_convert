@@ -76,13 +76,21 @@ def _source_nodes(
     return section, table
 
 
+def _dual_axis_normalized(value: Any) -> str:
+    """Normalize one source surface, including literal JSON whitespace escapes."""
+
+    if type(value) is not str:
+        return _normalized(value)
+    return _normalized(re.sub(r"\\[nrt]+", " ", value))
+
+
 def _axis_leaf(path: Any, *, unit_aliases: list[str]) -> str:
     if type(path) is not list or any(
         value is not None and type(value) is not str for value in path
     ):
         return ""
     for value in reversed(path):
-        folded = _normalized(value)
+        folded = _dual_axis_normalized(value)
         for unit in sorted(unit_aliases, key=lambda item: (-len(item), item)):
             if folded == unit:
                 folded = ""
@@ -96,7 +104,7 @@ def _axis_leaf(path: Any, *, unit_aliases: list[str]) -> str:
 
 
 def _unit_alias(text: Any, aliases: list[str]) -> str | None:
-    folded = _normalized(text)
+    folded = _dual_axis_normalized(text)
     matches = [alias for alias in aliases if folded == alias or folded.endswith(" " + alias)]
     longest = max((len(alias) for alias in matches), default=0)
     selected = sorted(alias for alias in matches if len(alias) == longest)
@@ -107,7 +115,10 @@ def _money_magnitudes(text: Any) -> set[str]:
     return (
         set()
         if type(text) is not str
-        else {match.group(1) for match in _MONEY_MAGNITUDE.finditer(_normalized(text))}
+        else {
+            match.group(1)
+            for match in _MONEY_MAGNITUDE.finditer(_dual_axis_normalized(text))
+        }
     )
 
 
@@ -190,7 +201,7 @@ def _unique_parent_context(
     )
     reasons: list[str] = []
     for record in local:
-        folded = _normalized(record["text_exact"])
+        folded = _dual_axis_normalized(record["text_exact"])
         if any(alias in folded for alias in hard_negative_aliases):
             reasons.append("HARD_NEGATIVE_FAMILY_TITLE_PRESENT")
         if any(alias in folded for alias in structural_reset_aliases):
@@ -198,7 +209,7 @@ def _unique_parent_context(
     for scope, records in (("TARGET_SECTION", local), ("SAME_PAGE_SIBLING_SECTION", sibling)):
         matches = []
         for record in records:
-            folded = _normalized(record["text_exact"])
+            folded = _dual_axis_normalized(record["text_exact"])
             matched_aliases = [alias for alias in parent_aliases if alias in folded]
             if matched_aliases:
                 matches.append(
@@ -436,6 +447,46 @@ def _period_axis(
     )
 
 
+def _adjacent_tables_have_complete_local_balance_axis(
+    *,
+    regions: Sequence[dict[str, Any]],
+    page_json_by_version: Mapping[str, dict[str, Any]],
+) -> bool:
+    """Bind an adjacent pair without a continuation flag only from exact dates."""
+
+    if len(regions) != 2:
+        return False
+    axis_dates = []
+    for region in regions:
+        page_json = page_json_by_version.get(region["page_json_version_id"])
+        if type(page_json) is not dict:
+            return False
+        section, table = _source_nodes(
+            page_json,
+            section_id=region["section_id"],
+            table_id=region["table_id"],
+        )
+        evidence = _table_period_evidence(section=section, table=table)
+        local_dates = set(evidence)
+        narratives = section.get("narratives_exact")
+        for surface in [
+            section.get("title_exact"),
+            *(narratives if type(narratives) is list else []),
+        ]:
+            if type(surface) is str and surface:
+                local_dates.update(_header_dates(surface))
+        if len(local_dates) != 1:
+            return False
+        axis_dates.append(next(iter(local_dates)))
+    axis = sorted(axis_dates, reverse=True)
+    current = axis[0]
+    return (
+        len(set(axis)) == 2
+        and (current.month, current.day) in _REPORTING_PERIOD_ENDS
+        and axis[1] == date(current.year - 1, 12, 31)
+    )
+
+
 def _unit_evidence_for_projection(
     *,
     projection: dict[str, Any],
@@ -516,7 +567,133 @@ def _unit_evidence_for_projection(
     return best, []
 
 
-def _project_source_table(
+def _projection_metric_leaf(
+    projection: Mapping[str, Any], *, unit_aliases: list[str]
+) -> str:
+    source = projection["metric_source"]
+    if type(source.get("label_exact")) is str:
+        return _dual_axis_normalized(source["label_exact"])
+    return _axis_leaf(source.get("header_path_exact"), unit_aliases=unit_aliases)
+
+
+def _external_population_control_axis(
+    *,
+    projections: Sequence[dict[str, Any]],
+    projection_units: Sequence[dict[str, Any]],
+    document_context: Mapping[str, Any],
+    control_policy: Mapping[str, Any],
+    unit_aliases: list[str],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Corroborate declared population-sensitive metrics against an external row."""
+
+    records = document_context.get("external_population_controls", [])
+    if type(records) is not list or any(type(record) is not dict for record in records):
+        raise _error("dual-axis external population control context is invalid")
+    controlled_aliases = set(control_policy["controlled_metric_aliases"])
+    control_report_norm_id = control_policy["control_report_norm_id"]
+    magnitude_by_alias = control_policy["unit_decimal_magnitude_by_alias"]
+    receipts = []
+    reasons = []
+    for projection, projection_unit in zip(projections, projection_units, strict=True):
+        metric = _projection_metric_leaf(projection, unit_aliases=unit_aliases)
+        if metric not in controlled_aliases:
+            continue
+        period = projection["period"].isoformat()
+        projection_unit_alias = projection_unit["declared_unit_alias"]
+        projection_unit_magnitude = magnitude_by_alias.get(projection_unit_alias)
+        period_records = [
+            record
+            for record in records
+            if record.get("period") == period
+            and record.get("control_report_norm_id") == control_report_norm_id
+            and type(record.get("coefficient")) is int
+        ]
+        candidates = [
+            record
+            for record in period_records
+            if (
+                control_alias := _unit_alias(record.get("unit_exact"), unit_aliases)
+            )
+            is not None
+            and magnitude_by_alias.get(control_alias) == projection_unit_magnitude
+        ]
+        values = {record["coefficient"] for record in candidates}
+        population_value = (
+            projection["total_coefficient"]
+            if projection["total_visible"] and projection["total_coefficient"] is not None
+            else sum(projection["role_coefficients"])
+            if all(value is not None for value in projection["role_coefficients"])
+            else None
+        )
+        control_value = next(iter(values)) if len(values) == 1 else None
+        if period_records and not candidates:
+            disposition = "EXTERNAL_POPULATION_CONTROL_UNIT_MAGNITUDE_MISMATCH"
+            reasons.append(disposition)
+        elif not candidates:
+            disposition = "EXTERNAL_POPULATION_CONTROL_IS_ABSENT"
+            reasons.append(disposition)
+        elif len(values) != 1:
+            disposition = "EXTERNAL_POPULATION_CONTROL_IS_AMBIGUOUS"
+            reasons.append(disposition)
+        elif population_value is None:
+            disposition = "EXTERNAL_POPULATION_TOTAL_IS_NOT_EXACT"
+            reasons.append(disposition)
+        elif population_value != control_value:
+            disposition = "EXTERNAL_POPULATION_CONTROL_CONFLICT"
+            reasons.append(disposition)
+        else:
+            disposition = "EXACT_EXTERNAL_POPULATION_CONTROL_MATCH"
+        receipts.append(
+            {
+                "control_sources": canonical_clone_v1(candidates),
+                "control_value": control_value,
+                "control_report_norm_id": control_report_norm_id,
+                "disposition": disposition,
+                "metric": metric,
+                "period": period,
+                "population_value": population_value,
+                "unit_decimal_magnitude": projection_unit_magnitude,
+                "source_ref": canonical_clone_v1(projection["source_ref"]),
+            }
+        )
+    return receipts, reasons
+
+
+def _visible_total_rounding_receipt(
+    *,
+    projection: Mapping[str, Any],
+    projection_unit: Mapping[str, Any],
+    rounding_policy: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    residual = projection["total_equation_residual"]
+    if residual in {None, 0}:
+        return None, []
+    if rounding_policy is None:
+        return None, ["DUAL_AXIS_VISIBLE_TOTAL_EQUATION_FAILED"]
+    unit_alias = projection_unit["declared_unit_alias"]
+    magnitude = rounding_policy["unit_decimal_magnitude_by_alias"].get(unit_alias)
+    if (
+        magnitude is None
+        or magnitude < rounding_policy["minimum_unit_decimal_magnitude"]
+        or abs(residual) > rounding_policy["maximum_absolute_display_residual"]
+    ):
+        return None, ["DUAL_AXIS_VISIBLE_TOTAL_EQUATION_FAILED"]
+    return (
+        {
+            "format_version": rounding_policy["format_version"],
+            "maximum_absolute_display_residual": rounding_policy[
+                "maximum_absolute_display_residual"
+            ],
+            "minimum_unit_decimal_magnitude": rounding_policy[
+                "minimum_unit_decimal_magnitude"
+            ],
+            "unit_decimal_magnitude": magnitude,
+        },
+        [],
+    )
+
+
+def _project_single_source_table(
     *,
     region: dict[str, Any],
     page_json: dict[str, Any],
@@ -535,10 +712,9 @@ def _project_source_table(
     if any(
         type(column) is not dict
         or type(column.get("header_path_exact")) is not list
-        or column.get("value_kind") != "MONEY"
         for column in columns
     ):
-        return None, ["DUAL_AXIS_SOURCE_COLUMN_AXIS_IS_NOT_ALL_MONEY"]
+        return None, ["DUAL_AXIS_SOURCE_COLUMN_AXIS_IS_INVALID"]
     role_order = policy["projected_role_order"]
     role_aliases = {
         role: {_normalized(alias) for alias in compiled_specs["query_aliases_by_role"][role]}
@@ -576,6 +752,7 @@ def _project_source_table(
     orientation = region.get("orientation")
     role_values: dict[str, Any] = {}
     role_sources: dict[str, dict[str, Any]] = {}
+    absent_source_roles: list[str] = []
     total_value: Any = None
     total_source: dict[str, Any] | None = None
     total_visible = False
@@ -590,13 +767,19 @@ def _project_source_table(
             role: [
                 (ordinal, row)
                 for ordinal, row in enumerate(rows, start=1)
-                if _normalized(row.get("label_exact")) in aliases
+                if _dual_axis_normalized(row.get("label_exact")) in aliases
             ]
             for role, aliases in role_aliases.items()
         }
-        if len(metric_indices) != 1 or any(len(matches) != 1 for matches in row_matches.values()):
+        if (
+            len(metric_indices) != 1
+            or any(len(matches) > 1 for matches in row_matches.values())
+            or not any(len(matches) == 1 for matches in row_matches.values())
+        ):
             return None, ["ROW_ROLE_METRIC_COLUMN_EXACT_ASSIGNMENT_COUNT_NOT_ONE"]
         metric_index = metric_indices[0]
+        if columns[metric_index].get("value_kind") != "MONEY":
+            return None, ["DUAL_AXIS_BOUND_VALUE_COLUMN_IS_NOT_MONEY"]
         metric_source = {
             "column_index": metric_index,
             "header_path_exact": canonical_clone_v1(columns[metric_index]["header_path_exact"]),
@@ -604,6 +787,11 @@ def _project_source_table(
         role_ordinals = set()
         total_candidates = []
         for role, matches in row_matches.items():
+            if not matches:
+                absent_source_roles.append(role)
+                role_values[role] = None
+                role_sources[role] = {"presence": "ABSENT_SOURCE_AXIS_ROLE"}
+                continue
             ordinal, row = matches[0]
             values = row.get("values_exact")
             if type(values) is not list or len(values) != len(columns):
@@ -612,7 +800,7 @@ def _project_source_table(
             role_values[role] = values[metric_index]
             role_sources[role] = {
                 "label_exact": row.get("label_exact"),
-                "row_id": f"r{ordinal}",
+                "row_id": row.get("_dual_axis_original_row_id", f"r{ordinal}"),
             }
         for ordinal, row in enumerate(rows, start=1):
             if ordinal in role_ordinals:
@@ -623,8 +811,17 @@ def _project_source_table(
             value = values[metric_index]
             if value is None:
                 continue
-            folded = _normalized(row.get("label_exact"))
-            if row.get("row_kind") == "TOTAL" or folded in total_aliases:
+            folded = _dual_axis_normalized(row.get("label_exact"))
+            stacked_unlabeled_subtotal = (
+                region.get("row_group_id") is not None
+                and row.get("row_kind") == "SUBTOTAL"
+                and not folded
+            )
+            if (
+                row.get("row_kind") == "TOTAL"
+                or folded in total_aliases
+                or stacked_unlabeled_subtotal
+            ):
                 total_candidates.append((ordinal, row, value))
             else:
                 unmatched_numeric.append(f"r{ordinal}")
@@ -635,19 +832,23 @@ def _project_source_table(
             total_ordinal, total_row, total_value = total_candidates[0]
             total_source = {
                 "label_exact": total_row.get("label_exact"),
-                "row_id": f"r{total_ordinal}",
+                "row_id": total_row.get("_dual_axis_original_row_id", f"r{total_ordinal}"),
             }
     elif orientation == "METRIC_ROW_ROLE_COLUMNS":
         metric_rows = [
             (ordinal, row)
             for ordinal, row in enumerate(rows, start=1)
-            if _normalized(row.get("label_exact")) in metric_aliases
+            if _dual_axis_normalized(row.get("label_exact")) in metric_aliases
         ]
         role_indices = {
             role: [index for index, leaf in enumerate(column_leaves) if leaf in aliases]
             for role, aliases in role_aliases.items()
         }
-        if len(metric_rows) != 1 or any(len(indices) != 1 for indices in role_indices.values()):
+        if (
+            len(metric_rows) != 1
+            or any(len(indices) > 1 for indices in role_indices.values())
+            or not any(len(indices) == 1 for indices in role_indices.values())
+        ):
             return None, ["METRIC_ROW_ROLE_COLUMN_EXACT_ASSIGNMENT_COUNT_NOT_ONE"]
         metric_ordinal, metric_row = metric_rows[0]
         values = metric_row.get("values_exact")
@@ -659,7 +860,14 @@ def _project_source_table(
         }
         role_column_indices = set()
         for role, indices in role_indices.items():
+            if not indices:
+                absent_source_roles.append(role)
+                role_values[role] = None
+                role_sources[role] = {"presence": "ABSENT_SOURCE_AXIS_ROLE"}
+                continue
             index = indices[0]
+            if columns[index].get("value_kind") != "MONEY":
+                return None, ["DUAL_AXIS_BOUND_VALUE_COLUMN_IS_NOT_MONEY"]
             role_column_indices.add(index)
             role_values[role] = values[index]
             role_sources[role] = {
@@ -672,16 +880,24 @@ def _project_source_table(
         if total_indices:
             total_visible = True
             total_index = total_indices[0]
+            if columns[total_index].get("value_kind") != "MONEY":
+                return None, ["DUAL_AXIS_BOUND_VALUE_COLUMN_IS_NOT_MONEY"]
             total_value = values[total_index]
             total_source = {
                 "column_id": f"c{total_index + 1}",
                 "header_path_exact": canonical_clone_v1(columns[total_index]["header_path_exact"]),
             }
         bound_indices = role_column_indices | set(total_indices)
+        metric_label = _dual_axis_normalized(metric_row.get("label_exact"))
         unmatched_numeric.extend(
             f"c{index + 1}"
             for index, value in enumerate(values)
-            if index not in bound_indices and value is not None
+            if index not in bound_indices
+            and value is not None
+            and not (
+                columns[index].get("value_kind") == "TEXT"
+                and _dual_axis_normalized(value) == metric_label
+            )
         )
     else:
         return None, ["DUAL_AXIS_ORIENTATION_IS_NOT_DECLARED"]
@@ -691,12 +907,16 @@ def _project_source_table(
     blank_derived_roles = []
     unmapped_blank_roles = []
     effective_values = dict(role_values)
+    preserve_source_blanks = policy["source_blank_mapping_policy"] == "PRESERVE_BLANK_OMIT_MAPPING"
     for role in role_order:
         if role_values[role] is not None:
             try:
                 _money(role_values[role])
             except ValueError:
                 return None, [f"DUAL_AXIS_ROLE_VALUE_IS_NOT_EXACT_INTEGER:{role}"]
+            continue
+        if preserve_source_blanks:
+            unmapped_blank_roles.append(role)
             continue
         if role not in policy["blank_zero_derivable_roles"]:
             return None, [f"BLANK_ROLE_CELL_IS_NOT_DECLARED_ZERO_DERIVABLE:{role}"]
@@ -731,10 +951,11 @@ def _project_source_table(
         total_coefficient = _money(total_value)["coefficient"] if total_visible else None
     except ValueError:
         return None, ["DUAL_AXIS_VALUE_OR_TOTAL_IS_NOT_EXACT_INTEGER"]
-    if total_visible and total_coefficient != sum(
-        coefficient for coefficient in role_coefficients if coefficient is not None
-    ):
-        return None, ["DUAL_AXIS_VISIBLE_TOTAL_EQUATION_FAILED"]
+    total_equation_residual = None
+    if total_visible and not unmapped_blank_roles:
+        total_equation_residual = total_coefficient - sum(
+            coefficient for coefficient in role_coefficients if coefficient is not None
+        )
 
     source_ref = {
         "orientation": orientation,
@@ -743,15 +964,27 @@ def _project_source_table(
         "section_id": region["section_id"],
         "table_id": region["table_id"],
     }
+    if region.get("row_group_id") is not None:
+        source_ref.update(
+            {
+                "row_group_id": region["row_group_id"],
+                "row_group_path_exact": canonical_clone_v1(region["row_group_path_exact"]),
+            }
+        )
     role_value_states = {
         role: (
-            "BLANK_SOURCE_CELL" if role_values[role] is None else _money(role_values[role])["state"]
+            "ABSENT_SOURCE_AXIS_ROLE"
+            if role in absent_source_roles
+            else "BLANK_SOURCE_CELL"
+            if role_values[role] is None
+            else _money(role_values[role])["state"]
         )
         for role in role_order
     }
     role_coefficient_by_role = dict(zip(role_order, role_coefficients, strict=True))
     return (
         {
+            "absent_source_roles": absent_source_roles,
             "blank_derived_roles": blank_derived_roles,
             "unmapped_blank_roles": unmapped_blank_roles,
             "effective_values": effective_values,
@@ -767,12 +1000,227 @@ def _project_source_table(
             "source_ref": source_ref,
             "source_table_continuation": table.get("continuation"),
             "total_coefficient": total_coefficient,
+            "total_equation_residual": total_equation_residual,
+            "total_rounding_policy": None,
             "total_source": total_source,
             "total_source_text": total_value,
             "total_visible": total_visible,
         },
         [],
     )
+
+
+def _stacked_row_scope_path(row: Mapping[str, Any]) -> list[Any] | None:
+    path = row.get("hierarchy_path_exact")
+    if type(path) is not list or any(
+        value is not None and type(value) is not str for value in path
+    ):
+        return None
+    scope = canonical_clone_v1(path)
+    label = row.get("label_exact")
+    if scope and (
+        scope[-1] is None
+        or (
+            type(label) is str
+            and _dual_axis_normalized(label)
+            and _dual_axis_normalized(scope[-1]) == _dual_axis_normalized(label)
+        )
+    ):
+        scope.pop()
+    return scope
+
+
+def _stacked_scope_key(path: Sequence[Any]) -> tuple[Any, ...]:
+    return tuple(_dual_axis_normalized(value) if type(value) is str else value for value in path)
+
+
+def _project_stacked_period_row_table(
+    *,
+    region: dict[str, Any],
+    page_json: dict[str, Any],
+    compiled_specs: dict[str, Any],
+) -> tuple[list[dict[str, Any]] | None, list[str]]:
+    """Split two exact date-owned role groups without inventing table lanes."""
+
+    policy = compiled_specs["dual_axis_projection_policy"]
+    section, table = _source_nodes(
+        page_json,
+        section_id=region["section_id"],
+        table_id=region["table_id"],
+    )
+    rows = table.get("rows")
+    columns = table.get("columns")
+    if type(rows) is not list or type(columns) is not list:
+        return None, ["DUAL_AXIS_SOURCE_TABLE_IS_EMPTY"]
+    role_order = policy["projected_role_order"]
+    role_aliases = {
+        role: {_normalized(alias) for alias in compiled_specs["query_aliases_by_role"][role]}
+        for role in role_order
+    }
+    role_matches = {
+        role: [
+            (ordinal, row)
+            for ordinal, row in enumerate(rows, start=1)
+            if _dual_axis_normalized(row.get("label_exact")) in aliases
+        ]
+        for role, aliases in role_aliases.items()
+    }
+    if not all(len(matches) == 2 for matches in role_matches.values()):
+        return None, ["ROW_ROLE_METRIC_COLUMN_EXACT_ASSIGNMENT_COUNT_NOT_ONE_OR_TWO"]
+
+    grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
+    all_role_ordinals = set()
+    for role, matches in role_matches.items():
+        for ordinal, row in matches:
+            all_role_ordinals.add(ordinal)
+            path = _stacked_row_scope_path(row)
+            if not path:
+                return None, ["DUAL_AXIS_STACKED_PERIOD_ROLE_GROUP_PATH_IS_ABSENT"]
+            key = _stacked_scope_key(path)
+            group = grouped.setdefault(key, {"path_exact": path, "roles": {}})
+            if role in group["roles"]:
+                return None, ["DUAL_AXIS_STACKED_PERIOD_ROLE_REPEATS_WITHIN_GROUP"]
+            group["roles"][role] = (ordinal, row)
+    if len(grouped) != 2 or any(
+        set(group["roles"]) != set(role_order) for group in grouped.values()
+    ):
+        return None, ["DUAL_AXIS_STACKED_PERIOD_ROLE_GROUP_ASSIGNMENT_IS_NOT_EXACT"]
+
+    metric_aliases = set(policy["metric_aliases"])
+    column_leaves = [
+        _axis_leaf(column.get("header_path_exact"), unit_aliases=policy["unit_aliases"])
+        if type(column) is dict
+        else ""
+        for column in columns
+    ]
+    metric_indices = [index for index, leaf in enumerate(column_leaves) if leaf in metric_aliases]
+    if len(metric_indices) != 1:
+        return None, ["ROW_ROLE_METRIC_COLUMN_EXACT_ASSIGNMENT_COUNT_NOT_ONE"]
+    metric_index = metric_indices[0]
+
+    ordered_groups = sorted(
+        grouped.items(),
+        key=lambda item: min(ordinal for ordinal, _row in item[1]["roles"].values()),
+    )
+    group_periods: dict[tuple[Any, ...], tuple[date, str]] = {}
+    for key, group in ordered_groups:
+        observations = [
+            (parsed, surface)
+            for surface in group["path_exact"]
+            if type(surface) is str
+            for parsed in _header_dates(surface)
+        ]
+        dates = {parsed for parsed, _surface in observations}
+        if len(dates) != 1:
+            return None, ["DUAL_AXIS_STACKED_PERIOD_GROUP_DATE_IS_NOT_EXACT"]
+        parsed = next(iter(dates))
+        surface = next(surface for candidate, surface in observations if candidate == parsed)
+        group_periods[key] = (parsed, surface)
+
+    rows_by_group: dict[tuple[Any, ...], list[tuple[int, dict[str, Any]]]] = {
+        key: [] for key in grouped
+    }
+    for ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict:
+            return None, ["DUAL_AXIS_SOURCE_TABLE_ROW_IS_INVALID"]
+        values = row.get("values_exact")
+        if type(values) is not list or len(values) != len(columns):
+            return None, ["DUAL_AXIS_ROW_VALUE_VECTOR_DRIFTED"]
+        if ordinal in all_role_ordinals:
+            owning_key = next(
+                key
+                for key, group in grouped.items()
+                if ordinal in {item[0] for item in group["roles"].values()}
+            )
+            rows_by_group[owning_key].append((ordinal, row))
+            continue
+        if values[metric_index] is None:
+            continue
+        scope = _stacked_row_scope_path(row)
+        scope_key = () if scope is None else _stacked_scope_key(scope)
+        owners = [
+            key for key in grouped if len(scope_key) >= len(key) and scope_key[: len(key)] == key
+        ]
+        if len(owners) != 1:
+            return None, [f"DUAL_AXIS_STACKED_PERIOD_UNBOUND_VISIBLE_VALUE:r{ordinal}"]
+        rows_by_group[owners[0]].append((ordinal, row))
+
+    projections = []
+    for group_index, (key, group) in enumerate(ordered_groups, start=1):
+        projected_page = canonical_clone_v1(page_json)
+        projected_table = projected_page["sections"][
+            _node_index(region["section_id"], "s", len(projected_page["sections"]))
+        ]["tables"][_node_index(region["table_id"], "t", len(section["tables"]))]
+        projected_rows = []
+        for ordinal, source_row in sorted(rows_by_group[key]):
+            projected_row = canonical_clone_v1(source_row)
+            projected_row["_dual_axis_original_row_id"] = f"r{ordinal}"
+            projected_rows.append(projected_row)
+        projected_table["rows"] = projected_rows
+        grouped_region = {
+            **region,
+            "row_group_id": f"g{group_index}",
+            "row_group_path_exact": canonical_clone_v1(group["path_exact"]),
+        }
+        projection, reasons = _project_single_source_table(
+            region=grouped_region,
+            page_json=projected_page,
+            compiled_specs=compiled_specs,
+        )
+        if projection is None:
+            return None, reasons
+        parsed, surface = group_periods[key]
+        projection["local_period_evidence"] = {
+            parsed: [
+                {
+                    "priority": 0,
+                    "source_kind": "ROW_GROUP_PATH",
+                    "text_exact": surface,
+                }
+            ]
+        }
+        projections.append(projection)
+    return projections, []
+
+
+def _project_source_table(
+    *,
+    region: dict[str, Any],
+    page_json: dict[str, Any],
+    compiled_specs: dict[str, Any],
+) -> tuple[list[dict[str, Any]] | None, list[str]]:
+    if region.get("orientation") == "ROW_ROLES_METRIC_COLUMN":
+        _section, table = _source_nodes(
+            page_json,
+            section_id=region["section_id"],
+            table_id=region["table_id"],
+        )
+        rows = table.get("rows")
+        if type(rows) is list:
+            role_counts = []
+            for role in compiled_specs["dual_axis_projection_policy"]["projected_role_order"]:
+                aliases = {
+                    _normalized(alias) for alias in compiled_specs["query_aliases_by_role"][role]
+                }
+                role_counts.append(
+                    sum(
+                        type(row) is dict
+                        and _dual_axis_normalized(row.get("label_exact")) in aliases
+                        for row in rows
+                    )
+                )
+            if any(count > 1 for count in role_counts):
+                return _project_stacked_period_row_table(
+                    region=region,
+                    page_json=page_json,
+                    compiled_specs=compiled_specs,
+                )
+    projection, reasons = _project_single_source_table(
+        region=region,
+        page_json=page_json,
+        compiled_specs=compiled_specs,
+    )
+    return (None, reasons) if projection is None else ([projection], reasons)
 
 
 def _failed_candidate(
@@ -806,6 +1254,8 @@ def _projection_role_cell_receipt(projection: Mapping[str, Any], *, role: str) -
         "value_disposition": (
             "DERIVED_ZERO_FROM_EXACT_VISIBLE_TOTAL_AND_OTHER_ROLE"
             if role in projection["blank_derived_roles"]
+            else "UNMAPPED_ABSENT_SOURCE_AXIS_ROLE"
+            if role in projection["absent_source_roles"]
             else "UNMAPPED_SOURCE_BLANK"
             if role in projection["unmapped_blank_roles"]
             else "VISIBLE_SOURCE_VALUE"
@@ -842,7 +1292,14 @@ def _projection_equation_receipt(
     return {
         "blank_zero_equations": blank_zero_equations,
         "mode": (
-            "VISIBLE_TOTAL_EXACTLY_EQUALS_EXHAUSTIVE_ROLE_PAIR"
+            "VISIBLE_TOTAL_WITH_MONEY_UNIT_DISPLAY_ROUNDING_RESIDUAL"
+            if projection["total_equation_residual"] not in {None, 0}
+            else "VISIBLE_TOTAL_RETAINED_WITH_ABSENT_SOURCE_AXIS_ROLE_NO_INFERENCE"
+            if projection["total_visible"] and projection["absent_source_roles"]
+            else
+            "VISIBLE_TOTAL_RETAINED_WITH_TYPED_UNMAPPED_SOURCE_BLANK_NO_EXHAUSTIVE_EQUATION"
+            if projection["total_visible"] and projection["unmapped_blank_roles"]
+            else "VISIBLE_TOTAL_EXACTLY_EQUALS_EXHAUSTIVE_ROLE_PAIR"
             if projection["total_visible"]
             else "EXHAUSTIVE_ROLE_PAIR_WITH_TYPED_UNMAPPED_SOURCE_BLANK"
             if projection["unmapped_blank_roles"]
@@ -851,6 +1308,8 @@ def _projection_equation_receipt(
         "role_cells": role_cells,
         "source_ref": canonical_clone_v1(projection["source_ref"]),
         "total_cell": total_cell,
+        "total_equation_residual": projection["total_equation_residual"],
+        "total_rounding_policy": canonical_clone_v1(projection["total_rounding_policy"]),
     }
 
 
@@ -915,6 +1374,9 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
         if not any(
             value in {"CONTINUES_FROM_PREVIOUS_PAGE", "CONTINUES_ON_NEXT_PAGE"}
             for value in continuation_values
+        ) and not _adjacent_tables_have_complete_local_balance_axis(
+            regions=source_regions,
+            page_json_by_version=page_json_by_version,
         ):
             reasons.append("ADJACENT_PERIOD_TABLE_CLUSTER_HAS_NO_CONTINUATION_BINDING")
 
@@ -932,14 +1394,14 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
         if type(page_json) is not dict:
             reasons.append("DUAL_AXIS_SOURCE_PAGE_IS_ABSENT")
             continue
-        projection, projection_reasons = _project_source_table(
+        projected_tables, projection_reasons = _project_source_table(
             region=region,
             page_json=page_json,
             compiled_specs=compiled_specs,
         )
         reasons.extend(projection_reasons)
-        if projection is not None:
-            projections.append(projection)
+        if projected_tables is not None:
+            projections.extend(projected_tables)
     base_receipt = {
         "claim_boundary": CLAIM_BOUNDARY,
         "format_version": FORMAT_VERSION,
@@ -959,11 +1421,13 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
             for region in source_regions
         ],
     }
-    if reasons or len(projections) != len(source_regions):
+    if len(projections) not in policy["period_table_count_alternatives"]:
+        reasons.append("DUAL_AXIS_PROJECTED_PERIOD_COUNT_IS_NOT_DECLARED")
+    if reasons:
         return _failed_candidate(
             compiled_specs=compiled_specs,
             primary_region=primary_region,
-            reasons=reasons or ["DUAL_AXIS_PROJECTION_COUNT_DRIFTED"],
+            reasons=reasons,
             receipt=base_receipt,
         )
 
@@ -983,12 +1447,35 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
         if unit is None:
             continue
         else:
-            unit_receipts.append(
-                {
-                    **unit,
-                    "source_ref": canonical_clone_v1(projection["source_ref"]),
-                }
+            unit_receipt = {
+                **unit,
+                "source_ref": canonical_clone_v1(projection["source_ref"]),
+            }
+            rounding_receipt, rounding_reasons = _visible_total_rounding_receipt(
+                projection=projection,
+                projection_unit=unit_receipt,
+                rounding_policy=policy.get("visible_total_rounding_policy"),
             )
+            projection["total_rounding_policy"] = rounding_receipt
+            reasons.extend(rounding_reasons)
+            unit_receipts.append(unit_receipt)
+    external_control_policy = policy.get("external_population_control")
+    external_control_receipts = []
+    if (
+        external_control_policy is not None
+        and period_receipt is not None
+        and len(unit_receipts) == len(projections)
+    ):
+        external_control_receipts, external_control_reasons = (
+            _external_population_control_axis(
+                projections=projections,
+                projection_units=unit_receipts,
+                document_context=document_context,
+                control_policy=external_control_policy,
+                unit_aliases=policy["unit_aliases"],
+            )
+        )
+        reasons.extend(external_control_reasons)
     receipt = {
         **base_receipt,
         "period_axis": period_receipt,
@@ -1004,6 +1491,13 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
             "sources": unit_receipts,
         },
     }
+    if external_control_policy is not None:
+        receipt["external_population_control"] = {
+            "control_report_norm_id": external_control_policy["control_report_norm_id"],
+            "controlled_projection_count": len(external_control_receipts),
+            "match_rule": external_control_policy["match_rule"],
+            "sources": external_control_receipts,
+        }
     if reasons or period_receipt is None or len(unit_receipts) != len(projections):
         return _failed_candidate(
             compiled_specs=compiled_specs,
@@ -1032,10 +1526,18 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
             }
         )
     primary_projection = projections[0]
-    unmapped_blank_roles = [
+    source_blank_roles = [
         role
         for role in role_order
         if any(role in projection["unmapped_blank_roles"] for projection in projections)
+    ]
+    unmapped_blank_roles = [
+        role
+        for role in role_order
+        if all(role in projection["unmapped_blank_roles"] for projection in projections)
+    ]
+    partially_blank_roles = [
+        role for role in source_blank_roles if role not in unmapped_blank_roles
     ]
     mapped_roles = [role for role in role_order if role not in unmapped_blank_roles]
     if not mapped_roles:
@@ -1045,7 +1547,7 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
             reasons=["DUAL_AXIS_NO_VISIBLE_ROLE_REMAINS_FOR_MAPPING"],
             receipt=receipt,
         )
-    if unmapped_blank_roles:
+    if source_blank_roles:
         result = _candidate_result(
             topology=compiled_specs["topology"],
             page_json_version_id=primary_projection["source_ref"]["page_json_version_id"],
@@ -1063,7 +1565,19 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
                 "role": role,
                 "row_id": f"r{role_order.index(role) + 1}",
                 "values": [
-                    canonical_clone_v1(_money(projection["role_values"][role]))
+                    (
+                        canonical_clone_v1(_money(projection["role_values"][role]))
+                        if projection["role_values"][role] is not None
+                        else {
+                            "coefficient": None,
+                            "source_text": None,
+                            "state": (
+                                "ABSENT_SOURCE_AXIS_ROLE"
+                                if role in projection["absent_source_roles"]
+                                else "BLANK_SOURCE_CELL"
+                            ),
+                        }
+                    )
                     for projection in projections
                 ],
             }
@@ -1089,6 +1603,7 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
             },
             "rule": "EXACT_VISIBLE_DUAL_AXIS_CHILD_ROLE_WITH_TYPED_UNMAPPED_SOURCE_BLANK",
             "source_blank_mapping_policy": policy["source_blank_mapping_policy"],
+            "partially_blank_mapped_roles": partially_blank_roles,
             "unmapped_source_blank_roles": unmapped_blank_roles,
             "used_anonymous_result_row_ids": [],
         }
@@ -1105,7 +1620,10 @@ def evaluate_gemini_json_dual_axis_family_cluster_v1(
                     ],
                 }
             )
-        if all(projection["total_visible"] for projection in projections):
+        if all(
+            projection["total_visible"] and projection["total_equation_residual"] == 0
+            for projection in projections
+        ):
             rows.append(
                 {
                     "hierarchy_path_exact": [None],

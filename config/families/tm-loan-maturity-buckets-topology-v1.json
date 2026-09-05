@@ -11,8 +11,8 @@
     },
     {
       "matchers": [
-        {"aliases": ["Nợ trung hạn", "Cho vay trung hạn", "Trung hạn", "Nợ trung hạn (từ 1 tới 5 năm)", "Nợ trung hạn (trên 01 đến 05 năm)", "Nợ trung hạn (Trên 01 đến 5 năm)"], "within_role": "CORE_LOAN_POPULATION"},
-        {"aliases": ["Nợ trung hạn", "Cho vay trung hạn", "Trung hạn", "Nợ trung hạn (từ 1 tới 5 năm)", "Nợ trung hạn (trên 01 đến 05 năm)", "Nợ trung hạn (Trên 01 đến 5 năm)"], "within_role": null}
+        {"aliases": ["Nợ trung hạn", "Cho vay trung hạn", "Trung hạn", "Nợ trung hạn (từ 1 tới 5 năm)", "Nợ trung hạn (Từ 1 đến 5 năm)", "Nợ trung hạn (trên 01 đến 05 năm)", "Nợ trung hạn (Trên 01 đến 5 năm)", "Nợ trung hạn (Trên 01 tới 05 năm)"], "within_role": "CORE_LOAN_POPULATION"},
+        {"aliases": ["Nợ trung hạn", "Cho vay trung hạn", "Trung hạn", "Nợ trung hạn (từ 1 tới 5 năm)", "Nợ trung hạn (Từ 1 đến 5 năm)", "Nợ trung hạn (trên 01 đến 05 năm)", "Nợ trung hạn (Trên 01 đến 5 năm)", "Nợ trung hạn (Trên 01 tới 05 năm)"], "within_role": null}
       ],
       "presence": "OPTIONAL",
       "role": "MEDIUM_TERM",
@@ -50,7 +50,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán - ngắn hạn", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "within_role": null},
+        {"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán - ngắn hạn", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS", "Các khoản cho vay hoạt động ký quỹ và cho vay hoạt động ứng trước tiền bán của khách hàng"], "within_role": null},
         {"aliases": ["cho vay giao dịch ký quỹ", "ứng trước"], "match_mode": "CONTAINS_ORDERED_NORMALIZED_PHRASES", "presence_anchor": false, "within_role": null}
       ],
       "presence": "OPTIONAL",

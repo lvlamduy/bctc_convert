@@ -1,6 +1,6 @@
 {
-  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
-  "closure_policy": "EXACT_TYPE_CURRENCY_AND_OPTIONAL_CUSTOMER_VIEW_ALL_LANES",
+  "blank_zero_policy": "PRESERVE_BLANK_SOURCE_CELLS_AND_OMIT_ALL_BLANK_ROLES",
+  "closure_policy": "EXACT_OR_BOUNDED_MILLION_VND_ROUNDING_TYPE_CURRENCY_AND_OPTIONAL_CUSTOMER_VIEW_ALL_LANES",
   "customer_view_policy": "OPTIONAL_ONLY_WITHIN_SAME_OWNER_OR_EXPLICIT_CONTINUATION_FENCE",
   "family_id": "CUSTOMER_DEPOSIT_CLASSIFICATION",
   "format_version": "ACCOUNTING_CUSTOMER_DEPOSIT_FAMILY_EVALUATION_SPEC_V1",
@@ -9,7 +9,7 @@
     {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
     {"accepted": false, "aliases": ["Nghìn đồng", "Nghìn VND", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
     {"accepted": false, "aliases": ["Tỷ đồng", "Tỷ VND", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
-    {"accepted": false, "aliases": ["Đồng", "VND"], "canonical_unit": "VND", "magnitude_power10": 0}
+    {"accepted": true, "aliases": ["Đồng", "VND"], "canonical_unit": "VND", "magnitude_power10": 0}
   ],
   "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
   "type_parent_shorthand_aliases": {
@@ -21,6 +21,6 @@
     "TOTAL": ["Tổng cộng", "Tổng"],
     "VND": ["Bằng tiền đồng", "Bằng Đồng Việt Nam", "Bằng VND", "VND"]
   },
-  "type_direct_roles": ["NO_TERM", "TERM", "ESCROW", "DEDICATED"],
-  "type_savings_source_roles": ["SAVINGS_NO_TERM", "SAVINGS_TERM"]
+  "type_direct_roles": ["NO_TERM", "TERM", "ESCROW", "DEDICATED", "OTHER_PAYMENT_GUARANTEE"],
+  "type_savings_source_roles": ["SAVINGS_COMBINED", "SAVINGS_NO_TERM", "SAVINGS_TERM"]
 }

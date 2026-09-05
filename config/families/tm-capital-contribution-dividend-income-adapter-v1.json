@@ -1,0 +1,14 @@
+{
+  "family_id": "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME",
+  "format_version": "GEMINI_JSON_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_ADAPTER_SPEC_V1",
+  "primary_statement_root_aliases": [
+    "Thu nhập góp vốn, mua cổ phần",
+    "Thu nhập/(lỗ) từ góp vốn, mua cổ phần"
+  ],
+  "primary_statement_root_policy": "UNIQUE_EXACT_INCOME_STATEMENT_ROOT_WHEN_DISCLOSURE_NOT_OBSERVED_PRIVATE_SEMANTIC_PROJECTION",
+  "standalone_long_term_leaf_aliases": [
+    "Thu nhập góp vốn, mua cổ phần"
+  ],
+  "standalone_long_term_leaf_policy": "UNIQUE_STANDALONE_ITEM_UNDER_EXPLICIT_FAMILY_TABLE_WITH_DIRECT_CARRIER_AND_EXACT_SHARED_CLOSURE_RETRY",
+  "vnd_retry_policy": "BASE_RESULT_FIRST_THEN_EXPLICIT_LOCAL_OR_DOCUMENT_CONSENSUS_VND_ONLY"
+}

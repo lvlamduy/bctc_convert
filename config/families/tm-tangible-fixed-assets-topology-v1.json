@@ -7,7 +7,7 @@
       "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Hao mòn lũy kế", "Khấu hao lũy kế"], "within_role": null}],
+      "matchers": [{"aliases": ["Giá trị hao mòn lũy kế", "Giá trị khấu hao lũy kế", "Giá trị hao mòn", "Hao mòn lũy kế", "Khấu hao lũy kế"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "DEPRECIATION_BRANCH",
       "role_kind": "STRUCTURAL_GROUP"
@@ -25,25 +25,37 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Tăng trong kỳ", "Tăng trong năm"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Tăng trong kỳ", "Tăng trong năm", "Mua sắm và xây dựng hoàn thành cơ bản trong kỳ"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_TOTAL_INCREASE",
       "role_kind": "SUBTOTAL"
     },
     {
-      "matchers": [{"aliases": ["Mua trong kỳ", "Mua trong năm", "Mua mới"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Mua trong kỳ", "Mua trong năm", "Mua sắm trong kỳ", "Mua sắm trong năm", "Mua mới"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_PURCHASE",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Đầu tư xây dựng cơ bản hoàn thành", "Đầu tư XDCB hoàn thành", "Xây dựng cơ bản hoàn thành", "Chuyển từ chi phí xây dựng cơ bản dở dang và mua sắm tài sản cố định"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Đầu tư xây dựng cơ bản hoàn thành", "Đầu tư XDCB hoàn thành", "Xây dựng cơ bản hoàn thành"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_XDCB_COMPLETED",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Tăng khác"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Chuyển từ chi phí xây dựng cơ bản dở dang", "Chuyển từ chi phí xây dựng CBDD", "Chuyển từ xây dựng cơ bản dở dang", "Chuyển từ mua sắm, XDCB dở dang", "Chuyển từ XDCD dở dang", "Chuyển từ tạm ứng mua sắm tài sản cố định và chi phí xây dựng cơ bản dở dang", "Chuyển từ chi phí xây dựng cơ bản dở dang và mua sắm tài sản cố định"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_CIP_TRANSFER",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng do hợp nhất kinh doanh", "Số tăng do hợp nhất kinh doanh trong kỳ", "Số tăng do hợp nhất kinh doanh trong năm", "Ảnh hưởng của hợp nhất trong kỳ", "Ảnh hưởng từ mua thêm cổ phần công ty con"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_BUSINESS_COMBINATION",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng khác", "Tăng xuất kho", "Nâng cấp trong kỳ", "Nâng cấp trong năm", "Tăng do nâng cấp", "Chuyển từ tài sản cố định thuê tài chính"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_OTHER_INCREASE",
       "role_kind": "NONADDITIVE_CHILD"
@@ -53,6 +65,24 @@
       "presence": "OPTIONAL",
       "role": "COST_TOTAL_DECREASE",
       "role_kind": "SUBTOTAL"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang bất động sản đầu tư", "Chuyển sang BĐS đầu tư"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_TRANSFER_INVESTMENT_PROPERTY",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang công cụ dụng cụ"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_TRANSFER_TOOLS",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang chi phí chờ phân bổ", "Chuyển sang chi phí trả trước"], "within_role": "COST_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "COST_TRANSFER_DEFERRED_EXPENSE",
+      "role_kind": "NONADDITIVE_CHILD"
     },
     {
       "matchers": [{"aliases": ["Phân loại lại"], "within_role": "COST_BRANCH"}],
@@ -67,19 +97,19 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Giảm khác"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Giảm khác", "Giảm do bán công ty con"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_OTHER_DECREASE",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Tăng/(giảm) khác", "Biến động khác"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Tăng/(giảm) khác", "(Giảm)/ Tăng khác", "Biến động khác"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_OTHER_NET",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái", "Chênh lệch quy đổi tỷ giá hối đoái"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_FOREIGN_EXCHANGE",
       "role_kind": "NONADDITIVE_CHILD"
@@ -103,13 +133,19 @@
       "role_kind": "SUBTOTAL"
     },
     {
-      "matchers": [{"aliases": ["Khấu hao trong kỳ", "Khấu hao trong năm", "Khấu hao"], "within_role": "DEPRECIATION_BRANCH"}],
+      "matchers": [{"aliases": ["Khấu hao trong kỳ", "Khấu hao trong năm", "Hao mòn trong kỳ", "Hao mòn trong năm", "Khấu hao", "Hao mòn"], "within_role": "DEPRECIATION_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "DEP_CHARGE",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Tăng khác", "Điều chỉnh theo Kiểm toán Nhà nước"], "within_role": "DEPRECIATION_BRANCH"}],
+      "matchers": [{"aliases": ["Tăng do hợp nhất kinh doanh", "Số tăng do hợp nhất kinh doanh trong kỳ", "Số tăng do hợp nhất kinh doanh trong năm", "Ảnh hưởng của hợp nhất trong kỳ", "Ảnh hưởng từ mua thêm cổ phần công ty con"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_BUSINESS_COMBINATION",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Tăng khác", "Nâng cấp trong kỳ", "Nâng cấp trong năm", "Tăng do nâng cấp", "Chuyển từ tài sản cố định thuê tài chính", "Điều chỉnh theo Kiểm toán Nhà nước"], "within_role": "DEPRECIATION_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "DEP_OTHER_INCREASE",
       "role_kind": "NONADDITIVE_CHILD"
@@ -119,6 +155,24 @@
       "presence": "OPTIONAL",
       "role": "DEP_TOTAL_DECREASE",
       "role_kind": "SUBTOTAL"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang bất động sản đầu tư", "Chuyển sang BĐS đầu tư"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_TRANSFER_INVESTMENT_PROPERTY",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang công cụ dụng cụ"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_TRANSFER_TOOLS",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chuyển sang chi phí chờ phân bổ", "Chuyển sang chi phí trả trước"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_TRANSFER_DEFERRED_EXPENSE",
+      "role_kind": "NONADDITIVE_CHILD"
     },
     {
       "matchers": [{"aliases": ["Phân loại lại"], "within_role": "DEPRECIATION_BRANCH"}],
@@ -133,19 +187,25 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Giảm khác"], "within_role": "DEPRECIATION_BRANCH"}],
+      "matchers": [{"aliases": ["Trích lập quỹ"], "within_role": "DEPRECIATION_BRANCH"}],
+      "presence": "OPTIONAL",
+      "role": "DEP_RESERVE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giảm khác", "Giảm do bán công ty con"], "within_role": "DEPRECIATION_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "DEP_OTHER_DECREASE",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Tăng/(giảm) khác", "Biến động khác"], "within_role": "DEPRECIATION_BRANCH"}],
+      "matchers": [{"aliases": ["Tăng/(giảm) khác", "(Giảm)/ Tăng khác", "Biến động khác"], "within_role": "DEPRECIATION_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "DEP_OTHER_NET",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái"], "within_role": "DEPRECIATION_BRANCH"}],
+      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái", "Chênh lệch quy đổi tỷ giá hối đoái"], "within_role": "DEPRECIATION_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "DEP_FOREIGN_EXCHANGE",
       "role_kind": "NONADDITIVE_CHILD"

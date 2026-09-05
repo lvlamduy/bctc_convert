@@ -222,6 +222,98 @@ def test_unambiguous_mdy_fallback_does_not_change_ambiguous_dmy_authority() -> N
     ]
 
 
+def test_literal_json_line_break_in_word_date_header_is_whitespace_only() -> None:
+    current = "Ngày 30 tháng 9\\nnăm 2025"
+    comparative = "Ngày 31 tháng 12\\nnăm 2024"
+
+    result = _evaluate(_page("CORE_ONLY", headers=(current, comparative)))
+
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    assert result["closure_receipt"]["period_value_column_axis"]["period_signatures"] == [
+        ["DATE", "2025-09-30"],
+        ["DATE", "2024-12-31"],
+    ]
+    assert result["mappings"][0]["columns"][0]["header_path_exact"][0] == current
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Nợ trung hạn (Trên 01 tới 05 năm)",
+        "Nợ trung hạn (Từ 1 đến 5 năm)",
+    ],
+)
+def test_generic_medium_term_language_variants_remain_schema_equivalent(label: str) -> None:
+    page = _page("CORE_ONLY")
+    row = page["sections"][0]["tables"][0]["rows"][1]
+    row["label_exact"] = label
+    row["hierarchy_path_exact"] = [label]
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [753, 754, 755]
+    assert result["mappings"][1]["label_exact"] == label
+
+
+def test_operating_margin_and_sale_advance_alias_maps_to_existing_schema_child() -> None:
+    page = _page("CORE_MARGIN_NO_SUBTOTAL")
+    label = (
+        "Các khoản cho vay hoạt động ký quỹ và cho vay hoạt động ứng trước "
+        "tiền bán của khách hàng"
+    )
+    row = page["sections"][0]["tables"][0]["rows"][3]
+    row["label_exact"] = label
+    row["hierarchy_path_exact"] = [label]
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [
+        753,
+        754,
+        755,
+        5747,
+    ]
+    assert result["mappings"][-1]["label_exact"] == label
+
+
+def test_broad_customer_loan_title_slices_one_more_specific_maturity_group() -> None:
+    page = _page("CORE_ONLY")
+    table = page["sections"][0]["tables"][0]
+    maturity_owner = "Phân tích dư nợ theo thời gian"
+    quality_owner = "Phân tích chất lượng nợ cho vay"
+    industry_owner = "Phân tích dư nợ cho vay theo ngành"
+    table["title_exact"] = "8. Cho vay khách hàng"
+    page["sections"][0]["title_exact"] = (
+        "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT QUÝ III NĂM 2025"
+    )
+    table["rows"] = [
+        _row("Cho vay các tổ chức kinh tế, cá nhân trong nước", ["150", "120"]),
+        _row("Cộng", ["150", "120"], row_kind="TOTAL"),
+        _row(quality_owner, [None, None], row_kind="GROUP"),
+        _row("Nhóm 1 - Nợ đủ tiêu chuẩn", ["150", "120"], owner=quality_owner),
+        _row("Cộng", ["150", "120"], owner=quality_owner, row_kind="TOTAL"),
+        _row(maturity_owner, [None, None], row_kind="GROUP"),
+        _row("Nợ ngắn hạn", ["100", "90"], owner=maturity_owner),
+        _row("Nợ trung hạn", ["20", "10"], owner=maturity_owner),
+        _row("Nợ dài hạn", ["30", "20"], owner=maturity_owner),
+        _row("Cộng", ["150", "120"], owner=maturity_owner, row_kind="TOTAL"),
+        _row(industry_owner, [None, None], row_kind="GROUP"),
+        _row("Xây dựng", ["150", "120"], owner=industry_owner),
+    ]
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [753, 754, 755]
+    assert [mapping["row_id"] for mapping in result["mappings"]] == ["r7", "r8", "r9"]
+
+
 def test_hierarchical_period_failure_builds_bounded_table_axis_repair() -> None:
     topology, evaluation, schema = _specs()
     compiled = _compiled()

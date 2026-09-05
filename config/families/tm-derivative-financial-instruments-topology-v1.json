@@ -40,6 +40,7 @@
         {
           "aliases": [
             "Giao dịch hoán đổi tiền tệ",
+            "Giao dịch hoán đổi ngoại tệ",
             "Hợp đồng hoán đổi tiền tệ"
           ],
           "within_role": "CURRENCY_DERIVATIVE_GROUP"
@@ -47,6 +48,7 @@
         {
           "aliases": [
             "Giao dịch hoán đổi tiền tệ",
+            "Giao dịch hoán đổi ngoại tệ",
             "Hợp đồng hoán đổi tiền tệ"
           ],
           "within_role": null
@@ -81,6 +83,7 @@
           "aliases": [
             "Công cụ tài chính phái sinh khác",
             "Công cụ tài chính phái sinh lãi suất",
+            "Công cụ TC phái sinh lãi suất",
             "Công cụ tài chính phái sinh lãi suất tiền tệ",
             "Công cụ tài chính phái sinh lãi suất tiền tệ chéo"
           ],

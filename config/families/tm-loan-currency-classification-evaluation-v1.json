@@ -9,6 +9,19 @@
       {
         "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
         "component_role_alternatives": [{
+          "component_roles": ["SOURCE_ONLY_FOREIGN_CURRENCY_LOANS", "SOURCE_ONLY_GOLD_LOANS"],
+          "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+          "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+        }],
+        "component_selection_policy": "DECLARED_EXACT_ALTERNATIVE",
+        "result_role": "FOREIGN_CURRENCY_AND_GOLD_LOANS",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": ["FOREIGN_CURRENCY_AND_GOLD_LOANS"],
+        "visible_source_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
+      },
+      {
+        "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
+        "component_role_alternatives": [{
           "component_roles": ["VND_LOANS", "FOREIGN_CURRENCY_AND_GOLD_LOANS"],
           "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
           "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
@@ -40,6 +53,7 @@
           "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
         }],
         "component_selection_policy": "EXHAUSTIVE_VISIBLE_SUBSET_OF_DECLARED_POOL",
+        "maximum_source_rounding_residual_coefficients": 1,
         "result_role": "LOAN_CURRENCY_CLASSIFICATION",
         "trailing_result_policy": "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
         "visible_result_roles": ["LOAN_CURRENCY_CLASSIFICATION", "EXPLICIT_GRAND_TOTAL"],

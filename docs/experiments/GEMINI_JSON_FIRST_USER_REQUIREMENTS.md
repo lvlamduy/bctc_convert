@@ -37,12 +37,13 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   lỗi quay về Vertex Flex. Không gửi lại page đã đạt, không gắn nhãn Agy thành
   Vertex Flex, và lưu rõ provider/model/effort/token thực tế. Gemini 3.8 Flash
   High chỉ làm reviewer read-only, không được tạo JSON đưa vào corpus.
-- **Tạm dừng Agy theo quota ngày:** lúc `2026-09-03 05:24 UTC`, người dùng xác
-  nhận Agy đã chạm giới hạn ngày và yêu cầu chờ **3 giờ 34 phút**. Không được
-  gọi Agy, kể cả health-check, trước `2026-09-03 08:58 UTC`. Trong thời gian
-  này chỉ OpenRouter Vertex Flex tiếp tục frontier. Sau mốc trên, Agy được mở
-  lại từ `gemini-3.7-flash-low`; không dùng Medium/High nếu Low chưa trả lỗi
-  theo đúng điều kiện escalation ở trên.
+- **Tạm dừng Agy theo cửa sổ quota 5 giờ:** đây không phải giới hạn cả ngày.
+  Probe không tốn token lúc khoảng `2026-09-03 10:25 UTC` báo còn
+  `3 giờ 28 phút 58 giây`; vì vậy Agy được đặt tự khởi động lại sau 3 giờ 31
+  phút, có biên an toàn khoảng 2 phút. Trong lúc chờ, chỉ OpenRouter Vertex
+  Flex tiếp tục frontier. Khi Agy mở lại, luôn bắt đầu từ
+  `gemini-3.7-flash-low`; không dùng Medium/High nếu Low chưa trả lỗi theo đúng
+  điều kiện escalation ở trên.
 - **Thứ tự thử Gemini 3.8 Flash:** khi được người dùng yêu cầu canary trang lỗi,
   phải thử `low → medium → high`; tuyệt đối không nhảy từ Low thẳng lên High.
   Canary năm trang ngày 2026-09-03 được lưu ngoài production store: Low đạt
@@ -148,6 +149,16 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   tuyệt đối không ghi đè bytes hoặc gắn JSON đọc từ source mới vào page identity
   của source cũ. Các báo cáo quý 2 năm 2025 chỉ được dùng làm đối chiếu bổ sung,
   không tự động thay thế báo cáo soát xét.
+- **Checkpoint source revision 2026-09-04:** hai bản chính thức trên đã được
+  đăng ký tại
+  `data/registered/gemini_json_first_ssb_2025_h1_source_revisions_v1.json` và
+  đưa vào plan repair riêng
+  `data/registered/gemini_json_first_ssb_2025_h1_official_source_repair_plan_v1.json`.
+  Bản công ty mẹ đã có JSON hợp lệ 64/64 trang, bản hợp nhất 70/70 trang; toàn
+  bộ 134 trang được xử lý bằng Agy Low theo cùng ảnh 300 DPI, prompt, JSON
+  Schema và validator của luồng API. Khi tính tiến độ corpus, thay hai source
+  Vietstock lỗi (65 + 71 trang) bằng hai source chính thức (64 + 70 trang),
+  không cộng cả hai phiên bản và không tái sử dụng page identity của source cũ.
 
 ## 3. Prompt và JSON
 
@@ -179,6 +190,19 @@ cầu dưới đây, phải dừng và cập nhật thiết kế trước khi ti
   tách hoặc đổi thứ tự. `values_exact` phải khớp ngang đúng hàng và đúng số cột.
   Nếu có nội dung tài chính nhưng không chắc chắn/đầy đủ thì trả
   `UNRESOLVED_PAGE`, không đoán hoặc âm thầm bỏ phần khó.
+- **Gate bắt buộc về độ phủ mapping:** với từng family, mọi khoản mục thực sự
+  nhìn thấy trên PDF, đúng bản chất/phạm vi của family và đã có ReportNormId
+  phù hợp trong schema phải được thuật toán local map. Không được giữ một trường
+  hợp như vậy ở `NOT_OBSERVED`, `UNRESOLVED` hoặc `SOURCE_ONLY` chỉ vì còn thiếu
+  alias, nhận diện parent/child, header kỳ, đơn vị, continuation, table slicing
+  hay một biến thể layout. Trước khi chốt family phải mở trang PDF đối chiếu
+  nhãn, hierarchy, cột kỳ, đơn vị và phép cộng; sửa bằng rule generic kèm
+  positive/negative regression, tuyệt đối không routing theo bank/file/page.
+  `SOURCE_ONLY` chỉ được giữ khi có bằng chứng khoản mục thuộc family/quần thể
+  khác hoặc chưa có schema cùng bản chất. `UNRESOLVED` chỉ được giữ khi có bằng
+  chứng nguồn/OCR mâu thuẫn, nhiều mapping còn khả dĩ hoặc thiếu dữ kiện thật.
+  Mỗi checkpoint family phải kiểm tra riêng false-`NOT_OBSERVED` và xuất danh
+  sách human-readable từng PDF/trang cho mọi residual còn lại.
 - `columns` gồm mọi cột dữ liệu ngoài cột nhãn khoản mục, kể cả Mã số/Thuyết
   minh với `value_kind=TEXT`; không tạo column riêng cho `label_exact`. Không
   thêm khoảng trắng đầu/cuối vào label/header/cell. Nếu model vẫn trả whitespace

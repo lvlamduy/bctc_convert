@@ -1,23 +1,23 @@
 {
   "children": [
     {
-      "matchers": [{"aliases": ["Trả lãi tiền gửi", "Chi lãi tiền gửi", "Chi phí lãi tiền gửi", "Lãi tiền gửi"], "within_role": null}],
+      "matchers": [{"aliases": ["Trả lãi tiền gửi", "Chi lãi tiền gửi", "Chi phí lãi tiền gửi", "Lãi tiền gửi", "Trả lãi huy động", "Trả lãi tiền gửi khách hàng và các TCTD khác", "Chi phí lãi cho tiền gửi của khách hàng và các tổ chức tín dụng khác", "Cho tiền gửi của khách hàng và các tổ chức tín dụng khác"], "within_role": null}],
       "presence": "OPTIONAL", "role": "DEPOSIT_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trả lãi tiền vay", "Chi lãi tiền vay", "Chi phí lãi tiền vay", "Lãi tiền vay", "Trả lãi tiền gửi và vay các tổ chức tín dụng khác"], "within_role": null}],
+      "matchers": [{"aliases": ["Trả lãi tiền vay", "Chi lãi tiền vay", "Chi phí lãi tiền vay", "Lãi tiền vay", "Trả lãi tiền gửi và vay các tổ chức tín dụng khác", "Trả lãi tiền vay các TCTD khác và vốn tài trợ ủy thác đầu tư", "Chi phí lãi cho vay NHNNVN và các tổ chức tín dụng khác", "Cho vay NHNNVN và các tổ chức tín dụng khác"], "within_role": null}],
       "presence": "OPTIONAL", "role": "BORROWING_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trả lãi phát hành giấy tờ có giá", "Chi lãi phát hành giấy tờ có giá", "Chi phí lãi phát hành giấy tờ có giá", "Chi phí phát hành giấy tờ có giá", "Lãi phát hành giấy tờ có giá"], "within_role": null}],
+      "matchers": [{"aliases": ["Trả lãi phát hành giấy tờ có giá", "Chi lãi phát hành giấy tờ có giá", "Chi phí lãi phát hành giấy tờ có giá", "Chi phí phát hành giấy tờ có giá", "Lãi phát hành giấy tờ có giá", "Chi phí lãi cho phát hành giấy tờ có giá", "Cho phát hành giấy tờ có giá"], "within_role": null}],
       "presence": "OPTIONAL", "role": "ISSUED_PAPER_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trả lãi tiền thuê tài chính", "Chi lãi thuê tài chính", "Chi phí lãi thuê tài chính"], "within_role": null}],
+      "matchers": [{"aliases": ["Trả lãi tiền thuê tài chính", "Trả lãi thuê tài chính", "Chi lãi thuê tài chính", "Chi phí lãi thuê tài chính"], "within_role": null}],
       "presence": "OPTIONAL", "role": "FINANCE_LEASE_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi phí hoạt động tín dụng khác", "Chi phí khác cho hoạt động tín dụng", "Chi các hoạt động tín dụng khác", "Chi phí các hoạt động tín dụng khác"], "within_role": null}],
+      "matchers": [{"aliases": ["Chi phí hoạt động tín dụng khác", "Chi phí khác cho hoạt động tín dụng", "Chi phí khác cho hoạt động tín dụng khác", "Chi phí khác từ hoạt động tín dụng", "Chi phí khác từ hoạt động tín dụng khác", "Chi các hoạt động tín dụng khác", "Chi phí các hoạt động tín dụng khác", "Chi phí hoa hồng môi giới tiết kiệm bưu điện", "Cho hoạt động tín dụng khác"], "within_role": null}],
       "presence": "OPTIONAL", "role": "OTHER_CREDIT_EXPENSE", "role_kind": "ADDITIVE_CHILD"
     }
   ],

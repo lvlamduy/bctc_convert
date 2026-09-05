@@ -1,0 +1,836 @@
+{
+  "corpus_manifest_index_id": "gjfccmiv1:index:8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a",
+  "family_id": "TRADING_SECURITIES_ACTIVITY",
+  "format_version": "TRADING_SECURITIES_ACTIVITY_PDF_RESIDUAL_AUDIT_SPEC_V1",
+  "residuals": [
+    {
+      "disposition": "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK",
+      "document_ordinal": 13,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:5ef017d0f69fb9497be420176d18aed05f9f55a807021348e375dbb6b8932b0c",
+          "pdf_page_render_sha256": "9682dcd2ba5c9e93eb1ea76519189e90066c55c12d667dbdb8c0d2e6118d0425",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a7e89293ee273e814838d93a70aa5e20ffb74bb9ec07520bae89be5e1c6e3a6e",
+          "pdf_page_render_sha256": "2351adafe17f96acc1d152da262d84da3ea3eaa2da95e6b40552cc50dfdbc1a8",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:1e76963bd8eb97bc5c92903c89a6756c0076bd90d1c40859ce7a6380f441b8b1",
+      "source_logical_name": "vietstock_bctc/BAB/2025/1_bab_2026_2_4_4d13ce7_vi_baocaotaichinh_q4_2025.pdf",
+      "source_sha256": "321894e10433b4121c69e1c54c09921e15a8b0e57f3dfae076787b89c6c94bd4",
+      "source_size_bytes": 15143403,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK",
+      "document_ordinal": 14,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:c9750fe6fc5396ee0c21d42c998190c39c47ae21889fae39dc9aa9596c1c0454",
+          "pdf_page_render_sha256": "a1f6c4c1913d977532bfb760d995f3793b4816082eec6b3ccc523811ab76c01b",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:14f75ede937a3587ac8c5f0b4fdf829eab327beff567dfe9eed10aa208c0ab94",
+          "pdf_page_render_sha256": "6f3acdc9392b59d8f2f18c3ec04a641cba0c530fa4a887e7b41eb951ba9f403f",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:842ce847401ed6e642ff41e386f167bb75fde52cf5b07c5862994be64a6607ff",
+      "source_logical_name": "vietstock_bctc/BAB/2025/BAB_BCTC Hop nhat Quy 3.2025_Tieng Viet.pdf",
+      "source_sha256": "a652f6347cf96f39d5efbb64993451010e03432d1c628937fb26cb1bd49fb987",
+      "source_size_bytes": 9854341,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK",
+      "document_ordinal": 15,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:02aae411d44c3a61107dc95cc012789fc3ba5e31546cb80413f40160f61cd49b",
+          "pdf_page_render_sha256": "368f860a32d3763bbaabd16ed894a27287e068ed2c4a805c963506664007648e",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:7756305cfeb6c16a0b1cbf4fc9fdcdf4f9194d391b0d87a3343ed1cba42abc77",
+          "pdf_page_render_sha256": "1251853a3b8052ecd4c6d14496b38a50dcc5faad7a18e3e22dd4d6d18e6c049d",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:1a02fdcc2c089bca99597c1ee0d65cc012349183b01231376555e3ddb0444dd6",
+      "source_logical_name": "vietstock_bctc/BAB/2025/BAB_BCTC Rieng le Quy 3.2025_Tieng Viet.pdf",
+      "source_sha256": "0c4d346973e47b2a9653ea04f7bd2f9179c2327c6f08176c4aaa9aafb8f4eeec",
+      "source_size_bytes": 9474336,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK",
+      "document_ordinal": 16,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:5acf171d26de3a0cf0f4e9a411ab64f5f329549dfa866d93860c5e2abb601530",
+          "pdf_page_render_sha256": "0223c284ce15ba67b00bcf78df9deb162a0f3ca566a3e5f673f75710b4604ce1",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:c788a02651def0bb6111b9a7bfe3d16a944091c512a3fbf1434607429fd46291",
+          "pdf_page_render_sha256": "4dd1148d493265bd10d65212f82e95e216d33cfb12d0e64b16052ae22a0a05f0",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:0f52a0f2fa74b938bd32d13a92c52529a88f3d06a09862e1e8ae61044f7607ac",
+      "source_logical_name": "vietstock_bctc/BAB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "1c8b2e3ff36eb394167532c3a5ff7ba270ce3856d62e7e7f3bfa69fc14b161c1",
+      "source_size_bytes": 9503932,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 17,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:1e6a46a4176ae5ad839397b5cd67128dae1e38ba723e8fd7d64bd250d0836337",
+          "pdf_page_render_sha256": "6b26ca7f8061b0d77146297194717db8b97319aa5d9f939b9190ccd78377d8e9",
+          "physical_page": 10
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:5d3d5392b8ad9f87889b0523e7c7fbafae93e9c04e6dc4bd492d1348df45f818",
+      "source_logical_name": "vietstock_bctc/BAB/2025/BCTC Hop nhat 2025_Kiem toan.pdf",
+      "source_sha256": "4bed685159ba90385ddc8e04151460aeb7730bea161223b89f84263e5cb0bec6",
+      "source_size_bytes": 25021026,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK",
+      "document_ordinal": 18,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:339fd1828fcdab1771c30c628c7a6fe9daa9aaf201a57e56dc4d4da5c90ec9fc",
+          "pdf_page_render_sha256": "7f4437bd2f794f8a71dedf2d367610185b475aa49b4bcf62a4773326a49fceb0",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ee511552a2188fb32e2e89b9455ad8f36209d51d524959e36d0b6fac49b9b127",
+          "pdf_page_render_sha256": "f116f59fd54a63412bcf14f76144859afa393d22880db8e95ed5e6eba2dca252",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:aa4edd60b967413e5b597eb8dcbeff87f7feec0f449d0d4f2471e7fb72edca7f",
+      "source_logical_name": "vietstock_bctc/BAB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "b99ddbb42e4c7e0bd493f26db838215a4d3eb67abb5bb9eeb918480b42ad4c5b",
+      "source_size_bytes": 9768476,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK",
+      "document_ordinal": 19,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:e1f935864688d5150d290971f479fb753e59f0341db52d21fde5785145c135fa",
+          "pdf_page_render_sha256": "73b5fbf0fb2dc083e0d6104a03e0611882243a6dd0b7f0bb90da369cbd7e76ee",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:39afef99d8e3b1136e384f04bff34fdfe24fb90a300b7714192bf312d9e1de31",
+          "pdf_page_render_sha256": "7a46cbf2624b0cc9af4acc113bc6b7e8a38a8304808d37b4cd48302558e339ca",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:3c8dc5ca31d01f9e19b9fd2603542e22512d5cfcb5703830c8be73deff9c768d",
+      "source_logical_name": "vietstock_bctc/BAB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "9190c123bf92560e826c399b1427a0b4392f43fe05d98e9bc3549d2e00280295",
+      "source_size_bytes": 15500088,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 20,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:621d89e465b258a2c09a61651a8c6c03e14bbf6956d93315a8d516f8bcd68d07",
+          "pdf_page_render_sha256": "9ae24ada4fa1610dbd001c9cab15ac5cdf291b9822d9023e755b587aae3acc01",
+          "physical_page": 10
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:e8fe43fda8c56282ba94484adac8eafb7d3888f5bb24e2d40f099583738097e3",
+      "source_logical_name": "vietstock_bctc/BAB/2025/BCTC Rieng le 2025_Kiem toan.pdf",
+      "source_sha256": "3642a6fe658446103cb1903ac0c5b6004f1c281fad8b6d8c7a21ccd2e1a1ef18",
+      "source_size_bytes": 23885559,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK",
+      "document_ordinal": 21,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:25b9c5cffccac34249fb9ab60a977c74c323b5e07e415455399f65641ddd98cc",
+          "pdf_page_render_sha256": "948f52178ea58fd1934866d3e0362597847809f8fc1edfdac1adac44d3d9545e",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2d08ac10702b4f38e5c3966c58c536a7be19e57f5e76e94dbcbae5941aaa74b0",
+          "pdf_page_render_sha256": "90110addbbe8d39737d4d04fc31837d87b2311cd45809697423c5bc3bf8ade3d",
+          "physical_page": 7
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:94e72bd330b7081f60fd60777fefe2e536d863d75cf119e4818c326fb8dcaf3b",
+      "source_logical_name": "vietstock_bctc/BAB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "88f1327e937ef29fe3eca5c11a28601ebdc48f22a7bac970b4b939f771ee1ad1",
+      "source_size_bytes": 11796790,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK",
+      "document_ordinal": 22,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:3baa07d4484771c524267ee2c3184fdfa7d3ffbb4db85bb176210eebc299878d",
+          "pdf_page_render_sha256": "c4ba4f31dbd6ab084d05657fea0e54f53a205aef238bef62dd9997503a867f3d",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2f3e844174304880925ba82733784311418587dca8d7b1db3c71e9cee7e790ef",
+          "pdf_page_render_sha256": "bf53bd49c9d0f9a76de34e4f778e97e5f9c221cf4bafa853bcfd9ce122f523e7",
+          "physical_page": 7
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:10d74f340c4b2ca427e33560166a8f674035d334fa4b9526e978b7a46ffcf25e",
+      "source_logical_name": "vietstock_bctc/BAB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+      "source_sha256": "221e11e2fa500543df6aa4f7e2cf3c58465596accd1e58827225ad6ab70bf7c5",
+      "source_size_bytes": 12210833,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 27,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:d7e50125b4ca55801a27edb1fcbd5f2c3e573dbb1f9e5c097cb48fa326e1e1ce",
+          "pdf_page_render_sha256": "3b75de2097261c8de71a0894f3e409a6f9ac3fcf50da7eb0625054eec02fb375",
+          "physical_page": 12
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:926c63393048e62d14e644a2fad768e1451b91f3764971c0de92035dab1569ac",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Kiemtoan_2025.pdf",
+      "source_sha256": "058cf3ff9407e9da7319d3c5bb46818a207fbb0d67ee89fdc3f7c9538073709a",
+      "source_size_bytes": 11951099,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 30,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:b44351b1ab7d53d76aecb0e9956709cc7557d329c4e76ac5418e2d5ec2ed32de",
+          "pdf_page_render_sha256": "1c2f479c56d4fb91f863e76ee139cc665db8627d55cca939ce3e981808299b5e",
+          "physical_page": 11
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:824cbec66e3ad3ab038f9b05e9cc2932c1acb78b355532cc26713835919f15f3",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Kiemtoan_2025.pdf",
+      "source_sha256": "28143226be9db63d79b7d2019e5a4230169a65bf6fac061d3bdb451f5b7b611e",
+      "source_size_bytes": 11842474,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 73,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:1f9814ad7166d8d5580d087b144ca4c563ff1bacc6fadfa14d5d56f2772fb66b",
+          "pdf_page_render_sha256": "c2611a16bd62cba89e481dcbad9b60bb7a42965e6559ff560bdf862cd6509462",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:3de33c3b4c00a98809310cdf7fb2977d5874b434b436f241c81d5a3d21937e96",
+      "source_logical_name": "vietstock_bctc/LPB/2025/BCTC quý 1 năm 2025.pdf",
+      "source_sha256": "9c937e2c7aed47902ca1523ede288ee8b60a04755387d824097a6b70ae4421b7",
+      "source_size_bytes": 7108187,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 108,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:3de87b40f64e2b2e01c2364f72f8e355c3fdb5b38a1b402895081929d8e48740",
+          "pdf_page_render_sha256": "bd9c80acf366a0c2a3e60ba8a46be93b35e37872d708bc94ffe3ef28a090f540",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:bd750f2e84e64d2b1e90ad612520b3ad0733c5c8c5d1f7ce331482bc161b5d31",
+      "source_logical_name": "vietstock_bctc/NVB/2025/6_nvb_2026_2_3_925648e_vi_baocaotaichinh_q1_2025_riengle_signed.pdf",
+      "source_sha256": "c9966e7a8831be6d6048f394a93cde660975a8021a27d59a5cbe37e046f94379",
+      "source_size_bytes": 6033371,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 110,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:860d1b7f024750929d3880fa06c13f62b1c074baecb463847a07a0bd5b8dbb7a",
+          "pdf_page_render_sha256": "d8c40ccbc83e720a4d6fc6ddf60ab03c89d0d5632a945dc1d43b659427c3c003",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:350c0a9fa902be30fe82a64a22e0cd6b96db3a8793d28e1eb15cb461ba9635c3",
+      "source_logical_name": "vietstock_bctc/NVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "82d67a1543618eb9b59e1cdc819049e54dcc35eeace90a5b745d77f03ed8940f",
+      "source_size_bytes": 2920856,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 111,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:c2e77a5c7ca5fd5b7cbecf75e03c3c86b17fd6eb94258bc87c1d9bd025a1f861",
+          "pdf_page_render_sha256": "e440d6f65c4da4088ee2f79e11de4da6fafb84e1f24eb88d1cc780e5777f6e0a",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:d786f80a0b3e4141f28a8e4b1842c229d5e71573ff97840626244723b15c9f0c",
+      "source_logical_name": "vietstock_bctc/NVB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+      "source_sha256": "68e44345848aa1b92cf7d6220de13f7d4257886a67d1efc00751e6f8d46b3301",
+      "source_size_bytes": 4647986,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 113,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:8978a94c66958a300de6a027522ad64595d0643dc04f541d55c886432a1219c8",
+          "pdf_page_render_sha256": "fb763885a8b7dc074f425725af77a573f2b2dc51531a00295f894de67e6208d3",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:b37f110c5400e0f8b5be56fbd85e441d0e6fba02b14c703c6e4dbd37becb17c6",
+      "source_logical_name": "vietstock_bctc/NVB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "8011a47383d1e50f4d4052c46b18a4dd9f427c3b75eee006ca4161336bb5e9c0",
+      "source_size_bytes": 2915301,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 114,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:5a1d34f34e5c0e2f5eb984a4b8936a48c7a80bccc50c347442658316ab601155",
+          "pdf_page_render_sha256": "45310c465c2d61d4be36d15908205973e2a5acf63a169ad88e79b91cd7f4bb57",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:f4c692b8887e920d6347fefa17a60c68d301439331c1eb70e3b8caba2c0764f3",
+      "source_logical_name": "vietstock_bctc/NVB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "source_sha256": "6a10fc0ff127c752b99969039e76c4baf35f068b27934023c83551667eb114da",
+      "source_size_bytes": 4821090,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 115,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:5de25d4c84cecd54a29b988866c386074052898c03d02f05ce8c9c6a43867f57",
+          "pdf_page_render_sha256": "e63fc1cc05177845014883a1946001bbc8bed113f1fe4389d90ae94db59347aa",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:7e7872ac13884afd3066a20481ee8246baac1ffc4f411f0a6c6d3ff207edcc17",
+      "source_logical_name": "vietstock_bctc/NVB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "ae95eadc64bb9631e8ad7414563126ead51272c0ee52dfcc5a027e83d4f01ddc",
+      "source_size_bytes": 4778923,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 116,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:7fb33c14c8cffb6c97fdb0139018240a331195af6d84d468746e344d677ac863",
+          "pdf_page_render_sha256": "6df61ff71f5804b3a110fe4296c7a469f6edd84e3334ffd293510abb4fa0e2cf",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:8baff1558d372d9c3eedb6bae74f1dce0382b8ce04ad016df55a7b9e6de578b9",
+      "source_logical_name": "vietstock_bctc/NVB/2025/NVB VI_BaoCaoTaiChinh_Q2_2025_hopnhat.pdf",
+      "source_sha256": "1edd1bdb46360c7a3d2face644ef169a4848aaf0b4d7a2cf1e80bb92c5937ed9",
+      "source_size_bytes": 5064082,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 119,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:25507c8d615b298c904035443acdea04202e1cd100017e7f8388abf7888debb4",
+          "pdf_page_render_sha256": "00fd022eca7552965f31c26c1ddd9257acb8f3d6c85c14bfa598bd1f52bda671",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:8b40f5d2f5a01309998d0ee82cae797e9ea20364569822a22f5912e17afa1f55",
+      "source_logical_name": "vietstock_bctc/NVB/2025/VI_BaoCaoTaiChinh_Q2_2025_riengle.pdf",
+      "source_sha256": "cfbfa008c43a0890cdfe0c19a443245222904116402cb0db329a4c4317331e8c",
+      "source_size_bytes": 5295268,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 121,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:c1179bf540cf84d31816ccec8b200966a3b6551bd8e23ba33a029564481cdd86",
+          "pdf_page_render_sha256": "da71178e19070381cd2f4c88e0335b80e4f3b908dffab0a8e96a16ddc6304827",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:4ba80d9a2fc1ad6b3e6301017e9890d351d0f46e3d0c94111156e53d581da407",
+      "source_logical_name": "vietstock_bctc/NVB/2026/4_nvb_2026_5_4_fbaa039_vi_baocaotaichinh_riengle_q1_2026_signed.pdf",
+      "source_sha256": "e71a5af2510c32eacd8cf50ac4852ebc637fcebaf52d631bcacb9fb9afe8eee7",
+      "source_size_bytes": 4497261,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 122,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:b78afad27ae8f9c85a5386cf5ed5ac72905ac06ae85c27d5399aa698dd8b3dcb",
+          "pdf_page_render_sha256": "c61de6b401c3b36bbe6c03a0d536f90a760f83d1aee74e4f53eb354dcc519785",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:5711bd47e39b043d5605819f081b22cdcd45c88355b515ae17c7cdfe80d1e6f9",
+      "source_logical_name": "vietstock_bctc/NVB/2026/BCTC - HOP NHAT - TIENG VIET - Q1.2026.pdf",
+      "source_sha256": "1bc259a88379744487c6602bf1fd34682ddb48a7e3094126adee95c6bb7366f1",
+      "source_size_bytes": 8146669,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 142,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:30d6824784bca2cd6d05e5281a985b2e0408da832cb2e7e269b38c4652e84fa2",
+          "pdf_page_render_sha256": "3d6ccf31b4d3771169de25f43d99461f45f9d8d41ee2fd7ea3ed62cf20eb4656",
+          "physical_page": 11
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:b81930ed6f600e5a96ac9c478c20dbdcc74de7e683c9f6303de12539624b9774",
+      "source_logical_name": "vietstock_bctc/PGB/2025/BCTC Kiểm toán năm 2025.pdf",
+      "source_sha256": "2f8fb78002eaba1817d2cdb5f78b5bd83c636b0a2bf4d28b37ec6e81294f4b3d",
+      "source_size_bytes": 13961997,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 143,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:1c73bab536219b2830420e7a344747de1aa2471681d2078ba05b29c537b35744",
+          "pdf_page_render_sha256": "2e3cc71a7d6618e5434ade323a4834c85fa447b9647fed06c3d13642361b16e4",
+          "physical_page": 11
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:e87d38db43c87ba761579269b3fbbea4df48db1ddca18831f73f4539f99565bb",
+      "source_logical_name": "vietstock_bctc/PGB/2025/BCTC Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "954322b899c9db6343793dd46d3ed9fa88a4977f98b66d49109ac1524ab06c42",
+      "source_size_bytes": 8193331,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 193,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:d580b271975ddab8105d8fd6b272721db73a399e3ab5387c09507f3090fff1c3",
+          "pdf_page_render_sha256": "9857506116df1cdc7f4b9e8984187af5817579ef72f98b80a3a3dff2daea2af5",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:1da5241321799f8dd695885753704d81e0bd2d4b67671008bfdd0fb336096932",
+          "pdf_page_render_sha256": "c6b92489c977df48805f8abbcd90c29b03c7b9bb1826e7bf6e156d8ed29eedaa",
+          "physical_page": 11
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:de4f970bfd546581f89ad5541b8cd074669bdc4ec1dc57ae4a8858262f551c76",
+      "source_logical_name": "vietstock_bctc/STB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "source_sha256": "557b255998a46c8f94be83401d3c25ea45e13811b006ca968606800f13e06902",
+      "source_size_bytes": 3972213,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 194,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:f587ae3a68a4e884367fa367b6dd601c1d7925bb99b6feb510d3d31f4f69dcbc",
+          "pdf_page_render_sha256": "7dd0be361f207ef800157c302bcc1d9e99db7d8a4a987b8689584e1a3b10f66a",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3963cc9bb32620e67fc31a16ce0c514b3ead3fa2114570e237f5ea2dd9cb0de1",
+          "pdf_page_render_sha256": "ada66cbe6369084e190e8ba42e357cf185f45993f868ec57b098074214f4d63c",
+          "physical_page": 11
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:07daa52c8275eabb864a3162c3cb2fe225687a57f289baba3f5474f289c33ef8",
+      "source_logical_name": "vietstock_bctc/STB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "1cbb67f893d690652c141896e66e635365aac41863dc7425c0bb9db182f09abc",
+      "source_size_bytes": 19292698,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 199,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:a1c1a759bed0a02af20b9b3b12807d83f3d585e4052c2a6b1327d481b44e20ad",
+          "pdf_page_render_sha256": "bc214c93fd5215df9dd6dcb1f9319b3fc120ab5e4cb860e2a46d5335e11f894e",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:af639d8fb804af501c01ccd091a65a4bec7b8f351262475e43524865b0ebc583",
+          "pdf_page_render_sha256": "fd9366b34951b66474b1fdd3ab47172883bc32c70cc5afa3867a2aa63c003d4e",
+          "physical_page": 11
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:501dcd2570aab1248ffc4db3c316f0c3358d9d195f943c724a014dcc6e27763e",
+      "source_logical_name": "vietstock_bctc/STB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_sha256": "522e518939e87349893073c53af75ddadb073683a21c69e799fe1be3b42241dd",
+      "source_size_bytes": 4240473,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 200,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:6970d5a3da5fc01d7634455f44acc8f66d93cf8d6bf9609678bfe067c86f460c",
+          "pdf_page_render_sha256": "2e0f466b800d4627d331d1033bdc50278190ee4d893ba2eb39a26be9b99b0594",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:89b1748dc4bc6fa5c2393c3a937dcca30bb84adb14436af7687326edd92ac97c",
+          "pdf_page_render_sha256": "93284596d32a1c2c516b4dd3095ae82e0cbac20826fad0d4678449b870b9418e",
+          "physical_page": 11
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:bed7e096229e12f87859461a032f96260cb1e8c2ba0a95dba34ef84e1ccb3241",
+      "source_logical_name": "vietstock_bctc/STB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "244de4c8a97ada2e086b27ac78484265b825d4cde9cbfcaebbda62ec3e4b3833",
+      "source_size_bytes": 27878327,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 225,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:f4c8b4e5ecf3aa9eb24fe65deb4d20a149b1abaf2bcbb02cc48d1677980391c4",
+          "pdf_page_render_sha256": "15fed839d575e394f59251c9db17849bb403325acc9f95a6d3cbebae1cce5194",
+          "physical_page": 13
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:6921281930a1f949bcbd6ca1f7aaf0405360f2dc26de397f39cf1d037e77311c",
+      "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "source_sha256": "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+      "source_size_bytes": 8082455,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 226,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:e9b2aca9736fb27f7213b45bfed9bde409aee264995db12c383d3c8d3d6da0af",
+          "pdf_page_render_sha256": "558d379d65b36d092965431e17d99ce22c88ae76ed6d95abba132b2fd6507397",
+          "physical_page": 13
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:8592162a403968dbdd55d56cb44f8bb0f2beb6e97e5bb710693a62221e37edd0",
+      "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "d86090ab503a580a1ef6f6fc6735d4bbd39a0d5c393104424a46dd8f3af69c28",
+      "source_size_bytes": 9002662,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "GENUINE_SOURCE_CONFLICT_ROOT_DASH_COMPONENT_PROVISION_NONZERO",
+      "document_ordinal": 248,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:889478f68e9d1eb8b560e2fd3bd499d10f7a54a5d28333dd5e80302ae75e2e52",
+          "pdf_page_render_sha256": "ec0a78079d4191a3ba9b7a1ed5c1a4bc262842b27462cbcd728487d11ee044d2",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e42c803ce77ee3f5ae5601cf59e1f8f2b741a2a06cd8d310ba16774555747d04",
+          "pdf_page_render_sha256": "33158a9310646677eb8bbd2571a122ef6e439ec7adf7ff596a601b444682a093",
+          "physical_page": 10
+        }
+      ],
+      "reasons": [
+        "SOURCE_VISIBLE_FAMILY_RESULT_COMPONENT_VETO_MISMATCH"
+      ],
+      "residual_audit_id": "gjtsapdfv1:residual:9b6102f1c68814d78f01c88289badbea4baf5cebe85e8098f24c5869f875dfc2",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC HOP NHAT QUY 2.2025 TVIET_0001-da nen.pdf",
+      "source_sha256": "fc653f4dd792a56ea076938379d7dd25d415471622418b8b9a48af6d000cd852",
+      "source_size_bytes": 6519529,
+      "status": "UNRESOLVED_GEMINI_JSON_FAMILY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 260,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:8da99d01a795c504031478efc31dde5b0de7fc44e25393837b26db3be645038d",
+          "pdf_page_render_sha256": "135691ef15bfa8eb3a64163a4f45748b17f798104f8a91d8718b4a255ec1c846",
+          "physical_page": 12
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:d4b58a2725a485d67d1d2b12a6d907bac7337d33465462daf07ddadf86d614cd",
+      "source_logical_name": "vietstock_bctc/VBB/2025/2_vbb_2026_3_23_b2c1e44_vi_baocaotaichinh_kiemtoan_riengle_2025.pdf",
+      "source_sha256": "f2571c6459d64987fb863ebb74458410d9ce975afa4e39ae890368398a8a226a",
+      "source_size_bytes": 11188554,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 261,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:8d71ef1a6fe02bf4bf28c926549ad288e2edcd81abf33748ec7d32dabc40fe43",
+          "pdf_page_render_sha256": "c62e6ed3bdaff687603e4641d8a6852f4fe4b61b38f9ec6eb83444084326f248",
+          "physical_page": 12
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:0e58cb1c756e0f16fbd948420379b498781fcfac0f28c71c74530af71afbeef6",
+      "source_logical_name": "vietstock_bctc/VBB/2025/3_vbb_2025_8_6_8bb1ede_vi_baocaotaichinh_riengle_bannien_2025.pdf",
+      "source_sha256": "8fefd97664266afef9f60741b4df8f81d9302ae14c84e8fb3e5fe3e71096d768",
+      "source_size_bytes": 20599528,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 262,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:16fac8b81525724bb672fed0847a18c2cb41b87fdb959b18553e0bbfb68506ab",
+          "pdf_page_render_sha256": "c0d26c90e813d2237dae3969775d65da88aa156ab5007116ea3b32770e75a3ce",
+          "physical_page": 12
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:f6a51bcaa42542173607386a2594db108a49188205f4dc2eec35428a97c5f1d8",
+      "source_logical_name": "vietstock_bctc/VBB/2025/3_vbb_2025_8_6_d00b2c1_vi_baocaotaichinh_hopnhat_bannien_2025.pdf",
+      "source_sha256": "0112fab20c6958bbcce4efdad69de8b3c26f325dfad4806159cc60a2b8a3af81",
+      "source_size_bytes": 20989488,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 263,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:a239a70bfe1366cdfb36a2e546f0a7b283ebc37b519138f70ec873f636135cd7",
+          "pdf_page_render_sha256": "a4e8f1baa8ccfed6e34a88abd5372a1aefd57eb0ef58987e071e0b0afcd6fa89",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:c7b5342a4cca5c4160faa7037bcd9ad41d7e9563e09b8df0521effae77c8a169",
+      "source_logical_name": "vietstock_bctc/VBB/2025/3_vbb_2026_2_2_a18dc42_vi_baocaotaichinh_riengle_q4_2025.pdf",
+      "source_sha256": "4562674c19ba2faed65ce5d178e58c14e27be55d1565720fcccc4ae7ba06a1c4",
+      "source_size_bytes": 16767484,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 264,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:b04a90f56987b735f5570d4c679f834a221fa1f38153e1ef9fa75db2fa7faadc",
+          "pdf_page_render_sha256": "8b4bd9b2d41dba320c007ab1d08b9c686480b0cd3255ee61e27b5f791fe4d128",
+          "physical_page": 12
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:6e8a52465d6f66ab2236160797bbf8c028bd6a29811c5716cf9e0b6511fd7b15",
+      "source_logical_name": "vietstock_bctc/VBB/2025/3_vbb_2026_3_23_3110a7d_vi_baocaotaichinh_kiemtoan_hopnhat_2025.pdf",
+      "source_sha256": "779357209276e439b9a4d3f5f177a2995ae553889251dbca6a84572ab06d836a",
+      "source_size_bytes": 11280708,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 265,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:7b6c818bd59ff355434f91bdcb3fae3c1bea12cf7ba8ab47a054a83da48ebbd7",
+          "pdf_page_render_sha256": "fbed49d13d0e0dbebe864106566da39b5bfd93830c856848e5b5688b16137351",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:0c648d91899ce3b49204732a5798f05bc67f1fe1ae9d715e54e4b0c29110121e",
+      "source_logical_name": "vietstock_bctc/VBB/2025/92-BCTC-hopnhat-Q3-VIE.pdf",
+      "source_sha256": "2ce7fb08541df1319736d4b08d01eb248067354ba638263c6402c9bb9fd75699",
+      "source_size_bytes": 7919513,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 266,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:a2c05a0ded5ce0e3a483fc4a08b1664c4dab3572440619b737d2d6cf7976be75",
+          "pdf_page_render_sha256": "ac32a6cb4c88ae444dbc7b8ce38eb1a6262da0ad03513b9283f48c9c80523a19",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:5aa099d13ca7cb334a398ea6e58271d25ad4f1682e539946bbaac32ed514774d",
+      "source_logical_name": "vietstock_bctc/VBB/2025/92-BCTC-riengle-Q3-VIE(1).pdf",
+      "source_sha256": "7be124482b96dec4cfb256973174a9518c1d4665218e34548306fc248c5a297b",
+      "source_size_bytes": 8028631,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 267,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:dd0e4a9031cb854956324afefa4131d9b90bbc57ede2f2759666ca0e709c870c",
+          "pdf_page_render_sha256": "e28e5bba3994f25a0b911771dcd85d92df5edbc3ff3e7a153bd14b4ab6af81f4",
+          "physical_page": 5
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:cd41d3af38b401f428e83bb428d2c5ff20352412fa85182351a4ccb1d89e67e2",
+      "source_logical_name": "vietstock_bctc/VBB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "1ccb465d66daeb356c0b251860e12d5b9132cc860b68ac64e632aed43b7b7bf5",
+      "source_size_bytes": 2210920,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 268,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:36a54ecd6534d69d3dc2151425fd2af87232ba3904ad1bf0e3ab31b4f94e5193",
+          "pdf_page_render_sha256": "186003328bf14399f8b9120b54d262a727bbd6016f1fe9373fd9adb9e6e9aa64",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:cb936aa52c8e889c95881ea0f07408ebebb0b851a8da5e480e1cc2f0c0800100",
+      "source_logical_name": "vietstock_bctc/VBB/2026/28-BCTC-Q1_2026-hopnhat-V.pdf",
+      "source_sha256": "6874a4811dd9da5e0aaf987da3f838f0e47a2fae9954473850765fe867f4e47c",
+      "source_size_bytes": 2905060,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 269,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:0bb2945854090fc59a73729b766bf0b5f530e250161a906fc5f55ec33a3591c9",
+          "pdf_page_render_sha256": "bf45e041130dad94a04dc93240bb5783dc862290a3e870ac58eff7cab89985be",
+          "physical_page": 6
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:c040a852df82ac373b082208b3c8750ce01169039f3ba828aa4cf37c0d14fa98",
+      "source_logical_name": "vietstock_bctc/VBB/2026/3_vbb_2026_5_2_fa0b162_vi_baocaotaichinh_riengle_q1_2026.pdf",
+      "source_sha256": "312842611d822ed97634315a0c028965264fe765ef58a4405f20a39967f14665",
+      "source_size_bytes": 15746068,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 270,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:18d6c8c250141760d353cc4740e39eb29612c923b3f79bdb81b40d358b2e3fd2",
+          "pdf_page_render_sha256": "e4f0e4a9b2e6a33e15013fe3eebc9137327679eab65d2241f098d90d8db4efed",
+          "physical_page": 8
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:aa5c8d25330493d4f69ae67a5d18afeb17e72b649d759a2ba344b3567d2bbb9d",
+      "source_logical_name": "vietstock_bctc/VBB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "5c72db9bebda1755fd1e90daa6d4ea0558a783cc99e8c4e8fbecf5ea2292b75f",
+      "source_size_bytes": 8069881,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    },
+    {
+      "disposition": "FAMILY_ROOT_NOT_PRESENT_IN_PRIMARY_INCOME_STATEMENT",
+      "document_ordinal": 271,
+      "primary_income_statement_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:dcaa7c5f3365b6e335de76b6d191422d645022c329a1f8036a5cf15b69987fec",
+          "pdf_page_render_sha256": "1d15ad2916e247bb527f04883a1b2ddceed25115497fa7dedc9bf3920a7e245a",
+          "physical_page": 8
+        }
+      ],
+      "reasons": [],
+      "residual_audit_id": "gjtsapdfv1:residual:cdae0316da59e5820b57daebdcc2376aecb1d36e88d8a29d4747d086dee09a6a",
+      "source_logical_name": "vietstock_bctc/VBB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+      "source_sha256": "fed898a015c903208b68e586b958647c0245cc98111fe09ac782b9db1c32f78d",
+      "source_size_bytes": 8240170,
+      "status": "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    }
+  ],
+  "review_contract": {
+    "render_contract": {
+      "alpha": false,
+      "colorspace": "RGB",
+      "format": "PNG",
+      "matrix": [
+        1,
+        1
+      ],
+      "renderer": "PyMuPDF"
+    },
+    "scope": "EVERY_SELECTED_PRIMARY_INCOME_STATEMENT_PAGE_FOR_EVERY_NOT_OBSERVED_OR_UNRESOLVED_DOCUMENT",
+    "visual_disposition_rule": "DIRECT_SOURCE_PRESENTATION_ONLY_BLANK_PRESERVED_ABSENT_OMITTED_GENUINE_SOURCE_CONFLICT_UNRESOLVED"
+  }
+}

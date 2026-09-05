@@ -53,6 +53,32 @@ def test_query_anchor_axis_does_not_eagerly_require_legacy_fallback() -> None:
     assert target._query_anchor_groups_v1({}) == []
 
 
+def test_dual_axis_runner_passes_compiled_external_population_control_exactly() -> None:
+    family_root = ROOT / "config/families"
+    topology, evaluation, schema = (
+        json.loads(
+            (
+                family_root
+                / f"tm-loan-geographic-classification-{kind}-v1.json"
+            ).read_text(encoding="utf-8")
+        )
+        for kind in ("topology", "evaluation", "schema-binding")
+    )
+    compiled = target.compile_gemini_json_flat_family_specs_v1(
+        topology, evaluation, schema
+    )
+
+    kwargs = target._dual_axis_query_kwargs_v1(compiled)
+
+    assert kwargs["external_population_control"] == compiled[
+        "dual_axis_projection_policy"
+    ]["external_population_control"]
+    assert kwargs["external_population_control"] is not compiled[
+        "dual_axis_projection_policy"
+    ]["external_population_control"]
+    assert kwargs["external_population_control"]["control_report_norm_id"] == 716
+
+
 def _compiled() -> dict:
     paths = (
         "config/families/tm-interbank-deposits-loans-topology-v4.json",
@@ -148,6 +174,25 @@ def test_candidate_selection_rejects_root_drift_and_equal_detail_ambiguity() -> 
     assert target._selected_ready_candidate([first, second], compiled_specs=_compiled()) is None
 
 
+def test_exact_duplicate_summary_and_titled_note_selects_note_only_with_full_provenance() -> None:
+    roles = [
+        ("INTERBANK_DEPOSITS_AND_LOANS", 575),
+        ("INTERBANK_DEPOSIT_GROUP", 576),
+        ("INTERBANK_LOAN_GROUP", 585),
+    ]
+    summary = _traceable_candidate("summary", "t1", roles)
+    summary["parent_binding_kind"] = "EXPLICIT_PARENT_ROW"
+    note = _traceable_candidate("note", "t2", roles)
+    note["parent_binding_kind"] = "EXPLICIT_SECTION_OR_TABLE_TITLE"
+    note["physical_page"] = 21
+    note["page_json_version_id"] = "gfpstorev1:json:" + "2" * 64
+
+    assert target._selected_ready_candidate([summary, note], compiled_specs=_compiled()) == note
+
+    note["mappings"][1]["values"][0]["coefficient"] += 1
+    assert target._selected_ready_candidate([summary, note], compiled_specs=_compiled()) is None
+
+
 def test_explicit_parent_binding_uniquely_supersedes_shape_only_child_cluster() -> None:
     roles = [
         ("INTERBANK_DEPOSITS_AND_LOANS", 575),
@@ -182,6 +227,34 @@ def test_decisive_hard_negative_candidate_is_removed_from_family_disposition() -
     candidate["reasons"] = ["HARD_NEGATIVE_FAMILY_TITLE_PRESENT"]
     candidate["status"] = target.READY
     assert not target._candidate_is_decisive_hard_negative(candidate)
+
+
+def test_v2_explicit_parent_cluster_discards_only_unowned_anchor_collisions() -> None:
+    candidate = {
+        "reasons": ["FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_OR_TABLE_TITLE"],
+        "status": target.UNRESOLVED,
+    }
+    compiled = {
+        "engine_format_version": "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V2",
+        "topology": {"presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER"},
+    }
+    assert target._candidate_is_unowned_explicit_parent_cluster_v1(
+        candidate,
+        compiled_specs=compiled,
+        source_has_near_parent_evidence=False,
+    )
+    assert not target._candidate_is_unowned_explicit_parent_cluster_v1(
+        candidate,
+        compiled_specs=compiled,
+        source_has_near_parent_evidence=True,
+    )
+
+    compiled["engine_format_version"] = "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
+    assert not target._candidate_is_unowned_explicit_parent_cluster_v1(
+        candidate,
+        compiled_specs=compiled,
+        source_has_near_parent_evidence=False,
+    )
 
 
 def test_near_aliases_exclude_query_only_parent_and_owner_anchors() -> None:
@@ -316,6 +389,215 @@ def test_generic_continuation_binds_only_one_adjacent_explicit_negative_family()
         == candidate
     )
 
+
+def test_exact_balance_date_conflicting_with_unique_typed_reporting_endpoint_is_unresolved() -> None:
+    current_id = "gfpstorev1:json:" + "4" * 64
+    adjacent_id = "gfpstorev1:json:" + "5" * 64
+    candidate = {
+        "candidate_id": "gjfafcv1:candidate:" + "6" * 64,
+        "closure_receipt": {
+            "period_value_column_axis": {
+                "period_signatures": [
+                    ["DATE", "2025-12-31"],
+                    ["DATE", "2024-12-31"],
+                ]
+            }
+        },
+        "mappings": [{"report_norm_id": 753}],
+        "reasons": [],
+        "status": target.READY,
+    }
+    region = {
+        "context_pages": [
+            {"page_json_version_id": current_id, "physical_page": 26},
+            {"page_json_version_id": adjacent_id, "physical_page": 27},
+        ],
+        "physical_page": 26,
+    }
+    pages = {
+        current_id: {
+            "page_json": {
+                "sections": [{"tables": [], "title_exact": "6. CHO VAY KHÁCH HÀNG"}]
+            }
+        },
+        adjacent_id: {
+            "page_json": {
+                "sections": [
+                    {
+                        "tables": [],
+                        "title_exact": (
+                            "NGÂN HÀNG TMCP THỊNH VƯỢNG VÀ PHÁT TRIỂN\n"
+                            "THUYẾT MINH BÁO CÁO TÀI CHÍNH\n"
+                            "Cho giai đoạn từ ngày 01/01/2025 đến 31/03/2025"
+                        ),
+                    }
+                ]
+            }
+        },
+    }
+    result = target._with_reporting_endpoint_conflict_v1(
+        candidate,
+        region=region,
+        page_by_version=pages,
+        compiled_specs={
+            "evaluation": {"period_semantics": "BALANCE_COMPARATIVE"},
+            "topology": {"family_id": "LOAN_MATURITY_BUCKETS"},
+        },
+    )
+
+    assert result["status"] == target.UNRESOLVED
+    assert result["mappings"] == []
+    assert result["reasons"] == ["CURRENT_PERIOD_CONFLICTS_WITH_TYPED_REPORTING_ENDPOINT"]
+    assert result["candidate_id"] != candidate["candidate_id"]
+    assert result["reporting_endpoint_conflict_receipt"] == {
+        "candidate_current_period_signature": ["DATE", "2025-12-31"],
+        "context_matches": [
+            {
+                "date_axis": [
+                    {
+                        "date": "2025-01-01",
+                        "source_span": [
+                            pages[adjacent_id]["page_json"]["sections"][0]["title_exact"].index(
+                                "01/01/2025"
+                            ),
+                            pages[adjacent_id]["page_json"]["sections"][0]["title_exact"].index(
+                                "01/01/2025"
+                            )
+                            + len("01/01/2025"),
+                        ],
+                        "source_text": "01/01/2025",
+                    },
+                    {
+                        "date": "2025-03-31",
+                        "source_span": [
+                            pages[adjacent_id]["page_json"]["sections"][0]["title_exact"].index(
+                                "31/03/2025"
+                            ),
+                            pages[adjacent_id]["page_json"]["sections"][0]["title_exact"].index(
+                                "31/03/2025"
+                            )
+                            + len("31/03/2025"),
+                        ],
+                        "source_text": "31/03/2025",
+                    },
+                ],
+                "page_json_version_id": adjacent_id,
+                "physical_page": 27,
+                "reporting_endpoint": "2025-03-31",
+                "source_title_exact": pages[adjacent_id]["page_json"]["sections"][0][
+                    "title_exact"
+                ],
+                "title_ordinal": 1,
+            }
+        ],
+        "reporting_endpoint": "2025-03-31",
+        "rule": "UNIQUE_TYPED_LOCAL_REPORTING_ENDPOINT_CONFLICTS_WITH_EXACT_BALANCE_DATE",
+        "superseded_candidate_id": candidate["candidate_id"],
+    }
+    assert candidate["status"] == target.READY
+    assert candidate["mappings"] == [{"report_norm_id": 753}]
+
+
+def test_reporting_endpoint_guard_ignores_non_authoritative_or_ambiguous_context() -> None:
+    current_id = "gfpstorev1:json:" + "7" * 64
+    adjacent_id = "gfpstorev1:json:" + "8" * 64
+    candidate = {
+        "candidate_id": "gjfafcv1:candidate:" + "9" * 64,
+        "closure_receipt": {
+            "period_value_column_axis": {
+                "period_signatures": [
+                    ["DATE", "2025-12-31"],
+                    ["DATE", "2024-12-31"],
+                ]
+            }
+        },
+        "mappings": [{"report_norm_id": 753}],
+        "reasons": [],
+        "status": target.READY,
+    }
+    region = {
+        "context_pages": [
+            {"page_json_version_id": current_id, "physical_page": 26},
+            {"page_json_version_id": adjacent_id, "physical_page": 27},
+        ],
+        "physical_page": 26,
+    }
+
+    def pages(*titles: str) -> dict:
+        return {
+            current_id: {
+                "page_json": {"sections": [{"tables": [], "title_exact": titles[0]}]}
+            },
+            adjacent_id: {
+                "page_json": {
+                    "sections": [
+                        {"tables": [], "title_exact": title} for title in titles[1:]
+                    ]
+                }
+            },
+        }
+
+    compiled = {
+        "evaluation": {"period_semantics": "BALANCE_COMPARATIVE"},
+        "topology": {"family_id": "LOAN_MATURITY_BUCKETS"},
+    }
+    unchanged_contexts = [
+        # The exact endpoint agrees with the current balance date.
+        pages("6. Cho vay khách hàng", "Cho giai đoạn từ 01/01/2025 đến 31/12/2025"),
+        # A bare year cannot be fabricated into a reporting endpoint.
+        pages("6. Cho vay khách hàng", "Cho giai đoạn từ năm 2024 đến năm 2025"),
+        # A reversed range is not authoritative reporting-period evidence.
+        pages("6. Cho vay khách hàng", "Cho giai đoạn từ 31/03/2025 đến 01/01/2025"),
+        # Two distinct typed endpoints are ambiguous local context.
+        pages(
+            "Cho giai đoạn từ 01/01/2025 đến 31/03/2025",
+            "Cho giai đoạn từ 01/01/2025 đến 30/06/2025",
+        ),
+    ]
+    for page_by_version in unchanged_contexts:
+        assert (
+            target._with_reporting_endpoint_conflict_v1(
+                candidate,
+                region=region,
+                page_by_version=page_by_version,
+                compiled_specs=compiled,
+            )
+            == candidate
+        )
+
+    relative_candidate = json.loads(json.dumps(candidate))
+    relative_candidate["closure_receipt"]["period_value_column_axis"]["period_signatures"][
+        0
+    ] = ["ROLE", "CURRENT"]
+    assert (
+        target._with_reporting_endpoint_conflict_v1(
+            relative_candidate,
+            region=region,
+            page_by_version=pages(
+                "6. Cho vay khách hàng",
+                "Cho giai đoạn từ 01/01/2025 đến 31/03/2025",
+            ),
+            compiled_specs=compiled,
+        )
+        == relative_candidate
+    )
+
+    other_family = json.loads(json.dumps(candidate))
+    assert (
+        target._with_reporting_endpoint_conflict_v1(
+            other_family,
+            region=region,
+            page_by_version=pages(
+                "6. Cho vay khách hàng",
+                "Cho giai đoạn từ 01/01/2025 đến 31/03/2025",
+            ),
+            compiled_specs={
+                "evaluation": {"period_semantics": "BALANCE_COMPARATIVE"},
+                "topology": {"family_id": "LOAN_INDUSTRY_CLASSIFICATION"},
+            },
+        )
+        == other_family
+    )
 
 def test_stacked_regions_are_derived_from_one_hit_frontier_with_punctuation_variants() -> None:
     parent = "Các công cụ tài chính phái sinh và các tài sản/khoản nợ tài chính khác"

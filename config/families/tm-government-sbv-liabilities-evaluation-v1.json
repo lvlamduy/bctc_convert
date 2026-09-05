@@ -33,13 +33,31 @@
       "magnitude_power10": 9
     },
     {
-      "accepted": false,
+      "accepted": true,
       "aliases": ["VND", "Đồng"],
       "canonical_unit": "VND",
       "magnitude_power10": 0
     }
   ],
   "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
+  "row_alias_prefix_roles": [
+    "CENTRAL_BANK_LOAN",
+    "CREDIT_FILE_LOAN",
+    "DISCOUNT_LOAN",
+    "PLEDGED_SECURITIES_LOAN",
+    "SPECIAL_SUPPORT_LOAN",
+    "REFINANCE_LOAN",
+    "OTHER_LOAN",
+    "TREASURY_PAYMENT_DEPOSIT",
+    "TREASURY_PAYMENT_VND",
+    "TREASURY_PAYMENT_FOREIGN",
+    "OTHER_LIABILITY"
+  ],
+  "supplemental_owner_aliases": [
+    "Các khoản nợ NHNN",
+    "Tiền gửi và vay Chính phủ, NHNN",
+    "Tiền gửi và vay Chính phủ, NHNNVN"
+  ],
   "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
   "root_component_roles": [
     "CENTRAL_BANK_LOAN",

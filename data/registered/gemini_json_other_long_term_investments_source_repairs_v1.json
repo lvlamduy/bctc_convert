@@ -1,0 +1,730 @@
+{
+  "format_version": "GEMINI_JSON_OTHER_LONG_TERM_INVESTMENTS_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "policy": "ONLY_EXACT_PDF_RENDER_VISIBLE_DASH_MISSED_AS_NULL_NO_EQUATION_DERIVATION",
+  "repair_axis_sha256": "653bb59a48612d3642e0232488bcbd3db7c17e987ff85aa404a3b587831f9bf4",
+  "repair_count": 14,
+  "repairs": [
+    {
+      "base_page_json_sha256": "800c15120579c1520e83d7ff63cd4f772bece95b397e696549c43e641cfb5506",
+      "base_table_sha256": "df639833e5eecf79dae22bd85732cf7d87e9978cf27d76dcff866354dfdba6db",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Dự phòng giảm giá đầu tư dài hạn"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Dự phòng giảm giá đầu tư dài hạn",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3540,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "7a0794e8ea4b91280fbc26dedbf797d3ae66e0766ea0709f2599bc2b2248ef29",
+        "size_bytes": 2253491,
+        "width": 2448
+      },
+      "page_json_version_id": "gfpstorev1:json:2a86ccf4390bf05daadfce137cfe8af8919de9e8fcea1a307907582c7f9b3dc3",
+      "physical_page": 19,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/ABB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "58bd3fe4b64b1b569631d335c31b6616771c54fa059b016eceaba68029060810",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:4e37176ac850dba6aeed1ed05593fff89802d2da94bd2eb340b199e52b8e6dfa"
+    },
+    {
+      "base_page_json_sha256": "f4431e91564475f55e16e7de046b4724d586d12ffaa0a9417a47f1ab72af1923",
+      "base_table_sha256": "df639833e5eecf79dae22bd85732cf7d87e9978cf27d76dcff866354dfdba6db",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Dự phòng giảm giá đầu tư dài hạn"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Dự phòng giảm giá đầu tư dài hạn",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3540,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "8382468a70758badda0e414335bf3d85777525879ccfd1042ec9266f875d4879",
+        "size_bytes": 2213677,
+        "width": 2448
+      },
+      "page_json_version_id": "gfpstorev1:json:aff4dc074d2d83263185648f50eed068a080b31738d27f5c12a3546ab3e2e5c4",
+      "physical_page": 19,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/ABB/2025/BCTC Hợp nhất quý 4 năm 2025__592d2993__3_abb_2026_2_4_91abe48_bctc_hn_q4_2025.pdf",
+      "source_sha256": "836a7a4c5f0f73bf145af4bfe6c8394215bb69881cbae702ac591966db88259a",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:2e3516debd5af2e61ee2ab72f493bbd9a9fcba5c8fdf1cdd20ffe393871a5e8e"
+    },
+    {
+      "base_page_json_sha256": "bd84d232c231493f5e112feb7a1956a43a4a6c7785b7ec9cf40a958cbbb24e0d",
+      "base_table_sha256": "df639833e5eecf79dae22bd85732cf7d87e9978cf27d76dcff866354dfdba6db",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Dự phòng giảm giá đầu tư dài hạn"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Dự phòng giảm giá đầu tư dài hạn",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3300,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "3f7e52665d67df52f86bd7c0b51a4fca917b9d11ce3703fc00f5d5852b1176fd",
+        "size_bytes": 423317,
+        "width": 2550
+      },
+      "page_json_version_id": "gfpstorev1:json:26d1fd36a3aacd7fdc36a75c7fec8752516126dd5f35ac5da74945d406cda60b",
+      "physical_page": 19,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/ABB/2025/phpnjkobf-bctc-q2-2025-hn-6889fad62c419.pdf",
+      "source_sha256": "dec2b41f6daff45f8a8725c7a1874da575618df64d5d0ee48e9eb61eeee38fce",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:e9ffd6656735f44c0e5214c1aad183612f8d7fe975e81e6246ddd4d79ff704f1"
+    },
+    {
+      "base_page_json_sha256": "d67534d09613ddb98b62b77ef7f93c3a2af5534a1004b3f43225f4ebf13bcd18",
+      "base_table_sha256": "d227db5e8410fcebac58517f3b9c45e36dd6a17b3db25a5a041c4d6e530ff946",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư dài hạn khác"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư dài hạn khác",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Dự phòng giảm giá đầu tư dài hạn"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Dự phòng giảm giá đầu tư dài hạn",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "3f220e5101ce944eca926c805ed8e05ef4e234c06c8eff5ce4464d9fadbd91f0",
+        "size_bytes": 1569498,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:b1771566ea941f22e787948068bce74a18fe2242c17c6bf00a6fba987666a56e",
+      "physical_page": 24,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+      "source_sha256": "5550147825ec23b9cd225a84536e1706e9422273a237827d6f1b508b95fec3ce",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:3861b2b9f0d9b9cf6f346a9a2a2db423a3d8291e5c5a9c87255a9abd78c393fd"
+    },
+    {
+      "base_page_json_sha256": "55e973098ed082302ee0a71425eac4b6af11e61b72fd675f984d628f8d0d59ca",
+      "base_table_sha256": "524902c35c602fde30749d5c91fee2320490903eef00080c327556795947f225",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3369,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "5e1dcb273bb38fcfa1e660d311589cca0779a1e0803c459c8082c94b88c3141b",
+        "size_bytes": 2400501,
+        "width": 2439
+      },
+      "page_json_version_id": "gfpstorev1:json:72e7cdfff70ed6acd6e0cb0b1f54c09ac5e1b32d3d50c7988caf3f0fc35b9bc4",
+      "physical_page": 31,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s4",
+      "source_logical_name": "vietstock_bctc/STB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "b0b7438ed502a175a79940e08b254789d8b766af0524d9bbb0d36171adbe0dbf",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:c6e8bf6c7d711c14b887b2fb4e8f968db1f7f36a75fa249a3c729aaeeeb617b9"
+    },
+    {
+      "base_page_json_sha256": "feb52512c1485b39675312b1f870bd0ffb39046e567c4c5a59d2767407f811ad",
+      "base_table_sha256": "52474fdc529b54914f2dec54cc44310bd4a71a127982fe967f8a198d966a5be4",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Đầu tư vào công ty liên kết – giá gốc"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Đầu tư vào công ty liên kết – giá gốc",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3507,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "02dabbc6ed167b0718235c897402c2ced521ec1cf555e9bff8653e4968fdf6b9",
+        "size_bytes": 198844,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:23bc2904319785d5351fa26c268af789ab2018780cc0d1bb19f4492e60b404fa",
+      "physical_page": 40,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+      "source_sha256": "8c6b1e9b3cd835223d95b0a638ca754b4544fc1a67c0175bd2b977842c0d6453",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:1541f20f73f34122e45a5c70deadb84bd357654bc8452cc2bafb415f1ec6b0ba"
+    },
+    {
+      "base_page_json_sha256": "ac60a21e6ef1b2f2af21f3d8f1d564e064703f5e05a51b2ec14f38241dc75c26",
+      "base_table_sha256": "e4986214fbab74617bf8cc80d8e3e4f5332edb0c862951d4beac71638e6644a1",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3507,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "40b6da6e712e49c0bbc5d7255a1e16ab95a53a92f3149b6a18c4f42057fba397",
+        "size_bytes": 206062,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:23f8573d1a6f31647fa035078293f9a754a4832bc6dca088a9818bfd4c9ae365",
+      "physical_page": 49,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "source_sha256": "791460cc8f49996a54a2013d4d182153a7404d753d7a78399fd30cb1d5bc3b7b",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:5313a9fcda209cfcda65398e631b65d20611e8c593d79f836544c84cfa6713d0"
+    },
+    {
+      "base_page_json_sha256": "41850efe67eec81f05b8237fa9b376534def7b13a71b64afc5dfd66aa4e2a7f6",
+      "base_table_sha256": "c4698af070a9fb08aa844c5f46e544fb1877c8bd37ab2097f9b60769dc0f832e",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3507,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "543df94c870db4b5c882c6c02e4329717c1a47fc3b211a32176456cee567e91d",
+        "size_bytes": 218246,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:abc52a2a507d4abe2535329621c21e1c1a2f36346a6698e2be642ef9eb641080",
+      "physical_page": 50,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "c1df78d8d31faa6079e9a7738c31c759573d15620f4a9f551e57e2ac9b3957eb",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:9deda072691d4b125a8eed1d22d96ce6980beff8ea98d5d8b50be56f45ac3023"
+    },
+    {
+      "base_page_json_sha256": "183a131ae70b680dd6f85deba2d35d099be1ddc64bbaa382ad0e279ed665227e",
+      "base_table_sha256": "fb83ebf945d769e455e0bad8cbc914a0d5dbd867dc999f8d8a04fd9d252816ed",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Đầu tư dài hạn khác"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Đầu tư dài hạn khác",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Tổng"
+          ],
+          "row_id": "r2",
+          "row_kind": "TOTAL",
+          "row_label_exact": "Tổng",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3505,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "f32844a1677b46585c5fec20cd90f7a3763d79aaf9a07cfc2832aea2362412e4",
+        "size_bytes": 1070736,
+        "width": 2463
+      },
+      "page_json_version_id": "gfpstorev1:json:2c52304217cc06a322a77a394a04b082e5328c4f7d435c907eb5a464465f72cc",
+      "physical_page": 43,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/TPB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+      "source_sha256": "d8f4e25a6a4b805488312878a3734f6b1b43595f02052eedd831d5958dc1fb08",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:674556193246871b7738cb43b7487471cc2bf82bfc170e1abe0c99827fa66849"
+    },
+    {
+      "base_page_json_sha256": "45e6a6b3d74563e4e1f57d703c3cbb47eae701a0a2e3d2002e39b664a0834ed7",
+      "base_table_sha256": "fa10de8ca9071eac9fdb0736ef6606b5c994ef09f0f905dbbedb1eaa4b59b09a",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Dự phòng giảm giá đầu tư dài hạn"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Dự phòng giảm giá đầu tư dài hạn",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3300,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "9c750ce001afe7914d2c0e99894c1ddcf6b96eb394106a17ca53db9f28a192f6",
+        "size_bytes": 3038952,
+        "width": 2550
+      },
+      "page_json_version_id": "gfpstorev1:json:dd564d5e85f52c03a2b69727d3aa653b8f63f5096c45c7f640b05b244fde2198",
+      "physical_page": 34,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/VAB/2025/2_vab_2025_4_15_527ed46_vi_baocaotaichinh_q1_2025.pdf",
+      "source_sha256": "067ddd883bf49ab6706bd19d1d5b2004829d1463fd1a5ea4b079df80382db53e",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:fc78bafac5b0e324d5a8677b983946de4a350d00d19b26a98646d4433d00ca90"
+    },
+    {
+      "base_page_json_sha256": "cb88cb89f7d8d9730e6a1c821902faeeca3d60cc60713aa88c2e2447121c3b8b",
+      "base_table_sha256": "bb623358b46cf28011b3c794e26d2606889daeb467b543361788145f700cdf60",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3550,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "cee504f6d2386ac3d405a51d1b4f51b97049469ccf9e98ce814756e9be7c4efd",
+        "size_bytes": 1131963,
+        "width": 2471
+      },
+      "page_json_version_id": "gfpstorev1:json:77d2b4008f5d4e6de0fe12dfdbf85bbda40ab21443aefd13f1b624f9de494a5b",
+      "physical_page": 36,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "source_sha256": "4731cf17493c26feb5cdf533ecf942ce149ab4ba3b8aed1f23dd638926fb9353",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:e545b6996dc3bce68223932c9d4554d0ddf0d6fec8ef5a28d4a966b0c55b2fc3"
+    },
+    {
+      "base_page_json_sha256": "3e0b05ad673a55026f3902931f10b3801304c1ee8fd47e73bafd15ad2253d061",
+      "base_table_sha256": "7c2393a1868ce045c6db31de1ca490a13511a6997fd3b5de31624691a18d52d6",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3542,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a57adf6c494434729d7fd7b436d4e3be5f72195ceecde2e55f5e16ffb2718c7d",
+        "size_bytes": 1006619,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:79309a8d696da9c7f633365cc37aeb8012d2f09d32eff3e5f24f5ab711b8f7ee",
+      "physical_page": 36,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "54c7a2d052642aa302544214492f6390368f63bbc8a052f2588a461786a5ebbe",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:c6bb4f9e02d3630a3b1729878e45b60a2f1bdfbbf1571237a1590e63cfe933a0"
+    },
+    {
+      "base_page_json_sha256": "2e5d4a5fb68b6e9494c01afd890f2acf7a30b5bbc6c00f54ab5b268bbfd639b8",
+      "base_table_sha256": "e5b38db4afa1224c94a9f8e3381dc3bde1b6673b1b8aa1bceb9d1495bbe98034",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3505,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "f0fa7cf62c54e830285fda92713d1dbb479ebcfd3c963480912f9c06e09ae1bc",
+        "size_bytes": 1122058,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:7b7ce0d16ccc159a87b626270fb184a2c7be9c20c4b20560437dcca2ce5d7b95",
+      "physical_page": 36,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/VAB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "db337e1de3e7aab90012dec81ef50467b059ad2c7e6acc07cd52b65166d0617f",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:9c146505c41350e88223ebb666e434c95a10eaa7bb8c6e540102a2cf5d36b1bd"
+    },
+    {
+      "base_page_json_sha256": "23bcb203a2cbb1780644981221baf08d84a5343e63b01557d3266df504feafd4",
+      "base_table_sha256": "67ae0aff8af4ec2632fae703b5194641de2c98237464e5cb28e7e825f7f0fd17",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "- Phân tích giá trị đầu tư theo loại hình đầu tư:",
+            "Các khoản đầu tư vào công ty liên doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "- Phân tích giá trị đầu tư theo loại hình đầu tư:",
+            "Các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư vào công ty liên kết",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "- Phân tích giá trị đầu tư theo loại hình đầu tư:",
+            "Các khoản đầu tư dài hạn khác"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Các khoản đầu tư dài hạn khác",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "- Phân tích giá trị đầu tư theo loại hình đầu tư:",
+            "Dự phòng giảm giá đầu tư dài hạn"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Dự phòng giảm giá đầu tư dài hạn",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "- Phân tích giá trị đầu tư theo loại hình đầu tư:",
+            "Tổng Cộng"
+          ],
+          "row_id": "r6",
+          "row_kind": "TOTAL",
+          "row_label_exact": "Tổng Cộng",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3496,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "87c70c2202923d5c37123ec0e5cc526185f3df2a3432458209c24edc3950642f",
+        "size_bytes": 2975730,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:cb0ceac79cf86545a9eb235dd77de2d2129d7f1cee3b63891c678fa695040c29",
+      "physical_page": 17,
+      "reason": "PDF_RENDER_VISIBLE_DASH_OMITTED_FROM_SELECTED_JSON",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/VBB/2025/000000014895152_VI_BaoCaoTaiChinh_HopNhat_Q1_2025.pdf",
+      "source_sha256": "b7ed875bfe1863d514222f81f2064fad1b7e08d9c8756767141ae264ea022eee",
+      "table_id": "t1",
+      "repair_id": "gjfoltisrv1:repair:237b41f470b589b4c609744233e29c6891b5650834f7bd0cf02c4103b84565d9"
+    }
+  ],
+  "overlay_id": "gjfoltisrv1:overlay:816fd01f9321afa63d6b75dd6c5606f782a91321e7bf7d1cf0251ea7b27a6269"
+}

@@ -19,6 +19,9 @@ from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _row_roles,
     evaluate_gemini_json_hierarchical_period_table_pair_v1,
 )
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    validate_source_observation_mapping_contract_v1,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -715,15 +718,20 @@ def test_flat_family_closes_exact_dash_blank_and_reordered_direct_frontier() -> 
         563,
         565,
     ]
-    assert result["closure_receipt"]["lane_component_sums"] == [120, 100]
+    assert result["closure_receipt"]["lane_component_sums"] == [120, None]
+    assert result["closure_receipt"]["source_lane_equation_statuses"] == [
+        "EXACT_OBSERVED_SOURCE_LANE",
+        "COMPONENT_SOURCE_LANE_UNOBSERVED",
+    ]
     assert result["mappings"][3]["values"] == [
         {"coefficient": 0, "source_text": "-", "state": "DASH_ZERO"},
         {
-            "coefficient": 0,
+            "coefficient": None,
             "source_text": None,
-            "state": "BLANK_ZERO_IF_EQUATION_EXACT",
+            "state": "BLANK_SOURCE_CELL",
         },
     ]
+    assert validate_source_observation_mapping_contract_v1(result)["status"] == "PASS"
 
     reordered = _page()
     reordered["sections"][0]["tables"][0]["rows"][:3] = list(
@@ -736,6 +744,52 @@ def test_flat_family_closes_exact_dash_blank_and_reordered_direct_frontier() -> 
         "CASH_FOREIGN",
         "CASH_VND",
     ]
+
+
+def test_flat_family_accepts_cash_title_jewelry_gold_and_repeated_column_unit() -> None:
+    page = _page()
+    section = page["sections"][0]
+    section["title_exact"] = "5. TIỀN MẶT"
+    table = section["tables"][0]
+    table["unit_exact"] = None
+    table["rows"][2] = {
+        "hierarchy_path_exact": ["Vàng nữ trang"],
+        "label_exact": "Vàng nữ trang",
+        "row_kind": "ITEM",
+        "values_exact": ["3", "2"],
+    }
+    table["rows"][-1]["values_exact"] = ["123", "102"]
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [
+        561,
+        562,
+        563,
+        566,
+    ]
+
+
+@pytest.mark.parametrize(
+    "header_paths",
+    [
+        [["31.12.2025"], ["31.12.2024"]],
+        [["31.12.2025", "Triệu VND"], ["31.12.2024", "Nghìn VND"]],
+        [["31.12.2025", "Tỷ giá"], ["31.12.2024", "Tỷ giá"]],
+    ],
+)
+def test_flat_family_rejects_absent_conflicting_or_nonunit_column_surfaces(
+    header_paths: list[list[str]],
+) -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["unit_exact"] = None
+    for column, header_path in zip(table["columns"], header_paths, strict=True):
+        column["header_path_exact"] = header_path
+
+    assert "PERIOD_UNIT_OR_MONEY_COLUMN_AXIS_IS_NOT_EXACT" in _evaluate(page)["reasons"]
 
 
 def test_flat_family_fails_closed_on_shift_duplicate_extra_parent_or_arithmetic() -> None:
@@ -769,6 +823,12 @@ def test_flat_family_fails_closed_on_shift_duplicate_extra_parent_or_arithmetic(
     wrong = _evaluate(wrong_parent)
     assert "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_OR_TABLE_TITLE" in wrong["reasons"]
     assert "HARD_NEGATIVE_FAMILY_VISIBLE_IN_CANDIDATE" in wrong["reasons"]
+
+    cash_equivalents = _page()
+    cash_equivalents["sections"][0]["title_exact"] = "Tiền mặt và các khoản tương đương tiền"
+    negative = _evaluate(cash_equivalents)
+    assert negative["status"] == UNRESOLVED
+    assert "HARD_NEGATIVE_FAMILY_VISIBLE_IN_CANDIDATE" in negative["reasons"]
 
     mismatch = _page()
     mismatch["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "121"
@@ -820,6 +880,18 @@ def test_hierarchical_family_uses_one_recursive_frontier_and_derived_aggregate()
     replay = _evaluate_hierarchical(reordered)
     assert replay["status"] == READY
     assert replay["closure_receipt"]["lane_component_sums"] == [133, 112]
+
+
+def test_hierarchical_blank_source_group_label_remains_presentation_structure() -> None:
+    page = _hierarchical_page()
+    parent = page["sections"][0]["tables"][0]["rows"][0]
+    parent["row_kind"] = "GROUP"
+    parent["values_exact"] = [None, None]
+
+    result = _evaluate_hierarchical(page)
+    assert result["status"] == READY
+    assert "CENTRAL_BANK_VIETNAM_PARENT" not in {mapping["role"] for mapping in result["mappings"]}
+    assert result["closure_receipt"]["presentation_row_ordinals"] == [1]
 
 
 def test_hierarchical_family_rejects_partial_mixed_duplicate_extra_and_mismatch() -> None:
@@ -915,6 +987,19 @@ def test_period_value_hierarchy_maps_two_period_money_and_optional_percent_compa
                 "state": "RAW_UNSIGNED_DECIMAL_PERCENT",
             },
         ]
+
+
+def test_period_value_hierarchy_accepts_quarter_end_relative_header() -> None:
+    page = _loan_type_page(percentage_companions=False)
+    columns = page["sections"][0]["tables"][0]["columns"]
+    columns[0]["header_path_exact"][0] = "Số cuối quý"
+    columns[1]["header_path_exact"][0] = "Số đầu năm"
+
+    result = _evaluate_loan_type(page)
+
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [717, 718, 726]
 
 
 def test_period_value_hierarchy_rejects_column_shift_bad_period_percent_and_money_sum() -> None:
@@ -1686,6 +1771,138 @@ def test_recursive_family_closes_multilevel_subtotals_and_infers_provision_once(
         for mapping in result["mappings"]
         if mapping["role"] == "INTERBANK_DEPOSIT_GROUP"
     )
+
+
+def test_recursive_family_preserves_partial_source_lane_without_using_it_in_equation() -> None:
+    page = _recursive_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows[3]["values_exact"][1] = None
+
+    result = _evaluate_recursive(page)
+
+    assert result["status"] == READY
+    mapping = next(
+        item
+        for item in result["mappings"]
+        if item["role"] == "DEMAND_DEPOSIT_FOREIGN_CURRENCY"
+    )
+    assert mapping["values"] == [
+        {"coefficient": 40, "source_text": "40", "state": "RAW_SIGNED_INTEGER"},
+        {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"},
+    ]
+    equation = next(
+        item
+        for item in result["closure_receipt"]["equations"]
+        if item["result_role"] == "DEMAND_DEPOSIT_GROUP"
+    )
+    assert equation["lane_component_sums"] == [100, None]
+    assert equation["component_roles_by_lane"] == [
+        ["DEMAND_DEPOSIT_VND", "DEMAND_DEPOSIT_FOREIGN_CURRENCY"],
+        [],
+    ]
+    assert equation["source_lane_equation_statuses"] == [
+        "EXACT_OBSERVED_SOURCE_LANE",
+        "COMPONENT_SOURCE_LANE_UNOBSERVED",
+    ]
+    assert validate_source_observation_mapping_contract_v1(result)["status"] == "PASS"
+
+
+def test_recursive_family_omits_all_blank_role_even_when_exact_parent_closes() -> None:
+    page = _recursive_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows[10]["values_exact"] = [None, None]
+    rows[11]["values_exact"] = ["170", "140"]
+
+    result = _evaluate_recursive(page)
+
+    assert result["status"] == READY
+    assert "TOTAL_INTERBANK_PROVISION" not in {
+        mapping["role"] for mapping in result["mappings"]
+    }
+    assert all(
+        "BLANK_ZERO" not in cell["state"]
+        for mapping in result["mappings"]
+        for cell in mapping["values"]
+    )
+    root_equation = next(
+        item
+        for item in result["closure_receipt"]["equations"]
+        if item["result_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    )
+    assert root_equation["component_roles"] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+    ]
+    assert validate_source_observation_mapping_contract_v1(result)["status"] == "PASS"
+
+
+def test_recursive_family_maps_visible_dash_but_never_fills_blank_sister_lane() -> None:
+    page = _recursive_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows[3]["values_exact"] = ["-", None]
+    rows[4]["values_exact"] = ["60", "90"]
+    rows[6]["values_exact"] = ["110", "130"]
+    rows[11]["values_exact"] = ["130", "139"]
+
+    result = _evaluate_recursive(page)
+
+    assert result["status"] == READY
+    mapping = next(
+        item
+        for item in result["mappings"]
+        if item["role"] == "DEMAND_DEPOSIT_FOREIGN_CURRENCY"
+    )
+    assert mapping["values"] == [
+        {"coefficient": 0, "source_text": "-", "state": "DASH_ZERO"},
+        {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"},
+    ]
+    assert validate_source_observation_mapping_contract_v1(result)["status"] == "PASS"
+
+
+def test_recursive_family_derives_only_complete_source_lanes() -> None:
+    page = _trading_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows[0]["row_kind"] = "GROUP"
+    rows[0]["values_exact"] = [None, None]
+    rows.insert(
+        1,
+        {
+            "hierarchy_path_exact": [
+                "Chứng khoán nợ",
+                "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+            ],
+            "label_exact": "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+            "row_kind": "ITEM",
+            "values_exact": ["100", None],
+        },
+    )
+
+    result = _evaluate_trading(page)
+
+    assert result["status"] == READY
+    aggregate = next(
+        mapping
+        for mapping in result["mappings"]
+        if mapping["role"] == "ISSUER_DEBT_SECURITIES_GROUP"
+    )
+    assert aggregate["values"] == [
+        {
+            "coefficient": 100,
+            "source_text": None,
+            "state": "DERIVED_EXACT_RECURSIVE_DIRECT_FRONTIER",
+        },
+        {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"},
+    ]
+    equation = next(
+        item
+        for item in result["closure_receipt"]["equations"]
+        if item["result_role"] == "DEBT_SECURITIES_GROUP"
+    )
+    assert equation["mode"] == (
+        "DERIVED_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS_ON_COMPLETE_SOURCE_LANES"
+    )
+    assert equation["lane_component_sums"] == [100, None]
+    assert validate_source_observation_mapping_contract_v1(result)["status"] == "PASS"
 
 
 def test_recursive_family_accepts_primary_statement_money_columns_without_geometry() -> None:

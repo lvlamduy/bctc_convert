@@ -26,6 +26,9 @@ from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
     merge_structural_context_repair_v1,
     structural_context_repair_targets_v1,
 )
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    validate_source_observation_mapping_contract_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -52,6 +55,17 @@ def _specs() -> tuple[dict, dict, dict]:
 
 def _compiled() -> dict:
     return compile_gemini_json_flat_family_specs_v1(*_specs())
+
+
+def test_unresolved_near_source_policy_is_strictly_config_gated() -> None:
+    topology, evaluation, schema = _specs()
+    evaluation["title_axis_projection_policy"]["unresolved_near_source_policy"] = (
+        "ACCEPT_ANY_PARTIAL_ALIAS"
+    )
+    with pytest.raises(
+        ValueError, match="hierarchical title-axis projection policy is invalid"
+    ):
+        compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
 
 
 def _row(label: str | None, values: list[str], *, kind: str = "ITEM", path=None) -> dict:
@@ -101,6 +115,36 @@ def _evaluate(page: dict) -> dict:
     )
 
 
+def _evaluate_indexed_region(database: Path, page: dict, identity: dict) -> dict:
+    queried = _query(database, [identity["page_json_version_id"]])
+    evidence = _evidence(queried)
+    assert len(evidence["accepted_regions"]) == 1
+    region = evidence["accepted_regions"][0]
+    return evaluate_gemini_json_hierarchical_family_table_v1(
+        page_json=page,
+        page_json_version_id=identity["page_json_version_id"],
+        physical_page=region["physical_page"],
+        section_id=region["section_id"],
+        table_id=region["table_id"],
+        compiled_specs=_compiled(),
+        external_context_receipt=region["structural_context_receipt"],
+        external_context_pages=[
+            {
+                "document_id": region["document_id"],
+                "page_json": page,
+                "page_json_version_id": identity["page_json_version_id"],
+                "physical_page": region["physical_page"],
+                "source_logical_name": region["source_logical_name"],
+                "source_sha256": region["source_sha256"],
+            }
+        ],
+        external_document_id=region["document_id"],
+        external_source_logical_name=region["source_logical_name"],
+        external_source_sha256=region["source_sha256"],
+        title_axis_query_receipt=evidence["query_receipt"],
+    )
+
+
 def _query(path: Path, selected_ids: list[str]) -> dict:
     compiled = _compiled()
     policy = compiled["title_axis_projection_policy"]
@@ -116,6 +160,14 @@ def _query(path: Path, selected_ids: list[str]) -> dict:
         minimum_distinct_child_roles=policy["minimum_distinct_child_roles"],
         structural_branch_role=branch_role,
         structural_branch_aliases=compiled["query_presence_aliases_by_role"][branch_role],
+        structural_branch_fallback_group_aliases=[
+            alias
+            for role in policy.get("structural_branch_fallback_group_roles", [])
+            for alias in compiled["query_presence_aliases_by_role"][role]
+        ],
+        unresolved_near_source_policy=policy.get(
+            "unresolved_near_source_policy", "ANY_UNVETOED_STRUCTURAL_AXIS"
+        ),
         structural_surface_kinds=policy["structural_surface_kinds"],
         explicit_parent_role=compiled["topology"]["parent"]["role"],
         explicit_parent_aliases=compiled["query_parent_aliases"],
@@ -266,6 +318,260 @@ def test_flat_unqualified_legal_forms_redirect_to_terminal_residual_roles_once()
     assert len(by_row) == len(result["mappings"])
 
 
+def test_visible_root_allows_only_one_coefficient_of_source_rounding() -> None:
+    page = _page(
+        [
+            _row("Doanh nghiệp nhà nước", ["0", "0"]),
+            _row("Công ty trách nhiệm hữu hạn", ["20", "18"]),
+            _row("Công ty cổ phần", ["30", "27"]),
+            _row("Cá nhân và khách hàng khác", ["11", "9"]),
+            _row(None, ["60", "54"], kind="TOTAL", path=[None]),
+        ]
+    )
+
+    accepted = _evaluate(page)
+
+    assert accepted["status"] == READY
+    root = next(
+        equation
+        for equation in accepted["closure_receipt"]["equations"]
+        if equation["result_role"] == "LOAN_ENTERPRISE_FAMILY12"
+    )
+    assert root["source_rounding_residual_coefficients"] == [-1, 0]
+
+    beyond_bound = deepcopy(page)
+    beyond_bound["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "59"
+    assert _evaluate(beyond_bound)["status"] == UNRESOLVED
+
+
+def test_layout_continuation_marker_in_a_money_cell_is_an_exact_dash_zero() -> None:
+    page = _page(
+        [
+            _row(
+                "Công ty trách nhiệm hữu hạn một thành viên do Nhà nước sở hữu 100% vốn điều lệ",
+                ["- tiep theo -", "-"],
+            ),
+            _row("Công ty TNHH khác", ["20", "18"]),
+            _row("Công ty cổ phần khác", ["30", "27"]),
+            _row(None, ["50", "45"], kind="TOTAL", path=[None]),
+        ]
+    )
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    state_llc = next(mapping for mapping in result["mappings"] if mapping["report_norm_id"] == 769)
+    assert state_llc["values"][0] == {
+        "coefficient": 0,
+        "source_text": "- tiep theo -",
+        "state": "LAYOUT_CONTINUATION_MARKER_ZERO",
+    }
+
+    unbounded_text = deepcopy(page)
+    unbounded_text["sections"][0]["tables"][0]["rows"][0]["values_exact"][0] = "tiep theo"
+    assert _evaluate(unbounded_text)["status"] == UNRESOLVED
+
+
+def test_unique_exact_closure_repairs_one_missing_four_lane_percentage_cell() -> None:
+    page = _page(
+        [
+            _row("Doanh nghiệp nhà nước", ["-", "3.626", "0,00", None]),
+            _row("Công ty TNHH khác", ["100", "50,00", "100", "50,00"]),
+            _row("Công ty cổ phần khác", ["100", "50,00", "100", "50,00"]),
+            _row(None, ["200", "100,00", "3.826", "100,00"], kind="TOTAL", path=[None]),
+        ]
+    )
+    page["sections"][0]["tables"][0]["columns"] = [
+        {"header_path_exact": ["31.12.2025"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31.12.2025", "%"], "value_kind": "PERCENT"},
+        {"header_path_exact": ["31.12.2024"], "value_kind": "MONEY"},
+        {"header_path_exact": ["31.12.2024", "%"], "value_kind": "PERCENT"},
+    ]
+
+    repaired = _evaluate(page)
+
+    assert repaired["status"] == READY
+    assert repaired["closure_receipt"]["source_cell_alignment_repair"]["row_id"] == "r1"
+    state = next(mapping for mapping in repaired["mappings"] if mapping["report_norm_id"] == 767)
+    assert [value["coefficient"] for value in state["values"]] == [0, 3626]
+    assert [
+        value.get("coefficient") for value in state["percentage_companion_values"]
+    ] == [None, 0]
+
+    default_closes = deepcopy(page)
+    default_closes["sections"][0]["tables"][0]["rows"][-1]["values_exact"][2] = "200"
+    ordinary = _evaluate(default_closes)
+    assert ordinary["status"] == READY
+    assert "source_cell_alignment_repair" not in ordinary["closure_receipt"]
+
+
+def test_other_row_closes_visible_economic_organization_carrier() -> None:
+    page = _page(
+        [
+            _row("Cho vay các tổ chức kinh tế", ["65", "58"]),
+            _row("Công ty TNHH", ["20", "18"]),
+            _row("Công ty cổ phần", ["30", "27"]),
+            _row("Khác", ["10", "9"]),
+            _row("Đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội", ["5", "4"]),
+            _row("Cho vay cá nhân, hộ kinh doanh", ["40", "36"]),
+            _row(None, ["105", "94"], kind="TOTAL", path=[None]),
+        ]
+    )
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    economic = next(
+        equation
+        for equation in result["closure_receipt"]["equations"]
+        if equation["result_role"] == "ECONOMIC_ORGANIZATION_LOANS_GROUP"
+    )
+    assert economic["component_row_ids"] == ["r2", "r3", "r4", "r5"]
+
+
+def test_partial_descendant_lane_collapses_only_the_proved_sister_lane() -> None:
+    page = _page(
+        [
+            _row("Công ty TNHH khác", ["20", "18"]),
+            _row("Công ty cổ phần khác", ["30", "27"]),
+            _row("Doanh nghiệp tư nhân", ["-", None]),
+            _row("Hộ kinh doanh, cá nhân", ["40", "36"]),
+            _row(None, ["90", "81"], kind="TOTAL", path=[None]),
+        ]
+    )
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    assert result["reasons"] == []
+    private = next(
+        mapping for mapping in result["mappings"] if mapping["report_norm_id"] == 774
+    )
+    assert private["values"] == [
+        {"coefficient": 0, "source_text": "-", "state": "DASH_ZERO"},
+        {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"},
+    ]
+    equations = {
+        equation["result_role"]: equation
+        for equation in result["closure_receipt"]["equations"]
+    }
+    assert equations["CORE_LOAN_ENTERPRISE_SUBTOTAL"]["lane_component_sums"] == [
+        90,
+        None,
+    ]
+    assert equations["LOAN_ENTERPRISE_FAMILY12"]["component_roles_by_lane"] == [
+        ["CORE_LOAN_ENTERPRISE_SUBTOTAL"],
+        [],
+    ]
+    assert validate_source_observation_mapping_contract_v1(result)["status"] == "PASS"
+
+
+def test_explicit_group_row_branch_is_bounded_by_its_closing_total(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    branch = "Phân tích dư nợ theo đối tượng khách hàng và loại hình doanh nghiệp"
+    sibling = "Phân tích dư nợ cho vay theo ngành"
+    page = _page(
+        [
+            _row(branch, [None, None], kind="GROUP", path=[branch]),
+            _row("Hộ kinh doanh và cá nhân", ["10", "9"], path=[branch, "Hộ kinh doanh và cá nhân"]),
+            _row("Công ty TNHH", ["20", "18"], path=[branch, "Công ty TNHH"]),
+            _row("Công ty cổ phần", ["30", "27"], path=[branch, "Công ty cổ phần"]),
+            _row("Cộng", ["60", "54"], kind="TOTAL", path=[branch, "Cộng"]),
+            _row(sibling, [None, None], kind="GROUP", path=[sibling]),
+            _row("Dòng ngành ngoài family", ["60", "54"], path=[sibling, "Dòng ngành ngoài family"]),
+        ]
+    )
+    page["sections"][0]["tables"][0]["title_exact"] = "8. Cho vay khách hàng"
+    identity = _ingest(database, page_json=page)
+
+    result = _evaluate_indexed_region(database, page, identity)
+
+    assert result["status"] == READY
+    assert {"r2", "r3", "r4"} <= {
+        mapping["row_id"] for mapping in result["mappings"]
+    }
+    assert all(mapping["row_id"] != "r7" for mapping in result["mappings"])
+    assert all("DETACHED_ROOT" not in reason for reason in result["reasons"])
+
+
+def test_explicit_group_row_branch_does_not_use_a_sibling_total_as_its_fence(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    branch = "Phân tích dư nợ theo đối tượng khách hàng và loại hình doanh nghiệp"
+    sibling = "Phân tích dư nợ cho vay theo ngành"
+    page = _page(
+        [
+            _row(branch, [None, None], kind="GROUP", path=[branch]),
+            _row("Hộ kinh doanh và cá nhân", ["10", "9"], path=[branch, "Hộ kinh doanh và cá nhân"]),
+            _row("Công ty TNHH", ["20", "18"], path=[branch, "Công ty TNHH"]),
+            _row("Công ty cổ phần", ["30", "27"], path=[branch, "Công ty cổ phần"]),
+            _row(sibling, [None, None], kind="GROUP", path=[sibling]),
+            _row("Dòng ngành ngoài family", ["60", "54"], path=[sibling, "Dòng ngành ngoài family"]),
+            _row("Cộng", ["60", "54"], kind="TOTAL", path=[sibling, "Cộng"]),
+        ]
+    )
+    page["sections"][0]["tables"][0]["title_exact"] = "8. Cho vay khách hàng"
+    identity = _ingest(database, page_json=page)
+
+    result = _evaluate_indexed_region(database, page, identity)
+
+    assert result["status"] == UNRESOLVED
+    assert result["mappings"] == []
+
+
+def test_exact_population_group_row_authenticates_a_titleless_family_table(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    economic = "Cho vay các tổ chức kinh tế"
+    individual = "Cho vay cá nhân"
+    page = _page(
+        [
+            _row(economic, [None, None], kind="GROUP", path=[economic]),
+            _row("Công ty TNHH", ["20", "18"], path=[economic, "Công ty TNHH"]),
+            _row("Công ty cổ phần", ["30", "27"], path=[economic, "Công ty cổ phần"]),
+            _row(individual, [None, None], kind="GROUP", path=[individual]),
+            _row("Hộ kinh doanh và cá nhân", ["40", "36"], path=[individual, "Hộ kinh doanh và cá nhân"]),
+            _row(None, ["90", "81"], kind="TOTAL", path=[None]),
+        ]
+    )
+    page["sections"][0]["tables"][0]["title_exact"] = None
+    identity = _ingest(database, page_json=page)
+
+    queried = _query(database, [identity["page_json_version_id"]])
+    assert len(queried["regions"]) == 1
+    assert queried["regions"][0]["structural_context_receipt"]["branch_evidence"][
+        "source_kind"
+    ] == "ROW_LABEL"
+    assert _evaluate_indexed_region(database, page, identity)["status"] == READY
+
+
+def test_flat_legal_rows_do_not_invent_a_population_group_branch(tmp_path: Path) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _page(
+        [
+            _row("Công ty TNHH", ["20", "18"]),
+            _row("Công ty cổ phần", ["30", "27"]),
+            _row(None, ["50", "45"], kind="TOTAL", path=[None]),
+        ]
+    )
+    page["sections"][0]["tables"][0]["title_exact"] = None
+    identity = _ingest(database, page_json=page)
+
+    queried = _query(database, [identity["page_json_version_id"]])
+
+    assert queried["regions"] == []
+    assert queried["candidate_dispositions"][0]["disposition"] == "BRANCH_ABSENT"
+
+
 @pytest.mark.parametrize("leading", [False, True])
 def test_peer_population_fence_is_exact_and_rejects_all_coherent_breaks(leading: bool) -> None:
     carrier = ["360", "324"]
@@ -362,6 +668,7 @@ def test_indexed_query_decodes_one_hit_and_emits_typed_insufficient_disposition(
     queried = _query(database, [identity["page_json_version_id"]])
     assert queried["regions"] == []
     assert queried["near_parent_sources"] == ["report.pdf"]
+    assert queried["unresolved_near_parent_sources"] == []
     assert len(queried["candidate_dispositions"]) == 1
     disposition = queried["candidate_dispositions"][0]
     assert disposition["disposition"] == "INSUFFICIENT_DISTINCT_CHILD_ROLES"
@@ -390,6 +697,7 @@ def test_indexed_query_evidence_replays_sqlite_and_rejects_coherent_owner_tamper
     identity = _ingest(database, page_json=page)
     queried = _query(database, [identity["page_json_version_id"]])
     assert len(queried["regions"]) == 1
+    assert queried["unresolved_near_parent_sources"] == ["report.pdf"]
     evidence = _evidence(queried)
     compiled = _compiled()
     checked = _validate_indexed_query_evidence_v1(evidence, compiled_specs=compiled)
@@ -467,7 +775,7 @@ def test_pre_evaluation_disposition_builds_only_bounded_authenticated_repair(
     assert plans[0]["query_disposition_sha256"] == canonical_json_sha256_v1(disposition)
 
 
-def test_owner_absent_is_unresolved_evidence_but_conservatively_has_no_repair_job(
+def test_owner_absent_is_not_unresolved_family_evidence_and_has_no_repair_job(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "pages.sqlite3"
@@ -482,6 +790,7 @@ def test_owner_absent_is_unresolved_evidence_but_conservatively_has_no_repair_jo
     identity = _ingest(database, page_json=page)
     queried = _query(database, [identity["page_json_version_id"]])
     assert queried["near_parent_sources"] == ["report.pdf"]
+    assert queried["unresolved_near_parent_sources"] == []
     assert queried["candidate_dispositions"][0]["disposition"] == ("OWNER_ABSENT_OR_AMBIGUOUS")
     sweep = _unresolved_sweep(queried)
     assert sweep["trials"][0]["status"] == UNRESOLVED
@@ -493,6 +802,48 @@ def test_owner_absent_is_unresolved_evidence_but_conservatively_has_no_repair_jo
         )
         == []
     )
+
+
+def test_near_source_policy_requires_paired_axes_across_whole_document_frontier(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    rows = [
+        _row("Doanh nghiệp nhà nước", ["10", "9"]),
+        _row("Doanh nghiệp có vốn đầu tư nước ngoài", ["20", "18"]),
+    ]
+    owner_only = _page(deepcopy(rows))
+    owner_only["sections"][0]["tables"][0]["title_exact"] = "Bảng chi tiết"
+    owner_identity = _ingest(
+        database,
+        physical_page=7,
+        image_sha256="7" * 64,
+        page_json=owner_only,
+    )
+    branch_only = _page(deepcopy(rows))
+    branch_only["sections"][0]["title_exact"] = "THUYẾT MINH"
+    branch_identity = _ingest(
+        database,
+        physical_page=20,
+        image_sha256="8" * 64,
+        prompt_sha256="9" * 64,
+        page_json=branch_only,
+    )
+    queried = _query(
+        database,
+        [
+            owner_identity["page_json_version_id"],
+            branch_identity["page_json_version_id"],
+        ],
+    )
+    assert queried["regions"] == []
+    assert queried["near_parent_sources"] == ["report.pdf"]
+    assert queried["unresolved_near_parent_sources"] == []
+    assert {item["disposition"] for item in queried["candidate_dispositions"]} == {
+        "BRANCH_ABSENT",
+        "OWNER_ABSENT_OR_AMBIGUOUS",
+    }
 
 
 def test_accepted_source_suppresses_unrelated_pre_evaluation_repair(

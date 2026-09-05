@@ -26,7 +26,7 @@
     "format_version": "ACCOUNTING_STACKED_PERIOD_LANE_LAYOUT_SPEC_V1",
     "lane_roles": [
       {
-        "aliases": ["Tổng giá trị của hợp đồng", "Tổng giá trị hợp đồng", "Giá trị hợp đồng", "Hợp đồng"],
+        "aliases": ["Tổng giá trị của hợp đồng", "Tổng giá trị hợp đồng", "Tổng giá trị theo hợp đồng", "Tổng giá trị theo HĐ", "Tổng trị giá theo hợp đồng", "Giá trị hợp đồng", "Hợp đồng"],
         "mapping_eligible": true,
         "role": "CONTRACT_VALUE",
         "unit_kind": "MONEY"

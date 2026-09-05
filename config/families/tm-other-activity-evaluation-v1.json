@@ -1,4 +1,5 @@
 {
+  "adjacent_continuation_family_root_policy": "EXACT_UNION_OF_DECLARED_ROOT_COMPONENTS_EQUALS_RECEIVER_TERMINAL_TOTAL",
   "aggregate_duplicate_roles": [
     "NET_OTHER",
     "INCOME_PARENT",
@@ -23,6 +24,7 @@
   "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
   "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
   "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "continuation_period_axis_policy": "ADJACENT_PAGE_EXPLICIT_CONTINUATION_INHERITS_COMPLETE_BLANK_HEADER_AXIS",
   "context_total_mapping_roles": ["INCOME_PARENT", "EXPENSE_PARENT"],
   "context_residual_bindings": [
     {"context_role": "INCOME_PARENT", "residual_role": "INCOME_OTHER"},
@@ -32,6 +34,7 @@
   "derived_role_equations": [],
   "detail_context_roles": [],
   "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
+  "duration_header_path_scope_policy": "DISTINCT_SUFFIX_AFTER_EXACT_COMMON_PREFIX",
   "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
   "family_id": "OTHER_ACTIVITY",
   "family_root_population_policy": "WHOLE_TABLE",
@@ -46,7 +49,7 @@
     {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
     {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
     {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
-    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+    {"accepted": true, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
   ],
   "owner_match_policy": "EXACT_NORMALIZED_WITH_BOUNDED_SOURCE_SUFFIX",
   "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
@@ -60,6 +63,8 @@
     "Lỗ thuần từ hoạt động khác",
     "Lãi thuần từ hoạt động kinh doanh khác",
     "Lãi/lỗ thuần từ hoạt động kinh doanh khác",
+    "Lãi/lỗ thuần từ các hoạt động kinh doanh khác",
+    "Lãi lỗ từ hoạt động khác",
     "Thu nhập từ hoạt động khác",
     "Chi phí từ hoạt động khác",
     "Chi phí hoạt động khác",

@@ -1,6 +1,11 @@
 {
-  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
-  "closure_policy": "EXACT_INDEPENDENT_DUAL_COMPONENT_ALL_LANES",
+  "authenticated_source_repair_artifact_ref": {
+    "path": "data/registered/gemini_json_dual_component_source_repairs_v1.json",
+    "sha256": "879091395013512327cb87d5cf254f577d9d8705cc2a151452631703ce9195d8",
+    "size_bytes": 68770
+  },
+  "blank_zero_policy": "PRESERVE_SOURCE_BLANK_NEVER_INFER_NUMERIC_ZERO",
+  "closure_policy": "EXACT_EACH_OBSERVED_LANE_PRESERVE_UNOBSERVED_SOURCE_LANES",
   "coalescing_policy": {
     "component_order": [
       "BALANCE",
@@ -28,10 +33,11 @@
         ]
       }
     ],
-    "max_page_span": 0,
+    "max_page_span": 1,
     "owner_aliases": [
       "Hoạt động mua nợ",
-      "Hoạt động mua nợ (tiếp theo)"
+      "Hoạt động mua nợ (tiếp theo)",
+      "Mua nợ"
     ],
     "reset_aliases": [
       "Biến động số dư dự phòng rủi ro cho vay khách hàng",
@@ -104,7 +110,7 @@
       "magnitude_power10": 9
     },
     {
-      "accepted": false,
+      "accepted": true,
       "aliases": [
         "Đồng",
         "VND"

@@ -7,6 +7,7 @@
             "Thu nhập từ mua bán chứng khoán đầu tư",
             "Thu nhập do mua bán chứng khoán đầu tư",
             "Thu từ mua bán chứng khoán đầu tư",
+            "Thu nhập từ mua bán chứng khoán sẵn sàng để bán",
             "Lãi từ mua bán chứng khoán đầu tư"
           ],
           "within_role": null
@@ -25,6 +26,9 @@
             "Chi phí mua bán chứng khoán đầu tư",
             "Chi về chứng khoán đầu tư",
             "Chi về mua bán chứng khoán đầu tư",
+            "(Chi phí) về mua bán chứng khoán sẵn sàng để bán",
+            "Chi cho kinh doanh chứng khoán đầu tư",
+            "Lỗ từ mua bán chứng khoán đầu tư",
             "Lỗ về mua bán chứng khoán đầu tư"
           ],
           "within_role": null
@@ -54,12 +58,39 @@
             "Dự phòng giảm giá chứng khoán đầu tư",
             "Hoàn nhập dự phòng chung cho chứng khoán sẵn sàng để bán",
             "Hoàn nhập dự phòng chung cho chứng khoán đầu tư sẵn sàng để bán",
+            "Hoàn nhập dự phòng chung chứng khoán đầu tư",
             "Hoàn nhập dự phòng/(dự phòng) rủi ro chứng khoán đầu tư",
             "Hoàn nhập/(dự phòng) rủi ro chứng khoán đầu tư",
+            "(Chi phí)/Hoàn nhập dự phòng rủi ro chứng khoán đầu tư",
+            "(Chi phí)/Hoàn nhập dự phòng chứng khoán đầu tư",
+            "Dự phòng/ (Hoàn nhập) dự phòng chứng khoán đầu tư",
+            "Dự phòng / (hoàn nhập dự phòng) rủi ro",
+            "Dự phòng / (hoàn nhập dự phòng) rủi ro chứng khoán đầu tư",
+            "Hoàn nhập/Trích lập dự phòng giảm giá chứng khoán đầu tư",
+            "(Trích lập)/hoàn nhập dự phòng giảm giá chứng khoán đầu tư",
+            "Trích lập dự phòng rủi ro chứng khoán đầu tư",
+            "Dự phòng chung chứng khoán đầu tư hoàn nhập trong kỳ",
+            "Dự phòng cụ thể chứng khoán đầu tư trích lập trong kỳ",
             "Hoàn nhập dự phòng chung cho chứng khoán đầu tư giữ đến ngày đáo hạn",
             "Hoàn nhập dự phòng chung chứng khoán đầu tư giữ đến ngày đáo hạn",
             "Trích lập dự phòng cụ thể cho chứng khoán đầu tư giữ đến ngày đáo hạn",
-            "Trích lập dự phòng cụ thể cho chứng khoán giữ đến ngày đáo hạn"
+            "Trích lập dự phòng cụ thể cho chứng khoán giữ đến ngày đáo hạn",
+            "Trích lập/(hoàn nhập) dự phòng rủi ro chứng khoán sẵn sàng để bán",
+            "Hoàn nhập dự phòng rủi ro",
+            "Hoàn nhập/(trích lập) dự phòng chung cho trái phiếu doanh nghiệp chưa niêm yết",
+            "(Trích lập)/hoàn nhập dự phòng chung cho trái phiếu doanh nghiệp chưa niêm yết",
+            "Hoàn nhập dự phòng chung cho trái phiếu doanh nghiệp chưa niêm yết",
+            "Trích lập dự phòng chung cho trái phiếu doanh nghiệp chưa niêm yết",
+            "Hoàn nhập/(trích lập) dự phòng cụ thể cho trái phiếu doanh nghiệp chưa niêm yết",
+            "Trích lập dự phòng cụ thể cho trái phiếu doanh nghiệp chưa niêm yết",
+            "Hoàn nhập dự phòng chung chứng khoán nợ sẵn sàng để bán",
+            "Trích lập dự phòng giảm giá chứng khoán nợ sẵn sàng để bán",
+            "Hoàn nhập dự phòng cụ thể chứng khoán đầu tư nắm giữ đến ngày đáo hạn",
+            "Trích lập dự phòng cụ thể chứng khoán đầu tư nắm giữ đến ngày đáo hạn",
+            "Trích lập dự phòng cụ thể chứng khoán nợ đầu tư nắm giữ đến ngày đáo hạn",
+            "(Trích lập)/hoàn nhập dự phòng chung chứng khoán đầu tư sẵn sàng để bán",
+            "Hoàn nhập/(trích lập) dự phòng rủi ro",
+            "(Trích)/hoàn nhập dự phòng rủi ro"
           ],
           "within_role": null
         }
@@ -118,6 +149,9 @@
       "Lãi/(Lỗ) thuần từ mua bán chứng khoán đầu tư",
       "Lãi/(Lỗ) thuần từ hoạt động mua bán chứng khoán đầu tư",
       "(Lỗ)/Lãi thuần từ mua bán chứng khoán đầu tư",
+      "Lỗ thuần từ mua bán chứng khoán đầu tư",
+      "Lỗ thuần từ mua bán CK đầu tư",
+      "(Lỗ)/Lãi thuần từ mua bán CK đầu tư",
       "Lãi từ hoạt động mua bán chứng khoán đầu tư"
     ],
     "resolution_mode": "EXPLICIT_ONLY",

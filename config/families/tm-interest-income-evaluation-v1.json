@@ -1,18 +1,20 @@
 {
-  "aggregate_duplicate_roles": ["DEPOSIT_INTEREST", "CUSTOMER_LOAN_INTEREST", "CUSTOMER_AND_OTHER_CREDIT_INSTITUTION_LOAN_INTEREST", "SECURITIES_INTEREST", "TRADING_SECURITIES_INTEREST_COMPONENT", "INVESTMENT_SECURITIES_INTEREST_COMPONENT", "FINANCE_LEASE_INTEREST", "GUARANTEE_FEE_INTEREST", "LETTER_OF_CREDIT_FEE_INCOME", "PURCHASED_DEBT_INTEREST", "OTHER_CREDIT_INCOME"],
+  "aggregate_duplicate_roles": ["DEPOSIT_INTEREST", "CUSTOMER_LOAN_INTEREST", "CUSTOMER_AND_OTHER_CREDIT_INSTITUTION_LOAN_INTEREST", "SECURITIES_INTEREST", "FINANCE_LEASE_INTEREST", "GUARANTEE_FEE_INTEREST", "LETTER_OF_CREDIT_FEE_INCOME", "PURCHASED_DEBT_INTEREST", "OTHER_CREDIT_INCOME", "CAPITAL_CONTRIBUTION_INTEREST_SOURCE_ONLY", "CREDIT_RELATED_FEE_DETAIL_SOURCE_ONLY"],
   "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
   "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
   "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "continuation_period_axis_policy": "ADJACENT_PAGE_EXPLICIT_CONTINUATION_INHERITS_COMPLETE_BLANK_HEADER_AXIS",
+  "cross_fragment_same_role_parent_equation_policy": "EXACT_ADJACENT_PRIOR_TERMINAL_COLON_SAME_ROLE_PARENT_EQUALS_RECEIVER_LEADING_DETAIL_SUM_ALL_LANES",
   "corroboration_pairs": [],
   "context_total_mapping_roles": [],
-  "derived_role_equations": [{"component_roles": ["TRADING_SECURITIES_INTEREST_COMPONENT", "INVESTMENT_SECURITIES_INTEREST_COMPONENT"], "result_role": "SECURITIES_INTEREST"}],
+  "derived_role_equations": [],
   "detail_context_roles": [],
   "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
   "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
   "equation_consumed_unmatched_residual_role": null,
   "family_id": "INTEREST_INCOME",
   "family_root_population_policy": "EXPLICIT_SOURCE_ROOT_SUBTREE_ONLY",
-  "family_root_requirement": "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT",
+  "family_root_requirement": "OPTIONAL",
   "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
   "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
   "label_only_structural_group_policy": "DISABLED",
@@ -21,13 +23,15 @@
     {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
     {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
     {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
-    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+    {"accepted": true, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
   ],
   "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
   "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
   "period_semantics": "CURRENT_AND_COMPARATIVE_DURATION",
-  "root_component_roles": ["DEPOSIT_INTEREST", "CUSTOMER_LOAN_INTEREST", "CUSTOMER_AND_OTHER_CREDIT_INSTITUTION_LOAN_INTEREST", "SECURITIES_INTEREST", "FINANCE_LEASE_INTEREST", "GUARANTEE_FEE_INTEREST", "LETTER_OF_CREDIT_FEE_INCOME", "PURCHASED_DEBT_INTEREST", "OTHER_CREDIT_INCOME"],
+  "root_component_roles": ["DEPOSIT_INTEREST", "CUSTOMER_LOAN_INTEREST", "CUSTOMER_AND_OTHER_CREDIT_INSTITUTION_LOAN_INTEREST", "SECURITIES_INTEREST", "FINANCE_LEASE_INTEREST", "GUARANTEE_FEE_INTEREST", "LETTER_OF_CREDIT_FEE_INCOME", "PURCHASED_DEBT_INTEREST", "OTHER_CREDIT_INCOME", "CAPITAL_CONTRIBUTION_INTEREST_SOURCE_ONLY"],
   "role_unit_overrides": [],
+  "role_anchored_owner_fallback_policy": "UNIQUE_REQUIRED_ROLE_TABLE_PLUS_SAME_PAGE_DECLARED_SUPPLEMENTAL_TABLES",
+  "role_anchored_supplemental_roles": [],
   "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
   "supplemental_owner_aliases": ["Thu nhập lãi thuần", "Thu nhập từ lãi thuần"],
   "supplemental_detail_residuals": [],
@@ -35,5 +39,6 @@
   "typed_control_exclusions": [
     {"aliases": ["các khoản lãi, phí phải thu", "lãi cho vay và phí phải thu chưa thu được"], "disposition": "INTEREST_RECEIVABLE_BALANCE_CONTROL"}
   ],
-  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD",
+  "validation_only_roles": ["CAPITAL_CONTRIBUTION_INTEREST_SOURCE_ONLY", "CREDIT_RELATED_FEE_DETAIL_SOURCE_ONLY"]
 }

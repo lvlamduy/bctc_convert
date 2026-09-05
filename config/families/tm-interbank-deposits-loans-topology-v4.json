@@ -87,6 +87,7 @@
           "aliases": [
             "Bằng vàng và ngoại tệ",
             "Bằng vàng và ngoại hối",
+            "Bằng ngoại tệ, vàng",
             "Bằng ngoại tệ và vàng",
             "Bằng ngoại hối và vàng"
           ],
@@ -166,6 +167,7 @@
           "aliases": [
             "Bằng vàng và ngoại tệ",
             "Bằng vàng và ngoại hối",
+            "Bằng ngoại tệ, vàng",
             "Bằng ngoại tệ và vàng",
             "Bằng ngoại hối và vàng"
           ],
@@ -353,6 +355,7 @@
           "aliases": [
             "Bằng vàng và ngoại tệ",
             "Bằng vàng và ngoại hối",
+            "Bằng ngoại tệ, vàng",
             "Bằng ngoại tệ và vàng",
             "Bằng ngoại hối và vàng"
           ],
@@ -386,13 +389,6 @@
             "Dự phòng cho vay các TCTD khác"
           ],
           "within_role": "INTERBANK_LOAN_GROUP"
-        },
-        {
-          "aliases": [
-            "Dự phòng rủi ro cho vay các TCTD khác",
-            "Dự phòng cho vay các TCTD khác"
-          ],
-          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -462,7 +458,11 @@
           "aliases": [
             "Dự phòng rủi ro tiền gửi và cho vay các TCTD",
             "Dự phòng rủi ro tiền gửi và cho vay các TCTD khác",
-            "Dự phòng rủi ro tiền gửi tại và cho vay các TCTD khác"
+            "Dự phòng rủi ro tiền gửi tại và cho vay các TCTD khác",
+            "Dự phòng rủi ro cho vay các TCTD khác",
+            "Dự phòng cho vay các TCTD khác",
+            "Dự phòng rủi ro cấp tín dụng cho các TCTD khác",
+            "Dự phòng rủi ro cấp tín dụng cho các tổ chức tín dụng khác"
           ],
           "within_role": null
         }
@@ -491,6 +491,8 @@
           "aliases": [
             "Tiền gửi và cho vay các TCTD khác",
             "Tiền gửi tại và cho vay các TCTD khác",
+            "Tiền gửi tại các TCTD khác và cho vay các TCTD khác",
+            "Tiền gửi tại TCTD khác và cho vay TCTD khác",
             "Tiền gửi và cho vay các tổ chức tín dụng khác",
             "Tiền gửi và cho vay các tổ chức tín dụng (TCTD) khác",
             "Tiền gửi tại và cho vay các tổ chức tín dụng khác",
@@ -554,6 +556,8 @@
     "aliases": [
       "Tiền gửi và cho vay các TCTD khác",
       "Tiền gửi tại và cho vay các TCTD khác",
+      "Tiền gửi tại các TCTD khác và cho vay các TCTD khác",
+      "Tiền gửi tại TCTD khác và cho vay TCTD khác",
       "Tiền gửi và cho vay các tổ chức tín dụng khác",
       "Tiền gửi và cho vay các tổ chức tín dụng (TCTD) khác",
       "Tiền gửi tại và cho vay các tổ chức tín dụng khác",

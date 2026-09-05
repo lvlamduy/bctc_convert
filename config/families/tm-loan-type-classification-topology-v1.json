@@ -1,7 +1,7 @@
 {
   "children": [
     {
-      "matchers": [{"aliases": ["Cho vay các tổ chức kinh tế, cá nhân trong nước", "Cho vay các tổ chức kinh tế và cá nhân trong nước", "Cho vay các TCKT, cá nhân trong nước", "Cho vay các tổ chức kinh tế, cá nhân", "Cho vay các tổ chức kinh tế và cá nhân"], "within_role": null}],
+      "matchers": [{"aliases": ["Cho vay các tổ chức kinh tế cá nhân trong nước", "Cho vay các tổ chức kinh tế và cá nhân trong nước", "Cho vay các tổ chức kinh tế và cá nhân trong nước (i)", "Cho vay các TCKT, cá nhân trong nước", "Cho vay các tổ chức kinh tế, cá nhân", "Cho vay các tổ chức kinh tế và cá nhân", "Cho vay tổ chức kinh tế, cá nhân trong nước"], "within_role": null}],
       "presence": "OPTIONAL", "role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -17,19 +17,19 @@
       "presence": "OPTIONAL", "role": "GOVERNMENT_DIRECTED_LOANS", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Cho vay cá nhân và tổ chức nước ngoài", "Cho vay đối với các tổ chức, cá nhân nước ngoài", "Cho vay đối với các tổ chức kinh tế, cá nhân nước ngoài", "Cho vay các TCKT, cá nhân nước ngoài", "Cho vay các tổ chức kinh tế, cá nhân nước ngoài", "Cho vay các tổ chức, cá nhân nước ngoài"], "within_role": null}],
+      "matchers": [{"aliases": ["Cho vay cá nhân và tổ chức nước ngoài", "Cho vay đối với các tổ chức, cá nhân nước ngoài", "Cho vay đối với các tổ chức kinh tế, cá nhân nước ngoài", "Cho vay các TCKT, cá nhân nước ngoài", "Cho vay các tổ chức kinh tế, cá nhân nước ngoài", "Cho vay các tổ chức, cá nhân nước ngoài", "Cho vay các tổ chức kinh tế và cá nhân nước ngoài"], "within_role": null}],
       "presence": "OPTIONAL", "role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Cho vay chiết khấu thương phiếu và các giấy tờ có giá", "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "Cho vay chiết khấu công cụ chuyển nhượng và các"], "within_role": null}],
+      "matchers": [{"aliases": ["Cho vay chiết khấu thương phiếu và các giấy tờ có giá", "Cho vay chiết khấu thương phiếu và GTCG", "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "Cho vay chiết khấu công cụ chuyển nhượng và giấy tờ có giá", "Cho vay chiết khấu công cụ chuyển nhượng và GTCG", "Cho vay chiết khấu công cụ chuyển nhượng và các GTCG", "Cho vay chiết khấu công cụ chuyển nhượng và các", "Cho vay chiết khấu thương phiếu và các giấy tờ có"], "within_role": null}],
       "presence": "OPTIONAL", "role": "DISCOUNT_INSTRUMENTS", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Các khoản trả thay khách hàng", "Các khoản phải trả thay khách hàng"], "within_role": null}],
+      "matchers": [{"aliases": ["Các khoản trả thay khách hàng", "Các khoản trả thay cho khách hàng", "Các khoản phải trả thay khách hàng"], "within_role": null}],
       "presence": "OPTIONAL", "role": "PAYMENTS_ON_BEHALF", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Nợ cho vay được khoanh và nợ chờ xử lý", "Nợ cho vay khoanh và nợ chờ xử lý"], "within_role": null}],
+      "matchers": [{"aliases": ["Nợ cho vay được khoanh và nợ chờ xử lý", "Nợ cho vay khoanh và nợ chờ xử lý", "Cho vay được khoanh và nợ chờ xử lý", "Các khoản nợ chờ xử lý"], "within_role": null}],
       "presence": "OPTIONAL", "role": "FROZEN_OR_PENDING_LOANS", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -41,7 +41,7 @@
       "presence": "OPTIONAL", "role": "OTHER_LOANS_AGGREGATE", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Cho vay khác"], "within_role": null}],
+      "matchers": [{"aliases": ["Cho vay khác", "Cho vay khác đối với các tổ chức kinh tế, cá nhân trong nước"], "within_role": null}],
       "presence": "OPTIONAL", "role": "OTHER_LOANS_EXPLICIT_COMPONENT", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -53,7 +53,7 @@
       "presence": "OPTIONAL", "role": "DELAYED_LC_COMPONENT", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Cho vay thấu chi và thẻ tín dụng"], "within_role": null}],
+      "matchers": [{"aliases": ["Cho vay thấu chi và thẻ tín dụng", "Cho vay thấu chi"], "within_role": null}],
       "presence": "OPTIONAL", "role": "OVERDRAFT_AND_CREDIT_CARD_COMPONENT", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -65,7 +65,7 @@
       "presence": "OPTIONAL", "role": "CORE_LOAN_TYPE_SUBTOTAL", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "within_role": null}],
+      "matchers": [{"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán của khách hàng", "Các khoản cho vay hoạt động ký quỹ và cho vay hoạt động ứng trước tiền bán của khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS"], "within_role": null}],
       "presence": "OPTIONAL", "role": "MARGIN_AND_SECURITIES_ADVANCE", "role_kind": "ADDITIVE_CHILD"
     }
   ],
@@ -83,6 +83,11 @@
     ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "DISCOUNT_INSTRUMENTS"],
     ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "PAYMENTS_ON_BEHALF"],
     ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "FINANCIAL_LEASE"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "ENTRUSTED_OR_SPONSORED_CAPITAL"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "GOVERNMENT_FUNDED_LOANS"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "FROZEN_OR_PENDING_LOANS"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "OTHER_LOANS_EXPLICIT_COMPONENT"],
+    ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "OVERDRAFT_AND_CREDIT_CARD_COMPONENT"],
     ["OTHER_LOANS_EXPLICIT_COMPONENT", "MARGIN_AND_SECURITIES_ADVANCE"],
     ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "GOVERNMENT_DIRECTED_LOANS"],
     ["DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "FOREIGN_ORGANIZATIONS_INDIVIDUALS"]

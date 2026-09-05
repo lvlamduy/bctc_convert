@@ -1,0 +1,1794 @@
+{
+  "corpus_manifest_index_id": "gjfccmiv1:index:8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a",
+  "family_id": "ENTRUSTED_INVESTMENT_RISK_CAPITAL",
+  "format_version": "ENTRUSTED_INVESTMENT_RISK_CAPITAL_PDF_RESIDUAL_AUDIT_SPEC_V1",
+  "residuals": [
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:85d497282e3667103ede6a802fff16ea62ad19fe1da34be5c5c6d8899db96803",
+          "pdf_page_render_sha256": "8df3d92770d8cca502e0c4eb09c42a2c5f78fa43a658f3ff75264e397c36e316",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:613fb26bcdb43d676da16e1abc762c8b96ed6b218b4aa9701d070cc847018631",
+          "pdf_page_render_sha256": "8d50bc449636f9423fd5608c45edd4f41e26d7bf681a3740d890af8acaf6e9b5",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9773eaa530e680e2b1ebc8fc786e66076df825a03dc5ebef201451a6965ab45e",
+          "pdf_page_render_sha256": "058d9939d7f999a793c7a56d63f86e70a598915dbf7826d23c84b9f29d867219",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 39,
+      "residual_audit_id": "geircfav1:residual:f0b68d67a95dae40900ae68eb59c0a56aaaa4c00f361240e359bfef2ff633414",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "source_sha256": "ca19e5491e9cb188dfb702cec49b22739205e50514f42f1f8345ee98383d110f",
+      "source_size_bytes": 15033183
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:32d2601d55c37164ba9f3f400c0da375172280d74660cd0a22998f54103332ee",
+          "pdf_page_render_sha256": "5d575953ee5e8414659fcb253877ac3d455f1084e9f34a173cd6d7d827bbe955",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:f07621aee7cdf99c5104484a5c2ab7fadf0a3576804811f0554a89795e87bc23",
+          "pdf_page_render_sha256": "d5c9fa0282d32eeb3e8b1cff7e062e41f9acfdaf2f5acfdf420aaeccc5363a3d",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:10c2e4eab0b1eb69051fdb79329c6456476518ac146a04b328d7b03460dd8e7e",
+          "pdf_page_render_sha256": "e438b890ac7034c62a24b5a36f140bcf06b3433feb7a4cc2c4c8bd4979ea6e2e",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 40,
+      "residual_audit_id": "geircfav1:residual:9d9df2e7666ea22c3f5631f52084d586689c18c3fd8f0c2dc391622e20991c87",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "ff44a84bbd09294a410828699833ee03c361be93aa74f1c6e13226f13b613861",
+      "source_size_bytes": 13134038
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:9783396af6a1e1292374685cd023e2dff4ecb6ff9b3ad297087b32998e974816",
+          "pdf_page_render_sha256": "7358cf7392740e41bd02a3030996772dcaea4ab532eb1f5ac5ed115376171258",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:0b748ac16ad315e749ffe2df177bf4d8caa98f72a49359d79ea88f537dee35c8",
+          "pdf_page_render_sha256": "64ceee9d43ded6135cc275e024f41462200c98202ef257fd023328e49f393e9a",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:21dbde26f4fe3692a926c84acf43b3f70fccafb4a426e76fbb2d2a2a8c946f80",
+          "pdf_page_render_sha256": "cca900298fee4ec2a4ac52af542a25527304a6192bbf8f4ac2f2d30f65e5dd94",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 44,
+      "residual_audit_id": "geircfav1:residual:c753d1afc57d0dd49ab51d66a531e5492cc99895984451195b9a627564a25076",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_sha256": "d0e42abdcf75a345795219468a8e265d43b49f20821e40f6bb9d9cd266f251f1",
+      "source_size_bytes": 15719971
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:f104a2c210c2a722dc3ff4416a5c4f02a2f39b173599bb57037a6cef4a297e3e",
+          "pdf_page_render_sha256": "52d61d30b4721096a3c7cb0f4fb3ad1b683eb4d89b08db0655ba2fd5b65b04a0",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:710b8ae433643fb9ec9166298558ac16840024e94c1a31967c2bda2038415504",
+          "pdf_page_render_sha256": "b6dd2d23fa1cfea58eb1d6bda1d03ad535e5a668bda5620d2e196abc0195ac63",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:dcee05de42047ec915fe4e5b8c7fe869e73732a08f677a853128f68f73cf6e8b",
+          "pdf_page_render_sha256": "e8722a8a01df010fd1ae14fcbc0f34424d5d8460f3f78267ae08929da0e321f2",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 45,
+      "residual_audit_id": "geircfav1:residual:aac322e09e80c599a84e48bfc6a0a0490d6ec29fc39bfe942da31b707ede18d8",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "09997d5b5b35abfb81ba05d940adc7aae35b0afe82efcaf9332a457b0d632c1a",
+      "source_size_bytes": 13682119
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:30d83f13eff2437214883f8ab97b5594c90958cdb63d8563340165f0ba50bb4e",
+          "pdf_page_render_sha256": "780d142ac4309189b82d760b646a88feb2923c2352dfcc4364713927e8a70114",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5b8392d2ed6244ec6214d8481707b36bb52e04b489b7834e0efd4571dbcd5f0d",
+          "pdf_page_render_sha256": "5a8e459f224455e47ba59500263322fed0cb58c91fce0c2b7872ec7620f66a0d",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:74e7a39e29bd7aaece6c05c737200f6454da0f8d157dd5689a0faef268df5ab0",
+          "pdf_page_render_sha256": "e4beb767afd11a1fde3e66cfbe0d1310c569964344f6840b4eaa55d209c6b457",
+          "physical_page": 6
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 69,
+      "residual_audit_id": "geircfav1:residual:87e0ca928f5abd01aa810bc9be6acf33efda9ea8127bab97ef8f9e25b62f8425",
+      "source_logical_name": "vietstock_bctc/LPB/2025/BCTC 31.12.2025 VN color.pdf",
+      "source_sha256": "d3cf5756961841199cb971f494d7579c05095964284b6dc82a45dafbc563fab7",
+      "source_size_bytes": 10493926
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:ede4cdaa0d30f074f49a5ffe30ce1e4e68dca87a248c63032847950e40463c7b",
+          "pdf_page_render_sha256": "0aa9e08268c7ed9e3194184b1e33b6ff68c93218c3c7bc845ca8f580b3cf259f",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:58c7c0306aa6f67d46266ed9fd81f5a181e38daffca4a99075c1d99de7a4fb93",
+          "pdf_page_render_sha256": "6d91ffa4a04753095ae73a390fcfed99b0bf7604003ada845b205d73ca087c70",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:fc6ec7c6402bf7acd84443bcfd2d274fb1b5e51ea9e09cd2043c8459ae6b3be1",
+          "pdf_page_render_sha256": "1e5bdb3f6821b791bb285ce86b3b29ce80a78ac1cb7f41dd2ffb06cca83989d7",
+          "physical_page": 9
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 70,
+      "residual_audit_id": "geircfav1:residual:d341d00e312c16fe5f1c104fb5b20876f7033f157cbd0edd1d96a6731c937bc3",
+      "source_logical_name": "vietstock_bctc/LPB/2025/BCTC Kiểm toán năm 2025.pdf",
+      "source_sha256": "ef2899b213a5a9d4f0b8ba1028f1962648d11cfc100e1d400d7399f3220e8752",
+      "source_size_bytes": 5166736
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:c02930cb22f1eaac5edf1408385456385ed26ba99a9adedd758816209270add1",
+          "pdf_page_render_sha256": "4202c00d186a9df9dc0b4d912009593721c9c91a151448da681dde1445d9dbbe",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9b440815bdbce83052f2120d5d84d280960adea8bc2ef6b6b713d1a6088ec525",
+          "pdf_page_render_sha256": "68425a9b8283d42341d0ab90eca003ec306cf9f92fc9c58dddf04332eda76e69",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:442ce603917315aa7c9974880a196e583661a813fbae42c38bbae827e82fe2b2",
+          "pdf_page_render_sha256": "c156207c48f7a065069ae03e2f1d8f045cc60e41b2a28d9be95b785f2dbacd59",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 71,
+      "residual_audit_id": "geircfav1:residual:f2747f46b8f5a905b23fe501e9e2d06fe587f4564aee814626ed319710b32c94",
+      "source_logical_name": "vietstock_bctc/LPB/2025/BCTC Q3.2025 VN.pdf",
+      "source_sha256": "3da8e1e9c43406283a19866a5104e5808b15ac24501374d39542b24747ee16c8",
+      "source_size_bytes": 9938769
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:26de3c8e7c7caf6dfd4d4c3126006a2c05f982fb5def4f223e9e7cd443dbc8c3",
+          "pdf_page_render_sha256": "1e71c2f245fb945450f4ac26707dd66e0dd65a3bdaa12a0e23081bc6c12169c3",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:da0073bab837ae354c04e6fc34cdcf14e5cbdbe22b10f0bbad4ef3f9a53414b2",
+          "pdf_page_render_sha256": "e5d5906f1f0189087f2980594780f8215696cc2c43c5a025715947bb7f4751bc",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:b2cd2927600d44a3413656c4ee9c74c104a3d774bcb04242ce98080fd9f82218",
+          "pdf_page_render_sha256": "eaaa5961174374c57ff16d36467e173343ff9dde8e46bd032a91b606f045e5d3",
+          "physical_page": 9
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 72,
+      "residual_audit_id": "geircfav1:residual:9b9717b3e7b7ede32c6670d2583e0456bc08f3e6b52e851f958c3fd81cd8aae5",
+      "source_logical_name": "vietstock_bctc/LPB/2025/BCTC Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "dacb86416df60868817168f474d3a69581cfe3c9cd714fa3fa904b4aecf2da82",
+      "source_size_bytes": 4937847
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:f95b8cd411d6d84e899dba9d90adde8a0d462f3a89fbd37c6e9c5ec23c1de555",
+          "pdf_page_render_sha256": "05ecacb7d890891e3c6c88d94ef852c3712511bef3120d7f98dfa46702fd8e66",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:8d51ed2663e30ce96e3af9987a64e5624113041b400cbe9e9abcf28ad04edaec",
+          "pdf_page_render_sha256": "a4ec89ef49803fdba6f98f51f17ea9dbf80c455aa0dbb16839f61d27e2beb2ff",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:b18b8e013dd87ef0bbe58392d75f9685180bdac0b09795b6ccfff5be75065702",
+          "pdf_page_render_sha256": "aa259d58670a66bf92c9fd1f55e3d0b691c7d888300a80c5a83ab609bc982f3f",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 73,
+      "residual_audit_id": "geircfav1:residual:d18846444555294c2f4eb5a8cab07b142b4615f3eca55a0b307f343bb09dcf8d",
+      "source_logical_name": "vietstock_bctc/LPB/2025/BCTC quý 1 năm 2025.pdf",
+      "source_sha256": "9c937e2c7aed47902ca1523ede288ee8b60a04755387d824097a6b70ae4421b7",
+      "source_size_bytes": 7108187
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:06cb7565efea22c627d7195d3478956a57a8a4da8a2e15cd0ab443dfaeec688d",
+          "pdf_page_render_sha256": "578c4e52ad59c3aaff8232d266e79f2985bcb4583b405a63640f445f0505e3f1",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:fc166b80e6ce0b1b7d5c8efa1148cf0a41b50b055c86c211bc1a9aaf0cb0957d",
+          "pdf_page_render_sha256": "93014c856f7cc92282f60689e854924a86bae58f61fe60f01d27b1468f4402ba",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6d143d685ef4cf60aa3ec5cd92ebf4298c704a782920aae9b307daa4d0359d44",
+          "pdf_page_render_sha256": "9024883382132109557a214d5950a516595fecdbb7e467eb0c54dcacc9ac122e",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 74,
+      "residual_audit_id": "geircfav1:residual:d22cb4848b491a5083d9ffc53e6914c5381357a88a16666d103d24c6adef2dec",
+      "source_logical_name": "vietstock_bctc/LPB/2025/BCTC quý 2 năm 2025.pdf",
+      "source_sha256": "076695d24be19332f8cde12b31ba265aba4d3e8c4fc95cc7dcacea48a0740248",
+      "source_size_bytes": 6219303
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:e616605a78bf648fcfc3eef088b2bbe213907dd100a4c5a0252dd1b0f7817331",
+          "pdf_page_render_sha256": "8ea5a422144fd8f92b841db2ffc3f2f396e27c8b0ca6c08bf7eb20e612c91617",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:984b0bf2562adae6b416cf3eb2c882094808bfb74ad811a7687614b2734f467f",
+          "pdf_page_render_sha256": "56e52651bf98487e415934af9d96dc9ec5ad61c7a999d786d9fd46fbca9c115d",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:090ad41541d55a700388fc5839cb263a11ee21102515e063cbb2ff63e5b95346",
+          "pdf_page_render_sha256": "bf55d8b7ffd1aaa45ac7a20a54c77c9324ec56ee62b32618ad4fea3178d72b36",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 75,
+      "residual_audit_id": "geircfav1:residual:a8de53c6ce0f6a439ea66f77fc21ee34b5df2d5b480bd2fd0dafb406807a8271",
+      "source_logical_name": "vietstock_bctc/LPB/2026/BCTC quý 2 năm 2026.pdf",
+      "source_sha256": "47d3b2d6b5a4ab6855ad1568127928204e7097f490748c07274e2ed9704f5fe3",
+      "source_size_bytes": 7640633
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:06458086e5e3c4eb896febae323337b268ad6bd1e8d3a4cf1802b625f089f702",
+          "pdf_page_render_sha256": "e8a601c2f46dd16e5d6aae19111d33dc0bd990eb51cdc056a608ed642a11ce47",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:25ad98ab5bce36ba2dc7ab5e52cc7d08f38b06d6db135d67140c10ff1e894966",
+          "pdf_page_render_sha256": "0091273542c5603e256967ca227b2fcf15e7752bfe7b19863b19b57761877f35",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:364e1e0cc8e958764ba382b6f555f628809a8a5cf668973afb806308970b6893",
+          "pdf_page_render_sha256": "e1dcb2a5468a2d45d9ca1ebc5ad5fd2560fe68be8dc5fca765e6b1d1dca774bf",
+          "physical_page": 12
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 76,
+      "residual_audit_id": "geircfav1:residual:7bb80f67ee0dac9c2d0d1f93842477d0333b6a1fd5824b0fc7ddfe9e510c48bd",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "source_sha256": "0fef0b3df6d3453b4532fd56de24f428f3ced958cebc88b1befd43924b73ed42",
+      "source_size_bytes": 2399899
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:5a53cb9a27a6ee386873bf24504e8800758976008762da3908903d4f33cc37dd",
+          "pdf_page_render_sha256": "721f9a937d9456da87f0af9296425b12c98394a9ec75b7bf63eb777567b8c649",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:4a1633da36556cda02c8c93c306107e7c919e94e120be2961723137f3c213b6a",
+          "pdf_page_render_sha256": "f7e83fd4891728a7159d57be2800b363c71a3ef26b8008b522dd823b88b92eb3",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5cd28bd871f7d736c2b0ffcc0ed24487c452d62623d2b834107bca9798a70560",
+          "pdf_page_render_sha256": "8603e54a48da8dc180d958861d388a4e8d41745253de88801f3b493cc4630eca",
+          "physical_page": 12
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 77,
+      "residual_audit_id": "geircfav1:residual:e7f74269248e1f594e360521faea931a1b510cd67624ed9250748982ebb95496",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "eb61c0dd29997ae46476018f323b47ddd7f0d8580f44e12b4055e74023e2d02a",
+      "source_size_bytes": 2884912
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:83617eddbf5f31ae78a7854426b7a280d185becea1c406cc2ef6df0766dc60d1",
+          "pdf_page_render_sha256": "2ed397a980f6ef37b26a7dd4f775e364e5decd7e512671f9b1c2c2d6f4a7593a",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:c807b419723bb1e90ebef39e2cd5cc77218a3ba4294b8673f989106b3a65d5c0",
+          "pdf_page_render_sha256": "634e4de3cab07257e785fee10b5f2efed6f0643ecb7acfef62653b932cc40449",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:c28adb4a134ebe141e4b9cd8402c273e3c8397b5977c2a74f9d3bd14251fca9d",
+          "pdf_page_render_sha256": "426d177685aae4650f553b40a765f21e174bf21f2b1d9c8ea7d4b786f501b22b",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 78,
+      "residual_audit_id": "geircfav1:residual:0debf175921e5ff197999576d614923bdb2f01b16256e4152fc7200e54edb5d8",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "9920694e6d1fa1f3df0ac9cea2589db55afbbdf07fdacb8490f0a4a79a4f212b",
+      "source_size_bytes": 2153797
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:1e6cf37cc2c20a1ed9394467e95396e0db671fb512907746dc8633932043719e",
+          "pdf_page_render_sha256": "e4f216e7ff67ffee1ee47e5916a3225804e3c1cd147d24ebee5971c7ecaa5f6d",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:0e39f024c9e345beeb0137ea791e75198a04959718af58ed80bee892458c12cf",
+          "pdf_page_render_sha256": "2616b2ab744365df6ca5a2bacc4dc3d3364d6cbada6f54176473636b7dc580aa",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5ae71169e166e820171a9ea536d6b5a4f9c418f912b075e455dc50a74b5f9a91",
+          "pdf_page_render_sha256": "de90234fcdb0dc32b20e2a5a0d77027e9bed8d77769648d23fd3bbac1af983b1",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 79,
+      "residual_audit_id": "geircfav1:residual:35b92f7593dfa0029fa086c3aac510a36cf72e02e0b89f6515d777b4adb45306",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+      "source_sha256": "f6c9cf3252ebcde2329ec93bd89f20fbfb847d52d92dbb352a48880a09572e45",
+      "source_size_bytes": 2420536
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:c96f3562ff667ddaecdac48538c330cfe11a7dbe6072081582d699fa3acb2f7d",
+          "pdf_page_render_sha256": "56aad98b188afd1f443043839579b62812ddd76f3f5aad5398352798140e6272",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3691456c20e69e3949eddf4b95f2374a36cb8ab4ca4b3bb275c4558e3c4d64f0",
+          "pdf_page_render_sha256": "14fb281f0a64479b4a8fc98eb9998b7891ae2eff0ffa3558cf064cb65f3f5056",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:d2936f0ced518b4c6ff9c4c2086f2079d12c5496cbce8b453828799a489c4761",
+          "pdf_page_render_sha256": "2399ca5545907a118f8a0220559eebac570f2a1bd89a76338b6eddeb5f37bbe6",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 80,
+      "residual_audit_id": "geircfav1:residual:c71d775fbc40a62b123610a9a98c7ab97ceb1df13801da8804afa8d92afba476",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+      "source_sha256": "cdd9aa861f8a8c72a203b7f846d6c4151899bd43010b0a149312f3e1084b0ff9",
+      "source_size_bytes": 2439296
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:d245c09c9cb6a35f10cb4c824dc709ed135f94461ae0f9ad0f926c8056e1d792",
+          "pdf_page_render_sha256": "5d990d3761e7ca1d2e4f518a96ef1cbe72ee5bfa69019e514e26c1cd6b6ee2b3",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:8ff33b064563fa66b62a11bd9b68d7e8fb7ab8fb97ab1e03f9c3f65e6ebf6bee",
+          "pdf_page_render_sha256": "83b6ae10c9744c845be07b9d7eeef24c1745ca9d4c4467048226d128e961f8fa",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:1ca68c67e1bfddd11f1943f2ddf374136688cb0d8836d57943a4a98b7d8a8324",
+          "pdf_page_render_sha256": "c6a1824eed8585f57e102be98915a7d005e06ddd9a835a40590ea28637d0aec8",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 81,
+      "residual_audit_id": "geircfav1:residual:3f922e979b4b879d613191696b7c8bfae5ae41bda9324da016fb133569224136",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+      "source_sha256": "cc7e4dcb7267c5896cef0d67d959069515dd9907ab2592979d12652803d2cb81",
+      "source_size_bytes": 2301586
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:42b0845c80faa0277258e4ec627f4c6c7209df2e5c3562e11c5052bd4c49750f",
+          "pdf_page_render_sha256": "d3af1bdfa11c340ff2be1d573af270f5a1920a83bb76d018439aadd3ecc8590b",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:96109856589091679a062b3a4f6dd2094899784335343f722a839693c6829d31",
+          "pdf_page_render_sha256": "b645b042c3eb139e3ca21fcb1967f47883da4f6ded894b43807eef462136eb95",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:69ce2f59a4e9efed3fc18b66ce42556d5c461fd2a450929ff4ecca31bd0dafa1",
+          "pdf_page_render_sha256": "6436972bc7c0a5444fc978b046ce8708dabe08021c10587ca285d77eb7252047",
+          "physical_page": 12
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 82,
+      "residual_audit_id": "geircfav1:residual:4e066ed3b5fc836071f70d31662df6b98137d4dec4df5c91c3b287c7455dbf00",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_sha256": "a472100b2be6e440ffc005d98c2789c02c6856ef86bf79e4486707920054c364",
+      "source_size_bytes": 2486660
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:d9fa8d5de28e103b007468856267a6c2feea2376b9f257d75429da2de8b247ae",
+          "pdf_page_render_sha256": "95a22357a5f1bf3ce4315a73f17fe45e3cef3223099769bc913c2529705c2d1e",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2fecb8401c19989ed5c26018139da3d7464230ae692d411bb778839ee8d01ec7",
+          "pdf_page_render_sha256": "8cac87393fe7d1e977e6ede951b2e6d9d6b796e478953ae4515eb2cc46d1fb14",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:b0601380729f51b2990425f988f7517b6820fefffc1117f8f990981c75c6cc6e",
+          "pdf_page_render_sha256": "c9a92d58c69f86cd9359e8386f531de91557c62308b04ab8f8b100f029d9c01a",
+          "physical_page": 12
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 83,
+      "residual_audit_id": "geircfav1:residual:f076d007fca7e04cca673eb20d5312ec2632cb08364001aad43591b6d8e9a1d8",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "ce23acb57c144539e995f76a9f365aeb8dd773a960fba9ad9fc847c4df0bb6c0",
+      "source_size_bytes": 2999543
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:01bedc440a883c3558407ee47fb1ec416809b67a5b251ed811d1200008ec8df6",
+          "pdf_page_render_sha256": "faab35ebd9bada97ee0b6a4793d0abb1298a5f8cca5baef859d61063ea1cd902",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:c1b072cdb0e4592f29b483211cf73d427056503056cc2ebc58a63ab385fab30a",
+          "pdf_page_render_sha256": "c397e5dd1ffdf797ce0086cc31652f03d0583bd3ebb4b007c82b5550c9ba3e7f",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:8b90dc18a40e523bbd91d15d2f6c0d30c5a79fbabfa1e5351562dc04fcde4925",
+          "pdf_page_render_sha256": "f31a8f39d959c4fe57a46bdf7f88ca806c6de39cc1e9b9b8e54cdfd2bf203951",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 84,
+      "residual_audit_id": "geircfav1:residual:073590038dd065a5759d9388600d2192cff21884429117385bd5e378080bb2a3",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+      "source_size_bytes": 2184428
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:755b6f2ce4a4c9d5ab3573695c453082d418aa5c1837c28378fa2c9b36f3ae64",
+          "pdf_page_render_sha256": "43968fb104859270ac559010b2b30a2d4f078000e23acce6c28f5db2e249dd1a",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:36a0f04930661ee6a85151092a894ae2da1738975a3782d6208f8143ae7333c9",
+          "pdf_page_render_sha256": "8c7381877672d6789e20a426e02d99c655b8ea1860ce6f8cd74818bd4e064622",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:1bb4575021a0efe3f595439a5d48cb0cdd96221fff6419f9d9b2602fa4f5bcf2",
+          "pdf_page_render_sha256": "7c4069f3e0ffedc5a53f6535bc55f173f8fc9b815b34993c3fbee0f5d877f19f",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 85,
+      "residual_audit_id": "geircfav1:residual:593ad008658b88ced827a0ce047b7c44e88e8fb8360ae905b44f236af7da2046",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+      "source_sha256": "846d835d4bd8c68f3298f1f2afc628f3b3befe5ba991a2a65ec2f6e3d110e127",
+      "source_size_bytes": 2462194
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:7cb6a40acd0d9af33b8b4d441a58089343b84e687c7575feb4e5ae749c3752c5",
+          "pdf_page_render_sha256": "e0569a986d164dd9eea198f0042d005c264016a1c30d38ddfc590b6dbf246c08",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:600472bb942a4e8ac555457ae0804b8394fff88cb1ba5dff8a37007806badad2",
+          "pdf_page_render_sha256": "d280557b1b654ab85fb07f23816db878e4810a3674e837fa24d56ba70450a792",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a19fd86a947e2dab0720c7b68620007f0ffc2d34ad56ced9e7d7315fde88c4b2",
+          "pdf_page_render_sha256": "70c024656014033f4e57b9ad439f669ad5ee60e56bdb72af18ece0a389470b07",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 86,
+      "residual_audit_id": "geircfav1:residual:9d499dbc145aba7a1661b5761172759bd3191505ab33f3438be5df9937bce286",
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "source_sha256": "aea35cf385e08d3fb0ea6f19225786030a62052a8006578c14905e16728f4586",
+      "source_size_bytes": 2507307
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:a00a8aed9daa5a7fd6c4ab5c7c063da05ffbeb0ffdd93c68502e4bf7b0d5a930",
+          "pdf_page_render_sha256": "b4eaa384a6dda5fe16e6910c29a30fea65c1ca0faf65b75b71df2ec8f3285836",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ab402da669a434b41c68a1963ecf64528d53dcb23575721a261335645c9efd92",
+          "pdf_page_render_sha256": "927cf7a39026cf701552b3e1ccdd4f9cb7c7bdd869eae23123c1ef6247fb3f82",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:77dd3e3bdcbfd2e1bd331958753e2890e8b580c70d702a81ff1bcf4f3113cc29",
+          "pdf_page_render_sha256": "04c3c82de15372e098789e1e6549545541de35b3f7f6bddd33d12292978533df",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 87,
+      "residual_audit_id": "geircfav1:residual:5b647bcf621462a1251b173663fe993bcb6ed10075c9bc736fc82d247a46eb24",
+      "source_logical_name": "vietstock_bctc/MSB/2025/MSB 20260130 - MSB - Bao cao tai chinh Hop nhat Quy 4 2025.pdf",
+      "source_sha256": "7a265b5b15d4d9bc06972c2440d2718827a730beb0431a9282f265eacfcd6d70",
+      "source_size_bytes": 2346614
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:2d08e32dd2fac770cf291ec26e617043ca3419673868d92e991cf2aa5c1f736c",
+          "pdf_page_render_sha256": "deac4a12b52df474e24f0c4ebde32efb30a05910f3ed1afae52b73957dddf928",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:92d36546b55af480070446b320523dbfe9cfb78646f3771dd88f1aa77934d545",
+          "pdf_page_render_sha256": "4b18a297566ba436578eaefc2bff0c84024c1a9e27d4431be33165ce315333a9",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9a5adeab20af78d894348ef53b5e9e93b83c74341f39924a1d0f6ae01564b5d0",
+          "pdf_page_render_sha256": "25d101a960ae86b724cd95f0a0085039186aec5a3a06e07ca9fa0e0e6cb1bcd4",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 88,
+      "residual_audit_id": "geircfav1:residual:29e9607dc359e04362c2808fdd5defab380734c58c431296b965cdd8d217b5c3",
+      "source_logical_name": "vietstock_bctc/MSB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+      "source_sha256": "4a053cbf4766da0945de2f18d1c4f7b360ce3cb60f2e42ecb0d88917e2eacddd",
+      "source_size_bytes": 2901739
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:9646dfa89504eff353b6a6050084b3fe0ac7eb177084e556b6eefc6dbbdb3afe",
+          "pdf_page_render_sha256": "f83fc6f1a6b24caf13334f06643619f431011bec565ce5149bb669a6e478990e",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:80df6489d929b3d82fdc59a27f1c36b66be1c350f5e17bd7bdc7853d888d32cb",
+          "pdf_page_render_sha256": "2801d0478224ea20c8c2ece0c5f5feea01248dab3540398cc53d547800083289",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:4961890089f177a3a0f1e8053deb0d4449812d557a3fda911b2323f06fca5fee",
+          "pdf_page_render_sha256": "7b43a3e2686c511e6add21f15783085fe50bfaf01c70e41ab872093dd7988524",
+          "physical_page": 6
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 89,
+      "residual_audit_id": "geircfav1:residual:c4fbb7d165a3cb0b5b15a587df114ae3071a7cca127d3f3c668370bccffc9775",
+      "source_logical_name": "vietstock_bctc/MSB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "f4bc1a600409772d503b8f87479e384397e6b3e45bf2f705d5f58a47fb15f267",
+      "source_size_bytes": 1680160
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:487b6e82100d160a4fc369705625996de0e7b0b8edc1a7a72b84a376fa07d742",
+          "pdf_page_render_sha256": "92554f92d35978b8671acbd6e79024554b0e15779560d68ca51a80293a98a67c",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:0445e0573b09666c4330019ab6fd37734f42ceaaba2e199f29869cbd3b925758",
+          "pdf_page_render_sha256": "25ee0ea0330bb258e4a191fabca0c7141e8930d415faccc211787926d5db453f",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ce81b8edac8ce041c70fbb6dd6732d924a0d8ee3a6a81e1da609199f65859a5f",
+          "pdf_page_render_sha256": "fe2636554751347c3bf315756810b06a11dcd502808785608a2fd9ef44b5ab5d",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 90,
+      "residual_audit_id": "geircfav1:residual:7d841bd29d0541c5dc33d959377edee255afb5949452473c9846a3aee4536dc4",
+      "source_logical_name": "vietstock_bctc/MSB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+      "source_sha256": "24077d38665ff7379d11e7d0450b9aadbe7092fa743a78e47e21982b5369f6bc",
+      "source_size_bytes": 2861225
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:d60f9da067bb54a3bbd36d85bfd3061da612f3c84e2457acf766400a684f4b01",
+          "pdf_page_render_sha256": "10c782c3c92dd13b8e28c2299c4043b709ff687f86309d947bc61deb36219cde",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e5c1a866a6c7bf2fb043375bd3b33c5429f51d9c7e08d82af400d56723859fa0",
+          "pdf_page_render_sha256": "0b31a1b76717453fa1e904a0ae686836228389fb4f5437a8b66372756a87b5c3",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:df1fe695c26ce9c018a6599b04edb6a2bc29fab717097e8dbc9c9232ff165411",
+          "pdf_page_render_sha256": "88011ae06a7c45bbe30fbac4d68076092fdbfa923a5cfe420d56569d70ab60b4",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 91,
+      "residual_audit_id": "geircfav1:residual:fb513d8dc8ca10269c0dd04587196e590f57ec44f9ce9e07378b022ff9a1a18c",
+      "source_logical_name": "vietstock_bctc/MSB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+      "source_sha256": "65f4e0c533607919a7fec4af0f3eb46942c781c86eae4eb6ebef7697dbf5ff88",
+      "source_size_bytes": 2018936
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:81678f0d2fea142954eb3a8eec40352cfcc198160c28a7b121ba20a5e187bb03",
+          "pdf_page_render_sha256": "07096ec31e82681720ea58485716087edce452bfe1d1a7790cbdd34b3fafd6ec",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2167ff19c48e89659a02d566b58a6697d9bb05e21ceb1083cb279e4ca87a4859",
+          "pdf_page_render_sha256": "d661daf4a705625203be5438393d87b9be95d2680e814ecdab36549e88211702",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6331d512a9c1b05137adb33cae1cf4b5e6dbd06a39886c11e63f717e3fa64ca7",
+          "pdf_page_render_sha256": "75c4f9df403f88b71f79b529994fe5c078f6e2b7cfc57669f1e41b579a027dc9",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 142,
+      "residual_audit_id": "geircfav1:residual:754487efc8938ebd0be5da39f7bad6e812e3bc1b9bcd6fea14d49bdbedf7b8c8",
+      "source_logical_name": "vietstock_bctc/PGB/2025/BCTC Kiểm toán năm 2025.pdf",
+      "source_sha256": "2f8fb78002eaba1817d2cdb5f78b5bd83c636b0a2bf4d28b37ec6e81294f4b3d",
+      "source_size_bytes": 13961997
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:564160bf34b8ecec7e1887f582e62e2a5bcc5caad506be03a6d7e04e51aaa160",
+          "pdf_page_render_sha256": "231bd09e42d7c746d43f4893a64548f4c9fdd37bff68effd773066b2e6292f66",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:45710833495e7dcd109d9f29554c96d1c53a22812ea808ee2c6ba8291d7e242e",
+          "pdf_page_render_sha256": "6882854128ba96d6280178bdfa38856a5318db22b3f20c948417b4a07c12c8fd",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3cd953183ddcf03f5037e1c67fdcb38c2c87f243f541f514830cca582c5ed02a",
+          "pdf_page_render_sha256": "4eca19f86f904c3a331e15d90b8c6ca8b0452a836122c0333411bb534e306f47",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 143,
+      "residual_audit_id": "geircfav1:residual:e1407624693f4c543faffecea84e860aeb71cd6d02abcb83c296f90cf7030cf4",
+      "source_logical_name": "vietstock_bctc/PGB/2025/BCTC Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "954322b899c9db6343793dd46d3ed9fa88a4977f98b66d49109ac1524ab06c42",
+      "source_size_bytes": 8193331
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:59187d83dc9d76302de484000c8321ab82c8bda817feebfb8cdeae723999e437",
+          "pdf_page_render_sha256": "b8d78fd76821a44024da120567c939748c7dbb0f561da6bb0746e0408575d39f",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:c8733585831218d7b6f339a12452ded2bdc24bf2e0ebeee67b768bd243694561",
+          "pdf_page_render_sha256": "6ffaf0c0caec491b02c4ef2838b7c86befe6d2d7604fb2d11b1669a9ebe3a9af",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:7b41c3f7b2145559d6e6c859396a0b2a6aef5774b7a8e27ce28256dc37064123",
+          "pdf_page_render_sha256": "4f0cf9323e61f9e2c1d5d6d306c4011603cec333b6dcd15c0c50f0a44e49654d",
+          "physical_page": 10
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 177,
+      "residual_audit_id": "geircfav1:residual:948b8c172e9952ab8d5394737ac80426fac03171dd445621d2fe921b812db2ce",
+      "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "source_sha256": "4899c93035ade7e1fce34b1f787c9008dd63b4690c651e79cdee30c1d1cb7e13",
+      "source_size_bytes": 8899790
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:9a50b25a25d368c28aa0cdce0ea8210e7513126072c33d78deff67646e5e42e9",
+          "pdf_page_render_sha256": "e13f4e7345b040c7cdb33b5d24e11b11c62b9489a61422cfceaa4c2433e3fc1c",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:aa5f48b015dee8e01e5ebdbc9f5f4dc8888bc0016dbf153ad025c76eab55cacd",
+          "pdf_page_render_sha256": "9af0e75e722aa86991ceb0d6c2009c3fcad024abee955ef8cd6b368bc7bfe8d5",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:4334ab4511854d53b94d94022a47131c30a5a1736678d25c8c57edcfbc724d37",
+          "pdf_page_render_sha256": "9c9f50e75b3b1ad5717c8347a90b2b260c8c2ad0397239ddeb648a6946e6848a",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 178,
+      "residual_audit_id": "geircfav1:residual:33bf9bfba2da2ea03ef733685dbb3a30b81b3a8a0e35be407f733725ad35846f",
+      "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "edb42067f98964f5a04c25e5422d862dfc200769f000fb576befa6f71c3b8393",
+      "source_size_bytes": 14844598
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:bdcf647f59924efddd478d274464cbc0453e01949984a07c6352d7e6e84313c7",
+          "pdf_page_render_sha256": "a9859e7421ac2e0e7997e372d97f316c73252f6d2930a28f4d8411931e2d4f7e",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:67263aecfb1f85b6e0a5388dd0a151e9373414209d531ca47ea74615dd4bada2",
+          "pdf_page_render_sha256": "90a992ff318fb4e9480dd49079048701f70924210273ca7430db1e833d787575",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:62a4b8ca17e60b2fc2eb46bfb8f1faf05b14cc31d8443e3a367fd06dca33bd15",
+          "pdf_page_render_sha256": "d9fa7fcd4349ed7a4aa5d54a993a8365157b7b846d7d5cf52fab01307a01d06d",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 179,
+      "residual_audit_id": "geircfav1:residual:c924902f0df37202ce0ad5c0284f0e69c451122858b1d3b46950a2eeb7669e68",
+      "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+      "source_sha256": "4b3c1d975e9e6fbcf0b6a7eac67179b49598aceb7be2188c198a194e5487960b",
+      "source_size_bytes": 15760497
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:9e02f5e69628f027e948af62dd5a0288c9354746a0097248509e635477c170bb",
+          "pdf_page_render_sha256": "0c6eba6df2ce744d10dcbb96c4afb0d59d902d10c0c80d104126f1fe3f6a2a55",
+          "physical_page": 2
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a3844a1ceca0d5d0c383dd3bb124844f1759c0e658fe2d40c5591b55ca9d6f66",
+          "pdf_page_render_sha256": "a0360dd23d5f7585773ae07679f01d4f60c49e043d84e488f2587e1cdb6b56a9",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e73ffbf4bf8884ecab02ecef4b345e447ef01453c0d41e118da1216d7f45cdd9",
+          "pdf_page_render_sha256": "03ccdd59507ebf8a24181f478a484598aedf5c6c3e21abc3e8aa2813a60c2460",
+          "physical_page": 4
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 180,
+      "residual_audit_id": "geircfav1:residual:d6e678bd3eb639cf2828cad42963b1fb76f48d099468edaeb65b1846a8f4a1bb",
+      "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+      "source_sha256": "110eca486ce72190827b7c59cc5968fc1b1e1631d691d277abff070555a51494",
+      "source_size_bytes": 15064951
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:03cdf5a8a486cfa5eb34fda566d85e4e596b2b4a5160988cc264a7551702d7ad",
+          "pdf_page_render_sha256": "1f43a5b3d816a568fa12407037a0ab5d581c8b55dfaf1912034117f46fea6cc2",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9fa57515c0689d5907c55e652c6c303b4ea15b7bd4db94f3d1a364194f4308a8",
+          "pdf_page_render_sha256": "95b15cea4f0658bec31f7e22bd57afa3ec781ac6589b97fd839652fea5298a05",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:4612fd81e83e58432b7f33343c6ff501af80642fa724fc7521d953766d2e458b",
+          "pdf_page_render_sha256": "90458198c7489ee15b1ddb39dac83b40da9a02cc147aca779af21abbaff79f66",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 181,
+      "residual_audit_id": "geircfav1:residual:83de4252f71de974fa2e28c09e82c42cb87802768bb4c4388bfb1fe96c19c432",
+      "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+      "source_sha256": "2450429e3bb63499172dfe06b7c23e45db4ffea43c5d6c0e753ded0064127fa3",
+      "source_size_bytes": 6813654
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:fe3eadfab7faaa452fb3c0af4134f5eca673785716f6c468fc6aae2c18192e54",
+          "pdf_page_render_sha256": "cf7610fb2b79629a41a953af2084d42cbd910006087d57be96942282cd7789a4",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e9a248bfa5e46c8f8426c98db764366bc1bf0b4a52334c01de1a5efab6d16389",
+          "pdf_page_render_sha256": "ca4c3558a2923701fefec73ac8bc6010c87659cd7be4c5876948820cd767c43a",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6dddbd1075329c70d1c9af5622fb405c62933d459723c12063a32d8c26852028",
+          "pdf_page_render_sha256": "6d69382ad37b7322a6675e6bde431d6970bd0599003310d209f48beb48aafcd7",
+          "physical_page": 9
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 187,
+      "residual_audit_id": "geircfav1:residual:49f966b53b1ae1cdb93f82c4d0e3f5feaa00c4dd1fb9a037b1b0c453d72a8ef6",
+      "source_logical_name": "vietstock_bctc/SSB/2025/source_revisions/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025 - Nguồn chính thức SeABank.pdf",
+      "source_sha256": "f9404f393cab65d00f7d91c375c60e441974a590428d27b73741279e6c64fa8e",
+      "source_size_bytes": 21461028
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:95c6912d25d46cca08da30f7961ab3919f02710bef86e3678eaed26491e6f5d0",
+          "pdf_page_render_sha256": "62583374f9f3a698bfa6a3798d1fc81c00ec75ee0e6310dc3397d68badd4c190",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:caba4b0207e53dc32d6f188e8bf509fb0de8d80e92cbc511909590668f1bb3d8",
+          "pdf_page_render_sha256": "a4d0986bb5697a7f991d66d30f191724538c37c3bdb02b2d969cf9c50a908747",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:030d4dbd38f3adeeb4ff8c3f5f9805249843a82602b994577439ce2af0ff69ef",
+          "pdf_page_render_sha256": "64b5fb24f9de2e40ec2f41a50df05fa889cb0e513b0810f5735ddc4e79a4001f",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 189,
+      "residual_audit_id": "geircfav1:residual:edb590b11176abd455d51e45dc58f678f5d32d19fae928fb7faeabfae5514346",
+      "source_logical_name": "vietstock_bctc/SSB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+      "source_sha256": "720fa1fe2aa881b90139fd18c88124fd73b4f72ca4fd82b4690082875a192718",
+      "source_size_bytes": 6967691
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:c0c3fb72843d0ea034e19355c6be23c61dbae029b85cdb58fe4c5312e3e00390",
+          "pdf_page_render_sha256": "eb1ae7d4d4a292eb442edb6f83a38e248fb05d251b6c447c2a4d050b840a2318",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e05bca969af114b8b29fd3a6f01c7210c3d7f5860af8a00f645fcb6b4d3fd2b0",
+          "pdf_page_render_sha256": "d3422babd84075eb077dbead9ad9c6b11a1e8ea8d0d7c8e398a1d4d6c385ceb8",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3b567eebc2ffda59b7d2935f196863497cef7fab0d7b102bf1a713efabdc01b3",
+          "pdf_page_render_sha256": "a431624250dda810dbe286ad914086f3b508c5295724445ae49c7d34108f7dc6",
+          "physical_page": 6
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 190,
+      "residual_audit_id": "geircfav1:residual:6c663008f322553b16385aec3aa682771166644a841bf61c8c85d6bcc0490201",
+      "source_logical_name": "vietstock_bctc/SSB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "31804b33d7d22f32772b38407ea425561435e3eed7608e5b5119e63dd5c84873",
+      "source_size_bytes": 14535522
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:0e55b2415e21356529d1a9c0a5aa6ff84d0674ec2b7c32cf2a372d7724a9b3c0",
+          "pdf_page_render_sha256": "21d7b5b8a47cb3e7ce96b0316fd644d473742521786b7f763535a54567971605",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:d5e8cbe007ec208ebdbfea778e6a4d2c94b84789eac302110a34cc0131d78685",
+          "pdf_page_render_sha256": "c485ef8308598418b73e8f5054c1e26078c9990089c6b15f585abd345204a85c",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:7d579214fe69e04ee4b79710ccf8c0bfe1b5c80cb2f2302aad825edb35fc1ec6",
+          "pdf_page_render_sha256": "a3a23b25c3194e01a4a954858dad7cd7d84d2f2612ae4756398bd3fe51d93de4",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 191,
+      "residual_audit_id": "geircfav1:residual:e8a5018bc7f2570ab98749509c52ea0539e6e9c8413c60c7e724e54dd59258e5",
+      "source_logical_name": "vietstock_bctc/SSB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+      "source_sha256": "df7a686d08b666c24c9b97d4913cd19245e741eb706292240758fb990f998642",
+      "source_size_bytes": 7630508
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:00af5284bf3f8422c1fb2e16b9e6b34395ab2e2d3e9780447c813f2c624c0e3b",
+          "pdf_page_render_sha256": "33c5fcf0194dcffb11b6fadf470257124f7556e85d1688fa0d57ac36d9afdf9f",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:0b63757e5d632e728d8c5118586ae7a77c05e82012f0fc8982374ddaee8b2c8f",
+          "pdf_page_render_sha256": "444b4546db7df5566e04e2b8380809b7db7ddf1f4daaf3f9a65707beab08d801",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:7673f8e29a351ad6e253710e3e0b2db6f2314a9a91ededd131b69e7ca1e002fc",
+          "pdf_page_render_sha256": "4ce74cfe9a53aea9f8a49f9f2ca7d1c18389cd5c7801a5f22eafab87b6d8cad6",
+          "physical_page": 6
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 192,
+      "residual_audit_id": "geircfav1:residual:21084c99ce790d27ef22ccb88e72d9044b75f710366a3048b9fa935022bd90e8",
+      "source_logical_name": "vietstock_bctc/SSB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+      "source_sha256": "7fd70735610eecb95add47b7a3d77af4cf2c1c37cd81dd956ebb0d12cfde0cc7",
+      "source_size_bytes": 16007683
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:7d069110f19ddec0900de404716a881b2a0c7740308a3c1247e5e27e55ebec12",
+          "pdf_page_render_sha256": "47eccd61e45309bc9389005ca4f6810eeaa5769ab960c5c7d98fe29b35259061",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:80184495f228209e2b7c608a0e57a75a32f5c4acb9b2833d2a4265e04d8cc324",
+          "pdf_page_render_sha256": "d5bad268b6842ebe61c0bb8bf9c51a762af406698cc532dbddf59eb181290aca",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9c1a62b704732491447380026f27e6f7a6e5ff38785f48268c84e21fd6697fb2",
+          "pdf_page_render_sha256": "437994d79ea682161d40c0c63b9cafb40c7e36785cf5b5f2fb5abf7a4ad6407b",
+          "physical_page": 9
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 193,
+      "residual_audit_id": "geircfav1:residual:95ad3cd7c24e5b8e4b21f9de782ecd04c54d2f6fcbd9266f4f5332538464db1f",
+      "source_logical_name": "vietstock_bctc/STB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "source_sha256": "557b255998a46c8f94be83401d3c25ea45e13811b006ca968606800f13e06902",
+      "source_size_bytes": 3972213
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:084e6553b8246a97b93f3127677de0841d7eda1f7cf5bcaafd3ba344fd126da2",
+          "pdf_page_render_sha256": "4bdc8771ffdc70c31c0870f8134cedc7092ff7ad9413c653bfed16741915cfb0",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:290dde918607c70d5b5b64c9984952cdbf897659dcb12728486a9e9da2d93ac8",
+          "pdf_page_render_sha256": "f5782c3b0193cfcd65839a1a8e9d2f7cfa5201116462a6c6c91a305732235672",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3b5afaa1379aa81cd174220876e51aa059ba4006cedff85d36f12670c1a0ad87",
+          "pdf_page_render_sha256": "45b8dc2203218574e6486a4e5d0be7f96e0c365f6f297038c3c80e159287a62f",
+          "physical_page": 9
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 194,
+      "residual_audit_id": "geircfav1:residual:9bb2be2534be588e0c6c985a6145264d33448c6a5007e385e8b82598c7b1e3fa",
+      "source_logical_name": "vietstock_bctc/STB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "1cbb67f893d690652c141896e66e635365aac41863dc7425c0bb9db182f09abc",
+      "source_size_bytes": 19292698
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:76f72bba315cc5f5bd5690c01fa304f70b55d6cf73b055a9a6d41a96ac2ab0c7",
+          "pdf_page_render_sha256": "a944a0220bded50a0f8f7a9bb36e23fd285044bc96c679875a473fa01a02f978",
+          "physical_page": 12
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2631852de96b2ee546b0fe84dec95249ee3f60eb46366e958e3fb332b4edff3d",
+          "pdf_page_render_sha256": "6f59df9cba802a061f8cdb2979a7e64f2cc565384f7c56c9d520ba0c087ec584",
+          "physical_page": 13
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:fc6bdfa0de1b23af6d67da8192c47005df0625df63707a4daa4027484b5450cc",
+          "pdf_page_render_sha256": "d02e336337750b9f55695c239773f085f151ab9c7b41cf7ee8fc8a04c8d15ac1",
+          "physical_page": 14
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 209,
+      "residual_audit_id": "geircfav1:residual:8141147c98e2180cfef13803a4c458dec25739af5038d444952bf88209c21b73",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "source_sha256": "97f2ec73b020596d698f9a7aa24842585c7ed07c80d2c1c488c709a00c4982a8",
+      "source_size_bytes": 8105401
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:454d2f008349caa865d2b5003849db81cd3cdb782936fbaeda169389e3802fcd",
+          "pdf_page_render_sha256": "a11ea6a422ee7d84e96bca0006abf89af55b258323088c114ebb4b3c24d7cc80",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:06dafbc2028358fe37b09e20360d28c5403f342d824cb2194ea7ec2178009c9f",
+          "pdf_page_render_sha256": "669911d66186a4f4322c8cf986a7fcec90a3292d0e030174dac3f20275fe7878",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6d265dba1be44fca9e31c6b0ae85266a0c0e062b325555d8b35992e54d430e86",
+          "pdf_page_render_sha256": "077bb1647f4e37bce76c0d8f9dc19c2201cc8b668294ccad72dd76e9f4a20701",
+          "physical_page": 12
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 210,
+      "residual_audit_id": "geircfav1:residual:aae284d45170764f63a64bf2606f55b271d7f202cbc13d266cda67b444a87a00",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "d214a3a4480e013a56c6ebe60bf6d742bd882fef234171b4a928a98f98b14f6a",
+      "source_size_bytes": 6725637
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:0456574269731b42c357b08e520296ff0e7ea651d9c11f5a7be024948fe322e6",
+          "pdf_page_render_sha256": "cefeb40c67190c8be113848826811ff4dafc03dd008372512e4ec63f5bdff7f3",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:63becf461b6db156ee467c694df4d49f44b0119e27ef93f99b36b6fceef3490f",
+          "pdf_page_render_sha256": "6b10aff7f93525b18f05ef4f62f452fd09639e2c3bc59d9f83a179027656a199",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:adcc7c30948bcf3ee336ce429ebdeeb73fc88afbc42bb067b0abc29f08eb685d",
+          "pdf_page_render_sha256": "312f5b39b9c73325bfc9073ba46ac95712e5c1d16c0581b78f3baad5f7919523",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 211,
+      "residual_audit_id": "geircfav1:residual:97aeb09c80ce138c71d8696ef9dabc26c3d60ef1f11fdc5149739521560f5a6f",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "835192ebb1deed5d6ea24decaceabda2f47c534903f343f2a48858a40c7bf36a",
+      "source_size_bytes": 3991805
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:63ad48f7693edabda256ce396ee4f99a6a53914fa544585ea94cb71b0afe293a",
+          "pdf_page_render_sha256": "21d4c9f727a03a1aa4f80191bbaa879d9b4c47233ea591f67322ffbb32c5b804",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5f53ed84d85e796b19527713bfaff5a9034bd52eea4c3ba4b6bdffd9e790e72d",
+          "pdf_page_render_sha256": "b75d194034b6070d19b7baf6f6fc238aaa6af262be2d37538c1e9490b6a46cd4",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:fd5ed57d80bf9bd4ecebe01a3d2f8025bb6a24f81f41f7f207fb9ba6d71ed7f8",
+          "pdf_page_render_sha256": "11860d400741c8f72d5ed0e4c004921a64d7402964a16c0e70f3efda32671bd9",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 212,
+      "residual_audit_id": "geircfav1:residual:e0b34e072000bf517462296f2363334112f953c2de575fb306fa335a78b99c14",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+      "source_sha256": "733b1d852be0ac9c1f70aa706efaef86611885cc1b0dd4d4d70d785672dd4237",
+      "source_size_bytes": 4068664
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:32ae78c8d1f81445878eefd589e77c71e3383fe6aa13acdaec5f572b0a1899a9",
+          "pdf_page_render_sha256": "3533b40b086acc3244f43e13f9537c546afd2f4a4ad914876a580fe32601e7e7",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ce6b76d042c177f68293291e678c9bb75925cf973887541864ff720041b744a6",
+          "pdf_page_render_sha256": "3ecf79a47def098461767c28b6b4110bf24d127d24f16dbcfd6c1549cec83836",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:0a5d98fe302e5a219ea2f6ad0b4ef2981c5ee491706b25d130184444ab107f3c",
+          "pdf_page_render_sha256": "32283eab17f9d55eb049ea44625881b5affd0546ccf423f81ce2629fe6125af2",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 213,
+      "residual_audit_id": "geircfav1:residual:2efff21be153b0fff1f21ecb4f0537b37204d022c5fc869b7f687f51a98d8f36",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+      "source_sha256": "05a61e88832eecf0d9b996b1546aab8de04e1a9b42d8c94a70e2c871b9297630",
+      "source_size_bytes": 4094245
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:db3a14e3bcde49a9b10b6ab8d4e2a44b1ede3b108f798da41d01e6238bb1f7b6",
+          "pdf_page_render_sha256": "d160468373a02bdc2951badafdc65ba95ed22acb2a9290e8bbb99e6509385878",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:f4eb213541296b520a66635c8f208447a45abf8ebd798e0bf54c6e90211adbb8",
+          "pdf_page_render_sha256": "44f8202ac864360340b08739516e75df4a9fdf2fd8c1a2e735ededca1cc61dd5",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:95d582b97c6ac97e5d2c9699294174b9cf121a3fdfe5257501e1cece1153fee1",
+          "pdf_page_render_sha256": "08e283971f5a669caa61e9c0b4341e1a635317537a3478260480d96b66478379",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 214,
+      "residual_audit_id": "geircfav1:residual:47bf771201862a7d2c33ad31c2e08d29fd2bd0a45066420a5e887f1644cf4819",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+      "source_sha256": "8c6b1e9b3cd835223d95b0a638ca754b4544fc1a67c0175bd2b977842c0d6453",
+      "source_size_bytes": 4075585
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:8b05660565b45bbb04e1e83d1b5a879dbbb35ad8e3b3dea797675d90b0d84af9",
+          "pdf_page_render_sha256": "a359883af7674bf22a0b733337ca0ef4c86546aef4514d147ffc816abb7d615c",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5534d51909e0646b6ce6f62e34a9ad96bf0479723e393ca607bee3da47673e70",
+          "pdf_page_render_sha256": "fefabbec90d8f44b489781ed7274b56ddb88ed4a4aabcc2ec49049333872910a",
+          "physical_page": 12
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ef0cbe1c0e9dba5343feba2a114b6481327d01be6f1abcea91379039d95bbc15",
+          "pdf_page_render_sha256": "65845f91dbabccc2adb47fcc6d0db99ad6f1b03ddf1bc96713b2bd3aea9a2eb6",
+          "physical_page": 13
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 215,
+      "residual_audit_id": "geircfav1:residual:01cd139027a8f23945f91164e12e63528872d72b3d8c3041ff46a82dd0e3b828",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_sha256": "553195cdc772f58a5ea34cb118cfcf98f7ea7460efc802ecc4e95269665a8527",
+      "source_size_bytes": 8559645
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:1bcb1fe901cc41afd035f534e465941fa4ade7c46e775613e23311cc92f86eff",
+          "pdf_page_render_sha256": "ece79e0c1be445c1c85f31359a58f28f3e2d26741b5d283f4a031d3ef95e1eb1",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:f420be24c90ba0c19c8861b281b8ad531e724474793858a9cfb9e370eeaf2fd9",
+          "pdf_page_render_sha256": "54ebe10cb1ca418372d7b7ca40e4bbd38d9c2ede73ecb62aa24ded8ffd43e94b",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6196185fa47844e649c8033775b01fb61991a14defa569db399efc67687b0754",
+          "pdf_page_render_sha256": "f7c28aff57b2382c79fddea2487df89b424e3937114165eb1b68b1a123c5c0e4",
+          "physical_page": 11
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 216,
+      "residual_audit_id": "geircfav1:residual:38d34f501a7b1d0572334ad77d23d194a816b5b5a707926aca8ab6ccd9527117",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "5ad1884aacc48174a32286b9da8f7a698e1e29c46d5b5c50d852d338f5b65436",
+      "source_size_bytes": 7732408
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:2281bb4a5581bcd5c61a7874d455b946d3a8b89a0c03260bb5083a616860e4a5",
+          "pdf_page_render_sha256": "00e355f7af1d4730d82e2502aa9276a1a19a73d770df61d2877cbb807f40caef",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3f0058684ffda9a2bce36ffa9dd032dbb7335c5e570ad193f626815e2075e4fc",
+          "pdf_page_render_sha256": "a02abca2af48dec3e149a628cb13372a8d8ed23a8cd081938075e4efba7ac6f8",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:01dd456ac020df116c9cbaaa85719b4857ffaca1436adccaaf3be7cf2689a2cb",
+          "pdf_page_render_sha256": "92640fe9cbfd0befe0f471fbe331319d7106a348292cee88647db7a438a851f1",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 217,
+      "residual_audit_id": "geircfav1:residual:6a01487a31e0808dc2fb04b36d192c8be61d25d4e2112df0bd8014528cc7cae2",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "c66142b157f4751207d80d5316f578f7499817be51d31526d2d521286eeb472e",
+      "source_size_bytes": 4329130
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:5b2423ab76b7604808384a91ba8bb2e9efb988a2b1ce797076fa184bfb1976fc",
+          "pdf_page_render_sha256": "abc9175e5089e05e3bb21ced06b068f8131acdc3cdde671458bc7f2a5b123dbf",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:bbd1f9ae554ccd22dc7c569ffd17785d51c5a8956b334fad8b276c2884dcc378",
+          "pdf_page_render_sha256": "d542e49defad3a58cf0c76eabf2fec732f23154560b63abb8eaa22ac96bcc8bf",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3a49e2d009e27139f139a08ea7459bbc160516c0d52f5dff5d31bb9882226dab",
+          "pdf_page_render_sha256": "38528305a93f96a9a2a9634a8251af0d3a3e778e2028b0f7b65658a8fe5c8db5",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 218,
+      "residual_audit_id": "geircfav1:residual:b5c99bc17a1c0eaa78ab3dfe5b03d33b40977216779b59a5db6117ac50470820",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+      "source_sha256": "ed276f17363405f3a553a6b5f6872ca545f3e986773515f268972704595b589d",
+      "source_size_bytes": 4682988
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:6c5525ee7ce541e2798e203a645cde46bf00c2fe66872ce5b43ff6878d9dc3c7",
+          "pdf_page_render_sha256": "40299b2644a26f32e39bc9e349166c6093f9cde06a8bf5597dddc62f9f274fca",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3a2d8e5d3d70d0b329925e7b8d88ef86db13913f0e68359c9a4e67a16de195aa",
+          "pdf_page_render_sha256": "31e9957a5c56960b0a12e2aefc43f5e36734ac0fcf166eeb5f06fc5b1b3d5587",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3c0308091a647db51655f4e2245d22f9d2ce62091ac63ae361da4547d3fcdb5e",
+          "pdf_page_render_sha256": "b8a062d646b7508ff9c156027b48287d8b73dc264e5610462ce7bbbab86a43cd",
+          "physical_page": 8
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 219,
+      "residual_audit_id": "geircfav1:residual:e81c5bad357e44a22c9235733b1ddf5c159e5ebcf1218daac1a0a6ca5d568ddb",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "source_sha256": "791460cc8f49996a54a2013d4d182153a7404d753d7a78399fd30cb1d5bc3b7b",
+      "source_size_bytes": 4666837
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:2abfda89540e712a129151cb07392660f276dfb27960b9d633cddc18eb351f26",
+          "pdf_page_render_sha256": "78594d1150e9c61f1e4d154287f43fa6b6373853dcb47e02da4ab8750985c431",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:809a1adea436ef6f58278be2f115de9f4ad3d03d7340dca556036b0dfe206018",
+          "pdf_page_render_sha256": "b5aef888e582cd933722033657b3f3eb3482088c7c46eec524920447e9375cd4",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6fdab49b1f38e7dda2e28d323c7127b7cc60f9ba5d713b85a2d6be8f113ba481",
+          "pdf_page_render_sha256": "c9f9b9049fcf28643d173937003632b8a5dca116aea2b624eacbf08564f1d886",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 220,
+      "residual_audit_id": "geircfav1:residual:80b211dc2ad1b988af8c3dfb6bc2c582cccf9d5cbe47f85304b2592c46508fcf",
+      "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "c1df78d8d31faa6079e9a7738c31c759573d15620f4a9f551e57e2ac9b3957eb",
+      "source_size_bytes": 4725303
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:43e97ace0ada73ab47509e2808b3250fd0f3397fa5d8e4c617300722011c192e",
+          "pdf_page_render_sha256": "ae7138d9c9df2357d9d05e6381337d1cd263b42d57087fefc1cb12110d1329df",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:59bb17d6b23b462b8b61c9f44c17821b8342fb134209ec564a1376cc44c10859",
+          "pdf_page_render_sha256": "203aae3de4e86f36043f62a6ba87f849ab4d3a5407169e6caab20c834c97744f",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:fa1ab3fcab8fb00b9a3d09cc1c5efeaf2c03ec53f73c79a1e0a5b651764cc165",
+          "pdf_page_render_sha256": "6aebac28cfdd59b394b30411ce140f942aeea3599c9498903a945fc00b46bbba",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 221,
+      "residual_audit_id": "geircfav1:residual:537cb7bdf3d4c581b1cc55fcb7614583065db7ca82e7f075fdb61e626ebb4dd0",
+      "source_logical_name": "vietstock_bctc/TCB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+      "source_sha256": "f77ba75ec141d5e5d0e6a13c7925c7c5b8e5c6e752c47680703dcd7bcd62074d",
+      "source_size_bytes": 3888351
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:3267cb159115bf9aeae11507ee9e9759ec38ebeba1fcb2a039752b863b287c88",
+          "pdf_page_render_sha256": "db7189e231dd390f5edb8e984ca2a85bd2030a0a44c740330551503de45d78c3",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:15afb677763cdf2b31ea52727a47734edc8d8d871f36cc4ba3ac8e0ed3ab10d8",
+          "pdf_page_render_sha256": "5698f45aef6fd339fb5311b4bd40d950531cd7fa93910fb3e10624097708ced1",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a5c8907214b814ed2a4849d023b218d48405c58d191279d5f36dc834dc96cf8a",
+          "pdf_page_render_sha256": "fa6a9954a6598b9540f2a1a21a7d32df6762b4f8c512884d738956ed6fcfcce6",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 222,
+      "residual_audit_id": "geircfav1:residual:ba52a03d175a9d943a2b22b92e44f8afbc18b6b703abc41a98ce8b32b39e54fb",
+      "source_logical_name": "vietstock_bctc/TCB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "abb7e067ecbf4480226b4dfe37caa5ef63a116c8c67bec7697ece9c1fc572271",
+      "source_size_bytes": 3691841
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:8ab559d0120b8a255aa53863bf91b5d3f3b3f89b8956c8585a52b44293269dc9",
+          "pdf_page_render_sha256": "fc6ce9e558148bbb943abe876951ebbdf7bec96f94d03cff1312ab53df6bb37e",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a7881f680096595cfbd10af58b178b251f690596c6705f129418086c7040b40a",
+          "pdf_page_render_sha256": "cd3854ca0e189b135f9219cda46fdf96aa84f4b9a55834846358e762575c6c7a",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5ebbfb4051baef42a3f8eb0b19c3950ef3619df983c08ed5b796b6809c78c52d",
+          "pdf_page_render_sha256": "96285266b2a21b787abc83cf1ca7fe1a99b6b573b073334d29a3dca5f713a565",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 223,
+      "residual_audit_id": "geircfav1:residual:333dfad66021c8c88cd08019a599f02fc60a836801dcf4330f76ed2e94ccec63",
+      "source_logical_name": "vietstock_bctc/TCB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+      "source_sha256": "7e7749fd534f2767f442eb4ada261f1d4db2b8e2fe26aa1e5aeebc51c86dd11a",
+      "source_size_bytes": 4732953
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:e56390f01b37d3272e36699cb8d07a42cdf9c3f206a9637457204dbf003e688e",
+          "pdf_page_render_sha256": "fab6cdd0b770bd894471fadf2bf81876db808cc94d63a10f6db1ca54f8285443",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6ee32f10aff31697e9bea9dba7f8a80a38095e3ed0504417fee142cea95420a6",
+          "pdf_page_render_sha256": "3447c1c352ec793f2cec2613b2d420f42baadb9610225f3fc7fa23d8ce43de17",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:48573c42ac08499b92be6d4b54c476195fa4bf562f6590a1bfe1d08758c021ee",
+          "pdf_page_render_sha256": "ef0051b1e7e15e4fc58ef68addb3eb5fed4f3e6e1943ca50f8109e39a08a85ba",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 224,
+      "residual_audit_id": "geircfav1:residual:cade0fc1f32615bcaa34adbf76012badf6b59eec8f8a52cfca024582ed144551",
+      "source_logical_name": "vietstock_bctc/TCB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+      "source_sha256": "50b860c97df7b69869530ce73f3a55a980f166745ed11bbab3e61ab31d38915f",
+      "source_size_bytes": 4526343
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:280b0daae71c51a3242f8e7615ae46e399fdec51c3a4d6a93cf373a994cc4dcc",
+          "pdf_page_render_sha256": "764d2a2b69719a3de8f5a241a18cd8449341bcc7a372aa39fe1f6d4e91aa2fc4",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:21ac026c41bdbce80bd56cf3e1f16b582d80ca9087a227fcc7bc93a3e2d2c7bc",
+          "pdf_page_render_sha256": "3edd00d6c7103b40bf68b95e718eb89b05cb1d81d47dfed3d8c97df0d2112cf2",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:0b0fd979c35281aa73227821e4045488bb7208cd58cbaf1593c6490224d78e2d",
+          "pdf_page_render_sha256": "451e5d360c71aa73d7291dfc070dcb53e4ed17cdbf150fab572833a724262e39",
+          "physical_page": 12
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 241,
+      "residual_audit_id": "geircfav1:residual:76472e796bb892ae58de0c35436c609b30d42bd97e312415707bee50869280bd",
+      "source_logical_name": "vietstock_bctc/VAB/2025/20250815 - VAB - BCTC HN BAN NIEN 2025_0001.pdf",
+      "source_sha256": "925bc21f1378480890477dd3d4b54208b597c8865c752cdabd0b05206ad6d7b0",
+      "source_size_bytes": 14783264
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:68090bf9fd23ee1b3ad2b518156cbc0893a14fb348cd6b73e7c79720eafbf2a8",
+          "pdf_page_render_sha256": "305dac7d82fbe7e7a0dbfba9b38e3b31aea5a429a1b74abffb57693dcca285ca",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:56ea55908ad57dc14ab9176f2cd35398aa280b2bdc593ece51f97f08eb7b1c3b",
+          "pdf_page_render_sha256": "a69ca1216ca524e716f7cb8c0012e3dec3008a94b68f8e2ce1a9a5549a8ded74",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9209444a736718143e5e473d16b3be0a547a6e0283a5eed5b70b2e1a46875dcf",
+          "pdf_page_render_sha256": "9030dc37e3f7f8a3e85682df2afbad51a73ad6324ee5f8341fc42869f286176f",
+          "physical_page": 12
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 242,
+      "residual_audit_id": "geircfav1:residual:b45badd3989cf8127d840e30acbd01cd24a8a404ecafe38b67d62e9aa5c29dad",
+      "source_logical_name": "vietstock_bctc/VAB/2025/20250815 - VAB - BCTC RIENG LE BAN NIEN 2025_0001_0001.pdf",
+      "source_sha256": "ffbab76eb7a1e95be3e986739076a4946ce92c57dc63b9da2cd346c2f1c4716c",
+      "source_size_bytes": 14852263
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:f2414aa4fbaeca980b4eb5621ac7649a6dd8038d320ac7c570f16941986e636f",
+          "pdf_page_render_sha256": "9ee278eca688ea70a585d822f34caae8ed237e0647ee49bd677a0d597e9928d1",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:b1315d2f6b3ba2886f6857d100fa94b419798aff61f8d602d3945ed143db63da",
+          "pdf_page_render_sha256": "ae6dfb4ad74afebac623a8c347499b5ab4f2a9d8fa95d494b60d9e61bd758c98",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:8471246414760e6e339254f2df9e43c6ab844fda0c41b1f58c102f44bdb4664c",
+          "pdf_page_render_sha256": "9af68a3db163606cd09768afda1871e0f2a5e7051bcd8cfa2b5be66d96199425",
+          "physical_page": 11
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 260,
+      "residual_audit_id": "geircfav1:residual:d36f7526ef8608b041b6d97a2278fdf934f8a03c860108fbcb423faae7f52971",
+      "source_logical_name": "vietstock_bctc/VBB/2025/2_vbb_2026_3_23_b2c1e44_vi_baocaotaichinh_kiemtoan_riengle_2025.pdf",
+      "source_sha256": "f2571c6459d64987fb863ebb74458410d9ce975afa4e39ae890368398a8a226a",
+      "source_size_bytes": 11188554
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:04d64699f38a833e15c5c33bf0c0797ecf2c4ca5602c40fbfc125277a113eb4b",
+          "pdf_page_render_sha256": "d2bbc48b91f020fdb0c8e641c8c9bebf8101ad7ea1f42e77af1ebe99950227f4",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:4def67b24ba2966360e2dfc176427833f2f3d7659e9fc5fee424bbd1b8b872f9",
+          "pdf_page_render_sha256": "0c61d6f4ef9b0e73c2456d474e2b06dfc57de1b5f9cc046b40ff061ca88fd3d9",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:d5b6b2ecca43964e864189476742b6628a2397a307f82f666856828f32515973",
+          "pdf_page_render_sha256": "3d60a3bb7085a85edafef4d6c8d13c48e0f842ddb5dc8635b70298781b65ee13",
+          "physical_page": 11
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 261,
+      "residual_audit_id": "geircfav1:residual:f2d12a444931ba48b0e9d006a2945a857ed174808fdd85d8b6085a68a6938f49",
+      "source_logical_name": "vietstock_bctc/VBB/2025/3_vbb_2025_8_6_8bb1ede_vi_baocaotaichinh_riengle_bannien_2025.pdf",
+      "source_sha256": "8fefd97664266afef9f60741b4df8f81d9302ae14c84e8fb3e5fe3e71096d768",
+      "source_size_bytes": 20599528
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:a9e371647180baccfcf177aa57c3cece4c1cca9ddce6849ab0cf2c6edaacfce1",
+          "pdf_page_render_sha256": "a7fbb017a831da39b8920d1d6d444146ebac7a22dbfa1ec6868f4b23a9ef3a03",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:b9efd9bcb36b6de85e6056f1086ece43f962ab04595dc3f1bb264bc3f4a3cd0d",
+          "pdf_page_render_sha256": "bb6a203527c7f0209b57906ecf0dcd8742f32a59e6c0b742811655bc971153d3",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:bd27a0ec7ee27e1a840458113f19223a95d87e29ca8ff81c0eb49abed3bf855e",
+          "pdf_page_render_sha256": "16ca0c84b241f80c641349e28f225087a6fe015525f82f0ceaeca29e18cff0aa",
+          "physical_page": 11
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 262,
+      "residual_audit_id": "geircfav1:residual:31350e3bbf4fa6c5cc0a9488f9b01954a445e57d4ed6ac29a165547bce3ddf3d",
+      "source_logical_name": "vietstock_bctc/VBB/2025/3_vbb_2025_8_6_d00b2c1_vi_baocaotaichinh_hopnhat_bannien_2025.pdf",
+      "source_sha256": "0112fab20c6958bbcce4efdad69de8b3c26f325dfad4806159cc60a2b8a3af81",
+      "source_size_bytes": 20989488
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:377161243fca517e50a149f831b7021710eb7ba9b72d19781ea6ede7ba5ff8c9",
+          "pdf_page_render_sha256": "17ce80cd1268e68aaf7b92c82ff5f7bf1f2e302661b0c05587c125da7707f4ee",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:87f49cd3963ac0986ae9627e9bb40c7aabf6199bd1c65f7ba5fe78c3e24675ee",
+          "pdf_page_render_sha256": "91ddc1b208989b48f71f61e89e20f1c7211a801eb4c747ee0c25ec2731c82031",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:d57b9f8239ad668124b5cb9dc6c0901f3d3b68f96fccb5973e0d2d0aee7847ca",
+          "pdf_page_render_sha256": "bf01ce12da5b7a71836e86fe48c24693c67c73cfcb55949efc9ec20487a021d5",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 263,
+      "residual_audit_id": "geircfav1:residual:bbb227bb1a90a1403913bdfca38abf220ff2e01266ba947643d84d4be513e0a8",
+      "source_logical_name": "vietstock_bctc/VBB/2025/3_vbb_2026_2_2_a18dc42_vi_baocaotaichinh_riengle_q4_2025.pdf",
+      "source_sha256": "4562674c19ba2faed65ce5d178e58c14e27be55d1565720fcccc4ae7ba06a1c4",
+      "source_size_bytes": 16767484
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:45968686a461b9d355f8e91146965b43a3c9d7692586db228d4d8464cbd32818",
+          "pdf_page_render_sha256": "6e27af007102652b7e7dc7a810d8317a674fb5df0aef72242d908568bcce13e4",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e6ef9f18f5de3ab0afc428acbe98b015fb0f460a1e1218b02e03c2324f3261ca",
+          "pdf_page_render_sha256": "a75f3457f03af2b5e025aa82866d8174260d2006fc4712a14496f0469011e21e",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:206f55932e3a175835f909849b2b253d74f447f0c943129063aa7c2304ce413a",
+          "pdf_page_render_sha256": "f31a89f65930182d630121cd4ce7a031c6ae2ce103831adb5370935b506c1dc9",
+          "physical_page": 11
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 264,
+      "residual_audit_id": "geircfav1:residual:b9aa2022d7a733521381cd9413aae25cb977d8d61ae418fb3deac90bb6465a7b",
+      "source_logical_name": "vietstock_bctc/VBB/2025/3_vbb_2026_3_23_3110a7d_vi_baocaotaichinh_kiemtoan_hopnhat_2025.pdf",
+      "source_sha256": "779357209276e439b9a4d3f5f177a2995ae553889251dbca6a84572ab06d836a",
+      "source_size_bytes": 11280708
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:42f046587b64e62e766a230c85a74b3a71e94c19353df038cac163234458c51f",
+          "pdf_page_render_sha256": "1b4a5e0e3e0af940953063c7734e08a74f7ab6c3cdfd9685b7d660eede31116b",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e4d7244ac40f0d8fba64d6a34117cb3adee237f9ea269d1d0def3b778385fc6d",
+          "pdf_page_render_sha256": "fb2a5e0c0b2a6ffc5aac25ce662cbfff733d30c5c17396a22b19935ea33a1011",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a84b0f7b81322b0260dff83d48f7d74103a2c7b8d613ff2fa1f469d20b1e1cb4",
+          "pdf_page_render_sha256": "da3ad7afc4e937d00c98be0cca506b90b297699d59f5c0730d5add89d98dc0c9",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 265,
+      "residual_audit_id": "geircfav1:residual:2ec890b4b5ca17355e48b00fd5ccc1e41172cedcb2e9f0bed09769611d28ff28",
+      "source_logical_name": "vietstock_bctc/VBB/2025/92-BCTC-hopnhat-Q3-VIE.pdf",
+      "source_sha256": "2ce7fb08541df1319736d4b08d01eb248067354ba638263c6402c9bb9fd75699",
+      "source_size_bytes": 7919513
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:5da43b6d11dc471260160824a3165c6f7f1a9f1d910c54cfe96497de38ccd7bb",
+          "pdf_page_render_sha256": "543dcd302b703f4d502ad56ac43af224274aff6dbd57b1143c511ae8a9aa3d60",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:04b785311997da6e0b4c2d25fcd1cd2fe7f0d37b40163dd66c33063d6aabebe2",
+          "pdf_page_render_sha256": "01c2dce5e2b89333dbf16fa326baed358b48616789d8320f2729ddafbda03d02",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:4ff9b99eccd0a2d43cad2081139fb0083ed0bd7612acc096d0f89cd6c7b7c9a7",
+          "pdf_page_render_sha256": "9258974d8a795e8a802d500f4523d56c74a1cd0efc99225cde9e3f071de91523",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 266,
+      "residual_audit_id": "geircfav1:residual:06c37eb9803981934a14f426cf79b1fdab2d8f3f7716b4adb5389f504436cba0",
+      "source_logical_name": "vietstock_bctc/VBB/2025/92-BCTC-riengle-Q3-VIE(1).pdf",
+      "source_sha256": "7be124482b96dec4cfb256973174a9518c1d4665218e34548306fc248c5a297b",
+      "source_size_bytes": 8028631
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:5fe6540d5f283926e5b1dfa82d882be0c86514f9ca4c5f8b207eba91ef11dbfe",
+          "pdf_page_render_sha256": "0de8c8601432f3ce61c9d4361a5c330e5050f4b8fb1a4cc5f2b5797c9069e1ed",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2385fdf2b4fc6d88cabce13559790dc342ed90c4cb2702cc47fbadc5869ebc2d",
+          "pdf_page_render_sha256": "f42f0d17363d0f6e1836a1dccb28fd96c944471bd35648f46e0ef70dae71f776",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:4b061dc4a8f1e74b3af898b1607df5623c57549c0897b8b8e83424d236f394cc",
+          "pdf_page_render_sha256": "625c9dc2261598fb0c036fecfa9766a946de5d6143fbcfd67069c6089625b1d8",
+          "physical_page": 6
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 267,
+      "residual_audit_id": "geircfav1:residual:bf46079890c0df326a7a0e63a4604af7fd2a32dace2939a9d9eaa43b5e7975d2",
+      "source_logical_name": "vietstock_bctc/VBB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "1ccb465d66daeb356c0b251860e12d5b9132cc860b68ac64e632aed43b7b7bf5",
+      "source_size_bytes": 2210920
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:d97638f06f0054a339d0855c98295224ce06ae380e66ab6648fa296b86df7cf6",
+          "pdf_page_render_sha256": "26c6832f9315a03fbe19810a4bfbf447212e8f14704092efb5fccc2d0e2c9e16",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:03c7af88d3f3cccb7af9fd746c83aae8812fc0cf619472aaefbfac4a468db141",
+          "pdf_page_render_sha256": "32bd82540f3d097a37df05f79b4584fecfad447a9ebe4d9f2cfc02486e5974f3",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:befa7f087deb2bc8bbd47ca7499b967c72b6d19d03a7a817cde737d64521c67f",
+          "pdf_page_render_sha256": "23fc742ff32e71bfe22b00102317edffc93610e7a27d5add1fbd3e721ef8d3d7",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 268,
+      "residual_audit_id": "geircfav1:residual:0d544e29021c06e6a3ba1a5bbeb7f20b8865dc123495d02780ffdae5582678a9",
+      "source_logical_name": "vietstock_bctc/VBB/2026/28-BCTC-Q1_2026-hopnhat-V.pdf",
+      "source_sha256": "6874a4811dd9da5e0aaf987da3f838f0e47a2fae9954473850765fe867f4e47c",
+      "source_size_bytes": 2905060
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:612b712cb4f211d2b7788c7562892bdc6f7329a521516b2dd2d80f20c468bb2d",
+          "pdf_page_render_sha256": "85de39c619014b1cd405a5f04c7bd4fd3b3ea720e7b38186cbc7af24703896f9",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e879ce96068332ef54d60a51e74c7ee6df478f8dc91c4b7bf5f934a0071fbedc",
+          "pdf_page_render_sha256": "d08a3b2f415acb861484fbf70e14dd72a6f2774de2fd1b179d9eec1b0c21834a",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6832ff17140c2e015b5a1cd6dedb9392879e4830120956709d16c7d2acd94719",
+          "pdf_page_render_sha256": "33fd39232f1278a1afa6133ed5849053ba6aebd8b6fd62d8088f4f555cb0b4b6",
+          "physical_page": 5
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 269,
+      "residual_audit_id": "geircfav1:residual:2fc8c2a2c50f377dc0c69a3a5c741240ecda78d57e2267b14dd3b5f26bd0cf78",
+      "source_logical_name": "vietstock_bctc/VBB/2026/3_vbb_2026_5_2_fa0b162_vi_baocaotaichinh_riengle_q1_2026.pdf",
+      "source_sha256": "312842611d822ed97634315a0c028965264fe765ef58a4405f20a39967f14665",
+      "source_size_bytes": 15746068
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:7069bb360a4e41a553ba34a0d3917c97ed423c853d9cc7dca76ed4f06548d859",
+          "pdf_page_render_sha256": "53fb66511e772a33ac982301662dd611c4fd00fde481ba2492241b9382e9c23f",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:022e80f4ee1961f241949e02e70278e53bb7892abb23486bace46110a14a68bf",
+          "pdf_page_render_sha256": "4f32b74fa5244b094bdd524ba3771915a68e2bd19cb2323e44b954a8e18fc189",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9ef262fb5c107bdc5a738180a49d96699b0e4e780228661632422aa75302508c",
+          "pdf_page_render_sha256": "0daadabd13a79927d429f2a7b1e5aa60c47a37bae3794a9388f20a6d85b50dff",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 270,
+      "residual_audit_id": "geircfav1:residual:c831e2ec9fa18f5a0c5892603f3b0aa4ce2a4d6e5ff70cc80c26bd69be5cd169",
+      "source_logical_name": "vietstock_bctc/VBB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "5c72db9bebda1755fd1e90daa6d4ea0558a783cc99e8c4e8fbecf5ea2292b75f",
+      "source_size_bytes": 8069881
+    },
+    {
+      "balance_sheet_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:7fc2b715d27a753563ce4872bd694f1b8e36715d5af06cef9900163e6636db35",
+          "pdf_page_render_sha256": "00ede98cfdee1138a37bb66d660d6712c332c0c4dc5f873423e0370a72c9fcff",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a3cfd952835f7fad51af3e0958f39d6f4ccc035500de218170fee5e81b14505d",
+          "pdf_page_render_sha256": "5cc15f94be219f6606afc49fecedfb723c0967d1ec13b917eb077477e2a4a2cd",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9595023396523fe68e68c7e271abbafff7fdece3a8541581de6bbe1f443f82b2",
+          "pdf_page_render_sha256": "efe8d6cbee207d2bc72cf514aae7da029c0188f5abd6c4da7453c4850b2b27d2",
+          "physical_page": 7
+        }
+      ],
+      "disposition": "TRUE_NOT_OBSERVED_NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT",
+      "document_ordinal": 271,
+      "residual_audit_id": "geircfav1:residual:c4dc4d5d49c851d98a97d2941453e1db8287a3ea4c41c75d13d3373d8f5ee98f",
+      "source_logical_name": "vietstock_bctc/VBB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+      "source_sha256": "fed898a015c903208b68e586b958647c0245cc98111fe09ac782b9db1c32f78d",
+      "source_size_bytes": 8240170
+    }
+  ],
+  "review_contract": {
+    "alpha": false,
+    "colorspace": "RGB",
+    "format": "PNG",
+    "matrix": [
+      1,
+      1
+    ],
+    "renderer": "PyMuPDF",
+    "scope": "EVERY_PRIMARY_BALANCE_STATEMENT_PAGE_FOR_EVERY_NOT_OBSERVED_DOCUMENT",
+    "visual_disposition_rule": "NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY24_ROOT_ROW"
+  }
+}

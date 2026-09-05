@@ -1,5 +1,12 @@
 {
-  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "authenticated_source_repair_artifact_ref": {
+    "artifact_format_version": "GEMINI_JSON_OTHER_LONG_TERM_INVESTMENTS_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+    "overlay_id": "gjfoltisrv1:overlay:816fd01f9321afa63d6b75dd6c5606f782a91321e7bf7d1cf0251ea7b27a6269",
+    "path": "data/registered/gemini_json_other_long_term_investments_source_repairs_v1.json",
+    "sha256": "0461666dbe8d8d91d6130eb9fc9c003897cfc516b2afa91c41e33bff8f69f351",
+    "size_bytes": 30444
+  },
+  "blank_zero_policy": "PRESERVE_BLANK_SOURCE_CELL_NEVER_INFER_NUMERIC_ZERO",
   "closure_policy": "EXACT_OPTIONAL_CHILD_DETAIL_SUBTOTAL_PROVISION_AND_NET_ALL_LANES",
   "component_policy": "ONE_OWNER_RESET_FENCE_WITH_MAIN_TABLE_AND_OPTIONAL_DETAIL_OR_CONTINUATION_TABLES",
   "family_id": "OTHER_LONG_TERM_INVESTMENTS",
@@ -25,7 +32,7 @@
       "magnitude_power10": 9
     },
     {
-      "accepted": false,
+      "accepted": true,
       "aliases": ["VND", "Đồng"],
       "canonical_unit": "VND",
       "magnitude_power10": 0
@@ -38,6 +45,8 @@
     "FAIR_VALUE_OR_FINANCIAL_INSTRUMENT_VIEW",
     "PERCENTAGE_ONLY_VIEW",
     "OPERATING_EXPENSE_OR_INCOME_VIEW",
-    "RELATED_PARTY_TRANSACTION_OR_BALANCE_VIEW"
+    "RELATED_PARTY_TRANSACTION_OR_BALANCE_VIEW",
+    "SUBSIDIARY_ONLY_INVESTMENT_VIEW",
+    "NON_MONETARY_POLICY_OR_FORMULA_VIEW"
   ]
 }

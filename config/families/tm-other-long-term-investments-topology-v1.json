@@ -38,7 +38,9 @@
         {
           "aliases": [
             "Đầu tư dài hạn khác",
-            "Các khoản đầu tư dài hạn khác"
+            "Các khoản đầu tư dài hạn khác",
+            "Các khoản góp vốn đầu tư dài hạn khác",
+            "Các khoản đầu tư góp vốn dài hạn khác"
           ],
           "within_role": null
         }
@@ -55,7 +57,8 @@
             "Đầu tư vào các tổ chức kinh tế, đầu tư vào các dự án dài hạn",
             "Đầu tư vào các tổ chức kinh tế",
             "Đầu tư vào tổ chức kinh tế",
-            "Đầu tư vào các TCKT trong nước"
+            "Đầu tư vào các TCKT trong nước",
+            "Đầu tư vào doanh nghiệp khác"
           ],
           "within_role": null
         }
@@ -86,6 +89,7 @@
             "Dự phòng giảm giá các khoản đầu tư dài hạn khác",
             "Dự phòng giảm giá đầu tư dài hạn khác",
             "Dự phòng giảm giá góp vốn, đầu tư dài hạn",
+            "Dự phòng giảm giá đầu tư chứng khoán dài hạn",
             "Dự phòng đầu tư dài hạn"
           ],
           "within_role": null
@@ -114,7 +118,8 @@
   },
   "parent": {
     "aliases": [
-      "Góp vốn, đầu tư dài hạn"
+      "Góp vốn, đầu tư dài hạn",
+      "Đầu tư dài hạn khác"
     ],
     "resolution_mode": "EXPLICIT_ONLY",
     "role": "OTHER_LONG_TERM_INVESTMENTS_ROOT"

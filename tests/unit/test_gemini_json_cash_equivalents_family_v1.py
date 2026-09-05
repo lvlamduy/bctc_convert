@@ -18,6 +18,9 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
     validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1,
 )
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    validate_source_observation_mapping_contract_v1,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT_ID = "gfpstorev1:document:" + "a" * 64
@@ -305,11 +308,13 @@ def test_split_interbank_maps_parent_and_children_without_double_counting() -> N
     assert len(candidate["closure_receipt"]["equations"]) == 2
 
 
-def test_optional_blank_security_becomes_zero_only_after_root_equation() -> None:
+def test_matching_owner_total_never_promotes_blank_security_to_zero() -> None:
     candidate, _cluster, _receipt = _evaluate(_page(_split_rows(blank_security=True)))
-    assert candidate["status"] == READY
-    security = next(item for item in candidate["mappings"] if item["role"] == "SECURITIES")
-    assert [item["coefficient"] for item in security["values"]] == [0, 4]
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["reasons"] == ["REQUIRED_SOURCE_VISIBLE_EXACT_FAMILY_ROOT_NOT_PROVEN"]
+    assert candidate["mappings"] == []
+    assert "INFERRED_BLANK_ZERO" not in json.dumps(candidate, ensure_ascii=False)
+    assert validate_source_observation_mapping_contract_v1(candidate)["status"] == "PASS"
 
 
 def test_cash_flow_balance_only_surface_is_not_a_detailed_family() -> None:

@@ -1,0 +1,4694 @@
+{
+  "family_id": "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME",
+  "format_version": "GEMINI_JSON_CAPITAL_CONTRIBUTION_DIVIDEND_INCOME_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "overlay_id": "gjccdifav1:overlay:5e39a649feb37343048a819d3e975e389681f2d23efeacf9de85be05a4027169",
+  "repairs": [
+    {
+      "base_page_json_sha256": "eb94e942d3f78a7b83a283afaf09794483b1cd9ff59c830f3429f0d3ee77e4db",
+      "base_page_json_version_id": "gfpstorev1:json:300484cbb3cf153225dad27e0b3196c5ecf1af7fe574f80abc5ca37ce7eb9362",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ sáu tháng\nkết thúc ngày\n30/6/2024\nTriệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2471,
+            3527
+          ],
+          "crop_rgb_sha256": "59cc88cf9fb0c847e4aa8684b6e078c1acd90e0d3bff5c774b52b7dad56fd51a",
+          "row_hierarchy_path_exact": [
+            "Cổ tức, lợi nhuận nhận được từ:",
+            "Đầu tư vào công ty con"
+          ],
+          "row_label_exact": "Đầu tư vào công ty con",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "263bac9dbedeaaeeff2b5fca5305fc87559ac6040ffbd4a969f90babb9e0bc7d",
+      "extraction_run_id": "gfpstorev1:run:3ddf05c330c28ad3d1c76f43a3b6e7282a9b9a603f626aa1ee2741b6fe9ff22c",
+      "repair_id": "gjccdifav1:repair:b98f4d5d7584785114d6105a5e179c4c8e2568a2f9e8351aeb7f67c7794069e2",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:44f0790e1d41f0edf13e0a7b0452d666db2f48f595d7d121f87f29f5f00d23be",
+        "image_sha256": "6a22bfd6b9c8a3c61c9a982769a247bb3d668a2783e790fee018c8efce3032be",
+        "image_size_bytes": 2896496,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:69578e4cf756de74d9f33554b27d317e5f9ffffe6b69a0d4e5876a284aa583fc",
+        "physical_page": 62,
+        "pixel_height": 3528,
+        "pixel_width": 2472,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/ABB/2025/3_abb_2025_9_9_5fa7e09_bctc_rl_ktsx_30_06_2025_tv.pdf",
+        "source_sha256": "8b377ff7b546be514c46223c38531c25c5f1eca29091811628fb36fb711d8182",
+        "source_size_bytes": 23411755
+      },
+      "stored_canonical_json_sha256": "76f1232cff9a0118a847c95f5d62c9c394898254f627738c521747ada66caf70",
+      "table_ref": {
+        "base_table_sha256": "a616e708d64eecec196562cb128f1ae9c364c2e93afa29b1689134ba79d4de92",
+        "effective_table_sha256": "f008b54f292b6c3016501f2240974e5d4e822aaf91380f2447301b2d8ad6fed8",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2471,
+          3527
+        ],
+        "table_crop_rgb_sha256": "edf869eeb7839118ac3de166a5508f5c06c3e5ee828bc99b51c6dca09e6ed02c"
+      }
+    },
+    {
+      "base_page_json_sha256": "b9e9c986b49c4f83a761bfe8f9aa93a7e6b7c46cf043eff1719f3b2d7fb13b06",
+      "base_page_json_version_id": "gfpstorev1:json:65714b974a862eb86b12bbb6147ca8404f9b02af423116368b2c2813ae67be23",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "-带有横线-",
+          "cell_id": "r2:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            986,
+            1,
+            2465,
+            3539
+          ],
+          "crop_rgb_sha256": "a0bac0c8bc74af6c569089d550ce4e490f74c213c0abb1f1391f2915a6aa52ed",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            986,
+            1,
+            2465,
+            3539
+          ],
+          "crop_rgb_sha256": "a0bac0c8bc74af6c569089d550ce4e490f74c213c0abb1f1391f2915a6aa52ed",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-带有横线-",
+          "cell_id": "r5:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            986,
+            1,
+            2465,
+            3539
+          ],
+          "crop_rgb_sha256": "a0bac0c8bc74af6c569089d550ce4e490f74c213c0abb1f1391f2915a6aa52ed",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            986,
+            1,
+            2465,
+            3539
+          ],
+          "crop_rgb_sha256": "a0bac0c8bc74af6c569089d550ce4e490f74c213c0abb1f1391f2915a6aa52ed",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "7d86fa584c7302e0260f815838b266c66495591ca1c46453bc47da9e55a616ef",
+      "extraction_run_id": "gfpstorev1:run:a3416044701a2b198219de4999c431a96ae97afcadbd8b5dc4c24bd7f179a495",
+      "repair_id": "gjccdifav1:repair:5c4aa9c638314770427bb04a86ea713947f4f7e0c94dff0a9fab211133bbac78",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:2921fb755406eff2de92b294f2978a6670c2e71399fa96da1a39e920eb849fbc",
+        "image_sha256": "7a6a2f983798c2ec5c12dae43755c7e646b803e6c8248ca909edcd4c23a4d7e3",
+        "image_size_bytes": 2566524,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:94a04005d35569f849b98c03b0ce4e96db8cab5847d3aa5c0fb5926c3dc9e2fd",
+        "physical_page": 24,
+        "pixel_height": 3540,
+        "pixel_width": 2466,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/ABB/2025/BCTC Hợp nhất quý 4 năm 2025__592d2993__3_abb_2026_2_4_91abe48_bctc_hn_q4_2025.pdf",
+        "source_sha256": "836a7a4c5f0f73bf145af4bfe6c8394215bb69881cbae702ac591966db88259a",
+        "source_size_bytes": 7349106
+      },
+      "stored_canonical_json_sha256": "c6ab702610450fa2c294d60be48e43eb5ee79846de419e535e79c683fa4bcfe7",
+      "table_ref": {
+        "base_table_sha256": "b5cfdf857a847f6d64031dda6283461bfbbc053c9b06c821985bcdb165fdac4d",
+        "effective_table_sha256": "6ee3e9058cc8dfe95df2cd82441c219598c092b7d7ebfd1fa2c52fa6ce36f1be",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2465,
+          3539
+        ],
+        "table_crop_rgb_sha256": "cb04516c908d6fa24352361e2f57e5297e557f5f3e2efb994157a79a90c004da"
+      }
+    },
+    {
+      "base_page_json_sha256": "4c759c47b11726514fbb69789676860753fd1fac68c36ee80041f09a6e9c7530",
+      "base_page_json_version_id": "gfpstorev1:json:1c6177547c2ded2b65923e2010caece7c609452585d349e8906f1e191e233b3c",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "-ktCap-",
+          "cell_id": "r2:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            984,
+            1,
+            2459,
+            3527
+          ],
+          "crop_rgb_sha256": "9dbc408902cd97e55d6cbfb50d409174d2cb32540e616291a538fd0935d65472",
+          "row_hierarchy_path_exact": [
+            "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            984,
+            1,
+            2459,
+            3527
+          ],
+          "crop_rgb_sha256": "9dbc408902cd97e55d6cbfb50d409174d2cb32540e616291a538fd0935d65472",
+          "row_hierarchy_path_exact": [
+            "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-ktCap-",
+          "cell_id": "r3:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            984,
+            1,
+            2459,
+            3527
+          ],
+          "crop_rgb_sha256": "9dbc408902cd97e55d6cbfb50d409174d2cb32540e616291a538fd0935d65472",
+          "row_hierarchy_path_exact": [
+            "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            984,
+            1,
+            2459,
+            3527
+          ],
+          "crop_rgb_sha256": "9dbc408902cd97e55d6cbfb50d409174d2cb32540e616291a538fd0935d65472",
+          "row_hierarchy_path_exact": [
+            "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-ktCap-",
+          "cell_id": "r5:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            984,
+            1,
+            2459,
+            3527
+          ],
+          "crop_rgb_sha256": "9dbc408902cd97e55d6cbfb50d409174d2cb32540e616291a538fd0935d65472",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            984,
+            1,
+            2459,
+            3527
+          ],
+          "crop_rgb_sha256": "9dbc408902cd97e55d6cbfb50d409174d2cb32540e616291a538fd0935d65472",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "a441f878c4f70c75c223dd03ef45cac29cd849bc857c55f728f660ee91d3f17f",
+      "extraction_run_id": "gfpstorev1:run:21b9c1d37e6eaa12410e9320d79d33a0a27cd3a1ab9ad15a167427275cf601e4",
+      "repair_id": "gjccdifav1:repair:f3c6bc6b49748cde6ba30cc7cab4314c7352f2e7819a62f7af7488ef6c5f1e53",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:446d9f3205bc8f51fe21203fba97a3f75d8b1f7546cedbbe36767c7b76cdd08e",
+        "image_sha256": "c9f405683bc28adcb3ed2cb92241e7933788b1d792d8beb916e7c2077ae75a70",
+        "image_size_bytes": 2536708,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:702b4f0234c2ba25773992e2d6e29c88a804d4df099751780d5a8c5a5632bad5",
+        "physical_page": 24,
+        "pixel_height": 3528,
+        "pixel_width": 2460,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/ABB/2025/phpkgbljk-bctc-hn-q3-2025-68fb4c313c9de.pdf",
+        "source_sha256": "2945ee34c5c6fcbe1f63ac8e4dd060c6c58f6eec50d91840baf6dfe9ff608fe1",
+        "source_size_bytes": 7516916
+      },
+      "stored_canonical_json_sha256": "20f211c963884f04769e5b5fbe0614bfa6d34de0762765fd80725dbc0237b4a0",
+      "table_ref": {
+        "base_table_sha256": "0993f00f496f839ea4d8da6690d8444965b26ece080716dddf99a13e21a1efd0",
+        "effective_table_sha256": "709e85a823796e73aa07a06950190f5d9ef3233633ae7f1348eafc3fdc954800",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2459,
+          3527
+        ],
+        "table_crop_rgb_sha256": "49833aa2b1820b997064c7d2b833b42d7dfbdec07bb74b8a61e9eb2df4ea480b"
+      }
+    },
+    {
+      "base_page_json_sha256": "a2af04aa60f95c4a96da98777bcce8dd9d13fd9a51919a7400bbe42910780fa8",
+      "base_page_json_version_id": "gfpstorev1:json:75ae571bbb0a421de031dccd89c41396b7acc61d05ceff478e2ce43cd9ac5af4",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1020,
+            1,
+            2549,
+            3299
+          ],
+          "crop_rgb_sha256": "7d8799622b19ee1865d2ca362debfd32bd12f6538e7d59fbab9da8876b6098c4",
+          "row_hierarchy_path_exact": [
+            "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "5fbc94b770cdcb275a9ff4298d8601f6920bb3be1e466cda59844d2c201615b1",
+      "extraction_run_id": "gfpstorev1:run:ddb2322dbd9870e32541b84caf4cc00b374e6c0565d7e8de818a5aa83f08d52a",
+      "repair_id": "gjccdifav1:repair:314c0a35ec940af2ceec5438c55a3f8cf91fa5525782f09cec6defb35a82b6e7",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:60f1d25fda0a18f74dc187057814334ee59bb2255e4b42782690e0748b8769f3",
+        "image_sha256": "593e3820d65f2d55b34270076b6438c9009687606019fc9ea0f2240e5458541c",
+        "image_size_bytes": 485375,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:b180b7350d8d1b79981e98ce6e7b236e9b1d155a954ed069cb90a2190b40edfb",
+        "physical_page": 24,
+        "pixel_height": 3300,
+        "pixel_width": 2550,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/ABB/2025/phpnjkobf-bctc-q2-2025-hn-6889fad62c419.pdf",
+        "source_sha256": "dec2b41f6daff45f8a8725c7a1874da575618df64d5d0ee48e9eb61eeee38fce",
+        "source_size_bytes": 2867706
+      },
+      "stored_canonical_json_sha256": "acbf3fe73bf16afabfa9de08512d9bd8d92c6653be77de6f89713b5e1e89515e",
+      "table_ref": {
+        "base_table_sha256": "d7740f1af43368f53dc55242e15f258e4742c2f1ed32c63ed5abe99171437788",
+        "effective_table_sha256": "b0d2f58f8722c7aab40a459d6d8e4c48315136342b6461836b24a9509210b96c",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2549,
+          3299
+        ],
+        "table_crop_rgb_sha256": "ecf1a33f8ac74e0e0a102e71ac3218ffe55282a0f49a9cb4b06705c7d4764997"
+      }
+    },
+    {
+      "base_page_json_sha256": "c384edd83168196aa8b4720274f2a41a00946bb7638a9163cb21e38c64fa2336",
+      "base_page_json_version_id": "gfpstorev1:json:8d7a6e59438de6efbffb2c466e58c5c5de5661f07d4be5fba282cd91983f8360",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            979,
+            1,
+            2447,
+            3536
+          ],
+          "crop_rgb_sha256": "0d0e0aea5d270356e00434d7c67aa4aebaab0339540b7555b835d5deca5b3e29",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "98a7d35234118af59b9062cbb4746d4d10b0bfba9857e9bacbd9ccefd6e05ce9",
+      "extraction_run_id": "gfpstorev1:run:5175a12cecec2f4d045b2f4649ec81300d4c435ca9a11a621c9c0bf34f2c3134",
+      "repair_id": "gjccdifav1:repair:ba3469c797233306b66bf29b48babfd2daaf7c00d7578a5fac3f48ee398a2f45",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:f1c3d756437a4f09e83505848fa90cc46de5c2cb32e390793c69a7270402f626",
+        "image_sha256": "c06743833cb68a5229bcdcd800545ecfabea696e98ab03143c067aed23b9519a",
+        "image_size_bytes": 2196631,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:db76a95c6376acae0c475e59b86406ddd84cce13d3c674875c2e08390f87f869",
+        "physical_page": 23,
+        "pixel_height": 3537,
+        "pixel_width": 2448,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/ABB/2026/phpbbdkfl-bctc-rl-q1-2026-69e18d88eace3.pdf",
+        "source_sha256": "81a2d60256aaac5f949209dcd60e3658e6806c28a51a0754429353cf39510c45",
+        "source_size_bytes": 7130686
+      },
+      "stored_canonical_json_sha256": "24623ad32971a8a2555778cfd6c606a9a2829420563a10025443eee7e5a76a38",
+      "table_ref": {
+        "base_table_sha256": "5773413332bdbff3915e8202d383524ed23446b54f698ac6edf719e33fac7b1c",
+        "effective_table_sha256": "d9e7c66337bd38b549fac30e1b7cc6846574dcb40d977552067a503868681161",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2447,
+          3536
+        ],
+        "table_crop_rgb_sha256": "e65d99f643ca9126b1b50f720450b19231fcfa97645fca0841472465ad53af2b"
+      }
+    },
+    {
+      "base_page_json_sha256": "eda96269dfba3834d7b97ce8f7f431a3f3c3010b1e63b796f7dfec23e6e05279",
+      "base_page_json_version_id": "gfpstorev1:json:e73183443b0d027c469fa2fb873fa0665d10cfe5cd6576fa9d595f128a7d582b",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Năm 2024",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3508
+          ],
+          "crop_rgb_sha256": "b2692b92a22ca58d1e763bef329cf806e0788f2fcd3b8daba53994e03e078a2f",
+          "row_hierarchy_path_exact": [
+            "Thu nhập góp vốn, mua cổ phần",
+            "+ Thu từ chứng khoán đầu tư"
+          ],
+          "row_label_exact": "+ Thu từ chứng khoán đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "d173e815e0bc159ea564df9b0185d666ce58f1047c324a48efd4cbda17b0a2cc",
+      "extraction_run_id": "gfpstorev1:run:a6dd34224907c45719bd2addbf9eaccd3f6d5e9be77b323bf7f0079be7f4e96b",
+      "repair_id": "gjccdifav1:repair:3c7d400159c0a7342f37e8cf4e5931c8fd95de8e4d14c27b2f297b9e12595141",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:abb050b003d154642a0ef5b8b4cbaf91df6d0d39b6160c4ee9f873e1188333bc",
+        "image_sha256": "c79da91aa947340a824c8c87325f5ba65149cb021b3614cf937379b3c5bd2d3a",
+        "image_size_bytes": 3379225,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:db6d50409d3934c963f84bf100c72161c1941a3cb44b56d97951904fd4cf4024",
+        "physical_page": 36,
+        "pixel_height": 3509,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BAB/2025/BCTC Hop nhat 2025_Kiem toan.pdf",
+        "source_sha256": "4bed685159ba90385ddc8e04151460aeb7730bea161223b89f84263e5cb0bec6",
+        "source_size_bytes": 25021026
+      },
+      "stored_canonical_json_sha256": "b3b6ffaffc48788127985315758685b74a01900846b5b6c79a7e486ca87910a0",
+      "table_ref": {
+        "base_table_sha256": "846be9442f525aae111abde97c037630af7a1b1fd555b7399e409c8f9feaa844",
+        "effective_table_sha256": "5515d2ff63b1c08b3ce52f7fa153f1d6cd6441d86c42ccdb20b84c35a8052b1c",
+        "section_id": "s1",
+        "table_id": "t3"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3508
+        ],
+        "table_crop_rgb_sha256": "ec40c28129acf8a6e21621c73854f53a4768a732ac9b40b71c917baadeed4047"
+      }
+    },
+    {
+      "base_page_json_sha256": "75452e2b06e2f56acba7112afadebc57f7256fdb9b7741317951db8f506eee4a",
+      "base_page_json_version_id": "gfpstorev1:json:986a609727b1b09dc11cee506848c113cd77c38a0dcd210c48c092cef819aa5d",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Năm 2024",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3508
+          ],
+          "crop_rgb_sha256": "831fd3fcf097682e9175839841a1bca0225ebeeeadd1cb20e3715780cf857753",
+          "row_hierarchy_path_exact": [
+            "Thu nhập góp vốn, mua cổ phần",
+            "+ Thu từ chứng khoán đầu tư"
+          ],
+          "row_label_exact": "+ Thu từ chứng khoán đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "0bdf2659f164e62c2ecce7ab3bb69df6faf87e047c597738c0edbcaed710af5d",
+      "extraction_run_id": "gfpstorev1:run:c01c00dcbe718052fe3e1005c97173db4b534617e77dfa7a2ae44f2bdb25bd67",
+      "repair_id": "gjccdifav1:repair:32b1029011ba80606a0c8b40d8faccb78217340cce7e2053bebde064fa20ffb3",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:c6ff82926213e5cfed70a9758acd2c781e424c76cdcd7904cd13b05ff1224751",
+        "image_sha256": "ec3ef908d8e2fc948a51ab898d9583cf031be243943fd92c0bec49a532f7eab3",
+        "image_size_bytes": 2905005,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:008d0937a4f2f737c1451e6b64b9e56173b0d85dda5baeadc407f3b660677d9c",
+        "physical_page": 36,
+        "pixel_height": 3509,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BAB/2025/BCTC Rieng le 2025_Kiem toan.pdf",
+        "source_sha256": "3642a6fe658446103cb1903ac0c5b6004f1c281fad8b6d8c7a21ccd2e1a1ef18",
+        "source_size_bytes": 23885559
+      },
+      "stored_canonical_json_sha256": "5d9cfcb97589ccb01dfe5af0dc876e0862d896bb4e48414659daa810a17e10e6",
+      "table_ref": {
+        "base_table_sha256": "8f47ef09b59b1059ba866fdca4458fd429c71a5294284fdbbe0e23d588076729",
+        "effective_table_sha256": "366b053f91709da63668e5448bee5f68a135ba11f6e19369f87e171e22684773",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3508
+        ],
+        "table_crop_rgb_sha256": "abac665f2e7d8715704e3b6f9dcceaabf920f00f49a882b59eff655d76e2415e"
+      }
+    },
+    {
+      "base_page_json_sha256": "3dbd2b019d7982a72b497f75a556e9fabc609deda5644708d08300e25584c675",
+      "base_page_json_version_id": "gfpstorev1:json:8adf7366434c0ef0c9e8b2f0c152952b64edbf0aa8be459f655244beed0ff654",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "-壮-",
+          "cell_id": "r13:c3",
+          "column_header_path_exact": [
+            "Quý 1",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3508
+          ],
+          "crop_rgb_sha256": "521e8c45c0369a394c34cf3d85b82aa1c04b723d846c7a0e35a653ddd5688f36",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý 1",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3508
+          ],
+          "crop_rgb_sha256": "521e8c45c0369a394c34cf3d85b82aa1c04b723d846c7a0e35a653ddd5688f36",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3508
+          ],
+          "crop_rgb_sha256": "521e8c45c0369a394c34cf3d85b82aa1c04b723d846c7a0e35a653ddd5688f36",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "6d6795b0204c901038a4de6399b52604bcfd8c2d89284576722030a7b8868566",
+      "extraction_run_id": "gfpstorev1:run:994d8b71425554ead3792a60b2491febdf01fd4e433e1ae10072c8da891d6d9e",
+      "repair_id": "gjccdifav1:repair:588f28a3763da498f265d2103285565cae9a84e30fc3c80455c72c75eb10525f",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:41caf4650a104b415beb917b2ec75dd771c305272ba85c6cf29f876d95deac23",
+        "image_sha256": "d5480c665dd29f557f8ec2083dbd87d4b9d69aa29641f1e218bd5165d774de8f",
+        "image_size_bytes": 1626624,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:b77ca523eaab6f525a566b1cf00048d249ed61e370c9ab84086a063ad69114b9",
+        "physical_page": 6,
+        "pixel_height": 3509,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+        "source_sha256": "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+        "source_size_bytes": 11320313
+      },
+      "stored_canonical_json_sha256": "f2cfb36bc703e9bccfa6f4ef923d9129662026ebd919e4ae2cb644e41b99d3f0",
+      "table_ref": {
+        "base_table_sha256": "9afa5a424151eda88d4d9715fd8eb362d54b8cca899e20116017aa5627c5df2d",
+        "effective_table_sha256": "501ca8038758af60b20324be8ea40d7d7ea08ca0c06c1a90e393e5624fa7fa36",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3508
+        ],
+        "table_crop_rgb_sha256": "35b6cac409a06ef69049931c15c8b2dc8e7c4f3106f989f8bf892823e58d6524"
+      }
+    },
+    {
+      "base_page_json_sha256": "4dd60e3b9350134b3c36f8a21bf7c6b9913d8b176eecef2b018417d2f1a5ac81",
+      "base_page_json_version_id": "gfpstorev1:json:8970ba7f6a301553d16accaaa0493ce3e167ac1933ac51ed535cd78a426b2bb3",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "-壮-「-」? -",
+          "cell_id": "r13:c3",
+          "column_header_path_exact": [
+            "Quý 1",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3512
+          ],
+          "crop_rgb_sha256": "20c498a02a9a5007a30ffe6ba6a0eea58e2a12d2b6049c1daf067816916503c3",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý 1",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3512
+          ],
+          "crop_rgb_sha256": "20c498a02a9a5007a30ffe6ba6a0eea58e2a12d2b6049c1daf067816916503c3",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c5",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3512
+          ],
+          "crop_rgb_sha256": "20c498a02a9a5007a30ffe6ba6a0eea58e2a12d2b6049c1daf067816916503c3",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3512
+          ],
+          "crop_rgb_sha256": "20c498a02a9a5007a30ffe6ba6a0eea58e2a12d2b6049c1daf067816916503c3",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "39e0ca4dc5bd05779e8540e12ed0729487f8ff94539a3026ebd89d22dc960a31",
+      "extraction_run_id": "gfpstorev1:run:b66ea3bf1f5e5506f00ce74f9946e41dff5a8add506102a539b4d30e1340cf95",
+      "repair_id": "gjccdifav1:repair:2c73f2403e03ad259ee8a7a21d6cf6e5ca19f2e18dc4a9a714f2dba151c7c8f4",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:a9716e1cd5e007584fb9c1417f741099565a3e5657429e7ad3f0c1a343d89c8b",
+        "image_sha256": "a0e032ebb72d8217e1ca0291c3d9c58a540e089682a5d2b54787507de82e58bc",
+        "image_size_bytes": 1625745,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:4c990d91d4bb35fe18238f6d9ebb73f72f918797e1969a0b6fda638eaed9d96f",
+        "physical_page": 6,
+        "pixel_height": 3513,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "3261184d473884431c968378ccae71fe0994f242263cd5a4a6fa88aecdcecdf8",
+        "source_size_bytes": 11423887
+      },
+      "stored_canonical_json_sha256": "6913bfb8ab8aca6e1340d62ea083b95c5a08fdef31ad889a87d24d700dc5fd82",
+      "table_ref": {
+        "base_table_sha256": "0fa2bd189d93bac40df9f38181e499a1055f3950e1792ba9c694d8f6d4d1d4af",
+        "effective_table_sha256": "03f3c8668b3f2cb05437eadc10c3628ea30b9676015388ad7a185b6acbe046f3",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3512
+        ],
+        "table_crop_rgb_sha256": "fa18a34d648320886b28934dec1506b9a9f7ff09af1d04655f4c4bee046cc82d"
+      }
+    },
+    {
+      "base_page_json_sha256": "96cc0d7923e106e4697331847149d908ca1d85f6b4cc0cf8bed03786c7bf8e52",
+      "base_page_json_version_id": "gfpstorev1:json:b819d1208548f3ff6a7cfc15bee9daef9b6b73a7ee63cc404756ac1c7d70e51a",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý 2",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "f4cd1300dfddaa46fd8264a0adb18dcbce9072b1c16f2fc3aa2bedc73fd4e403",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "f4cd1300dfddaa46fd8264a0adb18dcbce9072b1c16f2fc3aa2bedc73fd4e403",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "0f785b29db71589c0a6c13e3b4e67fe0d962891c0d9cecfa390fff9fbe484bb8",
+      "extraction_run_id": "gfpstorev1:run:78b99eb474b82af624bf5faa237371f08e1564d3b0b8269501c7226ba645630f",
+      "repair_id": "gjccdifav1:repair:bd0a11eb4a2dec0508e1596e35208327cae03f8800b6fc43ff70cd3cc4d79605",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:511e1194617ecf3eac9d65b5abaa1a100d3a971c3ecf3b3d27a343404e6d331f",
+        "image_sha256": "39d7e89555009b3d43075eeba1e5ed3737b1ad6c7224d2c0e097ea9018bc52a5",
+        "image_size_bytes": 1570900,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:3db60e67f9c9ba6d46d6d6e7ab90fd2ffbea35babf0e851ecbb9bcc3642d2d69",
+        "physical_page": 6,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Q2_2025-1.pdf",
+        "source_sha256": "831abe75cfbd1987c8e63ecec9e3cc1f9a0ee49db1ffc7c930c0851847cc98a3",
+        "source_size_bytes": 9731305
+      },
+      "stored_canonical_json_sha256": "c0e8a77b73717d7ff1267e15387e58d95f76917e0ab07dbb7c943ef8ceb78b3a",
+      "table_ref": {
+        "base_table_sha256": "f2db6648458d35e5875599906625b4f08df0776c0f588b2b7b24abfcc1f5ada9",
+        "effective_table_sha256": "a44d04d7f4a0a90f1235fe4d2692a7b1466523b3ae08fb2553d9f9338a6cd562",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3507
+        ],
+        "table_crop_rgb_sha256": "2d85fb59465d741101248082a4181b62fadef434fc0b808153d57b79ee93f98a"
+      }
+    },
+    {
+      "base_page_json_sha256": "cab25dec5c872313d24ac328b79d60cd103a782bea4625aa513e95edd5cdbb56",
+      "base_page_json_version_id": "gfpstorev1:json:52faf9697d1425df25b302c177d4d389f084afe7b3a9af62a9eebd99a6ea29f0",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý 3",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "a8679a49f2a51e7e9b7244b16db56e55a34887dce878602e3d0915043f8d6663",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "a8679a49f2a51e7e9b7244b16db56e55a34887dce878602e3d0915043f8d6663",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "42bb542b7c445a593e2a5a55af19f225579887b8dde153c2348311e7975d02e2",
+      "extraction_run_id": "gfpstorev1:run:99627d2288e1a61d0b8df9fe179ad6264c16bef4fe8093811f62db1278fb5ecf",
+      "repair_id": "gjccdifav1:repair:cb12a82735298ba90a3133952230d49877f91cf4a352c373832bf2fff936d57e",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:a9591f09e5ba7061349c2ddff898a358de8020ea9bf5e1c8285cb22a5883a6d6",
+        "image_sha256": "387c463a77649dcde64f3f4a65b6ef5a4268c5986b4abc2626213785d723e500",
+        "image_size_bytes": 1605706,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:93290d18d37146809d541fd42cd66d5c40ce1066e52b16c445c3e9fe52659ffd",
+        "physical_page": 6,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Q3_2025.pdf",
+        "source_sha256": "0f4379366c3f774a6ece78ac708437719a835f6d657fc3b3e529ee9d71c8a613",
+        "source_size_bytes": 9658454
+      },
+      "stored_canonical_json_sha256": "d4570c071fb7ad93282f27fcf37ab51b5a7347ee7074cdc2de1ec8e6798156dc",
+      "table_ref": {
+        "base_table_sha256": "7e9b639c1438be58211e42b7fed96af362c6c9fe087cdfb3b08f8256d2b9a71f",
+        "effective_table_sha256": "f5efc4e382de91d7c9873eb7b70811c54499241ccd6bab7fa4b239e77f2c6f83",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3507
+        ],
+        "table_crop_rgb_sha256": "d706c04bb046df28c9d3031531e3b010d940823fcca1ba5c19e0ee708f84a546"
+      }
+    },
+    {
+      "base_page_json_sha256": "e2feea610113ecdd76f30dc1cad9c901a0ebe5b85a145bfb9f00421fd309f05e",
+      "base_page_json_version_id": "gfpstorev1:json:0568867379b94b984cdc3a48c28a8119835497c592351ed648f12eb409f35f32",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý 2",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "b4b02d8dc940259a04731a33bb52ff21776d6e6ea331188f9704cf64b9dcc4f8",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "b4b02d8dc940259a04731a33bb52ff21776d6e6ea331188f9704cf64b9dcc4f8",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "38fc754fd92ae2aa7a49f655c912aedef252500e4b7d918cf9e8a7938a7f8d56",
+      "extraction_run_id": "gfpstorev1:run:64ac322c1dd5221fed3212af515acf028209dadb40c589c5c8a8f7418b013d6f",
+      "repair_id": "gjccdifav1:repair:6b9d8e320ceb088a635a1b4daa6af2b1bd237c7d2dcabfb92b78e1846f8204f7",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:84fbbf652beb50542482815f39b944d9ddcc8787ca15a11fd7da009f5887c4ee",
+        "image_sha256": "75d28e196c365e4842f38a2ad605be968f9a4b626e85366d0630d2007a25d2f0",
+        "image_size_bytes": 1612659,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:21700f392c82109d81e0551de97e0f4afcb28d8f0ce1d620ea453841ed7acc31",
+        "physical_page": 6,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Q2_2025.pdf",
+        "source_sha256": "1bf17e6dafef92f6fcd437dbdff37dbd03e04f84a9c06d89930baf7d38128ff6",
+        "source_size_bytes": 9719793
+      },
+      "stored_canonical_json_sha256": "95fadbc7de8306738a1ac933f1da5bc8764902bdd86374bb693302ff84eb8cb9",
+      "table_ref": {
+        "base_table_sha256": "87cbf14ea70f4f97a3294fff37d63042859dd3670a970a6e1ca235af2e1e8727",
+        "effective_table_sha256": "29d567610254e532c16d6fd35d98735a67842c0d3c0dc53a4ab1cbbc9dd358ee",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3507
+        ],
+        "table_crop_rgb_sha256": "1f4280a6cc7be82d4ad30efc30543870c869ea50f088d896a40d5df6473f9b3d"
+      }
+    },
+    {
+      "base_page_json_sha256": "11fe1c8af853580b88b507497afef5a7f832797cfbdb73a6f0bbdf6bb9ec6074",
+      "base_page_json_version_id": "gfpstorev1:json:626ac849d4ff03357dda65f621b4bed712fe4744ab330d952951e664a63708a7",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "‐",
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý 3",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "de6beb585c5aa759dcbb260f267879d8c8b570aaf5f3ce8b20144b506305fcee",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "‐",
+          "cell_id": "r13:c5",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến\ncuối quý này",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "de6beb585c5aa759dcbb260f267879d8c8b570aaf5f3ce8b20144b506305fcee",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "‐",
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến\ncuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3507
+          ],
+          "crop_rgb_sha256": "de6beb585c5aa759dcbb260f267879d8c8b570aaf5f3ce8b20144b506305fcee",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "66b78a61c71edc0f4f46c63d42adb5c0094b880fc5004260990c9156f2693443",
+      "extraction_run_id": "gfpstorev1:run:2d958d0537dbf9e2991b78329a69a75e4be02c23d33206b857b06945d4e2446f",
+      "repair_id": "gjccdifav1:repair:98316dd51dee1d2c36da12a7f986fdf810cb5db7aef50cb07d26050dd0ebbbab",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:83f2a1947c7969b9b7c6ab11fa8df6b6045a419da162bc7b45bfdb558b099365",
+        "image_sha256": "29f140ebc6fc4749b88afcda125d38c1d146e3a472bbf0cb0bb8a9a7c38d5931",
+        "image_size_bytes": 1530445,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:f7a90c6c47d89a586ab8de33247f4dffedc829d4ca34f2fdd1cdd9506750b136",
+        "physical_page": 6,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Q3_2025.pdf",
+        "source_sha256": "f70f321296d8b9da75ee8bbf5e5566b3a64e03c17eaf719ed2579e2043feab48",
+        "source_size_bytes": 9546319
+      },
+      "stored_canonical_json_sha256": "40a6945d38735460f7d1b396ca1575c5164e12cdda501fe1070d4067d1deec7e",
+      "table_ref": {
+        "base_table_sha256": "3b50b9c4a3a578ada3e5820b742df300a3b0d53d6d2898bbbb36d0b436326420",
+        "effective_table_sha256": "52886ec7a1db062e0fa015014de8ecb4e70ed370b7966b41a4802519cd7710e7",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3507
+        ],
+        "table_crop_rgb_sha256": "2a85896de9149c52104e9add4b167f5ba23d22ee7f6ffd6c693dd455693a5012"
+      }
+    },
+    {
+      "base_page_json_sha256": "8ea82bb0c96c741ff705369f45e5bddfc57f65ea23716524714cb39709169eb6",
+      "base_page_json_version_id": "gfpstorev1:json:8049c6040a70f6db6be05733bebb439411b1a76c387bec633e4d7aadc0e62fb9",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý 2",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3504
+          ],
+          "crop_rgb_sha256": "eba063f03e53f61cc3626a3e9c588c55860cef5c2b5d35c1156f471638e7f43a",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c5",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3504
+          ],
+          "crop_rgb_sha256": "eba063f03e53f61cc3626a3e9c588c55860cef5c2b5d35c1156f471638e7f43a",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3504
+          ],
+          "crop_rgb_sha256": "eba063f03e53f61cc3626a3e9c588c55860cef5c2b5d35c1156f471638e7f43a",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "0bff2837b85880232e8988a94648db81e66ac7d6faa2361cdcc037566687c6de",
+      "extraction_run_id": "gfpstorev1:run:4aca580383f742a0d6b9d0e0e1581a2b5d8f84269bb1f478d115d05528d395e1",
+      "repair_id": "gjccdifav1:repair:4f4c2a44157926ca4dc7969237f5397992a31017f3d9bb5fba39c5d792b19433",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:d40af116f350e60ff5f552c18fec08210e03cfe9bae4541c245167ee02b1402c",
+        "image_sha256": "24997cb3afdd065bab8803114565381904271d1fbb4d084f2bb059f859400d80",
+        "image_size_bytes": 2163987,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:4fe41834e124197d3666e9fb0ef124d5537ecfa2ce7e968f55aa4e883780a718",
+        "physical_page": 8,
+        "pixel_height": 3505,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "source_sha256": "49bba703096fa5091eb1e7c27e8fe01909be16a8cc2a06026be88b308bbcd3c5",
+        "source_size_bytes": 13019812
+      },
+      "stored_canonical_json_sha256": "4f31454c463880fe020535fd56935264905b04e12e72adbf359a6b3917b5295f",
+      "table_ref": {
+        "base_table_sha256": "29a616bae1163776b960f433fac44918a5ec19d803763f3b7e50417e1cc5ed5c",
+        "effective_table_sha256": "ad8a4854e4ffeec2c814534f8b8b1dc7a380c8446b2dbd8f8090f0a6e03a8167",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2474,
+          3504
+        ],
+        "table_crop_rgb_sha256": "79c6b3a0d94d9b4c5fe270a37bec4f78bd273098afc3d1ee863b7a2470d8c6e5"
+      }
+    },
+    {
+      "base_page_json_sha256": "4c69879e9a127c2ed57426f40ea34db43e57a050e414c2544cb138704964a3bb",
+      "base_page_json_version_id": "gfpstorev1:json:b332037c589542ab1ac57de8f74835c1a3cf919cfbd283248237d00f9093e3d7",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c3",
+          "column_header_path_exact": [
+            "Quý 2",
+            "Năm 2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3520
+          ],
+          "crop_rgb_sha256": "d87c3e4339e5f6cde385635745fd4d2a653433079584b4bda688406101bb0ed0",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý 2",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3520
+          ],
+          "crop_rgb_sha256": "d87c3e4339e5f6cde385635745fd4d2a653433079584b4bda688406101bb0ed0",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c5",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm\nđến cuối quý này",
+            "Năm 2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3520
+          ],
+          "crop_rgb_sha256": "d87c3e4339e5f6cde385635745fd4d2a653433079584b4bda688406101bb0ed0",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm\nđến cuối quý này",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3520
+          ],
+          "crop_rgb_sha256": "d87c3e4339e5f6cde385635745fd4d2a653433079584b4bda688406101bb0ed0",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "ba505fc98837e16b9bfe76dbf3b0ca2dcd616e065cc105b0360c53382b656632",
+      "extraction_run_id": "gfpstorev1:run:805eec1c6178f3897ae955fba056a84a29938502ab074f4855a7edcb0fb13405",
+      "repair_id": "gjccdifav1:repair:b1ef0bf81246032268383f277d349aee21d00cab606137dd1f7301dda1a37cef",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:6690286b5cf01b5b785ea014b6bb2a1435a6d72e6b094aa4afdaa5e1fc9c7528",
+        "image_sha256": "c02f4732a49e96b44b24c07c36b2ebc130ef0245ede6be2b8a857cf87f57c5ce",
+        "image_size_bytes": 1996292,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:0fbe14b2cd270ac02f6a5ae7a04fe536fd6280bb655d6fbe6d1d58ad074e8847",
+        "physical_page": 8,
+        "pixel_height": 3521,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "source_sha256": "f48d1f9c7f50794919f0c77bf7acbdab7d5d0106e56741555affd783ddeb1fb6",
+        "source_size_bytes": 13161111
+      },
+      "stored_canonical_json_sha256": "c7e8f5277a4a8250b0a27162d571adfb2547fc94a4e82e2fbcc66a69c0085501",
+      "table_ref": {
+        "base_table_sha256": "557ae55f84fb50ed99e80fc8604a425174168500a159b3e5cb62c4a2b8bc84e5",
+        "effective_table_sha256": "b4fc5508782df2c1f49135713c466e9b0b9c2f20cd7c8fc074fed12da255888d",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2474,
+          3520
+        ],
+        "table_crop_rgb_sha256": "8c33fed54b35af43a2219e6dad594b1c8756281ccf3491c33bde4368200e580f"
+      }
+    },
+    {
+      "base_page_json_sha256": "6fd4c89f127fcd0b538af9cf7a4c37fd13c1b7b956b731d8da5a554975b9eab4",
+      "base_page_json_version_id": "gfpstorev1:json:6b7d3c96ded816bd60d43121c86281f4319879a598fd6e90d8e63a5f0652f780",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "null",
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Quý II/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3508
+          ],
+          "crop_rgb_sha256": "1f136bede1fa491b9d55a63fbcd19a78b0afabe797573aa195a92c57d0520eae",
+          "row_hierarchy_path_exact": [
+            "Thu từ thanh lý các khoản đầu tư dài hạn khác"
+          ],
+          "row_label_exact": "Thu từ thanh lý các khoản đầu tư dài hạn khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "null",
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "Quý II/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3508
+          ],
+          "crop_rgb_sha256": "1f136bede1fa491b9d55a63fbcd19a78b0afabe797573aa195a92c57d0520eae",
+          "row_hierarchy_path_exact": [
+            "Chi dự phòng giảm giá khoản góp vốn, đầu tư dài hạn"
+          ],
+          "row_label_exact": "Chi dự phòng giảm giá khoản góp vốn, đầu tư dài hạn",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "0a7652825d8abd3a69cac46597f52807442addad18c495e6302587f2a79dd285",
+      "extraction_run_id": "gfpstorev1:run:e5646a1d22dcd98c2235a7b9bd7e2e4b7ff680a4b0aaa9686436cb419f9f4aa6",
+      "repair_id": "gjccdifav1:repair:e710ff29eae29ff194a6548daa03bbc585cc8f758b80d2a9ba48ac37d4b370da",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:a63ed663efa3cbe20ca681fa0540221823aba65382a3cce04ddbe65bf9e3e86f",
+        "image_sha256": "3ce547d414ce1d1d4ee1aa06b6034a0c804a5f16fb1730719df51183a2a8fad8",
+        "image_size_bytes": 1626162,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:400724b8ed050e3265a8141db8f87b3bf90c187b0a3b187414d4cccb9eadfe4b",
+        "physical_page": 29,
+        "pixel_height": 3509,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+        "source_sha256": "ba97a5cd0137ff365b5f51aa591377e975d574b1a94ca2fc66284edda47492f9",
+        "source_size_bytes": 13211042
+      },
+      "stored_canonical_json_sha256": "31f21b753875a1a791be484c11ef38d3f2d27ce5d75c9a1a2ce6896ea896bea8",
+      "table_ref": {
+        "base_table_sha256": "b8fa712c74d96dcb43ed2a026e7ff42a797c008f344c12c959c0003ae5bd91ff",
+        "effective_table_sha256": "1f145f364ab024724499246924d23f722b6677781c79511e2fc9063efdda1a6c",
+        "section_id": "s1",
+        "table_id": "t4"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3508
+        ],
+        "table_crop_rgb_sha256": "882bd3d6c52e1c726168451dc219c7c11cfa3a386ae1eb39285d140f467a7689"
+      }
+    },
+    {
+      "base_page_json_sha256": "ae07afb6430aa342b3187aab9558667e812b94ceba434082773c29eccc8bb536",
+      "base_page_json_version_id": "gfpstorev1:json:2fb0d681028a9053baa152693660f498cab37d9734e0db6b8a589b1e0e5fca3b",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "-ktCap",
+          "cell_id": "r2:c1",
+          "column_header_path_exact": [
+            "Quý I/2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ee4ea726e5ef03ac44943408f2d975a38daf96617f7acdb7c8ea9a6955e3ae8d",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần",
+            "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-ktCap",
+          "cell_id": "r3:c1",
+          "column_header_path_exact": [
+            "Quý I/2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ee4ea726e5ef03ac44943408f2d975a38daf96617f7acdb7c8ea9a6955e3ae8d",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần",
+            "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-ktCap",
+          "cell_id": "r5:c1",
+          "column_header_path_exact": [
+            "Quý I/2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ee4ea726e5ef03ac44943408f2d975a38daf96617f7acdb7c8ea9a6955e3ae8d",
+          "row_hierarchy_path_exact": [
+            "Thu từ thanh lý các khoản đầu tư dài hạn khác"
+          ],
+          "row_label_exact": "Thu từ thanh lý các khoản đầu tư dài hạn khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-ktCap",
+          "cell_id": "r6:c1",
+          "column_header_path_exact": [
+            "Quý I/2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ee4ea726e5ef03ac44943408f2d975a38daf96617f7acdb7c8ea9a6955e3ae8d",
+          "row_hierarchy_path_exact": [
+            "Chi dự phòng giảm giá khoản góp vốn, đầu tư dài hạn"
+          ],
+          "row_label_exact": "Chi dự phòng giảm giá khoản góp vốn, đầu tư dài hạn",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-ktCap",
+          "cell_id": "r7:c1",
+          "column_header_path_exact": [
+            "Quý I/2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ee4ea726e5ef03ac44943408f2d975a38daf96617f7acdb7c8ea9a6955e3ae8d",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "e10b50afd7df0b4fbc9817000af060c5d5b570d6610f3fd41ed53ec1da5eccdc",
+      "extraction_run_id": "gfpstorev1:run:08da447db235f14dfa6c8c80889f0041e3fbd2e8ad640b70ea7cc2077dd01921",
+      "repair_id": "gjccdifav1:repair:46d016509425805f51985eb8083cbd81675d9ec9fe72e95e6b86ccac86154dbb",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:3293edcebb9d278df0fe84c4487e44eedac2718ae96fae8f519a524076f5f12e",
+        "image_sha256": "087bf28f90ca58bdabacc010e3d5a3fcc27933cb2a789d335fc5fa5927f37b45",
+        "image_size_bytes": 3012901,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:937b84659ef4bfb20c0d73bc6504b9e8c59250e504cd5d562ec216fb97cc077c",
+        "physical_page": 29,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/EIB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+        "source_sha256": "72f179c9ffc3117d1ef350d42108095d4d71f354b347755a24f009fdf85ba4de",
+        "source_size_bytes": 11996953
+      },
+      "stored_canonical_json_sha256": "649ae2188c9c57fac07d204d8bfc4f5848335f9c74ff67b74065b815ff982c4f",
+      "table_ref": {
+        "base_table_sha256": "721814863ccee561ed086bcac625852c29ad6cc5cd07d519bae3db66e857958c",
+        "effective_table_sha256": "f30e341305a0908ae5a823ad435e26673dc8e6b436b2832c0794418ec2152cea",
+        "section_id": "s1",
+        "table_id": "t4"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3508
+        ],
+        "table_crop_rgb_sha256": "40b84f162bd4fb011a7c71382757b83b591292b2f246f5b3c39e82b3dc9391f1"
+      }
+    },
+    {
+      "base_page_json_sha256": "d2561c68a229b38bb35e3912ccdf26ac0ad95dc25d6fd0004e1e1cbe244bc02f",
+      "base_page_json_version_id": "gfpstorev1:json:79f10f3d39a302bf9432fbfef2a90e7e265521e0c9e7ff7d0091e2627ef1eacc",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý III",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3545
+          ],
+          "crop_rgb_sha256": "673304a7fad2764ec221667faeb551f8fcd01dc35adf3cdc7c055882d55a2dd1",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3545
+          ],
+          "crop_rgb_sha256": "673304a7fad2764ec221667faeb551f8fcd01dc35adf3cdc7c055882d55a2dd1",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "24e84d6aa974f9a605302654caa7177a1c3cf1763b3c05de189b54ff78ec46e2",
+      "extraction_run_id": "gfpstorev1:run:7544c5d075512649c5a0a176cfd0a8db190ad957984e49a6a4684f6a7acf1f37",
+      "repair_id": "gjccdifav1:repair:267f33865f461f4a4819e9fec57d7595167263a8cfa6b23a67b7bd55541f944e",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:d657ea3af31f190e3b6d10b3d945eed29bc0d9c9494b00413d7ed5854d62dc88",
+        "image_sha256": "dc7239a0c439120b26014b2c0b630cf7e7340c3468ce427343d56afe1a940591",
+        "image_size_bytes": 3441971,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:8ad19d943fabd05e977374d6144e6aa39b46867853bdacf5b6d5acc4b5e66a0a",
+        "physical_page": 5,
+        "pixel_height": 3546,
+        "pixel_width": 2484,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/KLB/2025/BAO CAO TAI CHINH QUY 3.2025 HOP NHAT.pdf",
+        "source_sha256": "66e07ea5075283291d4abda7fb550fe4277295944c8993dfd35400e6a4878da2",
+        "source_size_bytes": 8958235
+      },
+      "stored_canonical_json_sha256": "c4c8fa824a87eba88dbae4a9482e404561286568e44a015d859807c06a2e83f8",
+      "table_ref": {
+        "base_table_sha256": "26dc267a514f9b405f6806cca48e1837afb049f00e86dc8c221dd7c8b059ebef",
+        "effective_table_sha256": "3aac84e1e713d336a6f85d971aa1ca247b7d39af6738c582abe23fcc7804ab05",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2483,
+          3545
+        ],
+        "table_crop_rgb_sha256": "04a73aa79926756c3ad6ec0e1e2b868cc308b695e719f98d3cd79f1c258ce111"
+      }
+    },
+    {
+      "base_page_json_sha256": "fc81d68645f5b3714efe39c9e85bfcf9206d6fcc0d1fc9abdb37595ef451d4fd",
+      "base_page_json_version_id": "gfpstorev1:json:b24ad176b84f6dbb13ffb009b5ced4b270e73fb543787e52b90cba4b55179638",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3541
+          ],
+          "crop_rgb_sha256": "cac2c4e54f07acb515df976ab49502a67965ca1e1d445f4c589137042d0acbc7",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "d85d8b29e83495ffe5319398eb192c012dc7f3aaa1fb7e406842b0c211f9037c",
+      "extraction_run_id": "gfpstorev1:run:ec84340c2659bf739db33beef9d5f423742bc877c3bfa1933292a3998c837be3",
+      "repair_id": "gjccdifav1:repair:73b3d53af7b930b6b05e39be2739ed73f10583b48e1ea1a3cc9de5dca3b4985e",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:b759959729fd88d0965c98221d59b8676c8d93ae10b39e4cf1d81c18d70c7c69",
+        "image_sha256": "67ac78977cb73af784890deed47b0efa67e2436badb49ddc3db2f68a946e1811",
+        "image_size_bytes": 3746541,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:6bd6368847c515349a85ff0cb19b3e2329de480fc7bbd23d6ef8fd43ed644432",
+        "physical_page": 5,
+        "pixel_height": 3542,
+        "pixel_width": 2484,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/KLB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+        "source_sha256": "9adafd9c25ad6dd1a05bc12d9b182fc65c4921145e98e7fac84f5453632f0553",
+        "source_size_bytes": 8675798
+      },
+      "stored_canonical_json_sha256": "3fdbdf4dec5f8a93520d0ebe5063c14ffa3e0642e64e65672718314dd8e9e4d8",
+      "table_ref": {
+        "base_table_sha256": "25018aec60c8989090b83939e05cbbe6e433030157a43207f16338d6cbdc40e4",
+        "effective_table_sha256": "b725e2c3e32f8a09be328b5f87ee2f3fbc6e14ade68214fa5750fd4a5119cfb5",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2483,
+          3541
+        ],
+        "table_crop_rgb_sha256": "65e9ba2fe8a3baa3fe382336730588f738ea95a8bef74a0333104faf233dfb1b"
+      }
+    },
+    {
+      "base_page_json_sha256": "61c99f63504e4a9cee2a942a2b25b8b4f301a49acf770484446e1a00c5403e6e",
+      "base_page_json_version_id": "gfpstorev1:json:a454a549dfc76809e8f1b5c79c2ba976064e4ccb4ce554aafa52a825a2c03334",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối kỳ này",
+            "Năm trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3541
+          ],
+          "crop_rgb_sha256": "fd4b02cf4e536a6d038f4fc1359379edccea8b47ff5b97c6bde7b1cb5559a671",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "5e218654dfe26e8e9aba31a3970596ff592d15ba0c5e21e99fc54ee29d864429",
+      "extraction_run_id": "gfpstorev1:run:a70f66cca1efd7ef528b929a9445d5fd206857d84646e56b0395461c3fdccd85",
+      "repair_id": "gjccdifav1:repair:dbbe18f1b385884eecb6195802962f5937af96cc2405c576ee18fc519ff41e78",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:e56c1e32f103cf22943a91a1870299ce0b1a916ec85ccd20b826066f2a8f1830",
+        "image_sha256": "5e87af2dfa89db4853d8fd37400428a5fd27aa89d4548a7e35d346a43401fd94",
+        "image_size_bytes": 3229359,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:2c3e883c041ee21f0e41e4b9690eb5175f71a9ae14c01ef7a711ba4d4f607d55",
+        "physical_page": 10,
+        "pixel_height": 3542,
+        "pixel_width": 2484,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/KLB/2025/VI_BaoCaoTaiChinh_KiemToan_BanNien_2025_HN.pdf",
+        "source_sha256": "cca550de67cbd0f2e05c77e39365872495d74d8c079aeef012ead6dc52997d33",
+        "source_size_bytes": 15203095
+      },
+      "stored_canonical_json_sha256": "12d94bca9b57600076137e7b438888b4adacac5cdc2abd47a9b29c9789bbdf35",
+      "table_ref": {
+        "base_table_sha256": "b0381178008c4a805f062084bc8b07d88745aaa4ba1d5fe01e53507f5c32975e",
+        "effective_table_sha256": "fb2ed4ceb97d93bb6859805dcc70f44e98c1d7bb77c116f3b29f98edd8020238",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2483,
+          3541
+        ],
+        "table_crop_rgb_sha256": "88ecf70d16e3bac44745cf901ee3ce24187eb711f36e763737c74e62d810d322"
+      }
+    },
+    {
+      "base_page_json_sha256": "885b168477e8e79c1fdefc19362d6b45c086b67c13894193e77b492088905b5c",
+      "base_page_json_version_id": "gfpstorev1:json:2de5dbd4260407b29348f922a7ed0ed3f3d918bd9392bffeb501f9c8e5ae2362",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý IV",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3549
+          ],
+          "crop_rgb_sha256": "6f86c30ea356cf3d5376f66d55af28f4c856bf20d610e8d833d6f77afc2e31ff",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3549
+          ],
+          "crop_rgb_sha256": "6f86c30ea356cf3d5376f66d55af28f4c856bf20d610e8d833d6f77afc2e31ff",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "102c925ed465b2d924346673a012a78c64714207c13ea4b10ea46a1470071d8f",
+      "extraction_run_id": "gfpstorev1:run:89979ec5abd3e2812af5e0d921ed2823bc15660cfab800ef594f5a1f55f752cd",
+      "repair_id": "gjccdifav1:repair:a2e20547d42e87eb777cf4847a0ebf12b907b1567b56a3606ca0a655ca092d96",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:f27e1cfdc2604fdbc5eaf0f9a230a694925626f356f37d238164874cfa5a1afd",
+        "image_sha256": "977c378825e03c34e11666bf326943b4af20f2b1202a9587942e8991432aa8f0",
+        "image_size_bytes": 3836254,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:194f07b95d4b3d046f4a475731ea747cb2aadd3523d68aa277903f8cf1ab6a0a",
+        "physical_page": 6,
+        "pixel_height": 3550,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/KLB/2025/bao-cao-tai-chinh-giua-nien-do-q4.2025-hop-nhat-_tv.pdf",
+        "source_sha256": "7d5beeb6de4386645839d688d489167a0bff573ab5f1dc1bbe50b0a4c1b4f5dd",
+        "source_size_bytes": 10113553
+      },
+      "stored_canonical_json_sha256": "75bc385d3c507808569a4d7015a7753b515e19f19a7f23d2ad90917b5cac3e0b",
+      "table_ref": {
+        "base_table_sha256": "d7348667a1d321b024cced00ddee3a244f6a704f4c2692f17fa1f20439583845",
+        "effective_table_sha256": "03f5c0cba2a3135292c42b98928421c1d7d36799524bec8eb301661ec1415f37",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3549
+        ],
+        "table_crop_rgb_sha256": "d0d5d766f30945ae96ee6e0528f874ba02cbfc345a878f12c6dbf33e9e16a168"
+      }
+    },
+    {
+      "base_page_json_sha256": "192241df4249b16d638d9c77185482e9587d7f8b8a487649afe9097c31a3a9d3",
+      "base_page_json_version_id": "gfpstorev1:json:afc44cc641013d8615f59746747c5d13e3ad09badb6a7452b87d7fdd19ce4045",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "null",
+          "cell_id": "r13:c3",
+          "column_header_path_exact": [
+            "Quý II",
+            "Năm 2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ae90ee0af1193e90aa34dab76c52d72baeeb546cfcacc36c679100898144a736",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "null",
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý II",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ae90ee0af1193e90aa34dab76c52d72baeeb546cfcacc36c679100898144a736",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "null",
+          "cell_id": "r13:c5",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ae90ee0af1193e90aa34dab76c52d72baeeb546cfcacc36c679100898144a736",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "null",
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "ae90ee0af1193e90aa34dab76c52d72baeeb546cfcacc36c679100898144a736",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "437a24d1aaccd8cb843b81f448946a6c03bced6581baef8296231ece2c6799f5",
+      "extraction_run_id": "gfpstorev1:run:d4887455c09ff657c91e016ffd22f18a1e9a27597ed1ec7c059e516cc7258ec6",
+      "repair_id": "gjccdifav1:repair:c2dcdf01bb1af0eb6760bf24616eef722fa7f0ba1a353a9e5073d8971890f0f3",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:3e29cc9a4ff0483143830db78f6a0e63abec2e877df0d3a565238b2069f43dd0",
+        "image_sha256": "ea05e8da85f3603dcc8d23a64692732e468a27730916a6fc94378c43cd3b579e",
+        "image_size_bytes": 3400716,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:aba7e448e745a1f68e00d2483472b906743fb97628bbe654dfe831f945b37835",
+        "physical_page": 8,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/KLB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "source_sha256": "86f53ef458dcacfcdc83c148964b5d281308975f1eae154b515ae308be9eccb1",
+        "source_size_bytes": 11512469
+      },
+      "stored_canonical_json_sha256": "ae065162bbba858cd6b1d68e3f7aba8f9c853fef3782d36b8ac528fa3bfd0c82",
+      "table_ref": {
+        "base_table_sha256": "bcbd58ba87212cc38d4a9a2ed0dd722010190e733ba0b110b9fad314cbd5b070",
+        "effective_table_sha256": "34cd37552c07c5cf1897ac09a33c9b2c35703751100221882551bb3c9b887982",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3508
+        ],
+        "table_crop_rgb_sha256": "661669b7e5ee64518442383194271bfabc6d394d53d58fdcde7c81aac9dd3e8f"
+      }
+    },
+    {
+      "base_page_json_sha256": "566ec989af030a75306861baf0e5b187040063ef299acaa04c2d4da0ee35a791",
+      "base_page_json_version_id": "gfpstorev1:json:a05d99655d62eec674f01fc8434e8bc6a64a50346962654877456a83c67f6ff6",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c3",
+          "column_header_path_exact": [
+            "Từ 01/01/2024 đến 30/06/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3509
+          ],
+          "crop_rgb_sha256": "80ec5c8a53b07c3a051a55f21da1e0e705564b9b9d1a4003ef4ace87d2d19392",
+          "row_hierarchy_path_exact": [
+            "VII. Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "VII. Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "1344ae1ac1d509f5baad53a9637e0cf67bfef8fdf4938d4887f33350ad66143f",
+      "extraction_run_id": "gfpstorev1:run:72c00aaba40fdbbd14a934cb05ad15b9407694a78619b4d27f0c51e2091aa3bb",
+      "repair_id": "gjccdifav1:repair:003fae350030eedaaf673535f0dfb67518ffcb72f6a8a2f8c675d40f446dd39d",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:dfba1b43836a571de3fd8e6f544712ccc568f495e42d34d042509613c1eacdbf",
+        "image_sha256": "02616bb39209e12dcb82d05b4e1c6384120d97a8561c451b9d9cf1a3a898451a",
+        "image_size_bytes": 3969945,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:a0019b6fa01fcbdf56dd9315b86f90b75febd432825bc0c4a3fc6a62fc0f5696",
+        "physical_page": 13,
+        "pixel_height": 3510,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/NVB/2025/VI_BaoCaoTaiChinh_BanNien_2025_HopNhat.pdf",
+        "source_sha256": "92f4239c94d2880bc99d0986cc61a580dae7b4a2f52721bf4f47700aded2bb65",
+        "source_size_bytes": 5430112
+      },
+      "stored_canonical_json_sha256": "e9e90f229040bc9470c741325b128ce39d46460923d40e4f7c43aca651931142",
+      "table_ref": {
+        "base_table_sha256": "4b2dd96e478fa1616624568ba1448314a03b77481adb4e30915ce5c49de13a5c",
+        "effective_table_sha256": "b8d92f800b34d43e37e58b5f9c42a3544b36bc931ce2d764da1a35b8da586110",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3509
+        ],
+        "table_crop_rgb_sha256": "0f2ad7a69669688680c2f36e5686620860723d2d0b1f19e612e1f2f41d893f99"
+      }
+    },
+    {
+      "base_page_json_sha256": "a6ccdf2904770c5d91accecfa2b1b133748f8f78f67b0dd11d0afddb658fde0f",
+      "base_page_json_version_id": "gfpstorev1:json:a2e5812de9a20fc73edbecee39c903f1613d5017e94388dd51e8d23ec38ff484",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Quý 4/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3499
+          ],
+          "crop_rgb_sha256": "8ce5c88f1a333481ead0e29f0a9ffe729b619766ce1f11681d86d905b76ad9f7",
+          "row_hierarchy_path_exact": [
+            "Tổng"
+          ],
+          "row_label_exact": "Tổng",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "a11ada45943ff61fbe73092d8586764b9bd388dfa741b0187fc4863192d74db0",
+      "extraction_run_id": "gfpstorev1:run:829b10ea851c5c04f7930636c36c5049700d0872fa4a0bb0d6cef764a3f598b8",
+      "repair_id": "gjccdifav1:repair:c5399aa6f394ab31944679ce75556ae5129e87ec14a1b6307aa05c2ad9a7096a",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:cbad20fc8426f25da1aee09a12e83e0bf210c111a68ad99b94a2b0146157e188",
+        "image_sha256": "08880281907de318a3e5b2f9ba771fb90bcc81baa8dda7a92b5b0c03785b0d5d",
+        "image_size_bytes": 771368,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:7288d664cfea7fe7c709fe61b0be10b1c2d03cc1edffdb7d6df17084fe158df3",
+        "physical_page": 31,
+        "pixel_height": 3500,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/OCB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+        "source_sha256": "0ddffc9b8582351c22eaea5565c4d8f55e185f2525e48e186584864dace67c08",
+        "source_size_bytes": 2893092
+      },
+      "stored_canonical_json_sha256": "2f41ecd91dd58f4902c4c6921d2c2f04d153a57ca78e5a704f321137def6928a",
+      "table_ref": {
+        "base_table_sha256": "d110d868f5e76c9b5ac0b329eba877e1bac96f0932ad0c1226d6d8a641ea0ab5",
+        "effective_table_sha256": "156b98dd0c5171a75a46f41f83594439cf1b000bcb15975b5addc3f581c0f3c6",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3499
+        ],
+        "table_crop_rgb_sha256": "b54fbbd5202f3d2d298b6ff6a59374c4489b81540f44a8465e207438b3c55e15"
+      }
+    },
+    {
+      "base_page_json_sha256": "43359840ff4bb6ad5fc03754bb1f17f99bd353c0b407dc85e97a6c4ef31ba5c5",
+      "base_page_json_version_id": "gfpstorev1:json:e2aed9f7c872e29cc27d8fc321233542c9fa6411a4fe0fdef2c53014015e1ff0",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c3",
+          "column_header_path_exact": [
+            "QUÝ 1.2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3499
+          ],
+          "crop_rgb_sha256": "f612bf36a3dd009647ba558326cb7acfd18f272bf4b1e454a7e5db6436dd6f4a",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c5",
+          "column_header_path_exact": [
+            "Số luỹ kế từ đầu năm đến cuối Q1.2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3499
+          ],
+          "crop_rgb_sha256": "f612bf36a3dd009647ba558326cb7acfd18f272bf4b1e454a7e5db6436dd6f4a",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "194ecdd8745e53dc3536354e16add3eb3d19e89a787f58fe05a429103287dc4e",
+      "extraction_run_id": "gfpstorev1:run:0721658145a2d05522428c6a969a064ab493ac4d99effd2694598799be49df83",
+      "repair_id": "gjccdifav1:repair:b4671d86c51f5550d3b1c6cc2dedd60a2ff23e91e29e0a00da4e508dc9430481",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:4440b2e8a2fceefb3d67645010a961b48927783d076ba4262256a0aa8f03487e",
+        "image_sha256": "e316f54695fb03f97b135d34dd118691bd5874ab46c67572137316562ac4f21b",
+        "image_size_bytes": 1088349,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:6e2965bddf9671cf5bfecfaa22ac2390ab027bdddfe14e2462a3dcb5aa9147cd",
+        "physical_page": 7,
+        "pixel_height": 3500,
+        "pixel_width": 2471,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/OCB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+        "source_sha256": "c0d86601e93e25476e798cccf7ea61fc68c8bd6582ad9feeea4c09da52cf34b7",
+        "source_size_bytes": 5301319
+      },
+      "stored_canonical_json_sha256": "131fd02431d976cf2c5869ca301c3bbd18c787bec678b05376429ebff51bde7e",
+      "table_ref": {
+        "base_table_sha256": "74dc0c97dfee889640bd9655bb66fff42f5287b0057729205dd5c3f3181e1a0c",
+        "effective_table_sha256": "8ac22377b08ae3124385cef146c1e7f0a63a1347f3acf4b8c865d4f6a443dcda",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2470,
+          3499
+        ],
+        "table_crop_rgb_sha256": "08a33efb5f0a0b5de4166f4b9e22387ece08b59dcaf8f929d563f26fe1a67393"
+      }
+    },
+    {
+      "base_page_json_sha256": "bc05583f18bc193c8140a4c6a77352d6eb27f246487138356166f158d088562f",
+      "base_page_json_version_id": "gfpstorev1:json:4b5159d5673f16596c3b1223f86c7574ea29ce656c132edde5aab7b63dc34610",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c3",
+          "column_header_path_exact": [
+            "QUÝ 2.2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            986,
+            1,
+            2466,
+            3508
+          ],
+          "crop_rgb_sha256": "63085cc77d4afd71766952ebcf97889e4f9bf096cfde5160e7c63c02ea1d49ce",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c5",
+          "column_header_path_exact": [
+            "Số luỹ kế từ đầu\nnăm đến cuối\nQ2.2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            986,
+            1,
+            2466,
+            3508
+          ],
+          "crop_rgb_sha256": "63085cc77d4afd71766952ebcf97889e4f9bf096cfde5160e7c63c02ea1d49ce",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "23596c0f89cc90fb442e6305a17125043966ad97fecee346850667c0ad0d8083",
+      "extraction_run_id": "gfpstorev1:run:c7fd206835341967caafbe6994ced6a82a79f7fe787c785653f094d10001a2c6",
+      "repair_id": "gjccdifav1:repair:e53ba7bca1e78ebc3c65afad3748970e78560dcbee7ee91aa9e5080e28a445b2",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:cd2904ca32d155deb0509597f2f32403f5485ee73fcd09838412c7daf1302fc0",
+        "image_sha256": "5fd43c51da3df3e39e89f8aab087b98ba27080d117e4cb990d6eb20a34ee9216",
+        "image_size_bytes": 826419,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:fffd428310cf0a1d1b82dca5a7f92baf9a584f95ebe13b15ef0aa6d850961a62",
+        "physical_page": 7,
+        "pixel_height": 3509,
+        "pixel_width": 2467,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/OCB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "source_sha256": "f487e84717165912dda50f64dc8fe2ec580ffc1a5bfb25f072513c39a9c4444e",
+        "source_size_bytes": 2831528
+      },
+      "stored_canonical_json_sha256": "70bb10e294a489c86a6288aa0fdc5ec375cd5ae3fb8c755d534f3c756cb8315d",
+      "table_ref": {
+        "base_table_sha256": "67ab0fb15fd860141d2d3d805c6d03c4372dc0086b492849b7c4f8041e764828",
+        "effective_table_sha256": "67b48787bc806f126c6dea75603e954769dae93b8668cb6413b13064bd65dbf4",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2466,
+          3508
+        ],
+        "table_crop_rgb_sha256": "1d47b5c29e07f4bace5c63bc5c5275c7b85aca8753be74ff3a46fa699c8aa23f"
+      }
+    },
+    {
+      "base_page_json_sha256": "ab3c0cda8cbe75ccf2cddfc05406b86f9f32cb061fa1e72e589c8ca969803309",
+      "base_page_json_version_id": "gfpstorev1:json:32c50ce87cccc8458be1b9c1f3606b3be631c0db8e35ccc169e283cb24d54680",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "30/09/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3507
+          ],
+          "crop_rgb_sha256": "7cc1bc2b79a5c2e673a0311312755f4bb5a427e587ff6d06c5f3c8c2c6580d8e",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "30/09/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3507
+          ],
+          "crop_rgb_sha256": "7cc1bc2b79a5c2e673a0311312755f4bb5a427e587ff6d06c5f3c8c2c6580d8e",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ chứng khoán vốn đầu tư"
+          ],
+          "row_label_exact": "Từ chứng khoán vốn đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "30/09/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3507
+          ],
+          "crop_rgb_sha256": "7cc1bc2b79a5c2e673a0311312755f4bb5a427e587ff6d06c5f3c8c2c6580d8e",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "5193c4ac2083da8f012fc997d7e28a86da56db82fa34df43979aa516f4088215",
+      "extraction_run_id": "gfpstorev1:run:9487a053b1e1d22e5e541a7bac2e558258cfd813e8511d2a5147501a0418fe3b",
+      "repair_id": "gjccdifav1:repair:4727f4b1dc9f52fff739694d5e886e87b070750ae914ae3c6343d6d29e130c73",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:f5af439c8377b3e818574dfb81972f43823db0817a4130fe69c46df3beea178e",
+        "image_sha256": "32ee25f543865b88b96c5e25e061390992bb8d19ec73967e2e663363e650be13",
+        "image_size_bytes": 1711351,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:e2add7238cc8372c31b3b5e02119f7ea2a697f308d161be45e1e2ec298da88bf",
+        "physical_page": 39,
+        "pixel_height": 3508,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/PGB/2025/3_pgb_2025_10_22_8eac562_vi_baocaotaichinh_q3_2025.pdf",
+        "source_sha256": "bac53d82ce05ce497222e1a1c20945c31af62e534f7c7385825400662c513ead",
+        "source_size_bytes": 18957903
+      },
+      "stored_canonical_json_sha256": "4eccbff423191869f31ace425ca151c8ac3c889cae7ba1a2df651164b8237cb1",
+      "table_ref": {
+        "base_table_sha256": "dcfd522c517e0f04627e5d45f62b4ab501449043fc0bec6ba2465d083dfee58c",
+        "effective_table_sha256": "9110c2e52c92563212f9969ec94f2ed22574e9defc90abbbbf4592cefc31fe8f",
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3507
+        ],
+        "table_crop_rgb_sha256": "6d42a4abf6296a328e3647a9d6ca70a6773336a71d5184534d124802432836ef"
+      }
+    },
+    {
+      "base_page_json_sha256": "5d5c9cdd4650a757ea971b7a95951cfc9ef34b20b2f23a9cc56f6339b88f61cb",
+      "base_page_json_version_id": "gfpstorev1:json:c6bd642025a2bf109d751ca7f4ba4c3706fbd9e2b20896982a102b3de1c7c2b5",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3507
+          ],
+          "crop_rgb_sha256": "9862edb1a1756a633b3a84ecac1f58dc727cc28c31a52135a00e6fa958ff64a4",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3507
+          ],
+          "crop_rgb_sha256": "9862edb1a1756a633b3a84ecac1f58dc727cc28c31a52135a00e6fa958ff64a4",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ chứng khoán vốn đầu tư"
+          ],
+          "row_label_exact": "Từ chứng khoán vốn đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3507
+          ],
+          "crop_rgb_sha256": "9862edb1a1756a633b3a84ecac1f58dc727cc28c31a52135a00e6fa958ff64a4",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "199fea442efeae7cd32e6c7417935c97f3f793092a493fc740813d8a6cda2cb5",
+      "extraction_run_id": "gfpstorev1:run:ecdf37b57e094302ac90953994315d514aec947bff35a253d741ae8501bedfe8",
+      "repair_id": "gjccdifav1:repair:0bb72bb2d64a2e33696965f5ad8dfea7ed4679334c7f9d688141460252a4209a",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:31e59cb5c3e2068ce4eaa267601d10f679ca69a8710354e7ba9ceebb087c30d1",
+        "image_sha256": "40f2687d6b8fa37fbb255e2f9e9e55b4fbeabfeef46b427a24f43a13a3689c9b",
+        "image_size_bytes": 1556543,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:71eb5ddc794156f40403048d8cec187f9a28e43761b7168f046cbc6751a4ee07",
+        "physical_page": 39,
+        "pixel_height": 3508,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/PGB/2025/4_pgb_2026_1_22_d793078_vi_baocaotaichinh_q4_2025.pdf",
+        "source_sha256": "d323b33958279f6dfb5452834c5f7a688bb0b055688f5f88267b9f8c2ba4799d",
+        "source_size_bytes": 19531995
+      },
+      "stored_canonical_json_sha256": "3c9bbc0c9164cb1d29be8cf92779e989125a33e8ec236ae17327cab56208edd6",
+      "table_ref": {
+        "base_table_sha256": "955ceda1e2f53fbaed45a0187b611d52222fa4598853bcbf72fdce6dd79fd8ee",
+        "effective_table_sha256": "604641f9d5357e1b962c27fcff2a442bd68a62ccc08dea0df488363f40a5e7e2",
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3507
+        ],
+        "table_crop_rgb_sha256": "ad4394e43a88abaa039a8c3d746fb8561c0163bdfdc56836e30c23a53e3eec58"
+      }
+    },
+    {
+      "base_page_json_sha256": "502f76c1c81c3db728204a3396d3d5e45514a3238ba90d5e14803a85bad46b22",
+      "base_page_json_version_id": "gfpstorev1:json:502ee24dd77db94fd3f4998215f1b266b0e7367109c3c684dfe70ba76f08e4ab",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "31/03/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3509
+          ],
+          "crop_rgb_sha256": "9e6dbfc0c484da32fa44f7820aa4c9d2c4c6e9744f7fd073b29311b13f367e15",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "31/03/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3509
+          ],
+          "crop_rgb_sha256": "9e6dbfc0c484da32fa44f7820aa4c9d2c4c6e9744f7fd073b29311b13f367e15",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ chứng khoán vốn đầu tư"
+          ],
+          "row_label_exact": "Từ chứng khoán vốn đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "31/03/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3509
+          ],
+          "crop_rgb_sha256": "9e6dbfc0c484da32fa44f7820aa4c9d2c4c6e9744f7fd073b29311b13f367e15",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ góp vốn, đầu tư dài hạn"
+          ],
+          "row_label_exact": "Từ góp vốn, đầu tư dài hạn",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "31/03/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3509
+          ],
+          "crop_rgb_sha256": "9e6dbfc0c484da32fa44f7820aa4c9d2c4c6e9744f7fd073b29311b13f367e15",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "31/03/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3509
+          ],
+          "crop_rgb_sha256": "9e6dbfc0c484da32fa44f7820aa4c9d2c4c6e9744f7fd073b29311b13f367e15",
+          "row_hierarchy_path_exact": [
+            "Tổng"
+          ],
+          "row_label_exact": "Tổng",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "1b4b94b783052f41cf5721cb3e7159bfc92f8347287698be6772e99a242f6e26",
+      "extraction_run_id": "gfpstorev1:run:ec3b70c6fc60617ed1e7899472a11b0cd5ff60ed6d84844dcdd70c5c7c736605",
+      "repair_id": "gjccdifav1:repair:66291ef9f32d7ff54a27ddff3ec0c0d6cd0de0559e1b1a82870707c2146f58e3",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:b9fb25931e571f2b4ba08751e1b2f5e2a7d6e5a145a5cf5694088bb9ed2624db",
+        "image_sha256": "a0f760466fda7abf1df7f132bfc4a9bd745b541939d785f8e876acfe96ae3ad2",
+        "image_size_bytes": 346630,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:6fde0729e922ead09242836e8cf345daff04ef0b74fd61f73ecbe916e3d4e962",
+        "physical_page": 39,
+        "pixel_height": 3510,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/PGB/2025/BCTC quý 1 năm 2025.pdf",
+        "source_sha256": "f63455968c34bb29fdbba20fca99364d25bbdfe9638ff0a3b5f8e0453c35cd2c",
+        "source_size_bytes": 1701215
+      },
+      "stored_canonical_json_sha256": "209fb9e67e2b41001a7558cfc154f0a33d9ae06facc105f3c3de8732554fe4ca",
+      "table_ref": {
+        "base_table_sha256": "21c314158910f9eb4c02964dc1c139f8e4180450d1a3cb94f24054991d85a281",
+        "effective_table_sha256": "03a78dbad6893e2c447e639fb16ecd6d18fa8d32c6dfc246334f63da509260a4",
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3509
+        ],
+        "table_crop_rgb_sha256": "c9928c91246a60e981051843c898cdf9d3c0810c3dcec2dd23d797fab2732527"
+      }
+    },
+    {
+      "base_page_json_sha256": "e5ca7b9ac93af11ba0348f98d7939346a7889ac429c4699a5c64ad1725090691",
+      "base_page_json_version_id": "gfpstorev1:json:32c3252723856749b2b91e95514cb1b68b5d4ce15f35f287ac035dfb93aebb1b",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "30/06/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "65a1b726a3a55a30daacf8a7a0f6e98562cf52f48bbb139126d591dfb245fed7",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "30/06/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "65a1b726a3a55a30daacf8a7a0f6e98562cf52f48bbb139126d591dfb245fed7",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ chứng khoán vốn đầu tư"
+          ],
+          "row_label_exact": "Từ chứng khoán vốn đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "30/06/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "65a1b726a3a55a30daacf8a7a0f6e98562cf52f48bbb139126d591dfb245fed7",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Từ góp vốn, đầu tư dài hạn"
+          ],
+          "row_label_exact": "Từ góp vốn, đầu tư dài hạn",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "30/06/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "65a1b726a3a55a30daacf8a7a0f6e98562cf52f48bbb139126d591dfb245fed7",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "30/06/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "65a1b726a3a55a30daacf8a7a0f6e98562cf52f48bbb139126d591dfb245fed7",
+          "row_hierarchy_path_exact": [
+            "Tổng"
+          ],
+          "row_label_exact": "Tổng",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "81ab5bb392c9d44c3697d4591e349ef6248fc04fea7240ae2a41b6059a0e1759",
+      "extraction_run_id": "gfpstorev1:run:2f0a2bafb3456ab10dfe4eed112e6f7ef57e27dabe2a3b3cc8d75fffa222550b",
+      "repair_id": "gjccdifav1:repair:f98b6d1e04156f31d7488a34495b2b7f46a578c15891e30daf7658aed2413b2a",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:4646965a56e4a0467c983635093c1e6de04fea2ee42b5fcb82bdde461931d6aa",
+        "image_sha256": "43c135ca38df0500b7a785d729b0befc273d5be0b3edeb90faf328502bc58e01",
+        "image_size_bytes": 2246284,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:89bdb493890c3371094761e70c4ef4d5da675c2606e6232465cd683182571e1c",
+        "physical_page": 39,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/PGB/2026/2_pgb_2026_7_22_3a0f521_vi_baocaotaichinh_q2_2026.pdf",
+        "source_sha256": "031a48ab510b901bef9b418fd70f6b10bc4c98d846f242d30b324d21ac9fd604",
+        "source_size_bytes": 11686004
+      },
+      "stored_canonical_json_sha256": "0297edbff39dad394505fdc03e8f4c74cd6b96449a7bd2a297cb4a1cc33de012",
+      "table_ref": {
+        "base_table_sha256": "7775a7ef4ad749ff67f96010447b767f1afad706382c51749b3cbe4bd3afcd6a",
+        "effective_table_sha256": "46625a79427bbd57c732d2330487bb11e703ee95f39c2e383c9c581bb7d72d72",
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3508
+        ],
+        "table_crop_rgb_sha256": "1425158145bf5cd807d4c4d3cd7c6d749ab62411705bb2336800157afd494b09"
+      }
+    },
+    {
+      "base_page_json_sha256": "4d482d6ce74b6d3d0b400d19d380da0e43d8e9b4a8927375fdc4dd7817acdfd3",
+      "base_page_json_version_id": "gfpstorev1:json:d2c0c4eaee76696092ca5dfca4dd2ebf463b60e45359ea657a8be1442f9a5527",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c2",
+          "column_header_path_exact": [
+            "Quý I",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3495
+          ],
+          "crop_rgb_sha256": "d3fe052964acbde1f06136f9d3ea60e8cd2d617efac6a18b36154450801d6975",
+          "row_hierarchy_path_exact": [
+            "VII. Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "VII. Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối Quý I",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3495
+          ],
+          "crop_rgb_sha256": "d3fe052964acbde1f06136f9d3ea60e8cd2d617efac6a18b36154450801d6975",
+          "row_hierarchy_path_exact": [
+            "VII. Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "VII. Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "1d11ce190e631369e9d18201b5f7dce11ec6a67837321dbe0e1bed4667331715",
+      "extraction_run_id": "gfpstorev1:run:8613f976740fa2e88cf1f44884d7701a3997b348fbf5a9283080a7c567c026a5",
+      "repair_id": "gjccdifav1:repair:12f5f7b5520ba57ed2374a5c45a2d3ef3be187093387b6f43552096a47180053",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:d269c3196baea62d518c8556449e26c1f8e6e25cc438e4198e1ed9acf3d2b839",
+        "image_sha256": "a9cead4899fb9491ade7c9ab3b5c59d82df00728cd86529b28788a9707cf8d7d",
+        "image_size_bytes": 3436291,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:e0910a6fca3a4dc8b9cd1ba9089ffdcdf74ed7d6fa01a05780efb9b3140ef02f",
+        "physical_page": 6,
+        "pixel_height": 3496,
+        "pixel_width": 2471,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SGB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "32e0564c1248db84fe8fe8e4717c254916364015082efdc154458f4d51d12256",
+        "source_size_bytes": 15200551
+      },
+      "stored_canonical_json_sha256": "e9ac81a0000b3f46ea6886da37ab4ec49615f5a8419063630549818841488970",
+      "table_ref": {
+        "base_table_sha256": "78cd28e21d44f6834740bea1a084ad57246fe43a00db90326c6324228c45a05f",
+        "effective_table_sha256": "dc2331c8ecccb99f86954bbde83c33cd1efa3fc235c054e15b4f0436405f7400",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2470,
+          3495
+        ],
+        "table_crop_rgb_sha256": "d51cc3d875dd3a1c4c9abe62ae1ea233aeaa164daadfa4f78abc860068c51f8f"
+      }
+    },
+    {
+      "base_page_json_sha256": "547b509808e980a8faf816f85d4cf004c0a6e5be9ac63a7fcd650c96d5dd90ab",
+      "base_page_json_version_id": "gfpstorev1:json:83a07e82f9e0c45adaf603b1d873c8bc622477e7eda0180153bc676e56f221d4",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Năm 2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3495
+          ],
+          "crop_rgb_sha256": "d6b2000ae85319a345ac6597d7b33fb51df5f07e4d25e4e162a21c458042ee94",
+          "row_hierarchy_path_exact": [
+            "Thu nhập góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "8adb821ef0f09b592eeda393f0932e16f02b2cac103d9409a43133dd26d28db8",
+      "extraction_run_id": "gfpstorev1:run:a901bd59e9972c1bbf621ec742b3194c46270189e4631f645f0ffc92c4e7315d",
+      "repair_id": "gjccdifav1:repair:a00714141b48a6a40973c24cd24c568d5ad9c356d6af34bd39298f99220ce7fd",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:9e5127aae798c43cb2d0179f84be199a969b623dedfc406c0c479f739bf421c3",
+        "image_sha256": "bb0bfda04a1c377d9fe23280e5d8f1d06a893403d5a138f2f2bdc2ff4504935e",
+        "image_size_bytes": 3842815,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:a8335178f55a6551fb456b338960d3819f5e9ab60aa9e7f02626d7658d6658b0",
+        "physical_page": 42,
+        "pixel_height": 3496,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SGB/2025/BCTC-rieng-le-da-duoc-kiem-toan-2025.pdf",
+        "source_sha256": "5951432eaaeb629171bad0faf551b098f3600d44893292e32abcf7c2794ab244",
+        "source_size_bytes": 20141194
+      },
+      "stored_canonical_json_sha256": "6d40051819d19dea93da8836f2bc9d544f0db38669f4f3775606bd12743250ec",
+      "table_ref": {
+        "base_table_sha256": "a813818277b7f136e5adeca84208619b747cfe72a1e34c5bdf29433098e061f2",
+        "effective_table_sha256": "775e4b96f043007aad1b58eb2deec172a301bbf13f6d83af97acce79b0917a4f",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2474,
+          3495
+        ],
+        "table_crop_rgb_sha256": "e312b7627644590b1ed0241e7ecfd733134ae669fc61ef3f871b3d0a5b8d6497"
+      }
+    },
+    {
+      "base_page_json_sha256": "4150659ddeed8008a4f9b35df465fe878a776bd0c2601d7e87952e9f572ac5c8",
+      "base_page_json_version_id": "gfpstorev1:json:2160e32d99cb37c32631f1cef4597ae077c2a72d1c812c9c30d114e1f04074f9",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c1",
+          "column_header_path_exact": [
+            "Từ ngày 01/01/2025 đến ngày 30/06/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3495
+          ],
+          "crop_rgb_sha256": "1a5cd84e9802b785d1186dc9e0aa99d555f5b3f23ea3998c1e2a01ed42f3e5f8",
+          "row_hierarchy_path_exact": [
+            "Thu nhập góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "bb77b12dcdf430ce5715b33cc909ff99390d5816ce9c93fc5e2c9869b9eb5bca",
+      "extraction_run_id": "gfpstorev1:run:00cd66375d0dcd1688bbce5ed005038cf961ea241083df632cc18e65fc5dffcf",
+      "repair_id": "gjccdifav1:repair:92e14d9214c4fee497dab255fdc67be17dc7f93b8c0d024c04257c04cf4cbeef",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:4aac80ba2debdba15e5f3aae50746ba1d25f7ca277ddcb2c3a2b8d98fc435edc",
+        "image_sha256": "c44663e229554a700ae5923a8d31abe94f44874651e689b92fc457d6d519510b",
+        "image_size_bytes": 4040566,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:b186fa5229748680ee58b8656099a58255334c32ce21cc3d8c80a7ed39af430a",
+        "physical_page": 43,
+        "pixel_height": 3496,
+        "pixel_width": 2471,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SGB/2025/BCTCBNHN.pdf",
+        "source_sha256": "6a11b3dfcbde7f8740121a0bdd6228456303f703f25b3f3e2050aaa4570e42d1",
+        "source_size_bytes": 20373301
+      },
+      "stored_canonical_json_sha256": "911f97e17bcdc701c5fc658547bb923a98526fe81ae22298fd74eeb9a1efac51",
+      "table_ref": {
+        "base_table_sha256": "cf246b78418d4174b0cf46ff77d485ba25e65b485a90717bb6ae8f3958168a75",
+        "effective_table_sha256": "d63453a6758e51976aa0088180f7c12e0b212866c60322af81beee05b8b8a0f3",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2470,
+          3495
+        ],
+        "table_crop_rgb_sha256": "3b617aa17b53eefb6bbb785a35987a1755283b1f0ec47ecbd8c5338060e72809"
+      }
+    },
+    {
+      "base_page_json_sha256": "29ce25b603c297ceb62d01989918ddb5bf1cca6c0cedf92c91f2c0159e99e550",
+      "base_page_json_version_id": "gfpstorev1:json:cfb637f6a5b08b49ef2dfba40db3d171b4226e98576520102db51eb6d091f46c",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c3",
+          "column_header_path_exact": [
+            "Quý I",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            994,
+            1,
+            2485,
+            3536
+          ],
+          "crop_rgb_sha256": "566c0a2638c74e99721093f76d83b13ed8c3bface95d3914fd514ae9680cad81",
+          "row_hierarchy_path_exact": [
+            "VII Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "VII Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c5",
+          "column_header_path_exact": [
+            "Luỹ kế từ đầu năm đến cuối Quý I",
+            "Năm 2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            994,
+            1,
+            2485,
+            3536
+          ],
+          "crop_rgb_sha256": "566c0a2638c74e99721093f76d83b13ed8c3bface95d3914fd514ae9680cad81",
+          "row_hierarchy_path_exact": [
+            "VII Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "VII Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "8e715baa1f8efa571fd44b48d1126922b2877cea68e24d21405e1ddeee88a7d4",
+      "extraction_run_id": "gfpstorev1:run:89007e422a3e6c6e3a7338fd9ca397a37fff3006b0b07babdbbc9725e60adff8",
+      "repair_id": "gjccdifav1:repair:80aec7d5cdaf3daaca2122dfc3d58b43c18194c538662aa53664ea1de1dc33ba",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:a973f8c5963d38957cf2c00176786be1adda434ef12b4d4ba4f993f587f9a7f7",
+        "image_sha256": "7039df5e99c77993ea4507f3929b435279b91653c38bb0749fc04ae2688d6357",
+        "image_size_bytes": 1190920,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:96a11f48628f2f07e3e6ff463a5604cb4b538ba59ef5b45baa0dda31252c8ab4",
+        "physical_page": 7,
+        "pixel_height": 3537,
+        "pixel_width": 2486,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SHB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+        "source_sha256": "710071aa8f543294faa4388ed0634bd7ee915daae24b249116212b4c4efc21d8",
+        "source_size_bytes": 5900185
+      },
+      "stored_canonical_json_sha256": "a8e114ccdf10a4c5e42dd6adb1b491fcb636efbc90422faf2f5dacafac72298e",
+      "table_ref": {
+        "base_table_sha256": "61bea00b35e7c4eba70294b354d52c1758f029ea30279080b6dc494826e90d5e",
+        "effective_table_sha256": "9626f4549f0ec016fd68f534ce1aeb454398c2ef353284e02815101fbe1a2f37",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2485,
+          3536
+        ],
+        "table_crop_rgb_sha256": "3f711289045dc8e28a78b094e8d433a72fd11de543743ed13562799daa4d22a1"
+      }
+    },
+    {
+      "base_page_json_sha256": "86d1b7ac519e3e08c1796490b4ddbf8e7ef34820af567c32a0f2d552f2a0aeb5",
+      "base_page_json_version_id": "gfpstorev1:json:89d66baf5aff11649163b42c5951c7be288b5747bcaf52afaad7a009e13171f8",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r1:c2",
+          "column_header_path_exact": [
+            "Kỳ sáu tháng kết thúc ngày 30/06/2024",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "08665b9e375f942e8647be6e36e33819fc4263c2e5b446f0904e65e1befb038a",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ chuyển nhượng công ty con"
+          ],
+          "row_label_exact": "Thu nhập từ chuyển nhượng công ty con",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "a67f233770d4b0cbac4c37f06c067e6c1481fe8808ac9eaa8ff732d116850452",
+      "extraction_run_id": "gfpstorev1:run:c7b8295a455ca209cd9e255be25da0308ed2d2ae0bda6db17f6bf5a2877a416b",
+      "repair_id": "gjccdifav1:repair:a78028a1bb221994422cb1898ee7ed7d4dc02a8530d6bf3c659c0c70320e8849",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:b93e392e4031b01ff8edfc9a031f1940c30943a343b9bbb66f150e307e5396fa",
+        "image_sha256": "e10ff8a5e28ddc28d8f8c84a7134db713f8c2c962537c297a0b5c40bf7d9814f",
+        "image_size_bytes": 1959861,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:71a53d4d15d16e1bcb8c0005aaff589a8f30554814a31e5b740479076d1f8946",
+        "physical_page": 48,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+        "source_sha256": "4b3c1d975e9e6fbcf0b6a7eac67179b49598aceb7be2188c198a194e5487960b",
+        "source_size_bytes": 15760497
+      },
+      "stored_canonical_json_sha256": "400efc4c7d90424dea61fb7d57d40d7a723ba81dc7f2df4a27d01d565052f11f",
+      "table_ref": {
+        "base_table_sha256": "c44841d12de7051424e1064150c0bd672b2b4da7828c6b48d0f779ec1134e63b",
+        "effective_table_sha256": "f48d97ff0ab3532202ddbda7d51ebabb7fb5ac6a485ebdd0f42763846abfa87d",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3508
+        ],
+        "table_crop_rgb_sha256": "3259b791ce045d23193fbb7f14b41511b23e910144fd9751e21568828203042f"
+      }
+    },
+    {
+      "base_page_json_sha256": "994a8697da981afcd4ebe72e6526dd8afea065a1e1e09fa159eea3f5dc04c1dc",
+      "base_page_json_version_id": "gfpstorev1:json:edb866e849e74e9e81ce7184007d43bd0a801bb7a9cc10e1ff177e05950d779b",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r1:c2",
+          "column_header_path_exact": [
+            "Kỳ 9 tháng kết thúc ngày",
+            "30.9.2024",
+            "Triệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "3fd7ee03d5d68ea5d86d7c5e213cbdcfc9e4fd0576feb4704618b9e745206428",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ chuyển nhượng công ty con (*)"
+          ],
+          "row_label_exact": "Thu nhập từ chuyển nhượng công ty con (*)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "d3066f198a95607b972b05adcbeec87688d69aa83f6775455475f486ce3cc027",
+      "extraction_run_id": "gfpstorev1:run:9b8aae1ffa15b14acc2e85919f4412b816434e3698f32c5ed8ae7f120942edc9",
+      "repair_id": "gjccdifav1:repair:b7f7526c36015453302114f437528a8bdb9395e19e47e711baa7ce5dc95325c5",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:f6749a2a5c11b9ba94f5f17e72be2caf8764b2b9130cf668e3e83b76520d2940",
+        "image_sha256": "aff690380f564cc004eee4c177432d1daada79c7191ce2c84e6e822face9690d",
+        "image_size_bytes": 2115706,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:eaed17e5bd729bea0da3eaf238aa4850587c0d2f0395bbf4005237b10a5e8da0",
+        "physical_page": 43,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+        "source_sha256": "110eca486ce72190827b7c59cc5968fc1b1e1631d691d277abff070555a51494",
+        "source_size_bytes": 15064951
+      },
+      "stored_canonical_json_sha256": "7a7704320dfa7c53ed0865b1027d2f98dc8d645974565e598c51217180b86c3b",
+      "table_ref": {
+        "base_table_sha256": "9110817c5e1816b348572468ce8ff28058f2d4d2d9a3b5b673de9d3d179ead60",
+        "effective_table_sha256": "f6a8d7f30f117c0d6befa1d578e7fd80fda8642c5dd2df0619ccd4198bcd72a0",
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3508
+        ],
+        "table_crop_rgb_sha256": "da3570f48a7db59156a5d275c923baf814007446afde76f4a277ae889dc2bcec"
+      }
+    },
+    {
+      "base_page_json_sha256": "dc2adaae362eb58034dfe1ff7ed938ad674c836e0fd51a8ed3fb0d2f23d12fe6",
+      "base_page_json_version_id": "gfpstorev1:json:1f7cbdcc705155efe9fc214aa94b407ac34ee89010233fba9c9f87490544ed3d",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ ba tháng\nkết thúc ngày\n31/03/2024\nTriệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "0061d433783d0d81772ce1f3381f2b9f685b35bee457a951f80420b8afcfca16",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ thanh lý công ty con"
+          ],
+          "row_label_exact": "Thu nhập từ thanh lý công ty con",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "7fc06c2fa207cff3341afdbcf3129fe315fbe008a13215076458fae2dc30cdad",
+      "extraction_run_id": "gfpstorev1:run:e67980cbe71b5d8db29a2021020cfc02fcc270380765342f5276a53ea66c2f00",
+      "repair_id": "gjccdifav1:repair:ab29a90a3f094b5c0a395419faddfe7539df927daa5ee771ce513ebaa42ff796",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:72626eb6a8a099efaac4c0a19bb31ef97cde3dc46bee45f9f7918c263fd1199f",
+        "image_sha256": "d08bc78b0bbb8f37113cd251995e4577abe6a7a613a4e947d8feba11ea973e9d",
+        "image_size_bytes": 1656830,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:4499d6348aa6857b80e5cf27f6b2f96cfda326a5192b25d5d903898d8cd4dd0f",
+        "physical_page": 48,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "5cdcfc88c6965366883b52235a35e3cf4342795b32fd02c97a5cc1e6ad0d8152",
+        "source_size_bytes": 16226495
+      },
+      "stored_canonical_json_sha256": "f4b348d2a9c0701f883e8df02941f71ecc74e5283f25270c7dfe1fb4675b201f",
+      "table_ref": {
+        "base_table_sha256": "e781a90d21e47245f8276543e9a76d63b52e15f65781b9af89cdadc134528478",
+        "effective_table_sha256": "68f189619b8e0d97106e93c7d00a8844de336fd376b17970885c5f679c7425c4",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3508
+        ],
+        "table_crop_rgb_sha256": "f2b0fa1095c5f32320f3e248dbf8442623ed3c90be931b425ffccc9463643e13"
+      }
+    },
+    {
+      "base_page_json_sha256": "1b12cf4822cbbb75fd892e7c08c83b80c3008f1bce523180bea62e022b2fe3b0",
+      "base_page_json_version_id": "gfpstorev1:json:f65ea010e34a14d3c1324b718873cb2511980b7b401632d4ed79ba2e93c3aaef",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ sáu tháng kết thúc ngày 30/06/2024",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2480,
+            3508
+          ],
+          "crop_rgb_sha256": "910963cd158c98203a642d47528180e5bab879c0b8dc53cda51f72810c0524bb",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ chuyển nhượng công ty con"
+          ],
+          "row_label_exact": "Thu nhập từ chuyển nhượng công ty con",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "c53f4bfd772ab914f54755f17eee956ca15d6cd3e817d4ce5075eed55013d7b9",
+      "extraction_run_id": "gfpstorev1:run:b90f08606ef020b1d0cfef0f6caf772dfd8db17b074b69480088a1501c704923",
+      "repair_id": "gjccdifav1:repair:5033631d53bd426a875e3f7c410831b8c6351fb92054d08b85ec84d3c478c34d",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:277ae3474f4e78d6d621948fe2bc396df278529ee2499a0768fa5b0c21286c2f",
+        "image_sha256": "87835a972b0d59c415fa035d0b295e022a1df147024a3ef35db803a9ead27d0e",
+        "image_size_bytes": 2172763,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:d03c307faceae15f6e05453b7d7aefb8d31a32bd9daa7974b969fdf3e3b71aff",
+        "physical_page": 49,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+        "source_sha256": "871b3142bce14486da4a44b4dad25be0a70c8432452cd91b133ab1dda97fe387",
+        "source_size_bytes": 17477873
+      },
+      "stored_canonical_json_sha256": "216314181b83713cc21f37e587a160b82e67cf6d540cd6a30266904f66095a8c",
+      "table_ref": {
+        "base_table_sha256": "baf11fa6cb050876345bb2e439e2ba68bd23d0cce61b9ca4102ba6fdc45c5780",
+        "effective_table_sha256": "afc8cafc57a3507e249acc63937dc1a2ade4ed1076c4c8e4bfb362cf3c2fe214",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2480,
+          3508
+        ],
+        "table_crop_rgb_sha256": "a46cf0fc19a1bb9b87881fa9d8cd25bc19ce1a0b7de121b8cd5ed7ea2e922ec7"
+      }
+    },
+    {
+      "base_page_json_sha256": "73e8afb74eb66bfdce503bdc6b6c29d8215243525a1bc92822da0c017a160ca4",
+      "base_page_json_version_id": "gfpstorev1:json:9e8ea1d3738b01f624990468e5cc1f82a0d6a2dc98f9f4c9b4bad86f4ce855aa",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            970,
+            1,
+            2426,
+            3392
+          ],
+          "crop_rgb_sha256": "0bd24cf3209f9a0d2f1b6570f97948b5f186377b8b158d75211ac49f60b8ca15",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần",
+            "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            970,
+            1,
+            2426,
+            3392
+          ],
+          "crop_rgb_sha256": "0bd24cf3209f9a0d2f1b6570f97948b5f186377b8b158d75211ac49f60b8ca15",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần",
+            "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            970,
+            1,
+            2426,
+            3392
+          ],
+          "crop_rgb_sha256": "0bd24cf3209f9a0d2f1b6570f97948b5f186377b8b158d75211ac49f60b8ca15",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần",
+            "- Từ góp vốn, đầu tư dài hạn (hạch toán trên TK 34 - cty con)"
+          ],
+          "row_label_exact": "- Từ góp vốn, đầu tư dài hạn (hạch toán trên TK 34 - cty con)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "6c76e5940a8fc1ca3eca96812d5065905b29bc1646ea2b79b7c13f7c3ac20053",
+      "extraction_run_id": "gfpstorev1:run:164ec580bdd123d1210a5af4d077b3debe78abdace096f40ee924db3bffc8717",
+      "repair_id": "gjccdifav1:repair:09568dc9f41db996dd46f80fedd0bab49440dfadc7cf0402d1554571a1738f36",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:5b68d08052c9d0b7e4110cb57fce64855e4df13cdc2735274ddc6c51d7e26487",
+        "image_sha256": "cf52d6a327d2f802684883eda50b711d7bc22847bb58ed4a2e10297804a77a5d",
+        "image_size_bytes": 724788,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:1cabdbbc89c81d9998e330360e3a31e6e375df617fe4f13a375093e305a03a06",
+        "physical_page": 34,
+        "pixel_height": 3393,
+        "pixel_width": 2427,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/STB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+        "source_sha256": "8fa34b31f5bbf231f73f147c67498283c5c3f161cc8537972d8248b6bb9e88c5",
+        "source_size_bytes": 3218718
+      },
+      "stored_canonical_json_sha256": "e6044f3c3fd34cd3b4342a270e0f3575d7b0e67989537677bc04b17ec4c71aaa",
+      "table_ref": {
+        "base_table_sha256": "b479755b1e83e60babdcde5a93e5b4549a9377851ee8d9165b4246208af18edf",
+        "effective_table_sha256": "3004e7165f5ffef3e01350b723a4faa3c5cfc8032eaeeea71aa436b3aae34842",
+        "section_id": "s1",
+        "table_id": "t5"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2426,
+          3392
+        ],
+        "table_crop_rgb_sha256": "16f69d5aacef2a67961414b3e30a329917058e29d5deac63f7d57f1deab9c405"
+      }
+    },
+    {
+      "base_page_json_sha256": "15028f466333a1d27cce615c7d5d46a2ae20a0beb6c5d367d4b789140a1ee6d3",
+      "base_page_json_version_id": "gfpstorev1:json:6fa925281ba806e08ce2e88f037e172c8b39e83c0add0eef1bf97282b5f178a6",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "2024",
+            "triệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3507
+          ],
+          "crop_rgb_sha256": "645673171ca9d82efd257217cd045d7f6a470b556ca4aabe9384ca7261a547d0",
+          "row_hierarchy_path_exact": [
+            "- Phân chia lỗ theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào công ty liên kết"
+          ],
+          "row_label_exact": "- Phân chia lỗ theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào công ty liên kết",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "7c0de22babf4794d122cb404d677ef1a08625bcf776478f3e877674c1c222b24",
+      "extraction_run_id": "gfpstorev1:run:2b2fd02631bcebec506e2423aeb1521cbe2a2531cefaff5bffba9c8dc7ce1fbc",
+      "repair_id": "gjccdifav1:repair:3e9a5ffdf5697159ecaefa7f67357971480a13134b361c4d2e8b6cdaf153bac5",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:84e22b272cbddbd028fb7c5033ac194645b8c2f21bcf6405184e0800cfdb8da7",
+        "image_sha256": "f3d41e54e006e06bfbb2a5a177e0999d9a37b1bdc3d00a188d15a07960cca47f",
+        "image_size_bytes": 428408,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:a622d37f0935b7ca7bc9807e9388b7fb4e48a4245f3bd62b71f5b6c777dc02eb",
+        "physical_page": 75,
+        "pixel_height": 3508,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "source_sha256": "553195cdc772f58a5ea34cb118cfcf98f7ea7460efc802ecc4e95269665a8527",
+        "source_size_bytes": 8559645
+      },
+      "stored_canonical_json_sha256": "d2be9b878c09703dee2626c9909cbb6a312ed8b5a016fccfa858636c86c92424",
+      "table_ref": {
+        "base_table_sha256": "a990aacb04dbba9d28acbc5bd99015c477dacb2268a34d9045f84f80ce2a22e6",
+        "effective_table_sha256": "eea2843f723f1326fd53b6e94d463cdab8e64b83f47bbc0073175d7aa2b98532",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3507
+        ],
+        "table_crop_rgb_sha256": "df7bf0959e4d7b806579587de197c196f85e4181e1300203b51578ac3ee35f27"
+      }
+    },
+    {
+      "base_page_json_sha256": "3b5831f5fb8729d92c3df930ce639377b8518a993123c0a92cb1a3bdd08d2572",
+      "base_page_json_version_id": "gfpstorev1:json:e15d2fb5d551aab6932b654232d348e8a5b5cf5746ee1f7a1d044815e0b95d54",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c3",
+          "column_header_path_exact": [
+            "Quý I",
+            "Năm nay\nTriệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            987,
+            1,
+            2467,
+            3499
+          ],
+          "crop_rgb_sha256": "49e772645695888beea43963ec29b2adb792a6adf6968d8e9ed7dd242e06f6c0",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c4",
+          "column_header_path_exact": [
+            "Quý I",
+            "Năm trước\nTriệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            987,
+            1,
+            2467,
+            3499
+          ],
+          "crop_rgb_sha256": "49e772645695888beea43963ec29b2adb792a6adf6968d8e9ed7dd242e06f6c0",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c5",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm nay\nTriệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            987,
+            1,
+            2467,
+            3499
+          ],
+          "crop_rgb_sha256": "49e772645695888beea43963ec29b2adb792a6adf6968d8e9ed7dd242e06f6c0",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r13:c6",
+          "column_header_path_exact": [
+            "Lũy kế từ đầu năm đến cuối quý này",
+            "Năm trước\nTriệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            987,
+            1,
+            2467,
+            3499
+          ],
+          "crop_rgb_sha256": "49e772645695888beea43963ec29b2adb792a6adf6968d8e9ed7dd242e06f6c0",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ góp vốn, mua cổ phần"
+          ],
+          "row_label_exact": "Thu nhập từ góp vốn, mua cổ phần",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "716d0895d7236f069dff06af24c7e7f2ffe01c9a544e0dfaeccd6fe8c7269ed8",
+      "extraction_run_id": "gfpstorev1:run:dda3a79e4c6a041d600f016abdaf6d7d8eae939302dc78cfa31a47e8fbfba96f",
+      "repair_id": "gjccdifav1:repair:dae8392ee1526b11506613483a69f60c6f9b96f0736cbf83dadca072fc0568fc",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:1487b932b129c184522bb305da2e5d0a82acbad2115c1cbc6d70eda0506cdbbe",
+        "image_sha256": "3293a2968e79a66a2a15ba3b458f470ebf5b0c93b20ddba305c0ad76a8fc4de4",
+        "image_size_bytes": 4574459,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:9d9d50441019765e20da275d8c7c8c7e6178034117a036e7e911495ae745941a",
+        "physical_page": 10,
+        "pixel_height": 3500,
+        "pixel_width": 2468,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "f95e7cacd969ceb004fb516d39e81871372a93d02ec9b5edc611e1e578788533",
+        "source_size_bytes": 7895615
+      },
+      "stored_canonical_json_sha256": "ba429e13fc88fdd7459e825e84031eff000fb842d2c963965f03aa70879e595d",
+      "table_ref": {
+        "base_table_sha256": "99b18e5c18bd65d98bc757b97a9ae875da813dc8569ba91545b08e705f1da415",
+        "effective_table_sha256": "446211cfc9ffaad93bbf749ee9ebce15f22f8fac0ccb3b66d5d875d56f25dadb",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2467,
+          3499
+        ],
+        "table_crop_rgb_sha256": "90e033a2a18051d8081c6e6838ad84d426bc44d04f2ff75636f68a3a2f16f64b"
+      }
+    },
+    {
+      "base_page_json_sha256": "b725b181674eaf530e22349e68570d962ecac5a5911c9efdb903826036ff774a",
+      "base_page_json_version_id": "gfpstorev1:json:fbe92349f2f967f1270d587453780cd0846d93eca00d40f5daf84ef0e8b06a4b",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1020,
+            1,
+            2549,
+            3299
+          ],
+          "crop_rgb_sha256": "e882b1a74d5ebf453eb4e96d8078868250dc0d80336385d5448389348f2152a3",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1020,
+            1,
+            2549,
+            3299
+          ],
+          "crop_rgb_sha256": "e882b1a74d5ebf453eb4e96d8078868250dc0d80336385d5448389348f2152a3",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn đầu"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1020,
+            1,
+            2549,
+            3299
+          ],
+          "crop_rgb_sha256": "e882b1a74d5ebf453eb4e96d8078868250dc0d80336385d5448389348f2152a3",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ góp vốn, đầu tư dài hạn"
+          ],
+          "row_label_exact": "- Từ góp vốn, đầu tư dài hạn",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1020,
+            1,
+            2549,
+            3299
+          ],
+          "crop_rgb_sha256": "e882b1a74d5ebf453eb4e96d8078868250dc0d80336385d5448389348f2152a3",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1020,
+            1,
+            2549,
+            3299
+          ],
+          "crop_rgb_sha256": "e882b1a74d5ebf453eb4e96d8078868250dc0d80336385d5448389348f2152a3",
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "64daa7cb067ffdc724868dc62e70b1b64fd68702865b60d9809189d60863608f",
+      "extraction_run_id": "gfpstorev1:run:62f170ac17d68ffcc12f6a19cdce53af4f72d1fd5812a0fb2660fa4131a363a7",
+      "repair_id": "gjccdifav1:repair:347f6c8faad318877330d78d969a8686b3433cdb0f64367fa47e594c5c47dc0f",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:37092e681ffe80742f31cf534500a36fadb5f174f0f6fedef42ba4929dafe395",
+        "image_sha256": "6e4f7774fd520d6bfb6dd5304c2ede1dcf9a25eeaedf99134b550d652b1c02af",
+        "image_size_bytes": 2916624,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:cb5038fa873648167facfb3d8b1c02fdcad95fd7586afb52c9f2f02e19e1300f",
+        "physical_page": 42,
+        "pixel_height": 3300,
+        "pixel_width": 2550,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VAB/2025/2_vab_2025_4_15_527ed46_vi_baocaotaichinh_q1_2025.pdf",
+        "source_sha256": "067ddd883bf49ab6706bd19d1d5b2004829d1463fd1a5ea4b079df80382db53e",
+        "source_size_bytes": 13565037
+      },
+      "stored_canonical_json_sha256": "6808568d17a4789c2f536cae3cbe470d37e1e845ecbfa2f1f2edbaf325ad592d",
+      "table_ref": {
+        "base_table_sha256": "0e0a360c6041789933edc0b07ff5b7879f283d8504fe7760eb8be701054abbcc",
+        "effective_table_sha256": "f26cd948740abf9769df4a1584e2288134548d1b503cbc7e6916b68696882421",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2549,
+          3299
+        ],
+        "table_crop_rgb_sha256": "45d9203fc8b68712aaa5a20b38584ce172ffb41507bc7db1bf61227dcb33a6f8"
+      }
+    },
+    {
+      "base_page_json_sha256": "e396058a2f41d592f90ba2f4ef15d292660e7602d2b5425bfc2424b0ffdaae04",
+      "base_page_json_version_id": "gfpstorev1:json:dccd492eaaeb1b1e3bb57d83134996b784e8d6713e0553070390658a984b2121",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3495
+          ],
+          "crop_rgb_sha256": "2025c6ae9cdd20cb95ba6f30da613b3ab56d59eed6475f3d78e8a2b390a0bd3a",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh (hạch toán TK 14)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh (hạch toán TK 14)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3495
+          ],
+          "crop_rgb_sha256": "2025c6ae9cdd20cb95ba6f30da613b3ab56d59eed6475f3d78e8a2b390a0bd3a",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3495
+          ],
+          "crop_rgb_sha256": "2025c6ae9cdd20cb95ba6f30da613b3ab56d59eed6475f3d78e8a2b390a0bd3a",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ góp vốn, đầu tư dài hạn (hạch toán trên TK 34)"
+          ],
+          "row_label_exact": "- Từ góp vốn, đầu tư dài hạn (hạch toán trên TK 34)",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3495
+          ],
+          "crop_rgb_sha256": "2025c6ae9cdd20cb95ba6f30da613b3ab56d59eed6475f3d78e8a2b390a0bd3a",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3495
+          ],
+          "crop_rgb_sha256": "2025c6ae9cdd20cb95ba6f30da613b3ab56d59eed6475f3d78e8a2b390a0bd3a",
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "fea66263863456ab1a5d3312576daaa155320fa9035e214f25e9148a33e31877",
+      "extraction_run_id": "gfpstorev1:run:43361dec84707bd9120734613ad9bf2f34dc3cc3097508095a413e5f8994c46a",
+      "repair_id": "gjccdifav1:repair:c150cfe91f63dcc80ddb3e3b46cc8e9ba9c6dd40c5439b67732abaaee5265239",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:cab3977f30d6831f8b6c21978d7b44231a53499eb0064bf5421d331f82b1d60a",
+        "image_sha256": "13ae54a2c670962e2615fae0a2e292f0d7fb939d29f60fc90236804b11010874",
+        "image_size_bytes": 3271996,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:eb3d8d995d4ea2b1e7b9c7ebd2ab488682dbaa32d970f30c37fa12b606a868d4",
+        "physical_page": 42,
+        "pixel_height": 3496,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VAB/2025/2_vab_2025_4_15_d453cb6_vn_baocaotaichinh_q1_2025.pdf",
+        "source_sha256": "3221863e1973770c69cc5e5615db8333499a0158c15a4df7f40f49419dee7693",
+        "source_size_bytes": 16170639
+      },
+      "stored_canonical_json_sha256": "0a7430dddcff25bb299c0f74d33e79f0c507364b886e1580e1d7c1ddf85e3a11",
+      "table_ref": {
+        "base_table_sha256": "bef7004728c8d50bc79fe17a81ae676c5095e1a0942fd68694ee65c19575ee58",
+        "effective_table_sha256": "62d2a57fb0e9c72b5ecb5acebc0b4dc2f88c4c9f3fc39425bfe6ff09c98f6d1a",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2474,
+          3495
+        ],
+        "table_crop_rgb_sha256": "85720501eaf5bd8a336db35aef3965278c52b3dd72b63f4a0fae2a90d18272fa"
+      }
+    },
+    {
+      "base_page_json_sha256": "2552765c4b73c34c801e6c28e70d9ebbf2e1c35fa1e86c0714dd1f9829fdea5f",
+      "base_page_json_version_id": "gfpstorev1:json:2af0befbae3d1b1c9b8274d7340d22dbb805045049285fede67e435094d2f795",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "- roll: -",
+          "cell_id": "r2:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3549
+          ],
+          "crop_rgb_sha256": "7f2f73713d3d63315a8fbc2343eac5493429644fe75f32b310e6008c2b5db1d7",
+          "row_hierarchy_path_exact": [
+            "31. Thu nhập từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3549
+          ],
+          "crop_rgb_sha256": "7f2f73713d3d63315a8fbc2343eac5493429644fe75f32b310e6008c2b5db1d7",
+          "row_hierarchy_path_exact": [
+            "31. Thu nhập từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "- roll: -",
+          "cell_id": "r3:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3549
+          ],
+          "crop_rgb_sha256": "7f2f73713d3d63315a8fbc2343eac5493429644fe75f32b310e6008c2b5db1d7",
+          "row_hierarchy_path_exact": [
+            "31. Thu nhập từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn đầu tư"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3549
+          ],
+          "crop_rgb_sha256": "7f2f73713d3d63315a8fbc2343eac5493429644fe75f32b310e6008c2b5db1d7",
+          "row_hierarchy_path_exact": [
+            "31. Thu nhập từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn đầu tư"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "- roll: -",
+          "cell_id": "r5:c1",
+          "column_header_path_exact": [
+            "Kỳ này"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3549
+          ],
+          "crop_rgb_sha256": "7f2f73713d3d63315a8fbc2343eac5493429644fe75f32b310e6008c2b5db1d7",
+          "row_hierarchy_path_exact": [
+            "31. Thu nhập từ góp vốn, mua cổ phần",
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            990,
+            1,
+            2474,
+            3549
+          ],
+          "crop_rgb_sha256": "7f2f73713d3d63315a8fbc2343eac5493429644fe75f32b310e6008c2b5db1d7",
+          "row_hierarchy_path_exact": [
+            "31. Thu nhập từ góp vốn, mua cổ phần",
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "c0bbb79bcea4fec86d2d88631d5f5c52442aa04a0e2aadb92deccf3de2604be1",
+      "extraction_run_id": "gfpstorev1:run:697ea0339b2a778866792ca9777f8414ec37509417050338ca364abfbfd4ce7c",
+      "repair_id": "gjccdifav1:repair:a3d49a769f5f8d7e502e1a7c3151a2cec0db0a63ba2383333be23e702db03c49",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:67cad4b337b92574f2a6decef6f45bc0efd0f091687780f1b2f2d883400a0a0b",
+        "image_sha256": "cb52c06eb191f2f904143b323f10af1e5f1c6a22f8ae92f18ca5ad2a47c9930c",
+        "image_size_bytes": 2581811,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:7b837209e71d8392b0b1db141545267a5bd16360a56f271056aa111f00ca9f0d",
+        "physical_page": 43,
+        "pixel_height": 3550,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+        "source_sha256": "ffa4437346494781250e3a18998202d559cb6f70d9823f2a0189b5629aa73781",
+        "source_size_bytes": 17311953
+      },
+      "stored_canonical_json_sha256": "2816f1bd11bc4862461ba005d397a598ab6fcdf4c25ad7c5eb0bc70fe286047b",
+      "table_ref": {
+        "base_table_sha256": "23bf547f5354d0185ce02639d6202c6c6ad0c416a0569b3a0514558e36409e01",
+        "effective_table_sha256": "2a344e8b443fab0581802458bb09f25bd1d83705d1d48af4921997f1110690bf",
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2474,
+          3549
+        ],
+        "table_crop_rgb_sha256": "61342bec8544d573523fb851b971ddb7fed1a1b31dab196a6a4ad50de2673007"
+      }
+    },
+    {
+      "base_page_json_sha256": "3ca051f24a8ba83736584ebfb0941a12fe6778b739d1781746fe60f9e512ad2d",
+      "base_page_json_version_id": "gfpstorev1:json:9f609b3e417a8993b6b66494fe26fa1163dac8dc6bc9cb1aa5e5db558a9c92dd",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3487
+          ],
+          "crop_rgb_sha256": "e10bdce970b9f3dba909f46a5c859a443971090981545d04903a22b7451a6e9e",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3487
+          ],
+          "crop_rgb_sha256": "e10bdce970b9f3dba909f46a5c859a443971090981545d04903a22b7451a6e9e",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn đầu"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3487
+          ],
+          "crop_rgb_sha256": "e10bdce970b9f3dba909f46a5c859a443971090981545d04903a22b7451a6e9e",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ góp vốn, đầu tư dài hạn"
+          ],
+          "row_label_exact": "- Từ góp vốn, đầu tư dài hạn",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3487
+          ],
+          "crop_rgb_sha256": "e10bdce970b9f3dba909f46a5c859a443971090981545d04903a22b7451a6e9e",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            993,
+            1,
+            2483,
+            3487
+          ],
+          "crop_rgb_sha256": "e10bdce970b9f3dba909f46a5c859a443971090981545d04903a22b7451a6e9e",
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "6ea3835f18140f9f4d3bdf35d55e85df2ec66d4decc513354329674aecd4a0e8",
+      "extraction_run_id": "gfpstorev1:run:75413ec8193867e83236d9a6855ab7d4bc7c40321d2bcb0bca955598543be59f",
+      "repair_id": "gjccdifav1:repair:7880861fda25cf10ea2002dde73ccb742bf5007073b9f47fba2e8ccf78291405",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:2e8efeb05e8c682fca7ff65518db2340bb176edfe40311eb8bd47ff159e53d2b",
+        "image_sha256": "bb594caacae448b294b61a08d3c5bac5a002ff9efa6b0661259addd5b5d18f7f",
+        "image_size_bytes": 1149711,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:b688d50bc7684b7231c6887f4d934c454b43a3ddd8bdc75e17418e437590a79e",
+        "physical_page": 41,
+        "pixel_height": 3488,
+        "pixel_width": 2484,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC HOP NHAT QUY 2.2025 TVIET_0001-da nen.pdf",
+        "source_sha256": "fc653f4dd792a56ea076938379d7dd25d415471622418b8b9a48af6d000cd852",
+        "source_size_bytes": 6519529
+      },
+      "stored_canonical_json_sha256": "6edf4f7b337cbb3ae93f4549361c5c36e46f45af254eca1494f180534b5ae005",
+      "table_ref": {
+        "base_table_sha256": "bb5329df9b68badd646ab793816b930c99a46e1aec3c95ef2323a83c4e85c169",
+        "effective_table_sha256": "a4a709a7f7f1b8d2e5c6fa2f7a3c4dcbcdb7cf91bfc6c29d90e8fa9d33ba882d",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2483,
+          3487
+        ],
+        "table_crop_rgb_sha256": "b2ee6aa337ecfdcc3b75ab001099316ae69199d382dd033fc8f752fa5b6d86cb"
+      }
+    },
+    {
+      "base_page_json_sha256": "c688f791161d7cbe6c5ca43e043430a933a949aa2ba8cc3ab618f25a7bb6689c",
+      "base_page_json_version_id": "gfpstorev1:json:2d5d5f980becb5ecdf7a8304bc899ef0a05031ac646b2b8faa1de131b89cbf4e",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3549
+          ],
+          "crop_rgb_sha256": "73c18eb1e5fa66e7950ab7a2b72c70e9619f385d8bfabcede3d112dd8412674c",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3549
+          ],
+          "crop_rgb_sha256": "73c18eb1e5fa66e7950ab7a2b72c70e9619f385d8bfabcede3d112dd8412674c",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn đầu"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3549
+          ],
+          "crop_rgb_sha256": "73c18eb1e5fa66e7950ab7a2b72c70e9619f385d8bfabcede3d112dd8412674c",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "132ccdf4ff2e55d1ede2229b4c269eff85d54218948e647504fd79228b56cc60",
+      "extraction_run_id": "gfpstorev1:run:e9c8ebe902983c057d255156c19ff466aa7a845912df569bb5771ed0b11b81a7",
+      "repair_id": "gjccdifav1:repair:d17dec512c9c49641a01e4b929e7f50aeda68ce52bc539b6494173c1da38478a",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:6949302aa055383a8a4b76d661656db163cf7cc5065394e1410b780a444c10db",
+        "image_sha256": "d35658a5b3b9b5838b0cf709bf0b24a664fcea22dd60e4fcb376bf009a7fe208",
+        "image_size_bytes": 922731,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:8a0159fb77514b29bcb805249b623b8dd7a1c425142c90742a1bb26629dfc5d8",
+        "physical_page": 44,
+        "pixel_height": 3550,
+        "pixel_width": 2471,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+        "source_sha256": "4731cf17493c26feb5cdf533ecf942ce149ab4ba3b8aed1f23dd638926fb9353",
+        "source_size_bytes": 8628432
+      },
+      "stored_canonical_json_sha256": "e46649bba13d93e7c913ff9b18f281214270bed16cd31a7f448da0385cab7c0f",
+      "table_ref": {
+        "base_table_sha256": "fe287f14fd8f4cf8c0a2a22f13a9b8ce302a5b043ededed2da880a68cfa54284",
+        "effective_table_sha256": "ffd018da06d69df8e841521f105c66b9843d8707e2a7bf22ad55d99e48c26e6c",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2470,
+          3549
+        ],
+        "table_crop_rgb_sha256": "fb1b9698bf7ff6e382a270f92a9afab11d021e58d63de02eba0e7eb4a58f30cb"
+      }
+    },
+    {
+      "base_page_json_sha256": "3c67e2e93275dcfe7ccd317270aa246f79ad525d6a64e9ea992442ab3a27db40",
+      "base_page_json_version_id": "gfpstorev1:json:ff5bcc9dc28c13c91f599e0f4224e3515ed46f11bb113dc9d45234858b31c6f7",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3541
+          ],
+          "crop_rgb_sha256": "10fce4f5da42a7fd5c611880dca00c8841200e0d57fc65912ca597b5eb611a14",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3541
+          ],
+          "crop_rgb_sha256": "10fce4f5da42a7fd5c611880dca00c8841200e0d57fc65912ca597b5eb611a14",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần- Từ chứng khoán Vốn đầu"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            992,
+            1,
+            2479,
+            3541
+          ],
+          "crop_rgb_sha256": "10fce4f5da42a7fd5c611880dca00c8841200e0d57fc65912ca597b5eb611a14",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "055d15694e6ae36814c8d9d111d2d0bf0599457cd4c6dbd500691e7c7877a8be",
+      "extraction_run_id": "gfpstorev1:run:5bf49a4308e9789b2024ba03d51154f64c65ec4a8b2e010d8dda66679b52ab1e",
+      "repair_id": "gjccdifav1:repair:d2594f8b099d23b671b49c7b34292d2046a7b2ea10d06479e140f7d3b4add375",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:c933d3459893fd9ae1e0e963252d247bb8d855af6a602ba7856005dbe6120214",
+        "image_sha256": "bf196bb230c2572d17bce82022629efce64120f9779d743cfff0f0391f402a7d",
+        "image_size_bytes": 760878,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:818bf2115b0ba20a75a9d107acba7f0b8fff5ca03f922daf101f0d3bf0bad7ae",
+        "physical_page": 44,
+        "pixel_height": 3542,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "54c7a2d052642aa302544214492f6390368f63bbc8a052f2588a461786a5ebbe",
+        "source_size_bytes": 11862222
+      },
+      "stored_canonical_json_sha256": "378e8a9ad5c777a42887777913d7b26af48f2f8c9f14b42c3afec9889b36e9aa",
+      "table_ref": {
+        "base_table_sha256": "da159c98b9f23f864dd33cf46f8042037dc1b2414879d7c919e7121dd14ab1e3",
+        "effective_table_sha256": "254dc6f655fea85502f7bd3eeca84e9d10191724488c1a96d18965343f34be6e",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2479,
+          3541
+        ],
+        "table_crop_rgb_sha256": "da6c738262ff81c189ac66aa50ed56b05babbcdfc7fc39b06b0baac98e6807ad"
+      }
+    },
+    {
+      "base_page_json_sha256": "3ea0d7658f37b4d60e523cae4115d028de3a671d1fbbabc6edb51a3304bf5d0a",
+      "base_page_json_version_id": "gfpstorev1:json:a7c206bd85c4faa7740b57149d4e0b4e8736a4cfd14d02fa38b58b27d8917823",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r2:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3499
+          ],
+          "crop_rgb_sha256": "c20eace9df6f75dba2a723800f312341bd0ae15c0e5eabaf6d65a0445d40cde3",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần",
+            "- Từ chứng khoán Vốn kinh doanh"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn kinh doanh",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3499
+          ],
+          "crop_rgb_sha256": "c20eace9df6f75dba2a723800f312341bd0ae15c0e5eabaf6d65a0445d40cde3",
+          "row_hierarchy_path_exact": [
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần",
+            "- Từ chứng khoán Vốn đầu tư"
+          ],
+          "row_label_exact": "- Từ chứng khoán Vốn đầu tư",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            988,
+            1,
+            2470,
+            3499
+          ],
+          "crop_rgb_sha256": "c20eace9df6f75dba2a723800f312341bd0ae15c0e5eabaf6d65a0445d40cde3",
+          "row_hierarchy_path_exact": [
+            "Các khoản thu nhập khác"
+          ],
+          "row_label_exact": "Các khoản thu nhập khác",
+          "visual_state": "PDF_RENDER_VISIBLE_LITERAL"
+        }
+      ],
+      "effective_page_json_sha256": "347a19bb78d82793e3d176281714f1981b8cbff908dc9205ff6fad884f8c4c2b",
+      "extraction_run_id": "gfpstorev1:run:1b60be5e246e9e9af0e159e54213779a105beef2c031b50b16ee0480926196be",
+      "repair_id": "gjccdifav1:repair:2d7b5a2d163d1e028258e98ea59df9ae7807ff1755a09a1bedec0ea91e59eef4",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:87745ebfe32a7c7e1e3ea693c11cbb0f14ff4d76fee74030228e7409e5fe7da2",
+        "image_sha256": "179c7390d1bec28b783932c38c570d4fd3347d4f7febd3f90f92ba3b0e214e9a",
+        "image_size_bytes": 2534893,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:3e9c86d6ef810383091ddc1a92b09580bfff0408eeb78c1cd683a7d6dd6d66ba",
+        "physical_page": 44,
+        "pixel_height": 3500,
+        "pixel_width": 2471,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VAB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "source_sha256": "db337e1de3e7aab90012dec81ef50467b059ad2c7e6acc07cd52b65166d0617f",
+        "source_size_bytes": 11485173
+      },
+      "stored_canonical_json_sha256": "6d17f1ec87ac22a74ff59eb8cc671f325de9fb4bef9612087471eb4ba50a2a38",
+      "table_ref": {
+        "base_table_sha256": "ddb24a8dcdf81cea4aea961fd2d253cece1ae3b08e952298e542d317334c91c1",
+        "effective_table_sha256": "2130d23a291356c76fc3256cfd8a45ccf8f3ff15fbb800c12bdc8123f4db3841",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "PDF_RENDER_VISIBLE_LITERAL",
+        "render_mode": "PYMUPDF_RGB_300_DPI_ALPHA_FALSE",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1,
+          1,
+          2470,
+          3499
+        ],
+        "table_crop_rgb_sha256": "e4d4d31f7099c6c02a1eb66e4e5822991354846a6cf6398d2e0204f3ef9ab878"
+      }
+    }
+  ],
+  "review_policy": "PDF_VISIBLE_LITERAL_TRANSCRIPTION_ONLY_PRIVATE_CLONE_NO_EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO"
+}

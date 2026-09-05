@@ -2,7 +2,7 @@
   "family_id": "TRADING_SECURITIES",
   "family_report_norm_id": 592,
   "family_root_mapping_policy": "MAP_WHEN_HIERARCHICALLY_RESOLVED",
-  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4",
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V8",
   "ignored_roles": [
     "DEBT_SECURITIES_GROUP",
     "EQUITY_SECURITIES_GROUP",
@@ -13,6 +13,146 @@
     "PROVISION_GENERAL",
     "PROVISION_SPECIFIC",
     "EXPLICIT_NET_TOTAL"
+  ],
+  "presentation_context_bindings": [
+    {
+      "context": "ISSUER_CLASSIFICATION",
+      "evidence_roles": [
+        "DEBT_GOVERNMENT",
+        "DEBT_DOMESTIC_CREDIT_INSTITUTIONS",
+        "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+        "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS",
+        "DEBT_OTHER",
+        "EQUITY_GOVERNMENT",
+        "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+        "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+        "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
+        "EQUITY_OTHER",
+        "OTHER_GOVERNMENT",
+        "OTHER_DOMESTIC_CREDIT_INSTITUTIONS",
+        "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+        "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS"
+      ],
+      "excluded_roles": [
+        "DEBT_LISTED",
+        "DEBT_UNLISTED",
+        "EQUITY_LISTED",
+        "EQUITY_UNLISTED",
+        "OTHER_LISTED",
+        "OTHER_UNLISTED"
+      ],
+      "role_bindings": [
+        {
+          "emitted_role": "ISSUER_DEBT_SECURITIES_GROUP",
+          "report_norm_id": 594,
+          "source_role": "DEBT_SECURITIES_GROUP"
+        },
+        {
+          "emitted_role": "ISSUER_EQUITY_SECURITIES_GROUP",
+          "report_norm_id": 600,
+          "source_role": "EQUITY_SECURITIES_GROUP"
+        },
+        {
+          "emitted_role": "ISSUER_OTHER_TRADING_SECURITIES_GROUP",
+          "report_norm_id": 606,
+          "source_role": "OTHER_TRADING_SECURITIES_GROUP"
+        },
+        {
+          "emitted_role": "ISSUER_EXPLICIT_GROSS_TOTAL",
+          "report_norm_id": 611,
+          "source_role": "EXPLICIT_GROSS_TOTAL"
+        },
+        {
+          "emitted_role": "ISSUER_TRADING_SECURITIES_PROVISION_GROUP",
+          "report_norm_id": 612,
+          "source_role": "TRADING_SECURITIES_PROVISION_GROUP"
+        },
+        {
+          "emitted_role": "ISSUER_PROVISION_PRICE_DECREASE",
+          "report_norm_id": 613,
+          "source_role": "PROVISION_PRICE_DECREASE"
+        },
+        {
+          "emitted_role": "ISSUER_PROVISION_GENERAL",
+          "report_norm_id": 614,
+          "source_role": "PROVISION_GENERAL"
+        },
+        {
+          "emitted_role": "ISSUER_PROVISION_SPECIFIC",
+          "report_norm_id": 615,
+          "source_role": "PROVISION_SPECIFIC"
+        }
+      ]
+    },
+    {
+      "context": "LISTING_CLASSIFICATION",
+      "evidence_roles": [
+        "DEBT_LISTED",
+        "DEBT_UNLISTED",
+        "EQUITY_LISTED",
+        "EQUITY_UNLISTED",
+        "OTHER_LISTED",
+        "OTHER_UNLISTED"
+      ],
+      "excluded_roles": [
+        "DEBT_GOVERNMENT",
+        "DEBT_DOMESTIC_CREDIT_INSTITUTIONS",
+        "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+        "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS",
+        "DEBT_OTHER",
+        "EQUITY_GOVERNMENT",
+        "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+        "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+        "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
+        "EQUITY_OTHER",
+        "OTHER_GOVERNMENT",
+        "OTHER_DOMESTIC_CREDIT_INSTITUTIONS",
+        "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+        "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS"
+      ],
+      "role_bindings": [
+        {
+          "emitted_role": "LISTING_DEBT_SECURITIES_GROUP",
+          "report_norm_id": 617,
+          "source_role": "DEBT_SECURITIES_GROUP"
+        },
+        {
+          "emitted_role": "LISTING_EQUITY_SECURITIES_GROUP",
+          "report_norm_id": 620,
+          "source_role": "EQUITY_SECURITIES_GROUP"
+        },
+        {
+          "emitted_role": "LISTING_OTHER_TRADING_SECURITIES_GROUP",
+          "report_norm_id": 623,
+          "source_role": "OTHER_TRADING_SECURITIES_GROUP"
+        },
+        {
+          "emitted_role": "LISTING_EXPLICIT_GROSS_TOTAL",
+          "report_norm_id": 626,
+          "source_role": "EXPLICIT_GROSS_TOTAL"
+        },
+        {
+          "emitted_role": "LISTING_TRADING_SECURITIES_PROVISION_GROUP",
+          "report_norm_id": 627,
+          "source_role": "TRADING_SECURITIES_PROVISION_GROUP"
+        },
+        {
+          "emitted_role": "LISTING_PROVISION_PRICE_DECREASE",
+          "report_norm_id": 628,
+          "source_role": "PROVISION_PRICE_DECREASE"
+        },
+        {
+          "emitted_role": "LISTING_PROVISION_GENERAL",
+          "report_norm_id": 629,
+          "source_role": "PROVISION_GENERAL"
+        },
+        {
+          "emitted_role": "LISTING_PROVISION_SPECIFIC",
+          "report_norm_id": 630,
+          "source_role": "PROVISION_SPECIFIC"
+        }
+      ]
+    }
   ],
   "role_bindings": [
     {

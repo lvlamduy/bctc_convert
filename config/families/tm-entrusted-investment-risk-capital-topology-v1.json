@@ -5,7 +5,7 @@
       "presence": "OPTIONAL", "role": "ORGANIZATION_OR_INDIVIDUAL", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Vốn tài trợ, ủy thác đầu tư, cho vay bằng VND", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng VND", "Vốn nhận bằng VND", "Vốn nhận của các tổ chức, cá nhân khác bằng VND"], "within_role": null}],
+      "matchers": [{"aliases": ["Vốn tài trợ ủy thác bằng VND (*)", "Vốn tài trợ, ủy thác đầu tư, cho vay bằng VND", "Vốn nhận tài trợ để cho vay bằng VND", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng VND", "Vốn nhận bằng VND", "Vốn nhận của các TCTD khác, tổ chức, cá nhân trong nước khác bằng VND", "Vốn nhận của các tổ chức, cá nhân khác bằng VND", "Vốn nhận của các tổ chức, cá nhân trong nước khác bằng VND"], "within_role": null}],
       "presence": "OPTIONAL", "role": "VND_RECEIVED_SOURCE", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -25,7 +25,7 @@
       "presence": "OPTIONAL", "role": "DIRECT_INTERNATIONAL_ORGANIZATION_FOREIGN_CURRENCY", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Dự án Hỗ trợ phát triển chính thức (ODA)", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng VND từ Dự án Hỗ trợ phát triển chính thức (ODA)", "Vốn nhận ủy thác từ NHNN theo Chương trình cho vay hỗ trợ nhà ở Nghị quyết số 02/NQ-CP do Chính phủ ban hành ngày 7 tháng 1 năm 2013", "Vốn nhận ủy thác từ NHNN theo Chương trình cho vay hỗ trợ nhà ở Nghị quyết số 02/NQ-CP do Chính phủ ban hành ngày 07 tháng 01 năm 2013", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng vàng và ngoại tệ"], "within_role": null}],
+      "matchers": [{"aliases": ["Dự án Hỗ trợ phát triển chính thức (ODA)", "Vốn nhận tài trợ để cho vay bằng vàng, ngoại tệ", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng vàng, ngoại tệ", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng VND từ Dự án Hỗ trợ phát triển chính thức (ODA)", "Vốn nhận ủy thác từ NHNN theo Chương trình cho vay hỗ trợ nhà ở Nghị quyết số 02/NQ-CP do Chính phủ ban hành ngày 7 tháng 1 năm 2013", "Vốn nhận ủy thác từ NHNN theo Chương trình cho vay hỗ trợ nhà ở Nghị quyết số 02/NQ-CP do Chính phủ ban hành ngày 07 tháng 01 năm 2013", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay bằng vàng và ngoại tệ"], "within_role": null}],
       "presence": "OPTIONAL", "role": "OTHER_RECEIVED_SOURCE", "role_kind": "ADDITIVE_CHILD"
     }
   ],
@@ -42,7 +42,7 @@
   ],
   "limits": {"max_continuation_pages": 2, "max_cluster_span_lines": 1024, "max_label_line_span": 6},
   "parent": {
-    "aliases": ["Vốn nhận tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro", "Các khoản vốn tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro"],
+    "aliases": ["Vốn nhận tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro", "Vốn nhận tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay mà TCTD chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro", "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro", "Các khoản vốn tài trợ, ủy thác đầu tư, cho vay tổ chức tín dụng chịu rủi ro"],
     "resolution_mode": "EXPLICIT_ONLY",
     "role": "ENTRUSTED_INVESTMENT_RISK_CAPITAL_ROOT"
   },

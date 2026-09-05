@@ -32,7 +32,18 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     compile_gemini_json_flat_family_specs_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
+from bctc_ai.evaluation.historical_comparator_policy_v1 import (  # noqa: E402
+    DISJOINT_EXPANSION,
+    EXACT_HISTORICAL_COMPARISON,
+    NOT_APPLICABLE_DISJOINT_CORPUS,
+    STRICT_RELEASE,
+    audit_historical_comparator_policy_v1,
+)
+from bctc_ai.evaluation.historical_comparator_policy_v1 import (  # noqa: E402
+    FORMAT_VERSION as HISTORICAL_COMPARATOR_POLICY_FORMAT_VERSION,
+)
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
+    canonical_clone_v1,
     canonical_json_bytes_v1,
     same_typed_json_v1,
 )
@@ -75,8 +86,8 @@ PINNED_OLD_ORACLES = (
 )
 PINNED_PREFLIGHT_AXIS_SHA256 = {
     "comparator": "65f5ca3015d64267a96ecc84780e0de5515e038d0fd17593cfece8a2a48df2fa",
-    "equation": "399b5df50158286bc661a9a3d88f5feda35139ff78ff554ef8e3b86a067b267c",
-    "mapping": "b808337b3418fea59ba8a489aa75bae262e5e341e49bf5b3f73a9b9e21f41194",
+    "equation": "a4258fd98fbeadaf8ecd5fe0be698722d934dcc6ba91cb3243c921991cfff56a",
+    "mapping": "36ef46b2e586bd9654ac056746913e1fe8710c2c33c9dd9feeec64f9a56d3ba6",
     "page": "60ef90ba34157272a95c7175d0497fc65dd32b60334987e4bfda9f9827c380f8",
     "region": "9c3756fcafaf04f2600f7e46325455bf9a14f9c55333ca3cf9f493846867c02f",
 }
@@ -84,9 +95,9 @@ PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256 = (
     "601be9fc2a894af2ce4f4c982d5347521a6268a46c075d9cc96f9828baef8ae8"
 )
 PINNED_COMPILED_SPEC_SHA256 = {
-    "evaluation": "b6f1703fe815a2741d8f22929c8aa094bb0ee76c801c132311ccb8c3a7db88ff",
+    "evaluation": "eaddc955a175787dc3a264e37a849cd5587f32b66e5a116328231b2b0fa93415",
     "schema": "caa93bd566b31f1645d7b0097eda5ee064c1acaae843a6b1d4afbe136949edfb",
-    "topology": "bc1241b3cd77d9126e96c9ccb01078f0860bf4295c3f5622c5d5176ff17f084c",
+    "topology": "f1cbc6be28320e782475288b6cd1e80a59fb23a640ec5907107c27a60e5262b3",
 }
 PINNED_AUDIT_AXIS_COUNTS = {
     "comparator": 16,
@@ -345,6 +356,7 @@ def _pinned_old_oracles() -> list[tuple[dict[str, Any], dict[str, Any]]]:
             (
                 {
                     **pinned,
+                    "expected_trial_count": len(oracle["trials"]),
                     "size_bytes": path.stat().st_size,
                 },
                 oracle,
@@ -388,148 +400,185 @@ def _oracle_mapping_coefficients(mapping: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _old_oracle_comparator_axis(
-    *, trials: list[dict[str, Any]]
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
-    trial_by_source: dict[str, dict[str, Any]] = {}
-    for trial in trials:
-        source_sha256 = trial.get("source_sha256")
-        if type(source_sha256) is not str or source_sha256 in trial_by_source:
-            raise _error("sweep source-SHA comparator join axis is ambiguous")
-        trial_by_source[source_sha256] = trial
-    comparator = []
-    rich_comparator = []
+def _normalised_old_oracle_rows() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     oracle_refs = []
-    joined_sources = set()
-    for oracle_ref, oracle in _pinned_old_oracles():
+    rows = []
+    for oracle_ref_index, (oracle_ref, oracle) in enumerate(_pinned_old_oracles()):
         oracle_refs.append(oracle_ref)
         for oracle_trial in oracle["trials"]:
             source_pdf = oracle_trial.get("source_pdf")
             source_sha256 = source_pdf.get("sha256") if type(source_pdf) is dict else None
-            if (
-                type(source_sha256) is not str
-                or source_sha256 in joined_sources
-                or source_sha256 not in trial_by_source
-            ):
-                raise _error("pinned old-oracle source-SHA join is not unique and exhaustive")
-            joined_sources.add(source_sha256)
-            sweep_trial = trial_by_source[source_sha256]
-            oracle_status = oracle_trial.get("status")
-            old_ready = oracle_status == "VERIFIED_BY_CODEX"
-            current_ready = sweep_trial.get("status") == READY
-            expected_mappings = {
-                mapping["report_norm_id"]: _oracle_mapping_coefficients(mapping)["coefficients"]
-                for mapping in oracle_trial.get("verified_mappings", [])
-            }
-            candidates = sweep_trial.get("candidates")
-            candidate = (
-                candidates[0]
-                if current_ready and type(candidates) is list and len(candidates) == 1
-                else None
-            )
-            actual_mappings = (
+            if type(source_sha256) is not str:
+                raise _error("pinned purchased-debt oracle source identity drifted")
+            rows.append(
                 {
-                    mapping["report_norm_id"]: _mapping_coefficients(mapping)["coefficients"]
-                    for mapping in candidate.get("mappings", [])
-                }
-                if candidate is not None
-                else {}
-            )
-            old_pages = sorted(
-                {
-                    value.get("page_sequence")
-                    for mapping in oracle_trial.get("verified_mappings", [])
-                    for value in mapping.get("source_values", [])
-                }
-            )
-            if any(type(page) is not int or page <= 0 for page in old_pages):
-                raise _error("pinned purchased-debt oracle page axis drifted")
-            exact = old_ready == current_ready and (
-                not old_ready
-                or (
-                    candidate is not None
-                    and candidate.get("physical_page") in old_pages
-                    and actual_mappings == expected_mappings
-                )
-            )
-            comparator.append(
-                {
-                    "artifact": Path(oracle_ref["path"]).name,
-                    "current_ordinal": sweep_trial["document_ordinal"],
-                    "current_page": (
-                        candidate.get("physical_page") if candidate is not None else None
-                    ),
-                    "current_status": "READY" if current_ready else "NOT_OBSERVED",
-                    "exact": exact,
-                    "old_pages": old_pages,
-                    "old_status": "READY" if old_ready else "NOT_OBSERVED",
-                    "role_ids": sorted(expected_mappings),
-                    "source_sha256": source_sha256,
-                }
-            )
-            rich_comparator.append(
-                {
-                    "actual_mappings": [
-                        {
-                            "coefficients": actual_mappings[report_norm_id],
-                            "report_norm_id": report_norm_id,
-                        }
-                        for report_norm_id in sorted(actual_mappings)
-                    ],
-                    "bank_provenance": oracle_trial.get("bank_provenance"),
-                    "comparison": (
-                        "EXACT_PAGE_RNID_TWO_COEFFICIENT_MATCH"
-                        if old_ready and exact
-                        else "EXACT_NOT_OBSERVED_MATCH"
-                        if exact
-                        else "MISMATCH"
-                    ),
-                    "document_ordinal": sweep_trial["document_ordinal"],
-                    "expected_mappings": [
-                        {
-                            "coefficients": expected_mappings[report_norm_id],
-                            "report_norm_id": report_norm_id,
-                        }
-                        for report_norm_id in sorted(expected_mappings)
-                    ],
-                    "old_pages": old_pages,
                     "oracle_format_version": oracle["format_version"],
-                    "oracle_status": oracle_status,
-                    "physical_page": (
-                        candidate.get("physical_page") if candidate is not None else None
-                    ),
+                    "oracle_ref_index": oracle_ref_index,
+                    "oracle_trial": oracle_trial,
                     "source_sha256": source_sha256,
-                    "sweep_status": sweep_trial.get("status"),
                 }
             )
-            if oracle_status == "VERIFIED_BY_CODEX":
-                if not current_ready or candidate is None or not exact:
-                    raise _error("old-oracle READY page/RNID/two-coefficient comparator differs")
-            elif oracle_status == "NOT_OBSERVED_IN_BOUND_SOURCE_SCOPE":
-                if (
-                    sweep_trial.get("status") != NOT_OBSERVED
-                    or sweep_trial.get("candidate_count") != 0
-                    or sweep_trial.get("candidates") != []
-                    or sweep_trial.get("mappings") != []
-                ):
-                    raise _error("old-oracle absence source is not NOT_OBSERVED")
-            else:
-                raise _error("pinned purchased-debt oracle status is undeclared")
+    return oracle_refs, rows
+
+
+def _strict_old_oracle_compare(
+    oracle_row: dict[str, Any], sweep_trial: dict[str, Any]
+) -> dict[str, Any]:
+    oracle_trial = oracle_row["oracle_trial"]
+    oracle_status = oracle_trial.get("status")
+    old_ready = oracle_status == "VERIFIED_BY_CODEX"
+    current_ready = sweep_trial.get("status") == READY
+    expected_mappings = {
+        mapping["report_norm_id"]: _oracle_mapping_coefficients(mapping)["coefficients"]
+        for mapping in oracle_trial.get("verified_mappings", [])
+    }
+    candidates = sweep_trial.get("candidates")
+    candidate = (
+        candidates[0]
+        if current_ready and type(candidates) is list and len(candidates) == 1
+        else None
+    )
+    actual_mappings = (
+        {
+            mapping["report_norm_id"]: _mapping_coefficients(mapping)["coefficients"]
+            for mapping in candidate.get("mappings", [])
+        }
+        if candidate is not None
+        else {}
+    )
+    old_pages = sorted(
+        {
+            value.get("page_sequence")
+            for mapping in oracle_trial.get("verified_mappings", [])
+            for value in mapping.get("source_values", [])
+        }
+    )
+    if any(type(page) is not int or page <= 0 for page in old_pages):
+        raise _error("pinned purchased-debt oracle page axis drifted")
+    exact = old_ready == current_ready and (
+        not old_ready
+        or (
+            candidate is not None
+            and candidate.get("physical_page") in old_pages
+            and actual_mappings == expected_mappings
+        )
+    )
+    comparator = {
+        "artifact": Path(PINNED_OLD_ORACLES[oracle_row["oracle_ref_index"]]["path"]).name,
+        "current_ordinal": sweep_trial["document_ordinal"],
+        "current_page": candidate.get("physical_page") if candidate is not None else None,
+        "current_status": "READY" if current_ready else "NOT_OBSERVED",
+        "exact": exact,
+        "old_pages": old_pages,
+        "old_status": "READY" if old_ready else "NOT_OBSERVED",
+        "role_ids": sorted(expected_mappings),
+        "source_sha256": oracle_row["source_sha256"],
+    }
+    rich_comparator = {
+        "actual_mappings": [
+            {
+                "coefficients": actual_mappings[report_norm_id],
+                "report_norm_id": report_norm_id,
+            }
+            for report_norm_id in sorted(actual_mappings)
+        ],
+        "bank_provenance": oracle_trial.get("bank_provenance"),
+        "comparison": (
+            "EXACT_PAGE_RNID_TWO_COEFFICIENT_MATCH"
+            if old_ready and exact
+            else "EXACT_NOT_OBSERVED_MATCH"
+            if exact
+            else "MISMATCH"
+        ),
+        "document_ordinal": sweep_trial["document_ordinal"],
+        "expected_mappings": [
+            {
+                "coefficients": expected_mappings[report_norm_id],
+                "report_norm_id": report_norm_id,
+            }
+            for report_norm_id in sorted(expected_mappings)
+        ],
+        "old_pages": old_pages,
+        "oracle_format_version": oracle_row["oracle_format_version"],
+        "oracle_status": oracle_status,
+        "physical_page": candidate.get("physical_page") if candidate is not None else None,
+        "source_sha256": oracle_row["source_sha256"],
+        "sweep_status": sweep_trial.get("status"),
+    }
+    if oracle_status == "VERIFIED_BY_CODEX":
+        if not current_ready or candidate is None or not exact:
+            raise _error("old-oracle READY page/RNID/two-coefficient comparator differs")
+    elif oracle_status == "NOT_OBSERVED_IN_BOUND_SOURCE_SCOPE":
+        if (
+            sweep_trial.get("status") != NOT_OBSERVED
+            or sweep_trial.get("candidate_count") != 0
+            or sweep_trial.get("candidates") != []
+            or sweep_trial.get("mappings") != []
+        ):
+            raise _error("old-oracle absence source is not NOT_OBSERVED")
+    else:
+        raise _error("pinned purchased-debt oracle status is undeclared")
+    return {
+        "comparator": comparator,
+        "disposition": EXACT_HISTORICAL_COMPARISON if exact else "MISMATCH",
+        "rich_comparator": rich_comparator,
+    }
+
+
+def _old_oracle_comparator_axis(
+    *,
+    policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: list[str],
+    current_manifest_page_json_version_ids: list[str],
+    current_candidate_source_sha256s: list[str],
+    current_replay_source_sha256s: list[str],
+    trials: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    oracle_refs, oracle_rows = _normalised_old_oracle_rows()
+    policy_receipt = audit_historical_comparator_policy_v1(
+        policy=policy,
+        pinned_oracle_refs=oracle_refs,
+        normalized_oracle_rows=oracle_rows,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
+        current_manifest_page_json_version_ids=current_manifest_page_json_version_ids,
+        current_trials=trials,
+        current_candidate_source_sha256s=current_candidate_source_sha256s,
+        current_replay_source_sha256s=current_replay_source_sha256s,
+        current_selected_page_json_version_ids=current_manifest_page_json_version_ids,
+        strict_compare=_strict_old_oracle_compare if policy == STRICT_RELEASE else None,
+    )
+    if policy == DISJOINT_EXPANSION:
+        if (
+            policy_receipt["disposition"] != NOT_APPLICABLE_DISJOINT_CORPUS
+            or policy_receipt["comparison_axis"] != []
+        ):
+            raise _error("disjoint purchased-debt comparator policy receipt drifted")
+        return [], [], oracle_refs, policy_receipt
+    comparisons = policy_receipt["comparison_axis"]
+    comparator = [item["comparison"]["comparator"] for item in comparisons]
+    rich_comparator = [item["comparison"]["rich_comparator"] for item in comparisons]
     if (
         len(comparator) != 16
-        or len(joined_sources) != 16
         or sum(item["old_status"] == "READY" for item in comparator) != 8
         or sum(item["old_status"] == "NOT_OBSERVED" for item in comparator) != 8
         or not all(item["exact"] for item in comparator)
     ):
         raise _error("old-oracle comparator denominator drifted")
-    return comparator, rich_comparator, oracle_refs
+    return comparator, rich_comparator, oracle_refs, policy_receipt
 
 
-def _raw_source_coefficient(*, visual_state: str, source_text: str | None) -> int:
+def _raw_source_coefficient(*, visual_state: str, source_text: str | None) -> int | None:
     if visual_state not in {"BLANK", "DASH", "PRINTED_ZERO", "VALUE"}:
         raise _error("raw mapping source visual state is invalid")
-    if visual_state in {"BLANK", "DASH", "PRINTED_ZERO"} or source_text is None:
+    if visual_state == "BLANK":
+        if source_text is not None:
+            raise _error("raw blank mapping source unexpectedly has source text")
+        return None
+    if source_text is None:
+        raise _error("raw observed mapping source has no source text")
+    if visual_state in {"DASH", "PRINTED_ZERO"}:
         return 0
     compact = "".join(source_text.split())
     if compact in {"-", "–", "—", "_"}:
@@ -546,6 +595,59 @@ def _raw_source_coefficient(*, visual_state: str, source_text: str | None) -> in
         raise _error("raw mapping source coefficient is not an exact integer")
     coefficient = int(digits)
     return -coefficient if negative else coefficient
+
+
+def _candidate_source_repair_cells_v1(
+    *, trial: dict[str, Any], candidate: dict[str, Any]
+) -> dict[tuple[str, str, str, int, int], dict[str, Any]]:
+    closure = candidate.get("closure_receipt")
+    receipts = closure.get("source_repair_receipts") if type(closure) is dict else None
+    if type(receipts) is not list:
+        raise _error("candidate source-repair receipt axis is invalid")
+    cells: dict[tuple[str, str, str, int, int], dict[str, Any]] = {}
+    for receipt in receipts:
+        source = receipt.get("source") if type(receipt) is dict else None
+        applied = receipt.get("applied_cell_repairs") if type(receipt) is dict else None
+        page_json_version_id = (
+            receipt.get("base_page_json_version_id") if type(receipt) is dict else None
+        )
+        if (
+            type(source) is not dict
+            or source.get("source_logical_name") != trial["source_logical_name"]
+            or source.get("source_sha256") != trial["source_sha256"]
+            or page_json_version_id != candidate["page_json_version_id"]
+            or receipt.get("physical_page") != candidate["physical_page"]
+            or type(applied) is not list
+            or not applied
+        ):
+            raise _error("candidate source-repair receipt identity drifted")
+        for cell in applied:
+            if (
+                type(cell) is not dict
+                or cell.get("before_exact") is not None
+                and (type(cell.get("before_exact")) is not str or not cell["before_exact"])
+                or type(cell.get("after_exact")) is not str
+                or not cell["after_exact"]
+                or cell.get("visual_state") not in {"DASH", "VALUE"}
+                or type(cell.get("section_id")) is not str
+                or type(cell.get("table_id")) is not str
+                or type(cell.get("row_ordinal")) is not int
+                or cell["row_ordinal"] <= 0
+                or type(cell.get("column_ordinal")) is not int
+                or cell["column_ordinal"] <= 0
+            ):
+                raise _error("candidate source-repair cell receipt drifted")
+            key = (
+                page_json_version_id,
+                cell["section_id"],
+                cell["table_id"],
+                cell["row_ordinal"],
+                cell["column_ordinal"],
+            )
+            if key in cells:
+                raise _error("candidate source-repair cell receipt is duplicate")
+            cells[key] = cell
+    return cells
 
 
 def _mapping_source_axis(*, database: Path, trials: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -580,6 +682,10 @@ def _mapping_source_axis(*, database: Path, trials: list[dict[str, Any]]) -> lis
         connection.execute("PRAGMA query_only=ON")
         axis = []
         for trial, candidate, mapping in records:
+            repair_cells = _candidate_source_repair_cells_v1(
+                trial=trial,
+                candidate=candidate,
+            )
             locator = mapping["locator"]
             parameters = (
                 locator["page_json_version_id"],
@@ -603,17 +709,53 @@ def _mapping_source_axis(*, database: Path, trials: list[dict[str, Any]]) -> lis
                 "AND value_cell.row_id=? ORDER BY column_node.column_ordinal",
                 parameters,
             ).fetchall()
-            values = [
-                {
-                    "coefficient": _raw_source_coefficient(
-                        visual_state=cell["visual_state"],
-                        source_text=cell["source_text"],
-                    ),
-                    "source_text": cell["source_text"],
-                    "visual_state": cell["visual_state"],
-                }
-                for cell in cells
-            ]
+            values = []
+            for cell in cells:
+                repair = repair_cells.get(
+                    (
+                        locator["page_json_version_id"],
+                        locator["section_id"],
+                        locator["table_id"],
+                        mapping["row_ordinal"],
+                        cell["column_ordinal"] + 1,
+                    )
+                )
+                if repair is not None:
+                    before_exact = repair["before_exact"]
+                    if (
+                        before_exact is None
+                        and (cell["visual_state"] != "BLANK" or cell["source_text"] is not None)
+                    ) or (before_exact is not None and cell["source_text"] != before_exact):
+                        raise _error("repaired mapping source before-image drifted")
+                    repaired_coefficient = _raw_source_coefficient(
+                        visual_state=repair["visual_state"],
+                        source_text=repair["after_exact"],
+                    )
+                    values.append(
+                        {
+                            "base_source_text": cell["source_text"],
+                            "base_visual_state": cell["visual_state"],
+                            "coefficient": repaired_coefficient,
+                            "source_repair": canonical_clone_v1(repair),
+                            "source_text": repair["after_exact"],
+                            "visual_state": (
+                                "AUTHENTICATED_PDF_DASH_SOURCE_REPAIR"
+                                if repair["visual_state"] == "DASH"
+                                else "AUTHENTICATED_PDF_VALUE_SOURCE_REPAIR"
+                            ),
+                        }
+                    )
+                else:
+                    values.append(
+                        {
+                            "coefficient": _raw_source_coefficient(
+                                visual_state=cell["visual_state"],
+                                source_text=cell["source_text"],
+                            ),
+                            "source_text": cell["source_text"],
+                            "visual_state": cell["visual_state"],
+                        }
+                    )
             if (
                 row is None
                 or row["source_order"] != mapping["row_ordinal"] - 1
@@ -628,8 +770,8 @@ def _mapping_source_axis(*, database: Path, trials: list[dict[str, Any]]) -> lis
                 {
                     "component": mapping["component_role"],
                     "label_exact": row["label_exact"],
-                    "page_json_version_id": candidate["page_json_version_id"],
-                    "physical_page": candidate["physical_page"],
+                    "page_json_version_id": locator["page_json_version_id"],
+                    "physical_page": locator["physical_page"],
                     "report_norm_id": mapping["report_norm_id"],
                     "row_id": mapping["row_id"],
                     "section_id": locator["section_id"],
@@ -649,6 +791,9 @@ def build_dual_component_experimental_audit_v1(
     database: Path,
     sweep: dict[str, Any],
     sweep_output: Path,
+    historical_comparator_policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: list[str],
     selected_page_json_version_ids: list[str],
     indexed_query_evidence: dict[str, Any],
     trials: list[dict[str, Any]],
@@ -672,7 +817,22 @@ def build_dual_component_experimental_audit_v1(
     region_axis = []
     for trial in ready_trials:
         candidate = trial["candidates"][0]
-        balance, detail = candidate["component_regions"]
+        fragment_axis = candidate["closure_receipt"].get("component_fragment_axis")
+        if type(fragment_axis) is not list:
+            raise _error("dual-component audit fragment axis is absent")
+        seed_by_component = {
+            component_role: [
+                fragment
+                for fragment in fragment_axis
+                if fragment.get("component_role") == component_role
+                and fragment.get("seed_bearing") is True
+            ]
+            for component_role in ("BALANCE", "DETAIL")
+        }
+        if any(len(seed_by_component[role]) != 1 for role in ("BALANCE", "DETAIL")):
+            raise _error("dual-component audit seed fragment axis is ambiguous")
+        balance = seed_by_component["BALANCE"][0]["locator"]
+        detail = seed_by_component["DETAIL"][0]["locator"]
         mappings = sorted(
             candidate["mappings"],
             key=lambda mapping: (
@@ -692,8 +852,13 @@ def build_dual_component_experimental_audit_v1(
                 },
                 "layout": (
                     "SAME_PAGE_SAME_SECTION_TWO_TABLE"
-                    if balance["section_id"] == detail["section_id"]
-                    else "SAME_PAGE_CROSS_SECTION_TWO_TABLE"
+                    if balance["physical_page"] == detail["physical_page"]
+                    and balance["section_id"] == detail["section_id"]
+                    else (
+                        "SAME_PAGE_CROSS_SECTION_TWO_TABLE"
+                        if balance["physical_page"] == detail["physical_page"]
+                        else "ADJACENT_PAGE_TWO_COMPONENT_WITH_OPTIONAL_CONTINUATION"
+                    )
                 ),
                 "page_json_version_id": candidate["page_json_version_id"],
                 "physical_page": candidate["physical_page"],
@@ -744,13 +909,11 @@ def build_dual_component_experimental_audit_v1(
     ]
     rich_region_axis = [
         {
-            "component_role": component_role,
-            **region,
+            "component_role": fragment["component_role"],
+            **fragment["locator"],
         }
-        for cluster in indexed_query_evidence["accepted_clusters"]
-        for component_role, region in zip(
-            ("BALANCE", "DETAIL"), cluster["component_regions"], strict=True
-        )
+        for ordinal in sorted(candidate_by_ordinal)
+        for fragment in candidate_by_ordinal[ordinal]["closure_receipt"]["component_fragment_axis"]
     ]
     rich_mapping_axis = [
         {
@@ -781,7 +944,32 @@ def build_dual_component_experimental_audit_v1(
         for ordinal in sorted(candidate_by_ordinal)
         for equation in candidate_by_ordinal[ordinal]["closure_receipt"]["equations"]
     ]
-    comparator_axis, rich_comparator_axis, oracle_refs = _old_oracle_comparator_axis(trials=trials)
+    if sweep.get("corpus_manifest_index_id") != current_manifest_index_id:
+        raise _error("dual-component sweep/current manifest identity drifted")
+    source_by_ordinal = {
+        document["document_ordinal"]: document["source_sha256"]
+        for document in indexed_query_evidence["selected_document_axis"]
+    }
+    current_candidate_sources = [
+        source_by_ordinal[cluster["document_ordinal"]]
+        for cluster in indexed_query_evidence["accepted_clusters"]
+    ]
+    current_replay_sources = [trial["source_sha256"] for trial in trials if trial["candidates"]]
+    if len(current_candidate_sources) != len(current_replay_sources) or set(
+        current_candidate_sources
+    ) != set(current_replay_sources):
+        raise _error("dual-component indexed candidate/replay source axes drifted")
+    comparator_axis, rich_comparator_axis, oracle_refs, comparator_policy_receipt = (
+        _old_oracle_comparator_axis(
+            policy=historical_comparator_policy,
+            current_manifest_index_id=current_manifest_index_id,
+            current_manifest_source_sha256s=current_manifest_source_sha256s,
+            current_manifest_page_json_version_ids=selected_page_json_version_ids,
+            current_candidate_source_sha256s=current_candidate_sources,
+            current_replay_source_sha256s=current_replay_sources,
+            trials=trials,
+        )
+    )
     axes = {
         "comparator": comparator_axis,
         "equation": equation_axis,
@@ -816,8 +1004,8 @@ def build_dual_component_experimental_audit_v1(
             "sorted by source_ordinal"
         ),
         "region": (
-            "one READY composed two-table cluster per source with same/cross-section "
-            "layout, balance/detail section+table locators, and RNIDs sorted by "
+            "one READY composed two-component cluster per source with same/cross-section "
+            "or authenticated adjacent-page layout, balance/detail seed locators, and RNIDs sorted by "
             "BALANCE/DETAIL then source row ordinal"
         ),
         "rich_comparator": "full pinned-oracle/current comparison evidence",
@@ -832,11 +1020,19 @@ def build_dual_component_experimental_audit_v1(
         "selected_page_json_version": "ordered selected frontier page_json_version_id",
     }
     axis_sha256 = {name: _axis_file_sha256(axis) for name, axis in axes.items()}
-    exact_preflight_sha256 = {name: axis_sha256[name] for name in PINNED_PREFLIGHT_AXIS_SHA256}
-    if exact_preflight_sha256 != PINNED_PREFLIGHT_AXIS_SHA256:
-        raise _error("dual-component exact preflight audit axis drifted")
-    if axis_sha256["selected_page_json_version"] != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256:
-        raise _error("dual-component selected JSON frontier audit axis drifted")
+    if historical_comparator_policy == STRICT_RELEASE:
+        exact_preflight_sha256 = {name: axis_sha256[name] for name in PINNED_PREFLIGHT_AXIS_SHA256}
+        if exact_preflight_sha256 != PINNED_PREFLIGHT_AXIS_SHA256:
+            raise _error("dual-component exact preflight audit axis drifted")
+        if axis_sha256["selected_page_json_version"] != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256:
+            raise _error("dual-component selected JSON frontier audit axis drifted")
+        pinned_preflight_axis_sha256: dict[str, str] | None = PINNED_PREFLIGHT_AXIS_SHA256
+        pinned_selected_page_json_frontier_sha256: str | None = (
+            PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256
+        )
+    else:
+        pinned_preflight_axis_sha256 = None
+        pinned_selected_page_json_frontier_sha256 = None
     sweep_payload = canonical_json_bytes_v1(sweep)
     material = {
         "axes": axes,
@@ -844,10 +1040,11 @@ def build_dual_component_experimental_audit_v1(
         "axis_field_recipes": axis_field_recipes,
         "axis_sha256": axis_sha256,
         "claim_boundary": (
-            "EXPERIMENTAL_LOCAL_PINNED_JSON_CORPUS_AND_OLD_ORACLE_COMPARISON_ONLY_"
+            "EXPERIMENTAL_LOCAL_AUTHENTICATED_JSON_CORPUS_AND_HISTORICAL_POLICY_ONLY_"
             "NO_PROVIDER_NO_OFFICIAL_NO_EXPORT_AUTHORITY"
         ),
         "format_version": AUDIT_FORMAT_VERSION,
+        "historical_comparator_policy_receipt": comparator_policy_receipt,
         "metrics": {
             "fallback_document_ordinals": sorted(
                 ordinal
@@ -857,13 +1054,17 @@ def build_dual_component_experimental_audit_v1(
             "mapped_source_cell_count": sum(len(mapping["values"]) for mapping in mapping_axis),
             "old_oracle_exact_not_observed_count": sum(
                 item["old_status"] == "NOT_OBSERVED" and item["exact"] for item in comparator_axis
-            ),
+            )
+            if historical_comparator_policy == STRICT_RELEASE
+            else None,
             "old_oracle_exact_ready_count": sum(
                 item["old_status"] == "READY" and item["exact"] for item in comparator_axis
-            ),
+            )
+            if historical_comparator_policy == STRICT_RELEASE
+            else None,
         },
-        "pinned_preflight_axis_sha256": PINNED_PREFLIGHT_AXIS_SHA256,
-        "pinned_selected_page_json_frontier_sha256": (PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256),
+        "pinned_preflight_axis_sha256": pinned_preflight_axis_sha256,
+        "pinned_selected_page_json_frontier_sha256": (pinned_selected_page_json_frontier_sha256),
         "pinned_old_oracle_refs": oracle_refs,
         "query_evidence_id": indexed_query_evidence["query_evidence_id"],
         "serialization": "COMPACT_SORTED_KEY_UTF8_JSON_LIST_PLUS_LF",
@@ -888,6 +1089,9 @@ def validate_dual_component_experimental_audit_replay_v1(
     database: Path,
     sweep: dict[str, Any],
     sweep_output: Path,
+    historical_comparator_policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: list[str],
     selected_page_json_version_ids: list[str],
     indexed_query_evidence: dict[str, Any],
     trials: list[dict[str, Any]],
@@ -919,6 +1123,9 @@ def validate_dual_component_experimental_audit_replay_v1(
         database=database,
         sweep=checked_sweep,
         sweep_output=sweep_output,
+        historical_comparator_policy=historical_comparator_policy,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
         selected_page_json_version_ids=selected_page_json_version_ids,
         indexed_query_evidence=checked_sweep["indexed_query_evidence"],
         trials=checked_sweep["trials"],
@@ -941,6 +1148,7 @@ def validate_dual_component_experimental_audit_content_v1(
         "axis_sha256",
         "claim_boundary",
         "format_version",
+        "historical_comparator_policy_receipt",
         "metrics",
         "pinned_old_oracle_refs",
         "pinned_preflight_axis_sha256",
@@ -950,7 +1158,7 @@ def validate_dual_component_experimental_audit_content_v1(
         "state",
         "sweep_ref",
     }
-    expected_axis_counts = PINNED_AUDIT_AXIS_COUNTS
+    axis_names = set(PINNED_AUDIT_AXIS_COUNTS)
     if (
         type(value) is not dict
         or set(value) != fields
@@ -958,10 +1166,10 @@ def validate_dual_component_experimental_audit_content_v1(
         or value.get("serialization") != "COMPACT_SORTED_KEY_UTF8_JSON_LIST_PLUS_LF"
         or value.get("state") != "EXPERIMENTAL_AUDIT_COMPLETE"
         or type(value.get("axes")) is not dict
-        or set(value["axes"]) != set(expected_axis_counts)
+        or set(value["axes"]) != axis_names
         or any(type(axis) is not list for axis in value["axes"].values())
         or type(value.get("axis_field_recipes")) is not dict
-        or set(value["axis_field_recipes"]) != set(expected_axis_counts)
+        or set(value["axis_field_recipes"]) != axis_names
         or any(
             type(recipe) is not str or not recipe for recipe in value["axis_field_recipes"].values()
         )
@@ -969,25 +1177,65 @@ def validate_dual_component_experimental_audit_content_v1(
         raise _error("dual-component experimental audit shape drifted")
     actual_counts = {name: len(axis) for name, axis in value["axes"].items()}
     actual_sha256 = {name: _axis_file_sha256(axis) for name, axis in value["axes"].items()}
+    if value.get("axis_counts") != actual_counts or value.get("axis_sha256") != actual_sha256:
+        raise _error("dual-component experimental audit axis seal drifted")
+    comparator_policy_receipt = value.get("historical_comparator_policy_receipt")
+    policy = (
+        comparator_policy_receipt.get("policy") if type(comparator_policy_receipt) is dict else None
+    )
+    disposition = (
+        comparator_policy_receipt.get("disposition")
+        if type(comparator_policy_receipt) is dict
+        else None
+    )
     if (
-        value.get("axis_counts") != expected_axis_counts
-        or actual_counts != expected_axis_counts
-        or value.get("axis_sha256") != actual_sha256
-        or value.get("pinned_preflight_axis_sha256") != PINNED_PREFLIGHT_AXIS_SHA256
-        or {name: actual_sha256[name] for name in PINNED_PREFLIGHT_AXIS_SHA256}
-        != PINNED_PREFLIGHT_AXIS_SHA256
-        or value.get("pinned_selected_page_json_frontier_sha256")
-        != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256
-        or actual_sha256["selected_page_json_version"] != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256
+        type(comparator_policy_receipt) is not dict
+        or comparator_policy_receipt.get("format_version")
+        != HISTORICAL_COMPARATOR_POLICY_FORMAT_VERSION
+        or policy not in {STRICT_RELEASE, DISJOINT_EXPANSION}
+        or type(comparator_policy_receipt.get("comparison_axis")) is not list
+        or type(comparator_policy_receipt.get("oracle_authentication")) is not dict
+        or type(comparator_policy_receipt.get("corpus_relation")) is not dict
+        or type(comparator_policy_receipt.get("current_axis_validation")) is not dict
     ):
-        raise _error("dual-component experimental audit count/hash pin drifted")
+        raise _error("dual-component historical comparator policy receipt drifted")
     metrics = value.get("metrics")
-    if metrics != PINNED_AUDIT_METRICS:
-        raise _error("dual-component experimental audit metric pin drifted")
     expected_oracle_refs = [reference for reference, _oracle in _pinned_old_oracles()]
+    if policy == STRICT_RELEASE:
+        if (
+            disposition != EXACT_HISTORICAL_COMPARISON
+            or actual_counts != PINNED_AUDIT_AXIS_COUNTS
+            or value.get("pinned_preflight_axis_sha256") != PINNED_PREFLIGHT_AXIS_SHA256
+            or {name: actual_sha256[name] for name in PINNED_PREFLIGHT_AXIS_SHA256}
+            != PINNED_PREFLIGHT_AXIS_SHA256
+            or value.get("pinned_selected_page_json_frontier_sha256")
+            != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256
+            or actual_sha256["selected_page_json_version"]
+            != PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256
+            or metrics != PINNED_AUDIT_METRICS
+        ):
+            raise _error("dual-component strict-release audit pin drifted")
+    elif (
+        disposition != NOT_APPLICABLE_DISJOINT_CORPUS
+        or comparator_policy_receipt["comparison_axis"] != []
+        or comparator_policy_receipt["corpus_relation"].get("overlap_count") != 0
+        or value["axes"]["comparator"] != []
+        or value["axes"]["rich_comparator"] != []
+        or value.get("pinned_preflight_axis_sha256") is not None
+        or value.get("pinned_selected_page_json_frontier_sha256") is not None
+        or type(metrics) is not dict
+        or metrics.get("old_oracle_exact_not_observed_count") is not None
+        or metrics.get("old_oracle_exact_ready_count") is not None
+        or comparator_policy_receipt["current_axis_validation"].get(
+            "selected_page_json_version_count"
+        )
+        != actual_counts["selected_page_json_version"]
+    ):
+        raise _error("dual-component disjoint-expansion audit policy drifted")
     sweep_ref = value.get("sweep_ref")
     if (
         value.get("pinned_old_oracle_refs") != expected_oracle_refs
+        or comparator_policy_receipt["oracle_authentication"].get("refs") != expected_oracle_refs
         or type(value.get("query_evidence_id")) is not str
         or not value["query_evidence_id"].startswith("gjfidcqev1:evidence:")
         or type(sweep_ref) is not dict
@@ -1036,6 +1284,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--schema-binding-spec", type=Path, required=True)
     parser.add_argument("--results-database", type=Path, required=True)
     parser.add_argument("--run-kind", choices=("EXPERIMENTAL", "OFFICIAL"), required=True)
+    parser.add_argument(
+        "--historical-comparator-policy",
+        choices=(STRICT_RELEASE, DISJOINT_EXPANSION),
+        required=True,
+    )
     parser.add_argument("--output", type=Path, required=True)
     return parser
 
@@ -1145,6 +1398,11 @@ def _run_with_authenticated_database(
         database=database,
         sweep=sweep,
         sweep_output=args.output,
+        historical_comparator_policy=args.historical_comparator_policy,
+        current_manifest_index_id=index["corpus_manifest_index_id"],
+        current_manifest_source_sha256s=[
+            document["source_sha256"] for document in index["documents"]
+        ],
         selected_page_json_version_ids=selected_ids,
         indexed_query_evidence=indexed,
         trials=trials,
@@ -1155,6 +1413,11 @@ def _run_with_authenticated_database(
         database=database,
         sweep=sweep,
         sweep_output=args.output,
+        historical_comparator_policy=args.historical_comparator_policy,
+        current_manifest_index_id=index["corpus_manifest_index_id"],
+        current_manifest_source_sha256s=[
+            document["source_sha256"] for document in index["documents"]
+        ],
         selected_page_json_version_ids=selected_ids,
         indexed_query_evidence=indexed,
         trials=trials,
@@ -1163,9 +1426,11 @@ def _run_with_authenticated_database(
     database_guard.validate()
     implementation_paths = (
         ROOT / "scripts/experiments/run_gemini_json_dual_component_accounting_family_v1.py",
+        ROOT / "data/registered/gemini_json_dual_component_source_repairs_v1.json",
         ROOT / "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_dual_component_accounting_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/historical_comparator_policy_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
     )
@@ -1200,6 +1465,7 @@ def _run_with_authenticated_database(
         "metrics": sweep["metrics"],
         "output": str(args.output),
         "family_run_id": stored["family_run_id"],
+        "historical_comparator_policy": args.historical_comparator_policy,
         "output_ref": output_ref,
         "results_database": str(args.results_database),
         "run_kind": args.run_kind,
@@ -1209,6 +1475,8 @@ def _run_with_authenticated_database(
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
     """Evaluate selected JSON and optionally advance the OFFICIAL family pointer."""
+    if args.run_kind == "OFFICIAL" and args.historical_comparator_policy != STRICT_RELEASE:
+        raise _error("OFFICIAL dual-component run requires STRICT_RELEASE comparator policy")
     index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
     artifact_root = args.artifact_root.resolve()
     source_database = _content_ref(artifact_root, index["database_ref"])

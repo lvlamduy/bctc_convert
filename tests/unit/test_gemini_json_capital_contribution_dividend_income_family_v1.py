@@ -195,6 +195,37 @@ def test_source_only_combined_equity_row_is_not_split_and_closes_root() -> None:
     assert source_only[0]["consumed_by_exact_equation"] is True
 
 
+def test_long_term_investment_provision_stays_source_only_for_sibling_family() -> None:
+    provision = "Chi dự phòng giảm giá khoản góp vốn, đầu tư dài hạn"
+    page = _page(
+        [
+            _table(
+                [
+                    _row(DIRECT, ["10", "8"], path=[DIRECT]),
+                    _row(provision, ["(2)", "(1)"], path=[provision]),
+                    _row(None, ["8", "7"], kind="TOTAL", path=[None]),
+                ]
+            )
+        ]
+    )
+
+    candidate, _regions, _receipt = _evaluate(page)
+
+    assert candidate["status"] == READY
+    assert {mapping["report_norm_id"] for mapping in candidate["mappings"]} == {
+        1198,
+        1199,
+    }
+    assert all(mapping["report_norm_id"] != 6028 for mapping in candidate["mappings"])
+    source_only = candidate["closure_receipt"]["source_only_unmapped_rows"]
+    assert len(source_only) == 1
+    assert source_only[0]["declared_role"] == (
+        "LONG_TERM_INVESTMENT_PROVISION_SOURCE_ONLY"
+    )
+    assert source_only[0]["source_ref"]["label_exact"] == provision
+    assert source_only[0]["consumed_by_exact_equation"] is True
+
+
 def test_source_only_frontier_mismatch_is_unresolved_without_mappings() -> None:
     candidate, _regions, _receipt = _evaluate(_ctg_page(total=("248", "211")))
     assert candidate["status"] == UNRESOLVED
@@ -253,6 +284,133 @@ def test_declared_acronym_and_bounded_note_reference_variants_close_locally() ->
         "EQUITY_METHOD",
         "FAMILY_ROOT_TOTAL",
     }
+
+
+def test_broad_investment_securities_and_long_term_rows_map_under_exact_family_owner() -> None:
+    parent = "Thu nhập góp vốn, mua cổ phần"
+    page = _page(
+        [
+            _table(
+                [
+                    _row(parent, ["53.838", "12.638"], kind="SUBTOTAL", path=[parent]),
+                    _row(
+                        "+ Thu từ chứng khoán đầu tư",
+                        ["42.706", "-"],
+                        path=[parent, "+ Thu từ chứng khoán đầu tư"],
+                    ),
+                    _row(
+                        "+ Từ góp vốn, đầu tư dài hạn khác",
+                        ["11.132", "12.638"],
+                        path=[parent, "+ Từ góp vốn, đầu tư dài hạn khác"],
+                    ),
+                    _row(None, ["53.838", "12.638"], kind="TOTAL", path=[parent]),
+                ],
+                title=ROOT_LABEL,
+            )
+        ],
+        title=ROOT_LABEL,
+    )
+
+    candidate, _regions, _receipt = _evaluate(page)
+
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["INVESTMENT_EQUITY_DIVIDEND"]["values"]] == [
+        42_706,
+        0,
+    ]
+    assert [cell["coefficient"] for cell in by_role["LONG_TERM_CAPITAL_DIVIDEND"]["values"]] == [
+        11_132,
+        12_638,
+    ]
+    assert [cell["coefficient"] for cell in by_role["DIRECT_DIVIDEND"]["values"]] == [
+        53_838,
+        12_638,
+    ]
+    source_only = candidate["closure_receipt"]["source_only_unmapped_rows"]
+    assert all(item["consumed_by_exact_equation"] for item in source_only)
+    assert {
+        item["declared_role"] for item in source_only if item["declared_role"]
+    } <= set(by_role)
+
+
+def test_company_and_other_long_term_dividends_aggregate_inside_direct_group() -> None:
+    direct = "Cổ tức nhận được trong năm từ:"
+    page = _page(
+        [
+            _table(
+                [
+                    _row(direct, [None, None], kind="GROUP", path=[direct]),
+                    _row("Công ty con", ["-", "300.000"], path=[direct, "Công ty con"]),
+                    _row(
+                        "Góp vốn, đầu tư dài hạn",
+                        ["18.932", "3.435"],
+                        path=[direct, "Góp vốn, đầu tư dài hạn"],
+                    ),
+                    _row(None, ["18.932", "303.435"], kind="TOTAL", path=[None]),
+                ],
+                title=ROOT_LABEL,
+            )
+        ]
+    )
+
+    candidate, _regions, _receipt = _evaluate(page)
+
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["LONG_TERM_CAPITAL_DIVIDEND"]["values"]] == [
+        18_932,
+        303_435,
+    ]
+    assert [cell["coefficient"] for cell in by_role["DIRECT_DIVIDEND"]["values"]] == [
+        18_932,
+        303_435,
+    ]
+    source_only = candidate["closure_receipt"]["source_only_unmapped_rows"]
+    assert all(item["consumed_by_exact_equation"] for item in source_only)
+    assert {
+        item["declared_role"] for item in source_only if item["declared_role"]
+    } <= set(by_role)
+
+
+def test_revaluation_child_maps_to_other_income_by_generic_prefix() -> None:
+    direct = "Cổ tức nhận được trong năm từ góp vốn, đầu tư mua cổ phần"
+    other = "Các khoản thu nhập khác"
+    revaluation = (
+        "Chênh lệch đánh giá lại khoản đầu tư vào một công ty trước đây theo "
+        "giá trị hợp lý tại ngày có được quyền kiểm soát"
+    )
+    page = _page(
+        [
+            _table(
+                [
+                    _row(direct, ["181", "40"], path=[direct]),
+                    _row(other, [None, None], kind="GROUP", path=[other]),
+                    _row(revaluation, ["127.798", "-"], path=[other, revaluation]),
+                    _row(None, ["127.979", "40"], kind="TOTAL", path=[None]),
+                ],
+                title=ROOT_LABEL,
+            )
+        ]
+    )
+
+    candidate, _regions, _receipt = _evaluate(page)
+
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["OTHER_INCOME"]["values"]] == [
+        127_798,
+        0,
+    ]
+    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
+        127_979,
+        40,
+    ]
+    source_only = candidate["closure_receipt"]["source_only_unmapped_rows"]
+    assert all(item["consumed_by_exact_equation"] for item in source_only)
+    assert {
+        item["declared_role"] for item in source_only if item["declared_role"]
+    } <= set(by_role)
 
 
 def test_missing_direct_subtotal_is_derived_without_absorbing_equity_method() -> None:
@@ -353,8 +511,22 @@ def test_unknown_component_and_duplicate_population_fail_closed() -> None:
     unknown = _ctg_page()
     unknown["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = None
     candidate, _regions, _receipt = _evaluate(unknown)
-    assert candidate["status"] == UNRESOLVED
-    assert candidate["mappings"] == []
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["LONG_TERM_CAPITAL_DIVIDEND"]["values"]] == [
+        None,
+        211,
+    ]
+    assert [cell["state"] for cell in by_role["LONG_TERM_CAPITAL_DIVIDEND"]["values"]] == [
+        "BLANK_SOURCE_CELL",
+        "RAW_SIGNED_INTEGER",
+    ]
+    assert all(
+        cell["coefficient"] != 0
+        for mapping in candidate["mappings"]
+        for cell in mapping["values"]
+        if cell["source_text"] is None
+    )
 
     duplicate = _ordinary_page()
     duplicate["sections"][0]["tables"].append(copy.deepcopy(duplicate["sections"][0]["tables"][0]))
@@ -380,6 +552,34 @@ def test_period_and_unit_conflicts_fail_closed() -> None:
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
 
+
+def test_common_duration_prefix_uses_only_exact_distinct_period_suffixes() -> None:
+    page = _ordinary_page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"][0]["header_path_exact"] = [
+        "Lũy kế từ đầu năm đến cuối kỳ này",
+        "Năm nay",
+    ]
+    table["columns"][1]["header_path_exact"] = [
+        "Lũy kế từ đầu năm đến cuối kỳ này",
+        "Năm trước",
+    ]
+    candidate, _regions, _receipt = _evaluate(page)
+    assert candidate["status"] == READY
+    period = candidate["closure_receipt"]["table_receipts"][0]["lane_axis"][
+        "source_period_axis"
+    ]
+    assert period["header_path_scope_receipt"]["rule"] == (
+        "DISTINCT_SUFFIX_AFTER_EXACT_COMMON_PREFIX"
+    )
+
+    conflict = copy.deepcopy(page)
+    conflict["sections"][0]["tables"][0]["columns"][1]["header_path_exact"][-1] = (
+        "Năm nay"
+    )
+    candidate, _regions, _receipt = _evaluate(conflict)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
 
 def test_cash_flow_lookalike_is_not_observed() -> None:
     page = _page(

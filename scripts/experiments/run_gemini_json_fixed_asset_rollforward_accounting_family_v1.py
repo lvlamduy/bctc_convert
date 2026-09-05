@@ -33,6 +33,16 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     compile_gemini_json_flat_family_specs_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
+from bctc_ai.evaluation.historical_comparator_policy_v1 import (  # noqa: E402
+    DISJOINT_EXPANSION,
+    EXACT_HISTORICAL_COMPARISON,
+    NOT_APPLICABLE_DISJOINT_CORPUS,
+    STRICT_RELEASE,
+    audit_historical_comparator_policy_v1,
+)
+from bctc_ai.evaluation.historical_comparator_policy_v1 import (  # noqa: E402
+    FORMAT_VERSION as HISTORICAL_COMPARATOR_POLICY_FORMAT_VERSION,
+)
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
@@ -163,11 +173,11 @@ PINNED_LEASED_QUERY_RECEIPT = {
     "accepted_control_region_count": 0,
     "accepted_current_region_count": 0,
     "candidate_disposition_axis_sha256": (
-        "8126225cc942a0e31e799f4f92e49f6d818b1499257c8a10c6c1aa2bf848fea5"
+        "dde6f99282efc1dbfcc1d5df44b3203412fe59c89b69e1f74c32ee128766dae0"
     ),
     "candidate_disposition_count": 140,
     "disposition_counts": {NOT_OBSERVED: 140, READY: 0, UNRESOLVED: 0},
-    "query_policy_sha256": "5378b494dfc013ed83e2e1868945521a3924b7a8821e46f62b74c0d7368aebec",
+    "query_policy_sha256": "c9d04d2e573eee333d6ac64e210544f6ecc32761f333be2bb6984c892d7d7281",
     "selected_document_axis_sha256": (
         "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
     ),
@@ -200,8 +210,8 @@ PINNED_LEASED_RELEASE_AXIS_SHA256 = {
 PINNED_LEASED_SPEC_REFS = {
     "evaluation": {
         "path": "config/families/tm-leased-fixed-assets-evaluation-v1.json",
-        "sha256": "8ca849a98a040ea5bef42847055e6f6f3ef04595d34a7c626efbe0f980e6a78d",
-        "size_bytes": 2840,
+        "sha256": "c0d51d245d8a1b3586f05067747bf65a25d9b39e49f09c277277e1f6bbbdce34",
+        "size_bytes": 3085,
     },
     "schema_binding": {
         "path": "config/families/tm-leased-fixed-assets-schema-binding-v1.json",
@@ -210,8 +220,8 @@ PINNED_LEASED_SPEC_REFS = {
     },
     "topology": {
         "path": "config/families/tm-leased-fixed-assets-topology-v1.json",
-        "sha256": "15d162e2acb6a2c44f2433298590020deeb198fe11ab9204484ba794510439ee",
-        "size_bytes": 5344,
+        "sha256": "fcc45f599a2df1190e3fad38190f971d7deeb441ce70b58755200773923442a4",
+        "size_bytes": 5560,
     },
 }
 PINNED_INTANGIBLE_HISTORICAL_ORACLES = (
@@ -306,17 +316,17 @@ PINNED_INTANGIBLE_SPEC_REFS = {
 }
 PINNED_INVESTMENT_PROPERTY_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
-        "9d4b4d09179485582a40547c8023b871d2c038d184f5e5af408037d6db7bb64a"
+        "61d40e5aa46b0a709efb5f5d958a3002abffa32da754de48adf82cebac21d606"
     ),
     "accepted_cluster_count": 12,
     "accepted_control_region_count": 9,
     "accepted_current_region_count": 26,
     "candidate_disposition_axis_sha256": (
-        "f465da2767ed453f86c65d497aee72c4738ca55ea37c3d9c3768eb904a13d4c4"
+        "150815486e325565e7e5676165f324728a835bccde2969ee6c4f9cac64fbf870"
     ),
     "candidate_disposition_count": 140,
     "disposition_counts": {NOT_OBSERVED: 128, READY: 12, UNRESOLVED: 0},
-    "query_policy_sha256": "1c36d2509bbaef08f502d41ad0708169ad8f904af68c8773293a10fc47621b8c",
+    "query_policy_sha256": "ec35a3c2539e7c1c02da7e23b7dd00f2e08cbbd3f43fff832706d4893a972f7e",
     "selected_document_axis_sha256": (
         "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
     ),
@@ -329,7 +339,7 @@ PINNED_INVESTMENT_PROPERTY_QUERY_RECEIPT = {
 }
 PINNED_INVESTMENT_PROPERTY_RELEASE_METRICS = {
     "document_count": 140,
-    "mapping_count": 105,
+    "mapping_count": 110,
     "not_observed_count": 128,
     "ready_count": 12,
     "unresolved_count": 0,
@@ -337,20 +347,20 @@ PINNED_INVESTMENT_PROPERTY_RELEASE_METRICS = {
 PINNED_INVESTMENT_PROPERTY_RELEASE_AUDIT_METRICS = {
     "equation_count": 185,
     "historical_document_match_count": 16,
-    "historical_value_match_count": 26,
-    "mapping_count": 105,
+    "historical_value_match_count": 27,
+    "mapping_count": 110,
 }
 PINNED_INVESTMENT_PROPERTY_RELEASE_AXIS_SHA256 = {
     "clusters": "84df976799ec32dc83c4978b13531fd61d0167b0fb08ed6d511dc7862454b81c",
-    "equations": "c5872011db70caacb523af3d7f17521c475469cde5dbf27a3823eef81497f4b6",
-    "historical_comparator": ("3e874e6a278b2aff896cf27149f3b20df5f49805380cbff4f9fb04ea55523b1e"),
-    "mappings": "d931909ea2fb3f48a35a99d922fa2d4da9414234c04e63b647e0d0e4a9c31fd6",
+    "equations": "42c6592f209ac3e4c304ddcd332bdfaf37e6847db9c7e60152183feeacd4220c",
+    "historical_comparator": ("d725ae72f3c03e465de723e6ebefed2c7b43246567af1d52dac790f08c1b0b97"),
+    "mappings": "d0cf840f86b4b5855eba74257d1aeb0e81e42dad0033fb608798fd780df734c9",
 }
 PINNED_INVESTMENT_PROPERTY_SPEC_REFS = {
     "evaluation": {
         "path": "config/families/tm-investment-property-evaluation-v1.json",
-        "sha256": "78ad0d23b233326e80702e5d9bca67539f0d37cbca6cd0d9c5f526f069074981",
-        "size_bytes": 4567,
+        "sha256": "afd1c0905ee795ac3c3fcbfb03bff1512e926d67ca468d13ef33ece844d422ca",
+        "size_bytes": 4772,
     },
     "schema_binding": {
         "path": "config/families/tm-investment-property-schema-binding-v1.json",
@@ -594,7 +604,7 @@ def _historical_oracles(
             != metrics["mapping_verified_count"]
         ):
             raise _error("pinned fixed-asset-rollforward historical oracle drifted")
-        result.append((dict(pinned), value))
+        result.append(({**pinned, "expected_trial_count": len(trials)}, value))
     return result
 
 
@@ -608,110 +618,177 @@ def _trial_by_source(trials: Sequence[dict[str, Any]]) -> dict[str, dict[str, An
     return result
 
 
-def _historical_comparator_axis(
-    *, trials: Sequence[dict[str, Any]], compiled_specs: Mapping[str, Any]
+def _normalised_historical_oracle_rows(
+    *, compiled_specs: Mapping[str, Any]
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    current_trials = _trial_by_source(trials)
+    oracle_refs = []
+    rows = []
+    for oracle_ref_index, (oracle_ref, oracle) in enumerate(
+        _historical_oracles(compiled_specs=compiled_specs)
+    ):
+        oracle_refs.append(oracle_ref)
+        for oracle_trial in oracle["trials"]:
+            rows.append(
+                {
+                    "oracle_format_version": oracle["format_version"],
+                    "oracle_ref_index": oracle_ref_index,
+                    "oracle_trial": oracle_trial,
+                    "source_sha256": oracle_trial.get("source_pdf_sha256"),
+                }
+            )
+    return oracle_refs, rows
+
+
+def _strict_historical_compare(
+    oracle_row: Mapping[str, Any],
+    current_trial: Mapping[str, Any],
+    *,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    oracle_trial = oracle_row.get("oracle_trial")
+    if type(oracle_trial) is not dict:
+        raise _error("historical fixed-asset-rollforward oracle trial is invalid")
     current_role_by_id = {
         report_norm_id: role for role, report_norm_id in compiled_specs["bindings"].items()
     }
     axis = []
-    oracle_refs = []
-    joined_sources = set()
-    expected_mapping_count = 0
-    for oracle_ref, oracle in _historical_oracles(compiled_specs=compiled_specs):
-        oracle_refs.append(oracle_ref)
-        expected_mapping_count += oracle["metrics"]["mapping_verified_count"]
-        for oracle_trial in oracle["trials"]:
-            source_sha256 = oracle_trial.get("source_pdf_sha256")
-            if type(source_sha256) is not str or source_sha256 in joined_sources:
-                raise _error(
-                    "historical fixed-asset-rollforward source join is duplicate or invalid"
-                )
-            joined_sources.add(source_sha256)
-            current_trial = current_trials.get(source_sha256)
-            if current_trial is None:
-                raise _error(
-                    "historical fixed-asset-rollforward source does not join one corpus trial"
-                )
-            candidates = current_trial.get("candidates")
-            candidate = (
-                candidates[0]
-                if current_trial.get("status") == READY
-                and type(candidates) is list
-                and len(candidates) == 1
+    source_sha256 = oracle_row.get("source_sha256")
+    candidates = current_trial.get("candidates")
+    candidate = (
+        candidates[0]
+        if current_trial.get("status") == READY
+        and type(candidates) is list
+        and len(candidates) == 1
+        else None
+    )
+    expected_present = bool(oracle_trial.get("mappings"))
+    document_exact = (candidate is not None) == expected_present
+    axis.append(
+        {
+            "actual_status": current_trial.get("status"),
+            "disposition": "EXACT" if document_exact else "MISMATCH",
+            "expected_present": expected_present,
+            "kind": "DOCUMENT_DISPOSITION",
+            "oracle_format_version": oracle_row.get("oracle_format_version"),
+            "source_sha256": source_sha256,
+        }
+    )
+    if expected_present:
+        if candidate is None:
+            raise _error("historical fixed-asset-rollforward present source is not READY")
+        actual_by_id = {}
+        for mapping in candidate.get("mappings", []):
+            report_norm_id = mapping.get("report_norm_id")
+            if (
+                type(report_norm_id) is not int
+                or report_norm_id in actual_by_id
+                or type(mapping.get("cell")) is not dict
+                or type(mapping["cell"].get("coefficient")) is not int
+            ):
+                raise _error("current fixed-asset-rollforward comparator mapping axis is invalid")
+            actual_by_id[report_norm_id] = mapping
+        for historical in oracle_trial.get("mappings", []):
+            binding = historical.get("schema_binding")
+            old_report_norm_id = historical.get("report_norm_id")
+            historical_coefficient = (
+                historical.get("value", {}).get("normalized_value")
+                if type(historical.get("value")) is dict
                 else None
             )
-            expected_present = bool(oracle_trial.get("mappings"))
-            document_exact = (candidate is not None) == expected_present
+            current = actual_by_id.get(old_report_norm_id)
+            current_coefficient = current["cell"]["coefficient"] if current else None
+            exact = (
+                type(old_report_norm_id) is int
+                and type(historical_coefficient) is int
+                and current is not None
+                and current_coefficient == historical_coefficient
+            )
             axis.append(
                 {
-                    "actual_status": current_trial.get("status"),
-                    "disposition": "EXACT" if document_exact else "MISMATCH",
-                    "expected_present": expected_present,
-                    "kind": "DOCUMENT_DISPOSITION",
-                    "oracle_format_version": oracle["format_version"],
+                    "bank_provenance": oracle_trial.get("document_provenance"),
+                    "canonical_name": (
+                        binding.get("canonical_name") if type(binding) is dict else None
+                    ),
+                    "current_coefficient": current_coefficient,
+                    "current_role": current.get("role") if type(current) is dict else None,
+                    "declared_role": current_role_by_id.get(old_report_norm_id),
+                    "disposition": "EXACT" if exact else "MISMATCH",
+                    "historical_coefficient": historical_coefficient,
+                    "historical_report_norm_id": old_report_norm_id,
+                    "kind": "MAPPING_VALUE",
+                    "oracle_format_version": oracle_row.get("oracle_format_version"),
                     "source_sha256": source_sha256,
                 }
             )
-            if not expected_present:
-                continue
-            if candidate is None:
-                raise _error("historical fixed-asset-rollforward present source is not READY")
-            actual_by_id = {}
-            for mapping in candidate.get("mappings", []):
-                report_norm_id = mapping.get("report_norm_id")
-                if (
-                    type(report_norm_id) is not int
-                    or report_norm_id in actual_by_id
-                    or type(mapping.get("cell")) is not dict
-                    or type(mapping["cell"].get("coefficient")) is not int
-                ):
-                    raise _error(
-                        "current fixed-asset-rollforward comparator mapping axis is invalid"
-                    )
-                actual_by_id[report_norm_id] = mapping
-            for historical in oracle_trial.get("mappings", []):
-                binding = historical.get("schema_binding")
-                old_report_norm_id = historical.get("report_norm_id")
-                historical_coefficient = (
-                    historical.get("value", {}).get("normalized_value")
-                    if type(historical.get("value")) is dict
-                    else None
-                )
-                current = actual_by_id.get(old_report_norm_id)
-                current_coefficient = current["cell"]["coefficient"] if current else None
-                exact = (
-                    type(old_report_norm_id) is int
-                    and type(historical_coefficient) is int
-                    and current is not None
-                    and current_coefficient == historical_coefficient
-                )
-                axis.append(
-                    {
-                        "bank_provenance": oracle_trial.get("document_provenance"),
-                        "canonical_name": (
-                            binding.get("canonical_name") if type(binding) is dict else None
-                        ),
-                        "current_coefficient": current_coefficient,
-                        "current_role": current.get("role") if type(current) is dict else None,
-                        "declared_role": current_role_by_id.get(old_report_norm_id),
-                        "disposition": "EXACT" if exact else "MISMATCH",
-                        "historical_coefficient": historical_coefficient,
-                        "historical_report_norm_id": old_report_norm_id,
-                        "kind": "MAPPING_VALUE",
-                        "oracle_format_version": oracle["format_version"],
-                        "source_sha256": source_sha256,
-                    }
-                )
+    if any(item["disposition"] != "EXACT" for item in axis):
+        raise _error("historical fixed-asset-rollforward comparator is not exact")
+    return {"axis": axis, "disposition": EXACT_HISTORICAL_COMPARISON}
+
+
+def _historical_comparator_axis(
+    *,
+    policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: Sequence[str],
+    current_manifest_page_json_version_ids: Sequence[str],
+    current_candidate_source_sha256s: Sequence[str],
+    current_replay_source_sha256s: Sequence[str],
+    trials: Sequence[dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    oracle_refs, oracle_rows = _normalised_historical_oracle_rows(
+        compiled_specs=compiled_specs
+    )
+    policy_receipt = audit_historical_comparator_policy_v1(
+        policy=policy,
+        pinned_oracle_refs=oracle_refs,
+        normalized_oracle_rows=oracle_rows,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
+        current_manifest_page_json_version_ids=current_manifest_page_json_version_ids,
+        current_trials=trials,
+        current_candidate_source_sha256s=current_candidate_source_sha256s,
+        current_replay_source_sha256s=current_replay_source_sha256s,
+        current_selected_page_json_version_ids=current_manifest_page_json_version_ids,
+        strict_compare=(
+            lambda oracle, current: _strict_historical_compare(
+                oracle, current, compiled_specs=compiled_specs
+            )
+        )
+        if policy == STRICT_RELEASE
+        else None,
+    )
+    if policy == DISJOINT_EXPANSION:
+        if (
+            policy_receipt["disposition"] != NOT_APPLICABLE_DISJOINT_CORPUS
+            or policy_receipt["comparison_axis"] != []
+        ):
+            raise _error("disjoint fixed-asset-rollforward comparator receipt drifted")
+        return [], oracle_refs, policy_receipt
+    axis = [
+        row
+        for comparison in policy_receipt["comparison_axis"]
+        for row in comparison["comparison"]["axis"]
+    ]
+    expected_mapping_count = sum(
+        oracle["metrics"]["mapping_verified_count"]
+        for _ref, oracle in _historical_oracles(compiled_specs=compiled_specs)
+    )
     if len(axis) != expected_mapping_count + 16:
         raise _error("historical fixed-asset-rollforward comparator denominator drifted")
-    return axis, oracle_refs
+    return axis, oracle_refs, policy_receipt
 
 
 def _audit_axes(
-    *, trials: Sequence[dict[str, Any]], compiled_specs: Mapping[str, Any]
-) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any]]:
+    *,
+    policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: Sequence[str],
+    current_manifest_page_json_version_ids: Sequence[str],
+    indexed_query_evidence: Mapping[str, Any],
+    trials: Sequence[dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, Any]], dict[str, Any]]:
     mappings = []
     equations = []
     clusters = []
@@ -778,21 +855,48 @@ def _audit_axes(
         else:
             for equation in candidate["closure_receipt"]["table_receipt"]["equations"]:
                 equations.append({**document, "equation": equation})
-    comparator, oracle_refs = _historical_comparator_axis(
-        trials=trials, compiled_specs=compiled_specs
+    source_by_ordinal = {
+        document["document_ordinal"]: document["source_sha256"]
+        for document in indexed_query_evidence["selected_document_axis"]
+    }
+    candidate_sources = [
+        source_by_ordinal[cluster["document_ordinal"]]
+        for cluster in indexed_query_evidence["accepted_clusters"]
+    ]
+    replay_sources = [trial["source_sha256"] for trial in trials if trial["candidates"]]
+    if len(candidate_sources) != len(replay_sources) or set(candidate_sources) != set(
+        replay_sources
+    ):
+        raise _error("fixed-asset-rollforward indexed candidate/replay axes drifted")
+    comparator, oracle_refs, comparator_policy_receipt = _historical_comparator_axis(
+        policy=policy,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
+        current_manifest_page_json_version_ids=current_manifest_page_json_version_ids,
+        current_candidate_source_sha256s=candidate_sources,
+        current_replay_source_sha256s=replay_sources,
+        trials=trials,
+        compiled_specs=compiled_specs,
     )
-    return {
-        "clusters": clusters,
-        "equations": equations,
-        "historical_comparator": comparator,
-        "mappings": mappings,
-    }, oracle_refs
+    return (
+        {
+            "clusters": clusters,
+            "equations": equations,
+            "historical_comparator": comparator,
+            "mappings": mappings,
+        },
+        oracle_refs,
+        comparator_policy_receipt,
+    )
 
 
 def build_fixed_asset_rollforward_experimental_audit_v1(
     *,
     sweep: Mapping[str, Any],
     sweep_output: Path,
+    historical_comparator_policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: Sequence[str],
     selected_page_json_version_ids: Sequence[str],
     indexed_query_evidence: Mapping[str, Any],
     trials: Sequence[dict[str, Any]],
@@ -801,7 +905,17 @@ def build_fixed_asset_rollforward_experimental_audit_v1(
 ) -> dict[str, Any]:
     """Build transparent semantic axes after the exact SQLite candidate replay."""
 
-    axes, oracle_refs = _audit_axes(trials=trials, compiled_specs=compiled_specs)
+    if sweep.get("corpus_manifest_index_id") != current_manifest_index_id:
+        raise _error("fixed-asset-rollforward sweep/current manifest identity drifted")
+    axes, oracle_refs, comparator_policy_receipt = _audit_axes(
+        policy=historical_comparator_policy,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
+        current_manifest_page_json_version_ids=selected_page_json_version_ids,
+        indexed_query_evidence=indexed_query_evidence,
+        trials=trials,
+        compiled_specs=compiled_specs,
+    )
     axis_counts = {name: len(axis) for name, axis in axes.items()}
     axis_sha256 = {name: canonical_json_sha256_v1(axis) for name, axis in axes.items()}
     audit_metrics = {
@@ -809,11 +923,15 @@ def build_fixed_asset_rollforward_experimental_audit_v1(
         "historical_document_match_count": sum(
             item["kind"] == "DOCUMENT_DISPOSITION" and item["disposition"] == "EXACT"
             for item in axes["historical_comparator"]
-        ),
+        )
+        if historical_comparator_policy == STRICT_RELEASE
+        else None,
         "historical_value_match_count": sum(
             item["kind"] == "MAPPING_VALUE" and item["disposition"] == "EXACT"
             for item in axes["historical_comparator"]
-        ),
+        )
+        if historical_comparator_policy == STRICT_RELEASE
+        else None,
         "mapping_count": axis_counts["mappings"],
     }
     sweep_payload = canonical_json_bytes_v1(sweep)
@@ -827,6 +945,7 @@ def build_fixed_asset_rollforward_experimental_audit_v1(
             "COMPARATOR_ONLY_NO_PROVIDER_NO_GEOMETRY_NO_CANONICAL_EXPORT_AUTHORITY"
         ),
         "format_version": AUDIT_FORMAT_VERSION,
+        "historical_comparator_policy_receipt": comparator_policy_receipt,
         "historical_oracle_refs": oracle_refs,
         "query_evidence_id": indexed_query_evidence["query_evidence_id"],
         "query_receipt": indexed_query_evidence["query_receipt"],
@@ -859,6 +978,7 @@ def validate_fixed_asset_rollforward_experimental_audit_content_v1(
         "audit_metrics",
         "claim_boundary",
         "format_version",
+        "historical_comparator_policy_receipt",
         "historical_oracle_refs",
         "query_evidence_id",
         "query_receipt",
@@ -887,6 +1007,54 @@ def validate_fixed_asset_rollforward_experimental_audit_content_v1(
     hashes = {name: canonical_json_sha256_v1(axis) for name, axis in value["axes"].items()}
     if value.get("axis_counts") != counts or value.get("axis_sha256") != hashes:
         raise _error("fixed-asset-rollforward experimental audit axis seal drifted")
+    policy_receipt = value.get("historical_comparator_policy_receipt")
+    policy = policy_receipt.get("policy") if type(policy_receipt) is dict else None
+    disposition = policy_receipt.get("disposition") if type(policy_receipt) is dict else None
+    metrics = value.get("audit_metrics")
+    if (
+        type(policy_receipt) is not dict
+        or policy_receipt.get("format_version")
+        != HISTORICAL_COMPARATOR_POLICY_FORMAT_VERSION
+        or policy not in {STRICT_RELEASE, DISJOINT_EXPANSION}
+        or type(policy_receipt.get("comparison_axis")) is not list
+        or type(policy_receipt.get("oracle_authentication")) is not dict
+        or type(policy_receipt.get("corpus_relation")) is not dict
+        or type(policy_receipt.get("current_axis_validation")) is not dict
+        or policy_receipt["oracle_authentication"].get("refs")
+        != value.get("historical_oracle_refs")
+        or policy_receipt["current_axis_validation"].get("manifest_document_count")
+        != value.get("query_receipt", {}).get("selected_document_count")
+        or policy_receipt["current_axis_validation"].get("trial_source_count")
+        != value.get("query_receipt", {}).get("selected_document_count")
+        or policy_receipt["current_axis_validation"].get("candidate_source_count")
+        != value.get("query_receipt", {}).get("accepted_cluster_count")
+        or policy_receipt["current_axis_validation"].get("replay_source_count")
+        != value.get("query_receipt", {}).get("accepted_cluster_count")
+        or policy_receipt["current_axis_validation"].get(
+            "selected_page_json_version_count"
+        )
+        != value.get("query_receipt", {}).get("selected_page_count")
+    ):
+        raise _error("fixed-asset-rollforward historical comparator policy receipt drifted")
+    if policy == STRICT_RELEASE:
+        if (
+            disposition != EXACT_HISTORICAL_COMPARISON
+            or not value["axes"]["historical_comparator"]
+            or type(metrics) is not dict
+            or type(metrics.get("historical_document_match_count")) is not int
+            or type(metrics.get("historical_value_match_count")) is not int
+        ):
+            raise _error("fixed-asset-rollforward strict comparator audit drifted")
+    elif (
+        disposition != NOT_APPLICABLE_DISJOINT_CORPUS
+        or policy_receipt["comparison_axis"] != []
+        or policy_receipt["corpus_relation"].get("overlap_count") != 0
+        or value["axes"]["historical_comparator"] != []
+        or type(metrics) is not dict
+        or metrics.get("historical_document_match_count") is not None
+        or metrics.get("historical_value_match_count") is not None
+    ):
+        raise _error("fixed-asset-rollforward disjoint comparator audit drifted")
     material = {key: value[key] for key in fields - {"audit_id"}}
     if value.get("audit_id") != "gjffareav1:audit:" + canonical_json_sha256_v1(material):
         raise _error("fixed-asset-rollforward experimental audit identity drifted")
@@ -899,6 +1067,9 @@ def validate_fixed_asset_rollforward_experimental_audit_replay_v1(
     database: Path,
     sweep: Mapping[str, Any],
     sweep_output: Path,
+    historical_comparator_policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: Sequence[str],
     selected_page_json_version_ids: Sequence[str],
     indexed_query_evidence: Mapping[str, Any],
     trials: Sequence[dict[str, Any]],
@@ -927,6 +1098,9 @@ def validate_fixed_asset_rollforward_experimental_audit_replay_v1(
     expected = build_fixed_asset_rollforward_experimental_audit_v1(
         sweep=checked_sweep,
         sweep_output=sweep_output,
+        historical_comparator_policy=historical_comparator_policy,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
         selected_page_json_version_ids=selected_page_json_version_ids,
         indexed_query_evidence=checked_sweep["indexed_query_evidence"],
         trials=checked_sweep["trials"],
@@ -941,12 +1115,20 @@ def validate_fixed_asset_rollforward_experimental_audit_replay_v1(
 
 def _assert_release_pins(
     *,
+    historical_comparator_policy: str,
+    run_kind: str,
     index: Mapping[str, Any],
     selected_ids: Sequence[str],
     sweep: Mapping[str, Any],
     indexed: Mapping[str, Any],
     audit: Mapping[str, Any],
 ) -> None:
+    if historical_comparator_policy == DISJOINT_EXPANSION:
+        if run_kind != "EXPERIMENTAL":
+            raise _error("OFFICIAL fixed-asset-rollforward run requires STRICT_RELEASE policy")
+        return
+    if historical_comparator_policy != STRICT_RELEASE:
+        raise _error("fixed-asset-rollforward historical comparator policy is undeclared")
     family_id = sweep.get("specs", {}).get("topology", {}).get("value", {}).get("family_id")
     if family_id == "TANGIBLE_FIXED_ASSETS_ROLLFORWARD":
         pinned_query_receipt = PINNED_QUERY_RECEIPT
@@ -994,7 +1176,7 @@ def _assert_release_pins(
             "clusters": 12,
             "equations": 185,
             "historical_comparator": 43,
-            "mappings": 105,
+            "mappings": 110,
         }
     else:
         raise _error("fixed-asset-rollforward release family is not pinned")
@@ -1211,6 +1393,11 @@ def _run_with_authenticated_database(
     audit = build_fixed_asset_rollforward_experimental_audit_v1(
         sweep=sweep,
         sweep_output=args.output,
+        historical_comparator_policy=args.historical_comparator_policy,
+        current_manifest_index_id=index["corpus_manifest_index_id"],
+        current_manifest_source_sha256s=[
+            document["source_sha256"] for document in index["documents"]
+        ],
         selected_page_json_version_ids=selected_ids,
         indexed_query_evidence=indexed,
         trials=trials,
@@ -1222,6 +1409,11 @@ def _run_with_authenticated_database(
         database=database,
         sweep=sweep,
         sweep_output=args.output,
+        historical_comparator_policy=args.historical_comparator_policy,
+        current_manifest_index_id=index["corpus_manifest_index_id"],
+        current_manifest_source_sha256s=[
+            document["source_sha256"] for document in index["documents"]
+        ],
         selected_page_json_version_ids=selected_ids,
         indexed_query_evidence=indexed,
         trials=trials,
@@ -1229,6 +1421,8 @@ def _run_with_authenticated_database(
         spec_refs=spec_refs,
     )
     _assert_release_pins(
+        historical_comparator_policy=args.historical_comparator_policy,
+        run_kind=args.run_kind,
         index=index,
         selected_ids=selected_ids,
         sweep=sweep,
@@ -1245,6 +1439,7 @@ def _run_with_authenticated_database(
         ROOT / "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_fixed_asset_rollforward_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/historical_comparator_policy_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
     )
@@ -1274,6 +1469,7 @@ def _run_with_authenticated_database(
         "axis_sha256": audit["axis_sha256"],
         "disposition": "SUCCEEDED",
         "family_run_id": stored["family_run_id"],
+        "historical_comparator_policy": args.historical_comparator_policy,
         "metrics": sweep["metrics"],
         "output": str(args.output),
         "output_ref": output_ref,
@@ -1284,6 +1480,8 @@ def _run_with_authenticated_database(
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
+    if args.run_kind == "OFFICIAL" and args.historical_comparator_policy != STRICT_RELEASE:
+        raise _error("OFFICIAL fixed-asset-rollforward run requires STRICT_RELEASE policy")
     index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
     artifact_root = args.artifact_root.resolve()
     source_database = _content_ref(artifact_root, index["database_ref"])
@@ -1322,6 +1520,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--schema-binding-spec", type=Path, required=True)
     parser.add_argument("--results-database", type=Path, required=True)
     parser.add_argument("--run-kind", choices=("EXPERIMENTAL", "OFFICIAL"), required=True)
+    parser.add_argument(
+        "--historical-comparator-policy",
+        choices=(STRICT_RELEASE, DISJOINT_EXPANSION),
+        required=True,
+    )
     parser.add_argument("--output", type=Path, required=True)
     return parser
 

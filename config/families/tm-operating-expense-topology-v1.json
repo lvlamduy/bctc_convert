@@ -6,6 +6,7 @@
           "aliases": [
             "Chi nộp thuế và các khoản phí, lệ phí",
             "Chi nộp thuế và các khoản lệ phí",
+            "Chi phí nộp thuế và các khoản phí, lệ phí",
             "Chi phí thuế, lệ phí và phí",
             "Thuế và các loại phí"
           ],
@@ -22,7 +23,8 @@
           "aliases": [
             "Chi phí cho nhân viên",
             "Chi phí nhân viên",
-            "Chi cho nhân viên"
+            "Chi cho nhân viên",
+            "Lương và các chi phí liên quan"
           ],
           "within_role": null
         }
@@ -49,7 +51,9 @@
       "matchers": [
         {
           "aliases": [
-            "Các khoản chi đóng góp theo lương"
+            "Các khoản đóng góp theo lương",
+            "Các khoản chi đóng góp theo lương",
+            "Các khoản chi đóng theo lương"
           ],
           "within_role": "EMPLOYEE_EXPENSE"
         }
@@ -63,7 +67,9 @@
         {
           "aliases": [
             "Chi trợ cấp",
-            "Chi trợ cấp thôi việc, mất việc làm"
+            "Chi trợ cấp thôi việc, mất việc làm",
+            "Chi trợ cấp thôi việc",
+            "Chi trợ cấp, y tế cho CBNV"
           ],
           "within_role": "EMPLOYEE_EXPENSE"
         }
@@ -78,6 +84,8 @@
           "aliases": [
             "Chi khác",
             "Chi khác cho nhân viên",
+            "Chi khác cho nhân viên (chi ăn ca)",
+            "Chi phí khác cho nhân viên",
             "Các khoản chi khác",
             "Khác"
           ],
@@ -91,7 +99,30 @@
     {
       "matchers": [
         {
-          "aliases": ["Chi về tài sản"],
+          "aliases": [
+            "Đồng phục và các chi phí liên quan",
+            "Chi trang phục, ăn ca, y tế, trợ cấp thôi việc",
+            "Chi trang phục và phương tiện bảo hộ lao động",
+            "Chi trang phục giao dịch",
+            "Chi trang phục giao dịch và phương tiện bảo hộ lao động",
+            "Các khoản chi đóng góp theo lương, chi trang phục giao dịch, phương tiện bảo hộ lao động",
+            "Chi công tác xã hội",
+            "Chi thưởng",
+            "Chi trợ cấp khác",
+            "Chi trợ cấp và chi khác"
+          ],
+          "presence_anchor": false,
+          "within_role": "EMPLOYEE_EXPENSE"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EMPLOYEE_SCHEMA_GAP_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi về tài sản", "Chi phí về tài sản"],
           "within_role": null
         }
       ],
@@ -108,9 +139,11 @@
             "Chi phí khấu hao và khấu trừ",
             "Khấu hao và hao mòn tài sản cố định",
             "Chi khấu hao tài sản cố định",
+            "Chi khấu hao tài sản cố định và bất động sản đầu tư",
             "Chi khấu hao TSCĐ",
             "Khấu hao TSCĐ",
             "Chi phí khấu hao TSCĐ",
+            "Khấu hao và hao mòn TSCĐ",
             "Trong đó: Khấu hao tài sản cố định",
             "Trong đó: Chi phí khấu hao tài sản cố định",
             "Trong đó: Chi phí khấu hao TSCĐ"
@@ -131,6 +164,25 @@
             "Chi về bảo dưỡng và sửa chữa tài sản",
             "Chi khác về tài sản",
             "Chi khác về TSCĐ",
+            "Chi phí thuê tài sản",
+            "Chi phí thuê văn phòng và tài sản",
+            "Chi phí bảo dưỡng và sửa chữa tài sản",
+            "Chi phí dụng cụ và thiết bị",
+            "Chi mua sắm công cụ lao động",
+            "Mua sắm công cụ lao động",
+            "Bảo dưỡng và sửa chữa tài sản",
+            "Chi sửa chữa, bảo dưỡng tài sản",
+            "Chi phí sửa chữa, bảo dưỡng và bảo trì",
+            "Chi phí sửa chữa và nâng cấp tài sản",
+            "Chi bảo dưỡng và sửa chữa tài sản",
+            "Thuê tài sản",
+            "Chi bảo hiểm tài sản",
+            "Chi phí bảo hiểm tài sản",
+            "Chi mua bảo hiểm tài sản",
+            "Chi về tài sản và công cụ, dụng cụ",
+            "Chi phí tài sản khác",
+            "Chi phí khác về tài sản",
+            "Chi phí khác",
             "Chi khác",
             "Khác"
           ],
@@ -148,7 +200,11 @@
           "aliases": [
             "Chi cho hoạt động quản lý công vụ",
             "Chi phí cho hoạt động quản lý công vụ",
-            "Chi cho hoạt động quản lý"
+            "Chi cho hoạt động quản lý",
+            "Chi cho hoạt động quản lý và công vụ",
+            "Chi phí hoạt động quản lý và công vụ",
+            "Chi phí hoạt động quản lý công vụ",
+            "Chi hoạt động quản lý công vụ"
           ],
           "within_role": null
         }
@@ -176,14 +232,23 @@
       "matchers": [
         {
           "aliases": [
+            "Chi về các HĐ đoàn thể của TCTD",
             "Chi về các hoạt động đoàn thể của TCTD",
             "Chi phí về các hoạt động đoàn thể của TCTD",
             "Chi phí về các hoạt động đoàn thể",
+            "Chi về hoạt động đoàn thể của TCTD",
             "Chi hoạt động đoàn thể của TCTD",
+            "Chi phí hoạt động đoàn thể của TCTD",
             "Chi về các hoạt động đoàn thể",
-            "Chi hoạt động đoàn thể"
+            "Chi hoạt động đoàn thể",
+            "Chi về hoạt động đoàn thể"
           ],
           "within_role": "ADMIN_EXPENSE"
+        },
+        {
+          "aliases": ["Chi về các hoạt động đoàn thể của tổ chức tín dụng"],
+          "presence_anchor": false,
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -199,13 +264,6 @@
             "Chi khác"
           ],
           "within_role": "ADMIN_EXPENSE"
-        },
-        {
-          "aliases": [
-            "Chi phí hoạt động khác",
-            "Chi khác cho hoạt động quản lý"
-          ],
-          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -217,8 +275,34 @@
         {
           "aliases": [
             "Chi phí quảng cáo, tiếp thị, khuyến mại",
+            "Chi phí quảng cáo, tiếp thị",
+            "Chi quảng cáo, khuyến mãi",
             "Chi phí hội nghị, lễ tân, khánh tiết",
-            "Chi phí điện, nước, vệ sinh cơ quan"
+            "Chi phí hội nghị, lễ tân, khánh tiết và tiếp khách",
+            "Chi hội nghị, lễ tân, khánh tiết",
+            "Chi hội nghị, lễ tân, khánh tiết và tiếp khách",
+            "Chi phí điện, nước, vệ sinh cơ quan",
+            "Chi phí điện nước, vệ sinh cơ quan, xăng dầu",
+            "Chi điện nước, vệ sinh cơ quan",
+            "Chi phí thông tin liên lạc",
+            "Chi bưu phí và điện thoại",
+            "Chi phí tiếp thị, quảng cáo, vật liệu văn phòng",
+            "Chi phí in ấn, tiếp thị và khuyến mại",
+            "Chi vật liệu và giấy tờ in",
+            "Chi phí vật liệu, giấy tờ in",
+            "Chi vật liệu, giấy tờ in",
+            "Chi vật liệu văn phòng, xăng dầu",
+            "Chi phí đào tạo",
+            "Chi đào tạo, huấn luyện",
+            "Chi phí đào tạo, huấn luyện",
+            "Chi thuê chuyên gia, tư vấn",
+            "Chi phí dịch vụ tư vấn",
+            "Chi phí dịch vụ chuyên nghiệp",
+            "Chi phí khác cho hoạt động quản lý",
+            "Chi hoạt động quản lý công vụ khác",
+            "Chế xuất bản tài liệu, tuyên truyền, quảng cáo, tiếp thị, khuyến mại",
+            "Các khoản chi phí khác",
+            "Chi phí khác"
           ],
           "presence_anchor": false,
           "within_role": "ADMIN_EXPENSE"
@@ -231,12 +315,166 @@
     {
       "matchers": [
         {
+          "aliases": ["Chi phí thuê văn phòng và tài sản"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ASSET_RENT_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Khấu hao và hao mòn tài sản cố định"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ASSET_DEPRECIATION_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi phí bảo dưỡng và sửa chữa tài sản"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ASSET_MAINTENANCE_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi phí dụng cụ và thiết bị"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ASSET_TOOLS_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi phí in ấn, tiếp thị và khuyến mại"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ADMIN_PRINTING_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi phí thông tin liên lạc"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ADMIN_COMMUNICATION_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi phí điện nước, vệ sinh văn phòng"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ADMIN_UTILITIES_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Công tác phí"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ADMIN_TRAVEL_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi phí dịch vụ tư vấn"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_ADMIN_CONSULTING_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Chi phí hoạt động khác", "Chi hoạt động khác"],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FLAT_OTHER_OPERATING_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": ["Trong đó:"],
+          "presence_anchor": false,
+          "within_role": "EMPLOYEE_EXPENSE"
+        },
+        {
+          "aliases": ["Trong đó:"],
+          "presence_anchor": false,
+          "within_role": "ASSET_EXPENSE"
+        },
+        {
+          "aliases": ["Trong đó:"],
+          "presence_anchor": false,
+          "within_role": "ADMIN_EXPENSE"
+        },
+        {
+          "aliases": ["Trong đó:"],
+          "presence_anchor": false,
+          "within_role": "PROVISION_GROUP_SOURCE_ONLY"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DISCLOSURE_WRAPPER_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
           "aliases": [
             "Chi nộp phí bảo hiểm, bảo toàn tiền gửi của khách hàng",
             "Chi nộp phí bảo hiểm, bảo toàn tiền gửi",
             "Chi nộp phí bảo hiểm tiền gửi của khách hàng",
             "Chi nộp phí bảo hiểm tiền gửi của khách",
-            "Chi phí bảo hiểm tiền gửi của khách hàng"
+            "Chi phí bảo hiểm tiền gửi của khách hàng",
+            "Chi phí bảo hiểm cho các khoản tiền gửi khách hàng",
+            "Chi nộp phí bảo hiểm cho các khoản tiền gửi của khách hàng",
+            "Chi nộp phí bảo hiểm, bảo hiểm tiền gửi của khách hàng",
+            "Chi nộp phí bảo hiểm, bảo đảm tiền gửi của khách hàng",
+            "Chi nộp phí bảo hiểm, bảo toàn tiền gửi khách hàng",
+            "Chi phí bảo đảm tiền gửi của khách hàng",
+            "Chi phí bảo đảm tiền gửi"
           ],
           "within_role": null
         }
@@ -267,6 +505,9 @@
         {
           "aliases": [
             "Chi dự phòng giảm giá đầu tư dài hạn và rủi ro tài sản khác",
+            "Chi phí dự phòng giảm giá góp vốn, đầu tư dài hạn",
+            "Chi phí dự phòng giảm giá các khoản góp vốn, đầu tư dài hạn",
+            "(Hoàn nhập)/Trích lập chi phí dự phòng giảm giá góp vốn, đầu tư dài hạn",
             "Trích lập dự phòng giảm giá các khoản đầu tư dài hạn",
             "Trích lập dự phòng giảm giá đầu tư dài hạn",
             "Hoàn nhập/trích lập chi phí dự phòng giảm giá đầu tư dài hạn",
@@ -274,6 +515,7 @@
             "Hoàn nhập dự phòng giảm giá đầu tư dài hạn",
             "(Hoàn nhập)/trích lập dự phòng giảm giá đầu tư dài hạn",
             "Trích lập/(Hoàn nhập) dự phòng giảm giá đầu tư dài hạn",
+            "Chi phí/(Hoàn nhập) dự phòng giảm giá đầu tư dài hạn",
             "(Hoàn nhập) dự phòng giảm giá khoản đầu tư, mua cổ phần",
             "Hoàn nhập dự phòng cho các khoản đầu tư dài hạn khác",
             "Trích lập dự phòng nợ phải thu khó đòi",
@@ -287,6 +529,9 @@
         {
           "aliases": [
             "Chi dự phòng giảm giá đầu tư dài hạn và rủi ro tài sản khác",
+            "Chi phí dự phòng giảm giá góp vốn, đầu tư dài hạn",
+            "Chi phí dự phòng giảm giá các khoản góp vốn, đầu tư dài hạn",
+            "(Hoàn nhập)/Trích lập chi phí dự phòng giảm giá góp vốn, đầu tư dài hạn",
             "Trích lập dự phòng giảm giá các khoản đầu tư dài hạn",
             "Trích lập dự phòng giảm giá đầu tư dài hạn",
             "Hoàn nhập/trích lập chi phí dự phòng giảm giá đầu tư dài hạn",
@@ -294,6 +539,7 @@
             "Hoàn nhập dự phòng giảm giá đầu tư dài hạn",
             "(Hoàn nhập)/trích lập dự phòng giảm giá đầu tư dài hạn",
             "Trích lập/(Hoàn nhập) dự phòng giảm giá đầu tư dài hạn",
+            "Chi phí/(Hoàn nhập) dự phòng giảm giá đầu tư dài hạn",
             "(Hoàn nhập) dự phòng giảm giá khoản đầu tư, mua cổ phần",
             "Hoàn nhập dự phòng cho các khoản đầu tư dài hạn khác",
             "Trích lập dự phòng nợ phải thu khó đòi",
@@ -314,6 +560,8 @@
         {
           "aliases": [
             "Trích lập dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "Chi phí dự phòng các tài sản Có khác",
+            "Trích lập dự phòng các tài sản Có khác",
             "Chi dự phòng rủi ro cho các tài sản Có nội bảng khác",
             "Trích lập/(Hoàn nhập) dự phòng cho các tài sản Có nội bảng khác",
             "(Hoàn nhập)/trích lập dự phòng cho các tài sản Có nội bảng khác",
@@ -325,13 +573,16 @@
             "(Hoàn nhập)/trích lập dự phòng khác",
             "(Hoàn nhập) dự phòng khác",
             "(Hoàn nhập) dự phòng",
-            "Hoàn nhập chi phí dự phòng khác"
+            "Hoàn nhập chi phí dự phòng khác",
+            "(Hoàn nhập)/chi phí dự phòng rủi ro tài sản có khác"
           ],
           "within_role": "PROVISION_GROUP_SOURCE_ONLY"
         },
         {
           "aliases": [
             "Trích lập dự phòng rủi ro cho các tài sản Có nội bảng khác",
+            "Chi phí dự phòng các tài sản Có khác",
+            "Trích lập dự phòng các tài sản Có khác",
             "Chi dự phòng rủi ro cho các tài sản Có nội bảng khác",
             "Trích lập/(Hoàn nhập) dự phòng cho các tài sản Có nội bảng khác",
             "(Hoàn nhập)/trích lập dự phòng cho các tài sản Có nội bảng khác",
@@ -343,7 +594,8 @@
             "(Hoàn nhập)/trích lập dự phòng khác",
             "(Hoàn nhập) dự phòng khác",
             "(Hoàn nhập) dự phòng",
-            "Hoàn nhập chi phí dự phòng khác"
+            "Hoàn nhập chi phí dự phòng khác",
+            "(Hoàn nhập)/chi phí dự phòng rủi ro tài sản có khác"
           ],
           "within_role": null
         }
@@ -362,13 +614,21 @@
             "Hoàn nhập chi phí dự phòng (i)",
             "(Hoàn nhập)/trích lập chi phí dự phòng (i)",
             "Chi phí dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
+            "Hoàn nhập chi phí dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
+            "Trích lập chi phí dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
+            "Trích lập dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng, chi phí dự phòng chứng khoán)",
+            "(Hoàn nhập)/Trích lập chi phí dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
+            "Trích lập/(Hoàn nhập) chi phí dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
             "Chi phí/(Hoàn nhập) dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng giảm giá chứng khoán)",
+            "Chi phí/(Hoàn nhập) dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)",
             "Chi phí dự phòng rủi ro (không tính dự phòng rủi ro tín dụng; chi phí dự phòng chứng khoán)",
             "Hoàn nhập dự phòng rủi ro (không tính dự phòng rủi ro tín dụng; chi phí dự phòng chứng khoán)",
             "(Hoàn nhập)/Chi phí dự phòng rủi ro (không tính dự phòng rủi ro tín dụng; chi phí dự phòng chứng khoán)",
             "(Hoàn nhập) dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)",
             "Chi phí dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)",
-            "(Hoàn nhập) chi phí dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)"
+            "(Hoàn nhập) chi phí dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)",
+            "Trích lập chi phí dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng; chi phí dự phòng rủi ro chứng khoán)",
+            "(Hoàn nhập)/Trích lập chi phí dự phòng (không bao gồm chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; chi phí dự phòng rủi ro chứng khoán)"
           ],
           "presence_anchor": false,
           "within_role": null
@@ -408,7 +668,13 @@
     {
       "matchers": [
         {
-          "aliases": ["Lợi thế thương mại phân bổ trong kỳ"],
+          "aliases": [
+            "Lợi thế thương mại phân bổ trong kỳ",
+            "Phân bổ lợi thế thương mại",
+            "Phân bổ lợi thế thương mại (Thuyết minh V.0)",
+            "Phân bổ lợi thế thương mại (Thuyết minh V.13)",
+            "Chi phí lợi thế thương mại"
+          ],
           "presence_anchor": false,
           "within_role": null
         }
@@ -434,6 +700,7 @@
   },
   "parent": {
     "aliases": [
+      "Chi hoạt động",
       "Chi phí hoạt động",
       "Chi phí quản lý chung",
       "Chi phí quản lý chung (Chi phí hoạt động)"

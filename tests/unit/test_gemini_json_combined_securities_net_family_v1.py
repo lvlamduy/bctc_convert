@@ -185,6 +185,33 @@ def test_combined_cash_flow_change_row_is_not_a_source_result() -> None:
     assert cluster["component_regions"] == []
 
 
+def test_asset_geography_combined_row_is_a_hard_negative() -> None:
+    page = _page(title=None)
+    page["sections"][0]["tables"][0]["rows"] = [
+        _row(
+            "Chứng khoán kinh doanh và chứng khoán đầu tư - gộp",
+            ["40.072.258", "40.072.258"],
+        )
+    ]
+    cluster = _cluster(page)
+    assert cluster["status"] == NOT_OBSERVED
+    assert cluster["component_regions"] == []
+
+
+def test_fx_inclusive_segment_result_is_not_narrowed_to_family_root() -> None:
+    page = _page(title=None)
+    page["sections"][0]["tables"][0]["rows"] = [
+        _row(
+            "Lãi thuần từ hoạt động kinh doanh ngoại hối và mua bán chứng khoán "
+            "kinh doanh và chứng khoán đầu tư",
+            ["875.732", "1.414.026"],
+        )
+    ]
+    cluster = _cluster(page)
+    assert cluster["status"] == NOT_OBSERVED
+    assert cluster["component_regions"] == []
+
+
 def test_combined_source_result_mismatch_fails_closed_without_mapping() -> None:
     page = _page()
     page["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "116"

@@ -23,7 +23,9 @@
             "Chi phí từ mua bán chứng khoán kinh doanh",
             "Chi phí mua bán chứng khoán kinh doanh",
             "Chi về mua bán chứng khoán kinh doanh",
-            "Lỗ về mua bán chứng khoán kinh doanh"
+            "Lỗ về mua bán chứng khoán kinh doanh",
+            "Lỗ từ mua bán chứng khoán kinh doanh",
+            "Chi cho kinh doanh chứng khoán kinh doanh"
           ],
           "within_role": null
         }
@@ -53,7 +55,8 @@
             "Dự phòng rủi ro chứng khoán kinh doanh hoàn nhập trong kỳ",
             "Dự phòng rủi ro chứng khoán kinh doanh hoàn nhập/(trích lập) trong kỳ",
             "(Trích lập)/Hoàn nhập dự phòng giảm giá chứng khoán kinh doanh",
-            "Trích lập dự phòng rủi ro chứng khoán đầu tư"
+            "Chi phí dự phòng rủi ro chứng khoán kinh doanh",
+            "Chi phí dự phòng giảm giá chứng khoán kinh doanh"
           ],
           "within_role": null
         }
@@ -61,6 +64,22 @@
       "presence": "OPTIONAL",
       "role": "PROVISION_TRADING_SECURITIES",
       "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Trong đó: Chi phí dự phòng chung",
+            "Chi phí dự phòng cụ thể",
+            "Chi phí dự phòng giảm giá"
+          ],
+          "presence_anchor": false,
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION_BREAKDOWN_SOURCE_ONLY",
+      "role_kind": "NONADDITIVE_CHILD"
     }
   ],
   "family_id": "TRADING_SECURITIES_ACTIVITY",
@@ -82,7 +101,12 @@
       "Lãi/(Lỗ) thuần từ mua bán chứng khoán kinh doanh",
       "Lãi/(Lỗ) thuần từ hoạt động mua bán chứng khoán kinh doanh",
       "(Lỗ)/Lãi thuần từ hoạt động mua bán chứng khoán kinh doanh",
-      "Lãi từ hoạt động mua bán chứng khoán kinh doanh"
+      "Lãi từ hoạt động mua bán chứng khoán kinh doanh",
+      "Lỗ thuần từ mua bán chứng khoán kinh doanh",
+      "Lãi/lỗ thuần từ hoạt động kinh doanh (mua bán) chứng khoán kinh doanh",
+      "Lãi/lỗ thuần từ hoạt động kinh doanh chứng khoán kinh doanh",
+      "(Lỗ)/lãi thuần từ mua bán chứng khoán kinh doanh",
+      "Lãi thuần từ hoạt động kinh doanh (mua bán) chứng khoán kinh doanh"
     ],
     "resolution_mode": "EXPLICIT_ONLY",
     "role": "NET_TRADING_SECURITIES"

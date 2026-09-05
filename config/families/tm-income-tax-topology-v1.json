@@ -12,7 +12,9 @@
             "Lợi nhuận thuần trước thuế",
             "Lợi nhuận thuần trước thuế TNDN",
             "Lợi nhuận trước thuế",
+            "Lợi nhuận trước thuế thu nhập doanh nghiệp",
             "Lợi nhuận trước thuế TNDN",
+            "Tổng lợi nhuận/(lỗ) kế toán trước thuế",
             "Tổng lợi nhuận kế toán trước thuế",
             "Tổng lợi nhuận theo kế toán trước thuế hợp nhất",
             "Tổng lợi nhuận trước thuế",
@@ -59,8 +61,7 @@
             "Phân chia lãi theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào các công ty liên doanh, liên kết",
             "Thu nhập chịu thuế tương ứng khoản lợi nhuận từ VFC chuyển về",
             "Thu nhập từ lợi ích tăng lên tại các công ty liên doanh",
-            "Biến động dự phòng/đánh giá lại cho các khoản cho vay và trái phiếu khi hợp nhất báo cáo tài chính",
-            "Khác"
+            "Biến động dự phòng/đánh giá lại cho các khoản cho vay và trái phiếu khi hợp nhất báo cáo tài chính"
           ],
           "within_role": null
         }
@@ -100,13 +101,16 @@
             "Thu nhập chịu thuế TNDN của Ngân hàng mẹ",
             "Thu nhập chịu thuế TNDN hiện hành của Ngân hàng mẹ",
             "Thu nhập chịu thuế TNDN ước tính tại Việt Nam",
+            "Thu nhập/(lỗ) chịu thuế ước tính trong kỳ",
             "Thu nhập chịu thuế ước tính của Ngân hàng mẹ",
             "Thu nhập chịu thuế ước tính trong kỳ",
             "Thu nhập chịu thuế ước tính trong kỳ của Ngân hàng tại Việt Nam",
             "Thu nhập chịu thuế ước tính trong kỳ tại Việt Nam",
             "Thu nhập chịu thuế ước tính trong năm",
             "Thu nhập chịu thuế ước tính trong năm của Ngân hàng tại Việt Nam",
-            "Thu nhập chịu thuế ước tính trong năm tại Việt Nam"
+            "Thu nhập chịu thuế ước tính trong năm tại Việt Nam",
+            "Thu nhập tính thuế",
+            "Tổng thu nhập chịu thuế"
           ],
           "within_role": null
         }
@@ -122,7 +126,12 @@
             "Chi phí thuế TNDN theo thuế suất",
             "Chi phí thuế TNDN theo thuế suất hiện hành",
             "Chi phí thuế TNDN tính trên thu nhập chịu thuế",
-            "Chi phí thuế TNDN tính trên thu nhập chịu thuế kỳ hiện hành"
+            "Chi phí thuế TNDN tính trên thu nhập chịu thuế kỳ hiện hành",
+            "Chi phí thuế thu nhập doanh nghiệp trong kỳ (thuế suất 20%)",
+            "Chi phí thuế thu nhập doanh nghiệp trong năm (thuế suất 20%)",
+            "Thuế tính theo thuế suất của Ngân hàng",
+            "Thuế TNDN theo thuế suất áp dụng cho Ngân hàng (20%)",
+            "Thuế TNDN theo thuế suất quy định (20%)"
           ],
           "within_role": null
         },
@@ -201,13 +210,18 @@
           "aliases": [
             "Điều chỉnh chi phí thuế TNDN của các năm trước vào chi phí thuế TNDN hiện hành năm nay",
             "Điều chỉnh chênh lệch thuế thu nhập doanh nghiệp của các năm trước",
+            "Điều chỉnh chênh lệch thuế TNDN của các năm trước",
             "Điều chỉnh số thuế phải nộp các kỳ trước",
             "Điều chỉnh theo quyết toán thuế",
             "Điều chỉnh thuế TNDN các năm trước",
             "Điều chỉnh thuế TNDN của các kỳ trước",
             "Điều chỉnh thuế TNDN năm trước",
             "Điều chỉnh thuế bổ sung theo quyết toán năm",
-            "Điều chỉnh trong năm cho thuế thu nhập hiện hành của các năm trước"
+            "Điều chỉnh trong năm cho thuế thu nhập hiện hành của các năm trước",
+            "Chi phí năm trước",
+            "Thuế thu nhập doanh nghiệp bổ sung cho các năm trước",
+            "Thuế TNDN năm trước nộp bổ sung",
+            "Thuế TNDN nộp bổ sung năm trước"
           ],
           "within_role": null
         }
@@ -231,8 +245,10 @@
             "Tổng chi phí thuế TNDN hiện hành",
             "Tổng chi phí thuế TNDN phát sinh trong kỳ",
             "Tổng chi phí thuế TNDN phát sinh trong năm",
+            "Tổng chi phí thuế TNDN ước tính trong kỳ",
             "Tổng chi phí thuế thu nhập doanh nghiệp hiện hành",
             "Thuế thu nhập doanh nghiệp hiện hành theo thuế suất áp dụng",
+            "Thuế thu nhập doanh nghiệp phải nộp",
             "Thuế TNDN trong kỳ",
             "Thuế TNDN trong năm"
           ],
@@ -276,6 +292,7 @@
           "aliases": [
             "Chi phí thuế thu nhập doanh nghiệp hoãn lại",
             "Chi phí thuế thu nhập hoãn lại",
+            "Lợi ích thuế thu nhập hoãn lại",
             "Chi phí/(thu nhập) thuế thu nhập hoãn lại",
             "(Chi phí)/thu nhập thuế thu nhập doanh nghiệp hoãn lại",
             "(Chi phí)/thu nhập thuế thu nhập doanh nghiệp hoãn lại phát sinh từ các khoản chênh lệch tạm thời phải chịu thuế",
@@ -321,7 +338,8 @@
         {
           "aliases": [
             "Thuế suất thuế TNDN",
-            "Thuế suất thuế thu nhập doanh nghiệp"
+            "Thuế suất thuế thu nhập doanh nghiệp",
+            "Thuế suất"
           ],
           "presence_anchor": false,
           "within_role": null
@@ -352,6 +370,19 @@
       "presence": "OPTIONAL",
       "role": "SOURCE_ONLY_EQUATION_COMPONENT",
       "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Thuế tính ở thuế suất 20%"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "STATUTORY_TAX_AMOUNT_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
     }
   ],
   "family_id": "INCOME_TAX",
@@ -372,7 +403,9 @@
   },
   "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
   "required_role_combinations": [
-    ["PROFIT_BEFORE_TAX", "TAXABLE_INCOME"]
+    ["PROFIT_BEFORE_TAX", "TAXABLE_INCOME"],
+    ["PROFIT_BEFORE_TAX", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY", "CURRENT_TAX_PARENT"],
+    ["PROFIT_BEFORE_TAX", "CURRENT_TAX_AT_RATE", "CURRENT_TAX_PARENT"]
   ],
   "structural_reset_aliases": [
     "Tài sản thuế thu nhập hoãn lại",

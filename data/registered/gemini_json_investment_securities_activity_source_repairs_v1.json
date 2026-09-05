@@ -1,0 +1,264 @@
+{
+  "family_id": "INVESTMENT_SECURITIES_ACTIVITY",
+  "format_version": "GEMINI_JSON_INVESTMENT_SECURITIES_ACTIVITY_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "policy": "TRANSCRIBE_ONLY_PDF_VISIBLE_MONEY_TOKENS_NO_EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO_NO_PROVIDER",
+  "repairs": [
+    {
+      "base_page_json_sha256": "24bff3884ebd03d446392fb1fb726cee0ae92b96e77c58138ef168278d26c905",
+      "base_table_sha256": "7c8ddd1a5eaf5c162e72e0d9c41b940de25cebb71016be040b63f1cd15e05b82",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí từ mua bán chứng khoán đầu tư"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí từ mua bán chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3534,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "1a1794e3b666d1e1b70a8f2331315bf7aa67c9829bec962f1dc1f44133bbd080",
+        "size_bytes": 3367011,
+        "width": 2484
+      },
+      "page_json_version_id": "gfpstorev1:json:e69b3a77345a45809b494dd4a2360ef4e58bc9fed70eb5c3b252a8adda5f2e81",
+      "physical_page": 28,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/KLB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "9adafd9c25ad6dd1a05bc12d9b182fc65c4921145e98e7fac84f5453632f0553",
+      "source_size_bytes": 8675798,
+      "table_id": "t4"
+    },
+    {
+      "base_page_json_sha256": "ab3c0cda8cbe75ccf2cddfc05406b86f9f32cb061fa1e72e589c8ca969803309",
+      "base_table_sha256": "e1d3869cb6b484109507054d97827075d732467824fbff5031e944567cfec396",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán đầu tư"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "32ee25f543865b88b96c5e25e061390992bb8d19ec73967e2e663363e650be13",
+        "size_bytes": 1711351,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:32c50ce87cccc8458be1b9c1f3606b3be631c0db8e35ccc169e283cb24d54680",
+      "physical_page": 39,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/PGB/2025/3_pgb_2025_10_22_8eac562_vi_baocaotaichinh_q3_2025.pdf",
+      "source_sha256": "bac53d82ce05ce497222e1a1c20945c31af62e534f7c7385825400662c513ead",
+      "source_size_bytes": 18957903,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "5d5c9cdd4650a757ea971b7a95951cfc9ef34b20b2f23a9cc56f6339b88f61cb",
+      "base_table_sha256": "bb04866bd7ed91c588d5e448642a5611ba17d2575835acacaeb018f5bc46bc7d",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán đầu tư"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "40f2687d6b8fa37fbb255e2f9e9e55b4fbeabfeef46b427a24f43a13a3689c9b",
+        "size_bytes": 1556543,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:c6bd642025a2bf109d751ca7f4ba4c3706fbd9e2b20896982a102b3de1c7c2b5",
+      "physical_page": 39,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/PGB/2025/4_pgb_2026_1_22_d793078_vi_baocaotaichinh_q4_2025.pdf",
+      "source_sha256": "d323b33958279f6dfb5452834c5f7a688bb0b055688f5f88267b9f8c2ba4799d",
+      "source_size_bytes": 19531995,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "3c6e90b21ff2b876a487c20ff7a80ba1c39b98ab43560750f0508f0bd7eb423c",
+      "base_table_sha256": "5f99f496822f8291fce6a35ea30b81e3a75acd7acc1bb5b0249b87d3a97769a3",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán sẵn sàng để bán"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán sẵn sàng để bán",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3510,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "5a10c7f507a96dbc5900708a6242b47d1afeb6586874cca1cef7490980c498a4",
+        "size_bytes": 3012605,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:b7f9b5dac5d5b516cd44846084f36b057791c6e1fc67bbe44697400c45123164",
+      "physical_page": 42,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/PGB/2025/BCTC Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "954322b899c9db6343793dd46d3ed9fa88a4977f98b66d49109ac1524ab06c42",
+      "source_size_bytes": 8193331,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "502f76c1c81c3db728204a3396d3d5e45514a3238ba90d5e14803a85bad46b22",
+      "base_table_sha256": "b7f8898af5f38818b77ffe9f9bc443579bfcaf77d6b3d89cfd0dc7ec0049224d",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán đầu tư"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Hoàn nhập/Trích lập dự phòng giảm giá chứng khoán đầu tư"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Hoàn nhập/Trích lập dự phòng giảm giá chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3510,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a0f760466fda7abf1df7f132bfc4a9bd745b541939d785f8e876acfe96ae3ad2",
+        "size_bytes": 346630,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:502ee24dd77db94fd3f4998215f1b266b0e7367109c3c684dfe70ba76f08e4ab",
+      "physical_page": 39,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/PGB/2025/BCTC quý 1 năm 2025.pdf",
+      "source_sha256": "f63455968c34bb29fdbba20fca99364d25bbdfe9638ff0a3b5f8e0453c35cd2c",
+      "source_size_bytes": 1701215,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "91d04a95915b4fe598c0cac6afee614fca062d38582a3d0126ac5f181882ce63",
+      "base_table_sha256": "913ab3010eaab27618185d7b71c80b2c86a53e16a2d02c0aae6b1115237a1508",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "V. Lãi/lỗ thuần từ mua bán chứng khoán đầu tư"
+          ],
+          "row_id": "r9",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "V. Lãi/lỗ thuần từ mua bán chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3505,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "fe19fb4ee72fede494a96a5d27906e0661cc022978122ea8547b09738e3cc749",
+        "size_bytes": 3564093,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:dd6c1d4b850eeb3a1d9dd602e29b73d7694ffbf02fc1096f81e105cca778bbb9",
+      "physical_page": 7,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/SGB/2025/BAO-CAO-TAI-CHINH-HOP-NHAT-QUY-3---20205.pdf",
+      "source_sha256": "c2cd8985045a97c75bc6637c207dc2cff9dbdb8cccd68c1542eb8050869adbd3",
+      "source_size_bytes": 16001947,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "4d482d6ce74b6d3d0b400d19d380da0e43d8e9b4a8927375fdc4dd7817acdfd3",
+      "base_table_sha256": "78cd28e21d44f6834740bea1a084ad57246fe43a00db90326c6324228c45a05f",
+      "cell_repairs": [
+        {
+          "column_ordinal": 4,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "V. Lãi/lỗ thuần từ mua bán chứng khoán đầu tư"
+          ],
+          "row_id": "r9",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "V. Lãi/lỗ thuần từ mua bán chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3496,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a9cead4899fb9491ade7c9ab3b5c59d82df00728cd86529b28788a9707cf8d7d",
+        "size_bytes": 3436291,
+        "width": 2471
+      },
+      "page_json_version_id": "gfpstorev1:json:d2c0c4eaee76696092ca5dfca4dd2ebf463b60e45359ea657a8be1442f9a5527",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/SGB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "32e0564c1248db84fe8fe8e4717c254916364015082efdc154458f4d51d12256",
+      "source_size_bytes": 15200551,
+      "table_id": "t1"
+    }
+  ]
+}

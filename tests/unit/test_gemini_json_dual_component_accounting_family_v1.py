@@ -220,7 +220,7 @@ def test_partial_or_wrong_period_and_unit_evidence_cannot_inherit() -> None:
     assert "EXPLICIT_SIBLING_PERIOD_AXES_DIFFER" in candidate["reasons"]
 
 
-def test_blank_zero_is_promoted_only_after_all_equations_close() -> None:
+def test_blank_source_lane_is_preserved_while_observed_sister_lane_closes() -> None:
     exact_page = _base_page()
     balance = exact_page["sections"][0]["tables"][0]
     balance["rows"][1]["values_exact"][1] = None
@@ -228,17 +228,27 @@ def test_blank_zero_is_promoted_only_after_all_equations_close() -> None:
     exact = _evaluate(exact_page)
     assert exact["status"] == READY
     fx = next(mapping for mapping in exact["mappings"] if mapping["report_norm_id"] == 802)
-    assert fx["values"][1]["state"] == "INFERRED_BLANK_ZERO_EQUATION_EXACT"
+    assert fx["values"][1] == {
+        "coefficient": None,
+        "source_text": None,
+        "state": "BLANK_SOURCE_CELL",
+    }
+    comparative_equation = next(
+        equation
+        for equation in exact["closure_receipt"]["equations"]
+        if equation["component_role"] == "BALANCE"
+        and equation["period_role"] == "COMPARATIVE_PERIOD"
+    )
+    assert comparative_equation["status"] == "COMPONENT_SOURCE_LANE_UNOBSERVED"
 
     mismatch_page = _base_page()
     mismatch_page["sections"][0]["tables"][0]["rows"][0]["values_exact"][0] = None
     mismatch = _evaluate(mismatch_page)
-    assert mismatch["status"] == UNRESOLVED
-    assert mismatch["mappings"] == []
+    assert mismatch["status"] == READY
     balance_inventory = mismatch["closure_receipt"]["source_inventory"][0]
     assert balance_inventory["row_axis"][0]["values_exact"][0] is None
     equation_cell = mismatch["closure_receipt"]["equations"][0]["component_role_coefficients"][0]
-    assert equation_cell["state"] == "BLANK_ZERO_IF_EQUATION_EXACT"
+    assert equation_cell["state"] == "BLANK_SOURCE_CELL"
 
 
 def test_structural_gross_fallback_is_narrow_and_visible_total_vetoes_mismatch() -> None:
@@ -407,6 +417,33 @@ def test_cross_section_owner_interval_and_resets_are_fail_closed() -> None:
     )
     result = _coalesce(reset_after_owner_before_components)
     assert "NONORDERABLE_NARRATIVE_RESET_OR_HARD_NEGATIVE_IN_INTERVAL" in result["reasons"]
+
+
+def test_subordinate_table_owner_mention_keeps_exact_section_owner_fence() -> None:
+    detail = _detail()
+    detail["title_exact"] = "Chi tiết giá trị gốc, lãi của các khoản mua nợ như sau:"
+    page = _page(
+        _section(
+            "11. Hoạt động mua nợ",
+            _balance(),
+            detail,
+        )
+    )
+    result = _coalesce(page)
+    assert result["status"] == "ACCEPTED"
+    subordinate = next(
+        item
+        for item in result["structural_axis"]
+        if item["source_kind"] == "TABLE_TITLE" and "Chi tiết giá trị" in item["source_exact"]
+    )
+    assert subordinate["fence_effect"] == (
+        "SUBORDINATE_TABLE_OWNER_MENTION_RETAINED_ACTIVE_OWNER"
+    )
+
+    explicit_new_owner = copy.deepcopy(page)
+    explicit_new_owner["sections"][0]["tables"][1]["title_exact"] = "12. Hoạt động mua nợ"
+    result = _coalesce(explicit_new_owner)
+    assert "COMPONENT_FRAGMENTS_CROSS_OWNER_OR_RESET_FENCE" in result["reasons"]
 
 
 def test_multiple_distinct_dates_in_one_header_are_unresolved() -> None:

@@ -23,6 +23,9 @@ MIN_MATERIAL_OVERFLOW_RATIO = 0.03
 MIN_MATERIAL_OVERFLOW_POINTS = 8.0
 EDGE_PADDING_POINTS = 2.0
 PAGE_BOX_EQUALITY_TOLERANCE_POINTS = 0.5
+MIN_FULL_PAGE_IMAGE_COVERAGE_RATIO = 0.95
+MIN_RECURRING_MASKED_OVERLAY_OCCURRENCES = 3
+MIN_RECURRING_MASKED_OVERLAY_DOCUMENT_RATIO = 0.5
 _NONPAINTED_DISPLAY_TYPES = frozenset({"ignore-text"})
 
 
@@ -59,9 +62,8 @@ def _valid_rect(rect: fitz.Rect) -> bool:
     )
 
 
-def _painted_content_bounds(page: fitz.Page) -> tuple[fitz.Rect | None, int]:
-    bounds = None
-    count = 0
+def _painted_content_entries(page: fitz.Page) -> list[tuple[str, fitz.Rect]]:
+    entries: list[tuple[str, fitz.Rect]] = []
     for entry in page.get_bboxlog():
         if type(entry) is not tuple or len(entry) < 2 or type(entry[0]) is not str:
             raise GeminiJsonFirstPageRenderV1Error("PDF display-list bounds are invalid")
@@ -70,12 +72,113 @@ def _painted_content_bounds(page: fitz.Page) -> tuple[fitz.Rect | None, int]:
         rect = fitz.Rect(entry[1])
         if not _valid_rect(rect):
             continue
+        entries.append((entry[0], rect))
+    return entries
+
+
+def _allowed_page_box(original: fitz.Rect) -> fitz.Rect:
+    return fitz.Rect(
+        original.x0 - original.width * MAX_PAGE_BOX_EXPANSION_RATIO,
+        original.y0 - original.height * MAX_PAGE_BOX_EXPANSION_RATIO,
+        original.x1 + original.width * MAX_PAGE_BOX_EXPANSION_RATIO,
+        original.y1 + original.height * MAX_PAGE_BOX_EXPANSION_RATIO,
+    )
+
+
+def _image_info_for_bbox(
+    image_infos: list[dict[str, Any]], rect: fitz.Rect
+) -> dict[str, Any] | None:
+    matches = [
+        info
+        for info in image_infos
+        if type(info) is dict
+        and "bbox" in info
+        and _rect_delta(fitz.Rect(info["bbox"]), rect) <= PAGE_BOX_EQUALITY_TOLERANCE_POINTS
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _has_unmasked_full_page_image(image_infos: list[dict[str, Any]], original: fitz.Rect) -> bool:
+    if original.get_area() <= 0:
+        return False
+    for info in image_infos:
+        if type(info) is not dict or info.get("has-mask") is not False:
+            continue
+        rect = fitz.Rect(info.get("bbox", ()))
+        if not _valid_rect(rect):
+            continue
+        covered = (rect & original).get_area() / original.get_area()
+        if covered >= MIN_FULL_PAGE_IMAGE_COVERAGE_RATIO:
+            return True
+    return False
+
+
+def _is_recurring_masked_overlay(page: fitz.Page, *, image_info: dict[str, Any]) -> bool:
+    """Recognize only a repeated transparent overlay with one safe sibling placement.
+
+    Scanned filings can reuse one portrait watermark XObject on every page.  On a
+    landscape page its unchanged portrait placement extends far below MediaBox,
+    even though a separate unmasked scan already covers the complete declared
+    page.  Such an overlay must not authorize a page-box expansion.  Requiring the
+    exact masked XObject on a majority of document pages, plus a bounded sibling
+    placement, keeps this exception limited to document-wide decoration.
+    """
+
+    xref = image_info.get("xref")
+    if image_info.get("has-mask") is not True or type(xref) is not int or xref <= 0:
+        return False
+    document = page.parent
+    if document is None or len(document) < MIN_RECURRING_MASKED_OVERLAY_OCCURRENCES:
+        return False
+    occurrence_pages: set[int] = set()
+    has_bounded_sibling_placement = False
+    for sibling in document:
+        sibling_media = fitz.Rect(sibling.mediabox)
+        if not _valid_rect(sibling_media):
+            continue
+        sibling_allowed = _allowed_page_box(sibling_media)
+        for sibling_info in sibling.get_image_info(xrefs=True):
+            if (
+                type(sibling_info) is not dict
+                or sibling_info.get("xref") != xref
+                or sibling_info.get("has-mask") is not True
+            ):
+                continue
+            occurrence_pages.add(sibling.number)
+            sibling_bbox = fitz.Rect(sibling_info.get("bbox", ()))
+            if (
+                sibling.number != page.number
+                and _valid_rect(sibling_bbox)
+                and sibling_allowed.contains(sibling_bbox)
+            ):
+                has_bounded_sibling_placement = True
+    minimum = max(
+        MIN_RECURRING_MASKED_OVERLAY_OCCURRENCES,
+        math.ceil(len(document) * MIN_RECURRING_MASKED_OVERLAY_DOCUMENT_RATIO),
+    )
+    return len(occurrence_pages) >= minimum and has_bounded_sibling_placement
+
+
+def _painted_content_bounds(
+    page: fitz.Page, *, original: fitz.Rect, allowed: fitz.Rect
+) -> tuple[fitz.Rect | None, int]:
+    entries = _painted_content_entries(page)
+    image_infos = list(page.get_image_info(xrefs=True))
+    has_full_page_scan = _has_unmasked_full_page_image(image_infos, original)
+    bounds = None
+    for entry_type, source_rect in entries:
+        rect = fitz.Rect(source_rect)
+        if entry_type == "fill-image" and not allowed.contains(rect) and has_full_page_scan:
+            image_info = _image_info_for_bbox(image_infos, rect)
+            if image_info is not None and _is_recurring_masked_overlay(page, image_info=image_info):
+                rect &= original
+                if not _valid_rect(rect):
+                    continue
         if bounds is None:
             bounds = fitz.Rect(rect)
         else:
             bounds.include_rect(rect)
-        count += 1
-    return bounds, count
+    return bounds, len(entries)
 
 
 def _rect_delta(left: fitz.Rect, right: fitz.Rect) -> float:
@@ -91,15 +194,12 @@ def _selected_media_box(page: fitz.Page) -> tuple[fitz.Rect, fitz.Rect | None, i
     original = fitz.Rect(page.mediabox)
     if not _valid_rect(original):
         raise GeminiJsonFirstPageRenderV1Error("PDF MediaBox is invalid")
-    painted, painted_object_count = _painted_content_bounds(page)
+    allowed = _allowed_page_box(original)
+    painted, painted_object_count = _painted_content_bounds(
+        page, original=original, allowed=allowed
+    )
     if painted is None:
         return original, None, painted_object_count
-    allowed = fitz.Rect(
-        original.x0 - original.width * MAX_PAGE_BOX_EXPANSION_RATIO,
-        original.y0 - original.height * MAX_PAGE_BOX_EXPANSION_RATIO,
-        original.x1 + original.width * MAX_PAGE_BOX_EXPANSION_RATIO,
-        original.y1 + original.height * MAX_PAGE_BOX_EXPANSION_RATIO,
-    )
     if not allowed.contains(painted):
         raise GeminiJsonFirstPageRenderV1Error(
             "painted PDF content exceeds the bounded whole-page expansion"

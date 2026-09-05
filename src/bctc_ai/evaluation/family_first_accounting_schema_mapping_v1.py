@@ -35,6 +35,7 @@ __all__ = [
     "SPEC_FORMAT_VERSION_V4",
     "SPEC_FORMAT_VERSION_V5",
     "SPEC_FORMAT_VERSION_V6",
+    "SPEC_FORMAT_VERSION_V8",
     "FamilyFirstAccountingSchemaMappingV1Error",
     "build_authenticated_family_first_accounting_schema_mapping_v1",
     "validate_authenticated_family_first_accounting_schema_mapping_replay_v1",
@@ -48,6 +49,7 @@ SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V3"
 SPEC_FORMAT_VERSION_V4 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4"
 SPEC_FORMAT_VERSION_V5 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V5"
 SPEC_FORMAT_VERSION_V6 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6"
+SPEC_FORMAT_VERSION_V8 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V8"
 SCHEMA_GRAPH_PATH = Path("reference/schemas/schema_graph.jsonl")
 CLAIM_BOUNDARY = (
     "LIVE_REPLAYED_FAMILY_EVIDENCE_TO_TRACKED_TM_SCHEMA_DIRECT_PARENT_CHILD_BINDING_"
@@ -80,6 +82,7 @@ _SPEC_V3_FIELDS = {*_SPEC_FIELDS, "ignored_roles"}
 _SPEC_V4_FIELDS = {*_SPEC_V3_FIELDS, "family_root_mapping_policy"}
 _SPEC_V5_FIELDS = _SPEC_V4_FIELDS
 _SPEC_V6_FIELDS = {*_SPEC_V5_FIELDS, "family_owner_report_norm_id"}
+_SPEC_V8_FIELDS = {*_SPEC_V4_FIELDS, "presentation_context_bindings"}
 _ROLE_BINDING_FIELDS = {"report_norm_id", "role"}
 _ROLE_BINDING_PARENT_FIELDS = {*_ROLE_BINDING_FIELDS, "parent_report_norm_id"}
 _ROLE_BINDING_SUBSCOPE_FIELDS = {
@@ -94,6 +97,17 @@ _AGGREGATE_ROLE_BINDING_FIELDS = {
     "source_roles",
 }
 _AGGREGATE_OPERATIONS = {"SUM_OBSERVED_SOURCE_ROLES"}
+_PRESENTATION_CONTEXT_FIELDS = {
+    "context",
+    "evidence_roles",
+    "excluded_roles",
+    "role_bindings",
+}
+_PRESENTATION_CONTEXT_ROLE_BINDING_FIELDS = {
+    "emitted_role",
+    "report_norm_id",
+    "source_role",
+}
 _SOURCE_SCOPE_TO_SCHEMA_SCOPE = {
     "CONSOLIDATED": "CONSOLIDATED",
     "PARENT_OR_SEPARATE": "SEPARATE",
@@ -160,6 +174,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
             SPEC_FORMAT_VERSION_V4,
             SPEC_FORMAT_VERSION_V5,
             SPEC_FORMAT_VERSION_V6,
+            SPEC_FORMAT_VERSION_V8,
         }
         else nonstructural_roles
     )
@@ -176,6 +191,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         frozenset(_SPEC_V4_FIELDS),
         frozenset(_SPEC_V5_FIELDS),
         frozenset(_SPEC_V6_FIELDS),
+        frozenset(_SPEC_V8_FIELDS),
     }:
         raise _error("family schema-binding specification fields drifted")
     spec_version = value["format_version"]
@@ -186,6 +202,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         SPEC_FORMAT_VERSION_V4: _SPEC_V4_FIELDS,
         SPEC_FORMAT_VERSION_V5: _SPEC_V5_FIELDS,
         SPEC_FORMAT_VERSION_V6: _SPEC_V6_FIELDS,
+        SPEC_FORMAT_VERSION_V8: _SPEC_V8_FIELDS,
     }
     if spec_version not in expected_fields or set(value) != expected_fields[spec_version]:
         raise _error("family schema-binding specification version drifted")
@@ -259,6 +276,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         SPEC_FORMAT_VERSION_V4,
         SPEC_FORMAT_VERSION_V5,
         SPEC_FORMAT_VERSION_V6,
+        SPEC_FORMAT_VERSION_V8,
     } and (
         type(ignored_roles) is not list
         or any(type(role) is not str or not role for role in ignored_roles)
@@ -278,6 +296,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         SPEC_FORMAT_VERSION_V4,
         SPEC_FORMAT_VERSION_V5,
         SPEC_FORMAT_VERSION_V6,
+        SPEC_FORMAT_VERSION_V8,
     }:
         if (
             aggregates
@@ -300,6 +319,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
             SPEC_FORMAT_VERSION_V4,
             SPEC_FORMAT_VERSION_V5,
             SPEC_FORMAT_VERSION_V6,
+            SPEC_FORMAT_VERSION_V8,
         } and value["family_root_mapping_policy"] not in {
             "REQUIRE_HIERARCHICALLY_RESOLVED",
             "MAP_WHEN_HIERARCHICALLY_RESOLVED",
@@ -316,6 +336,73 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
             or value["family_owner_report_norm_id"] in target_ids
         ):
             raise _error("V6 family schema owner identity drifted")
+        if spec_version == SPEC_FORMAT_VERSION_V8:
+            contexts = value["presentation_context_bindings"]
+            if type(contexts) is not list or not contexts or len(contexts) > 8:
+                raise _error("presentation-context schema binding axis drifted")
+            context_names: set[str] = set()
+            emitted_roles: set[str] = set()
+            emitted_ids = set(target_ids) | {value["family_report_norm_id"]}
+            parsed_contexts = []
+            for context in contexts:
+                if (
+                    type(context) is not dict
+                    or set(context) != _PRESENTATION_CONTEXT_FIELDS
+                    or type(context["context"]) is not str
+                    or not context["context"]
+                    or context["context"] in context_names
+                    or type(context["evidence_roles"]) is not list
+                    or not context["evidence_roles"]
+                    or len(context["evidence_roles"])
+                    != len(set(context["evidence_roles"]))
+                    or any(role not in role_order for role in context["evidence_roles"])
+                    or type(context["excluded_roles"]) is not list
+                    or not context["excluded_roles"]
+                    or len(context["excluded_roles"])
+                    != len(set(context["excluded_roles"]))
+                    or any(role not in role_order for role in context["excluded_roles"])
+                    or set(context["evidence_roles"]) & set(context["excluded_roles"])
+                    or type(context["role_bindings"]) is not list
+                    or not context["role_bindings"]
+                    or len(context["role_bindings"]) > 32
+                ):
+                    raise _error("presentation-context schema binding drifted")
+                context_names.add(context["context"])
+                source_roles: set[str] = set()
+                parsed_bindings = []
+                for binding in context["role_bindings"]:
+                    if (
+                        type(binding) is not dict
+                        or set(binding) != _PRESENTATION_CONTEXT_ROLE_BINDING_FIELDS
+                        or type(binding["emitted_role"]) is not str
+                        or not binding["emitted_role"]
+                        or binding["emitted_role"] in emitted_roles
+                        or type(binding["report_norm_id"]) is not int
+                        or binding["report_norm_id"] <= 0
+                        or binding["report_norm_id"] in emitted_ids
+                        or binding["source_role"] not in ignored_roles
+                        or binding["source_role"] in source_roles
+                    ):
+                        raise _error("presentation-context schema role binding drifted")
+                    emitted_roles.add(binding["emitted_role"])
+                    emitted_ids.add(binding["report_norm_id"])
+                    source_roles.add(binding["source_role"])
+                    parsed_bindings.append(canonical_clone_v1(binding))
+                parsed_contexts.append(
+                    {
+                        "context": context["context"],
+                        "evidence_roles": canonical_clone_v1(context["evidence_roles"]),
+                        "excluded_roles": canonical_clone_v1(context["excluded_roles"]),
+                        "role_bindings": parsed_bindings,
+                    }
+                )
+            if any(
+                not set(left["evidence_roles"]) <= set(right["excluded_roles"])
+                or not set(right["evidence_roles"]) <= set(left["excluded_roles"])
+                for ordinal, left in enumerate(parsed_contexts)
+                for right in parsed_contexts[ordinal + 1 :]
+            ):
+                raise _error("presentation-context schema bindings are not mutually exclusive")
         return canonical_clone_v1(value)
     if (
         any(role not in role_order for role in [*direct_roles, *aggregate_source_roles])
@@ -397,6 +484,14 @@ def _bind_schema(
     bindings = [
         *spec["role_bindings"],
         *spec.get("aggregate_role_bindings", []),
+        *(
+            {
+                "report_norm_id": binding["report_norm_id"],
+                "role": binding["emitted_role"],
+            }
+            for context in spec.get("presentation_context_bindings", [])
+            for binding in context["role_bindings"]
+        ),
     ]
 
     def is_admitted_descendant(node: dict[str, Any]) -> bool:
@@ -405,6 +500,7 @@ def _bind_schema(
             SPEC_FORMAT_VERSION_V4,
             SPEC_FORMAT_VERSION_V5,
             SPEC_FORMAT_VERSION_V6,
+            SPEC_FORMAT_VERSION_V8,
         }:
             return (
                 node.get("parent_id") == parent["schema_id"]
@@ -452,7 +548,13 @@ def _bind_schema(
             raise _error(
                 "role ReportNormId is not an admitted live descendant of its family"
                 if spec["format_version"]
-                in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V5, SPEC_FORMAT_VERSION_V6}
+                in {
+                    SPEC_FORMAT_VERSION_V3,
+                    SPEC_FORMAT_VERSION_V4,
+                    SPEC_FORMAT_VERSION_V5,
+                    SPEC_FORMAT_VERSION_V6,
+                    SPEC_FORMAT_VERSION_V8,
+                }
                 else "role ReportNormId is not a direct live child of its family"
             )
         if "source_roles" in binding:
@@ -803,6 +905,50 @@ def _hierarchical_mapping(
     }
 
 
+def _presentation_context_mappings(
+    *,
+    resolved: Mapping[str, dict[str, Any]],
+    by_role: Mapping[str, dict[str, Any]],
+    contexts: dict[int, dict[str, Any]],
+    numeric_sample_by_id: Mapping[str, Mapping[str, Any]],
+    schema_binding_spec: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    policies = schema_binding_spec.get("presentation_context_bindings", [])
+    if not policies:
+        return [], []
+    resolved_roles = set(resolved)
+    matched = [
+        policy
+        for policy in policies
+        if resolved_roles & set(policy["evidence_roles"])
+        and not resolved_roles & set(policy["excluded_roles"])
+    ]
+    if len(matched) > 1:
+        return [], ["PRESENTATION_CONTEXT_SCHEMA_BINDING_IS_NOT_UNIQUE"]
+    if not matched:
+        return [], []
+    policy = matched[0]
+    mappings = []
+    for binding in policy["role_bindings"]:
+        source_record = resolved.get(binding["source_role"])
+        if source_record is None:
+            continue
+        emitted_record = canonical_clone_v1(source_record)
+        emitted_record["role"] = binding["emitted_role"]
+        mapping = _hierarchical_mapping(
+            emitted_record,
+            by_role[binding["emitted_role"]],
+            contexts,
+            numeric_sample_by_id,
+        )
+        mapping.pop("item_mapping_id")
+        mapping["presentation_context"] = policy["context"]
+        mapping["source_role"] = binding["source_role"]
+        mapping["item_mapping_id"] = "ffasmv1:item:" + canonical_json_sha256_v1(mapping)
+        mappings.append(mapping)
+    return mappings, []
+
+
 def _compatibility_reasons(
     mappings: list[dict[str, Any]],
     nodes: dict[int, dict[str, Any]],
@@ -902,6 +1048,7 @@ def _trial(
         SPEC_FORMAT_VERSION_V4,
         SPEC_FORMAT_VERSION_V5,
         SPEC_FORMAT_VERSION_V6,
+        SPEC_FORMAT_VERSION_V8,
     }:
         closure = trial["additive_closure"]
         if (
@@ -973,6 +1120,23 @@ def _trial(
             for role, node in by_role.items()
             if role in resolved
         )
+        contextual_mappings, contextual_reasons = _presentation_context_mappings(
+            resolved=resolved,
+            by_role=by_role,
+            contexts=contexts,
+            numeric_sample_by_id=numeric_sample_by_id,
+            schema_binding_spec=schema_binding_spec,
+        )
+        if contextual_reasons:
+            return {
+                **base,
+                "mapping_status": "UNRESOLVED",
+                "mappings": [],
+                "unresolved_reasons": contextual_reasons,
+            }
+        mappings.extend(contextual_mappings)
+        if schema_binding_spec["format_version"] == SPEC_FORMAT_VERSION_V8:
+            mappings.sort(key=lambda mapping: (mapping["report_norm_id"], mapping["role"]))
         if not mappings:
             return {
                 **base,

@@ -1,0 +1,14 @@
+{
+  "family_id": "LOAN_INTEREST_ACCRUAL_CLASSIFICATION",
+  "family_root_report_norm_id": 966,
+  "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {"report_norm_id": 982, "role": "INTEREST_FEE_RECEIVABLES"},
+    {"report_norm_id": 983, "role": "CREDIT_INTEREST"},
+    {"report_norm_id": 984, "role": "DEPOSIT_INTEREST"},
+    {"report_norm_id": 985, "role": "DERIVATIVE_INTEREST"},
+    {"report_norm_id": 986, "role": "OTHER_INTEREST"}
+  ],
+  "root_mapping_policy": "STRUCTURAL_CONTEXT_ONLY",
+  "schema_period_type": "SNAPSHOT"
+}

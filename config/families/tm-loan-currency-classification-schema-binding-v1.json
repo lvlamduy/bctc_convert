@@ -4,7 +4,7 @@
   "family_report_norm_id": 756,
   "family_root_mapping_policy": "REQUIRE_HIERARCHICALLY_RESOLVED_CONTEXT_ONLY",
   "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V6",
-  "ignored_roles": ["CORE_TOTAL_GROUP", "DEFERRED_LC_PRE_2024_GROUP", "DEFERRED_LC_VND", "DEFERRED_LC_FOREIGN", "EXPLICIT_GRAND_TOTAL"],
+  "ignored_roles": ["CORE_TOTAL_GROUP", "SOURCE_ONLY_FOREIGN_CURRENCY_LOANS", "SOURCE_ONLY_GOLD_LOANS", "DEFERRED_LC_PRE_2024_GROUP", "DEFERRED_LC_VND", "DEFERRED_LC_FOREIGN", "EXPLICIT_GRAND_TOTAL"],
   "role_bindings": [
     {"parent_report_norm_id": 756, "report_norm_id": 757, "role": "VND_LOANS"},
     {"parent_report_norm_id": 756, "report_norm_id": 758, "role": "FOREIGN_CURRENCY_AND_GOLD_LOANS"}

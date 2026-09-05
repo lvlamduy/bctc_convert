@@ -13,7 +13,7 @@
       "unit_aliases": ["triệu đồng", "triệu VND"]
     }
   ],
-  "ignored_roles": ["STANDARD_CORE", "INCLUDED_MARGIN_SOURCE_DISCLOSURE", "DELAYED_LC_QUALITY_GROUP", "DELAYED_LC_STANDARD"],
+  "ignored_roles": ["STANDARD_CORE", "INCLUDED_MARGIN_SOURCE_DISCLOSURE", "DELAYED_LC_QUALITY_GROUP", "DELAYED_LC_STANDARD", "PENDING_PROCESSING_SECURED_DEBT"],
   "role_bindings": [
     {"parent_report_norm_id": 746, "report_norm_id": 747, "role": "STANDARD"},
     {"parent_report_norm_id": 746, "report_norm_id": 748, "role": "SPECIAL_MENTION"},

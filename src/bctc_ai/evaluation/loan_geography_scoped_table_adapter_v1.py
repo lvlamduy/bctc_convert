@@ -42,6 +42,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 )
 
 __all__ = [
+    "BROAD_TOTAL_CONTROL_ADJUDICATION_FORMAT_VERSION",
     "DOCUMENT_FORMAT_VERSION",
     "DOCUMENT_CONTEXT_FORMAT_VERSION",
     "FORMAT_VERSION",
@@ -51,16 +52,20 @@ __all__ = [
     "LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1",
     "LoanGeographyScopedTableAdapterV1Error",
     "TOTAL_CONTROL_REQUEST_FORMAT_VERSION",
+    "adjudicate_loan_geography_broad_total_control_v1",
     "build_loan_geography_customer_loan_total_control_requests_v1",
     "build_loan_geography_scoped_graphs_v1",
     "build_loan_geography_document_context_v1",
     "build_loan_geography_region_query_spec_v2",
     "build_loan_geography_whole_document_scoped_graph_v1",
     "compare_loan_geography_sparse_full_graphs_v1",
+    "loan_geography_presentation_disposition_v1",
     "project_loan_geography_numeric_input_v1",
     "project_loan_geography_visible_dash_graph_v1",
     "validate_loan_geography_customer_loan_total_control_requests_replay_v1",
     "validate_loan_geography_customer_loan_total_control_requests_v1",
+    "validate_loan_geography_broad_total_control_adjudication_replay_v1",
+    "validate_loan_geography_broad_total_control_adjudication_v1",
     "validate_loan_geography_document_context_replay_v1",
     "validate_loan_geography_scoped_graphs_replay_v1",
     "validate_loan_geography_whole_document_scoped_graph_replay_v1",
@@ -73,6 +78,9 @@ DOCUMENT_FORMAT_VERSION = "LOAN_GEOGRAPHY_SCOPED_GRAPH_DOCUMENT_V1"
 OVERLAY_FORMAT_VERSION = "LOAN_GEOGRAPHY_SCOPED_GRAPH_OVERLAY_PROJECTION_V1"
 DOCUMENT_CONTEXT_FORMAT_VERSION = "LOAN_GEOGRAPHY_DOCUMENT_PERIOD_UNIT_CONTEXT_V1"
 TOTAL_CONTROL_REQUEST_FORMAT_VERSION = "LOAN_GEOGRAPHY_CUSTOMER_LOAN_TOTAL_CONTROL_REQUEST_SET_V1"
+BROAD_TOTAL_CONTROL_ADJUDICATION_FORMAT_VERSION = (
+    "LOAN_GEOGRAPHY_BROAD_TOTAL_CONTROL_ADJUDICATION_V1"
+)
 _TOTAL_CONTROL_REQUEST_STATE = "CLASSIFIED_EXACT_CUSTOMER_LOAN_TOTAL_CONTROL_REQUIREMENTS"
 _TOTAL_CONTROL_REQUEST_AUTHORITY = {
     "numeric_or_mapping_authority": False,
@@ -92,6 +100,30 @@ _UPSTREAM_TOTAL_CONTROL_FORMAT_VERSION = "CUSTOMER_LOAN_TOTAL_CONTROL_V1"
 _UPSTREAM_TOTAL_CONTROL_FAMILY_ID = "CUSTOMER_LOAN_TOTAL_CONTROL"
 _UPSTREAM_TOTAL_CONTROL_STATE = "EXACT_AUTHENTICATED_PRINTED_CUSTOMER_LOAN_TOTAL_CONTROL"
 _UPSTREAM_TOTAL_CONTROL_MODE = "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"
+_MAPPING_REVIEW_READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+_BROAD_TOTAL_CONTROL_ADJUDICATION_AUTHORITY = {
+    "authenticated_customer_loan_total_can_backsolve_or_invent_geography_values": False,
+    "broad_total_label_alone_is_mapping_authority": False,
+    "every_period_lane_requires_publicly_replayed_customer_loan_total_control": True,
+    "mixed_or_different_population_can_be_promoted": False,
+    "persisted_result_self_authenticating": False,
+    "ready_is_schema_export_authority": False,
+    "ready_requires_exact_observed_equation_in_every_period_lane": True,
+}
+_BROAD_TOTAL_CONTROL_ADJUDICATION_CLAIM_BOUNDARY = (
+    "BROAD_TOTAL_LOANS_GEOGRAPHY_CAN_ADVANCE_TO_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY_"
+    "WHEN_EVERY_PERIOD_LANE_EXACTLY_CLOSES_AGAINST_A_PUBLICLY_REPLAYED_CUSTOMER_"
+    "LOAN_TOTAL_CONTROL_NO_MIXED_POPULATION_BACKSOLVE_SCHEMA_EXPORT_OR_TRUTH_AUTHORITY"
+)
+_BROAD_TOTAL_CONTROL_MATCH_REASON = (
+    "BROAD_TOTAL_LOANS_MATCHED_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_EVERY_LANE"
+)
+_BROAD_TOTAL_CONTROL_MISMATCH_REASON = (
+    "BROAD_TOTAL_LOANS_DID_NOT_MATCH_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_EVERY_LANE"
+)
+_BROAD_TOTAL_CONTROL_LOCAL_CONFLICT_REASON = (
+    "BROAD_TOTAL_LOANS_LOCAL_TOTAL_CONFLICTS_WITH_AUTHENTICATED_CUSTOMER_LOAN_TOTAL"
+)
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_REGION_LOCAL_SHARED_SCOPED_TABLE_GRAPH_FAMILY11_SEMANTIC_"
     "ANCHOR_ASSIGNMENT_DOCUMENT_UNIQUENESS_AND_TYPED_PROJECTION_ONLY_NO_"
@@ -118,6 +150,12 @@ _DISPOSITIONS = {
     "NOT_OBSERVED",
     "UNRESOLVED",
 }
+_PRESENTATION_DISPOSITION_BY_STRUCTURAL_DISPOSITION = {
+    "BROAD_POPULATION_BOUNDED_ABSENCE": "SOURCE_ONLY",
+    "EXACT_CUSTOMER_LOAN_GEOGRAPHY": "EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+    "NOT_OBSERVED": "NOT_OBSERVED",
+    "UNRESOLVED": "UNRESOLVED",
+}
 
 
 class LoanGeographyScopedTableAdapterV1Error(ValueError):
@@ -126,6 +164,24 @@ class LoanGeographyScopedTableAdapterV1Error(ValueError):
 
 def _error(message: str) -> LoanGeographyScopedTableAdapterV1Error:
     return LoanGeographyScopedTableAdapterV1Error(message)
+
+
+def loan_geography_presentation_disposition_v1(structural_disposition: Any) -> str:
+    """Keep visible broad/mixed geography evidence distinct from true absence.
+
+    This is a presentation/ledger projection only.  In particular, an exact
+    structural candidate remains pending numeric and upstream-total checks and
+    is not promoted to ``READY`` here.
+    """
+
+    if type(structural_disposition) is not str:
+        raise _error("Family 11 structural disposition is invalid")
+    presentation_disposition = _PRESENTATION_DISPOSITION_BY_STRUCTURAL_DISPOSITION.get(
+        structural_disposition
+    )
+    if presentation_disposition is None:
+        raise _error("Family 11 structural disposition is invalid")
+    return presentation_disposition
 
 
 @dataclass(frozen=True, slots=True)
@@ -256,7 +312,16 @@ LOAN_GEOGRAPHY_SCOPED_TABLE_ALIAS_PROVENANCE_V1 = {
         },
     ],
     "FOREIGN_TOTAL": [
-        {"kind": "CANONICAL", "surface": "Nước ngoài", "verification_ref": "F11:FOREIGN:CANONICAL"},
+        {
+            "kind": "CANONICAL",
+            "surface": "Nước ngoài",
+            "verification_ref": "F11:FOREIGN:CANONICAL",
+        },
+        {
+            "kind": "VERIFIED_HISTORICAL_VARIANT",
+            "surface": "Ngoài nước",
+            "verification_ref": "F11:FOREIGN:NVB_REVERSED_WORD_ORDER_AUDIT",
+        },
     ],
     "GEOGRAPHIC_CONCENTRATION_OWNER": [
         {
@@ -691,6 +756,15 @@ def _query_spec(project_root: Path) -> dict[str, Any]:
                 "verified_historical_variants": [],
             },
             {
+                "anchor_id": "FOREIGN_REVERSED",
+                "canonical_alias_id": "FOREIGN_REVERSED_CANONICAL",
+                "fts_probes": ["ngoai nuoc"],
+                "max_edit_distance": 1,
+                "role": "CONTEXT",
+                "surface": "Ngoài nước",
+                "verified_historical_variants": [],
+            },
+            {
                 "anchor_id": "GEOGRAPHIC_AREA",
                 "canonical_alias_id": "GEOGRAPHIC_AREA_CANONICAL",
                 "fts_probes": ["khu vuc dia ly"],
@@ -731,9 +805,15 @@ def _query_spec(project_root: Path) -> dict[str, Any]:
         "format_version": "FAMILY_FIRST_REGION_QUERY_SPEC_V2",
         "local_required_groups": [
             {
-                "anchor_ids": ["DOMESTIC", "FOREIGN"],
-                "group_id": "GEOGRAPHIC_AXIS",
-                "mode": "ALL",
+                "anchor_ids": ["DOMESTIC"],
+                "group_id": "GEOGRAPHIC_AXIS_DOMESTIC",
+                "mode": "ANY",
+                "page_relation": "SAME_OR_ADJACENT_PAGE",
+            },
+            {
+                "anchor_ids": ["FOREIGN", "FOREIGN_REVERSED"],
+                "group_id": "GEOGRAPHIC_AXIS_FOREIGN",
+                "mode": "ANY",
                 "page_relation": "SAME_OR_ADJACENT_PAGE",
             },
             {
@@ -757,6 +837,13 @@ def _query_spec(project_root: Path) -> dict[str, Any]:
             {
                 "anchor_ids": ["DOMESTIC", "FOREIGN"],
                 "group_id": "DOMESTIC_FOREIGN_FALLBACK",
+                "mode": "ALL",
+                "page_relation": "SAME_OR_ADJACENT_PAGE",
+                "priority": 2,
+            },
+            {
+                "anchor_ids": ["DOMESTIC", "FOREIGN_REVERSED"],
+                "group_id": "DOMESTIC_REVERSED_FOREIGN_FALLBACK",
                 "mode": "ALL",
                 "page_relation": "SAME_OR_ADJACENT_PAGE",
                 "priority": 2,
@@ -1767,21 +1854,87 @@ def _line_projection(match: Mapping[str, Any]) -> dict[str, Any]:
     return canonical_clone_v1(match)
 
 
+def _projection_source_graph(
+    document: Mapping[str, Any], *, allow_broad_total_control_candidate: bool
+) -> dict[str, Any]:
+    if document["disposition"] == "EXACT_CUSTOMER_LOAN_GEOGRAPHY":
+        graphs = document["graphs"]
+        if len(graphs) != 1:
+            raise _error("Family 11 projection requires one exact logical graph")
+        return canonical_clone_v1(graphs[0])
+    if (
+        not allow_broad_total_control_candidate
+        or document["disposition"] != "BROAD_POPULATION_BOUNDED_ABSENCE"
+    ):
+        raise _error("Family 11 projection requires one exact document graph")
+
+    raw_segments = document.get("bounded_absences")
+    if type(raw_segments) is not list or not 1 <= len(raw_segments) <= 2:
+        raise _error("Family 11 broad-total control candidate is not unique")
+    segments = canonical_clone_v1(raw_segments)
+    if any(
+        segment.get("population_scope", {}).get("scope_id") != "BROAD_TOTAL_LOANS"
+        or segment.get("population_scope", {}).get("disposition") != "HARD_VETO_BROAD"
+        or segment.get("segment_status") != "HARD_VETO_SCOPE_BOUNDED_ABSENCE"
+        for segment in segments
+    ):
+        # A mixed population is semantic source evidence, never a candidate
+        # for narrowing merely because a coincidental number happens to match.
+        raise _error("Family 11 mixed population remains SOURCE_ONLY")
+    periods = [_iso_period(segment.get("period_key")) for segment in segments]
+    if any(period is None for period in periods) or len(periods) != len(set(periods)):
+        raise _error("Family 11 broad-total control candidate period axis is not exact")
+    page_axes = {tuple(segment.get("page_sequences", [])) for segment in segments}
+    if len(page_axes) != 1 or not next(iter(page_axes)):
+        raise _error("Family 11 broad-total control candidate is not one local table")
+    ordered = [
+        segment
+        for _period, segment in sorted(
+            zip(periods, segments, strict=True),
+            key=lambda item: item[0],
+            reverse=True,
+        )
+    ]
+    for lane_index, segment in enumerate(ordered):
+        segment["period_lane_index"] = lane_index
+    pages = sorted({page for segment in ordered for page in segment["page_sequences"]})
+    continuation = {
+        "adjacent_geometry_relation_replay": "NOT_REQUIRED_COMPLETE_PHYSICAL_SEGMENTS",
+        "mode": (
+            "SINGLE_PAGE_MULTI_PERIOD_COMPLETE_SEGMENTS"
+            if len(ordered) == 2
+            else "SINGLE_PAGE_COMPLETE_SEGMENTS"
+        ),
+        "page_sequences": pages,
+        "partial_table_completion": False,
+    }
+    material = {
+        "continuation": continuation,
+        "segments": ordered,
+        "status": "BROAD_TOTAL_LOANS_PENDING_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL",
+    }
+    return {
+        **material,
+        "graph_id": "lgstv1:broad-control-candidate:" + canonical_json_sha256_v1(material),
+    }
+
+
 def project_loan_geography_visible_dash_graph_v1(
     document: Mapping[str, Any],
     document_packet: Mapping[str, Any],
     *,
     document_context: Mapping[str, Any] | None = None,
+    _allow_broad_total_control_candidate: bool = False,
 ) -> dict[str, Any]:
     """Project an exact document graph to the existing pixel-overlay contract."""
 
     document = _validated_document_envelope(document)
-    if (
-        document.get("disposition") != "EXACT_CUSTOMER_LOAN_GEOGRAPHY"
-        or document.get("document_id") != document_packet.get("document_id")
-        or document["uniqueness"]["exact_logical_graph_count"] != 1
-    ):
+    if document.get("document_id") != document_packet.get("document_id"):
         raise _error("Family 11 dash projection requires one exact document graph")
+    source_graph = _projection_source_graph(
+        document,
+        allow_broad_total_control_candidate=_allow_broad_total_control_candidate,
+    )
     typed_context = (
         _document_context(document_context, document=document, document_packet=document_packet)
         if document_context is not None
@@ -1789,7 +1942,7 @@ def project_loan_geography_visible_dash_graph_v1(
     )
     locators = _locator_index(document)
     projected_graphs = []
-    for graph in document["graphs"]:
+    for graph in [source_graph]:
         projected_segments = []
         ordered_segments = _ordered_period_segments(graph["segments"], label="overlay source")
         for segment in ordered_segments:
@@ -1883,7 +2036,11 @@ def project_loan_geography_visible_dash_graph_v1(
                 "period_lane_index": lane,
                 "period_resolution": resolution,
                 "period_role": period_role,
-                "population_scope": "EXACT_CUSTOMER_LOANS",
+                "population_scope": (
+                    "BROAD_TOTAL_LOANS_PENDING_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"
+                    if document["disposition"] == "BROAD_POPULATION_BOUNDED_ABSENCE"
+                    else "EXACT_CUSTOMER_LOANS"
+                ),
                 "resolved_period": resolved,
                 "role_cells": cells,
                 "scope_axis": canonical_clone_v1(segment["population_scope"]["match"]),
@@ -1923,6 +2080,7 @@ def _numeric_projection_axes(
     document_packet: Mapping[str, Any],
     *,
     document_context: Mapping[str, Any] | None,
+    allow_broad_total_control_candidate: bool = False,
 ) -> tuple[
     dict[str, Any],
     list[Mapping[str, Any]],
@@ -1932,15 +2090,20 @@ def _numeric_projection_axes(
     list[dict[str, Any]],
 ]:
     overlay = project_loan_geography_visible_dash_graph_v1(
-        document, document_packet, document_context=document_context
+        document,
+        document_packet,
+        document_context=document_context,
+        _allow_broad_total_control_candidate=allow_broad_total_control_candidate,
     )
     logical = overlay["graphs"]
     if len(logical) != 1:
         raise _error("Family 11 numeric projection requires one logical graph")
     segments = _ordered_period_segments(logical[0]["segments"], label="numeric overlay")
-    source_segments = _ordered_period_segments(
-        document["graphs"][0]["segments"], label="numeric source"
+    source_graph = _projection_source_graph(
+        document,
+        allow_broad_total_control_candidate=allow_broad_total_control_candidate,
     )
+    source_segments = _ordered_period_segments(source_graph["segments"], label="numeric source")
     if [item["segment_id"] for item in segments] != [
         item["segment_id"] for item in source_segments
     ]:
@@ -2361,7 +2524,6 @@ def _validated_total_control_request_set(value: Any) -> dict[str, Any]:
             if (
                 lane["local_total_cell_id"] is not None
                 or lane["local_total_evidence_id"] is not None
-                or lane["control_request_id"] != expected_request_id
             ):
                 raise _error("Family 11 absent total-control request binding drifted")
         elif (
@@ -2369,9 +2531,10 @@ def _validated_total_control_request_set(value: Any) -> dict[str, Any]:
             or not lane["local_total_cell_id"]
             or type(lane["local_total_evidence_id"]) is not str
             or not lane["local_total_evidence_id"]
-            or lane["control_request_id"] is not None
         ):
             raise _error("Family 11 local total-control classification binding drifted")
+        if lane["control_request_id"] != expected_request_id:
+            raise _error("Family 11 total-control request identity drifted")
         periods.append(lane["period_end"])
     if len(periods) != len(set(periods)):
         raise _error("Family 11 total-control request periods repeat")
@@ -2400,8 +2563,8 @@ def build_loan_geography_customer_loan_total_control_requests_v1(
     page_axis = [item["page_sequence"] for item in snapshot["joined_pages"]]
     if (
         not same_typed_json_v1(document_packet, packet)
-        or document.get("disposition") != "EXACT_CUSTOMER_LOAN_GEOGRAPHY"
-        or document["uniqueness"]["exact_logical_graph_count"] != 1
+        or document.get("disposition")
+        not in {"EXACT_CUSTOMER_LOAN_GEOGRAPHY", "BROAD_POPULATION_BOUNDED_ABSENCE"}
         or document["evidence_binding"].get("snapshot_id") != snapshot["snapshot_id"]
         or document["evidence_binding"].get("document_packet_id") != packet.get("packet_id")
         or page_axis != list(range(1, packet["page_count"] + 1))
@@ -2412,6 +2575,9 @@ def build_loan_geography_customer_loan_total_control_requests_v1(
             document,
             packet,
             document_context=document_context,
+            allow_broad_total_control_candidate=(
+                document["disposition"] == "BROAD_POPULATION_BOUNDED_ABSENCE"
+            ),
         )
     )
     graph = overlay["graphs"][0]
@@ -2448,8 +2614,7 @@ def build_loan_geography_customer_loan_total_control_requests_v1(
             "segment_id": segment["segment_id"],
             "unit_context": canonical_clone_v1(unit_context),
         }
-        if classification == "STRUCTURALLY_ABSENT":
-            lane["control_request_id"] = _control_request_id(document_binding, graph_binding, lane)
+        lane["control_request_id"] = _control_request_id(document_binding, graph_binding, lane)
         lanes.append(lane)
     counts = {
         classification: sum(lane["classification"] == classification for lane in lanes)
@@ -2761,7 +2926,7 @@ def _upstream_control_locators(control: Mapping[str, Any]) -> list[Mapping[str, 
     ]
 
 
-def _controls_for_absent_lanes(
+def _controls_for_requested_lanes(
     request_set: Mapping[str, Any] | None,
     controls: Sequence[Mapping[str, Any]],
     *,
@@ -2800,7 +2965,6 @@ def _controls_for_absent_lanes(
         raise _error("Family 11 upstream total request document/root/graph binding drifted")
     if len(request["lane_requests"]) != len(source_segments):
         raise _error("Family 11 upstream total request sparse lane axis drifted")
-    absent_lanes = []
     request_by_period = {}
     for source, projected, period, lane_request in zip(
         source_segments,
@@ -2825,9 +2989,9 @@ def _controls_for_absent_lanes(
         }
         if any(lane_request[key] != value for key, value in expected.items()):
             raise _error("Family 11 upstream total request sparse topology drifted")
-        if classification == "STRUCTURALLY_ABSENT":
-            absent_lanes.append(source["period_lane_index"])
-            request_by_period[period["period_end"]] = lane_request
+        if type(lane_request.get("control_request_id")) is not str:
+            raise _error("Family 11 upstream total request is absent for a projected lane")
+        request_by_period[period["period_end"]] = lane_request
     typed_controls = [_validated_upstream_total_control(item) for item in controls]
     control_ids = [item["result_id"] for item in typed_controls]
     control_periods = [_iso_period(item["requested_period_end"]) for item in typed_controls]
@@ -2835,7 +2999,7 @@ def _controls_for_absent_lanes(
         len(control_ids) != len(set(control_ids))
         or len(control_periods) != len(set(control_periods))
         or set(control_periods) != set(request_by_period)
-        or len(typed_controls) != len(absent_lanes)
+        or len(typed_controls) != len(source_segments)
     ):
         raise _error("Family 11 upstream total controls are missing, duplicate, or unused")
     locator_ids = set(request["source_locator_ids"])
@@ -2878,6 +3042,12 @@ def project_loan_geography_numeric_input_v1(
     """
 
     document = _validated_document_envelope(document)
+    broad_total_control_candidate = document["disposition"] == "BROAD_POPULATION_BOUNDED_ABSENCE"
+    if broad_total_control_candidate and upstream_total_control_requests is None:
+        raise _error(
+            "Family 11 broad-total population remains SOURCE_ONLY without authenticated "
+            "customer-loan total controls"
+        )
     if upstream_total_control_requests is not None:
         if (
             upstream_total_control_source_document is None
@@ -2925,10 +3095,11 @@ def project_loan_geography_numeric_input_v1(
             document,
             document_packet,
             document_context=document_context,
+            allow_broad_total_control_candidate=broad_total_control_candidate,
         )
     )
     logical = overlay["graphs"]
-    controls_by_lane = _controls_for_absent_lanes(
+    controls_by_lane = _controls_for_requested_lanes(
         upstream_total_control_requests,
         upstream_total_controls,
         document=document,
@@ -3023,7 +3194,58 @@ def project_loan_geography_numeric_input_v1(
         total_match = segment["trailing_total_match"]
         total_resolution = segment["trailing_total_resolution"]
         classification, _local_cell_id, _local_evidence_id = _local_total_classification(segment)
-        if classification == "LOCAL_LABELED_TOTAL":
+        bound = controls_by_lane.get(lane)
+        if bound is not None:
+            lane_request, control = bound
+            if classification != "STRUCTURALLY_ABSENT":
+                local_total = cell(
+                    segment["trailing_total_cells"][0],
+                    lane,
+                    "PRINTED_CUSTOMER_LOAN_TOTAL",
+                )
+                observed_local_totals = {
+                    parsed
+                    for surface in (
+                        local_total["ppocrv6_surface"],
+                        local_total["vietocr_surface"],
+                    )
+                    if type(surface) is str and (parsed := money_integer_v1(surface)) is not None
+                }
+                if control["total_control"]["parsed_value"] not in observed_local_totals:
+                    raise _error(
+                        "Family 11 local geography total conflicts with authenticated "
+                        "customer-loan total control"
+                    )
+            source = control["total_control"]["source"]
+            locator_id = _source_locator_id(source)
+            evidence_refs = [f"line:{source['page_sequence']}:{source['source_line_index']}"]
+            source_bboxes = [canonical_clone_v1(source["bbox"])]
+            source_line_indices = [source["source_line_index"]]
+            source_surfaces = [source["vietocr_transformer_surface"]]
+            label_ref = control["result_id"]
+            label_surface = None
+            resolution_mode = _UPSTREAM_TOTAL_CONTROL_MODE
+            row_bbox = canonical_clone_v1(source["bbox"])
+            control_page_sequence = source["page_sequence"]
+            projected_total_cell = upstream_total_cell(segment, lane, lane_request, control)
+            upstream_evidence = {
+                "control_request_id": lane_request["control_request_id"],
+                "control_result_id": control["result_id"],
+                "request_set_id": upstream_total_control_requests["request_set_id"],
+                "source_control_graph_result_id": control["loan_type_graph_result"]["result_id"],
+                "source_control_numeric_result_id": control["loan_type_numeric_result"][
+                    "result_id"
+                ],
+                "source_document_graph_result_id": upstream_total_control_requests[
+                    "document_binding"
+                ]["source_whole_document_graph_result_id"],
+                "source_graph_id": logical[0]["graph_id"],
+                "source_locator": canonical_clone_v1(source),
+                "source_locator_id": locator_id,
+                "source_segment_id": segment["segment_id"],
+                "source_snapshot_id": control["document_binding"]["snapshot_id"],
+            }
+        elif classification == "LOCAL_LABELED_TOTAL":
             row_evidence = total_match["line_evidence"]
             evidence_refs = [
                 f"line:{item['page_sequence']}:{item['source_line_index']}" for item in row_evidence
@@ -3058,39 +3280,7 @@ def project_loan_geography_numeric_input_v1(
             )
             upstream_evidence = {}
         else:
-            bound = controls_by_lane.get(lane)
-            if bound is None:
-                raise _error("Family 11 structurally absent printed total lacks upstream control")
-            lane_request, control = bound
-            source = control["total_control"]["source"]
-            locator_id = _source_locator_id(source)
-            evidence_refs = [f"line:{source['page_sequence']}:{source['source_line_index']}"]
-            source_bboxes = [canonical_clone_v1(source["bbox"])]
-            source_line_indices = [source["source_line_index"]]
-            source_surfaces = [source["vietocr_transformer_surface"]]
-            label_ref = control["result_id"]
-            label_surface = None
-            resolution_mode = _UPSTREAM_TOTAL_CONTROL_MODE
-            row_bbox = canonical_clone_v1(source["bbox"])
-            control_page_sequence = source["page_sequence"]
-            projected_total_cell = upstream_total_cell(segment, lane, lane_request, control)
-            upstream_evidence = {
-                "control_request_id": lane_request["control_request_id"],
-                "control_result_id": control["result_id"],
-                "request_set_id": upstream_total_control_requests["request_set_id"],
-                "source_control_graph_result_id": control["loan_type_graph_result"]["result_id"],
-                "source_control_numeric_result_id": control["loan_type_numeric_result"][
-                    "result_id"
-                ],
-                "source_document_graph_result_id": upstream_total_control_requests[
-                    "document_binding"
-                ]["source_whole_document_graph_result_id"],
-                "source_graph_id": logical[0]["graph_id"],
-                "source_locator": canonical_clone_v1(source),
-                "source_locator_id": locator_id,
-                "source_segment_id": segment["segment_id"],
-                "source_snapshot_id": control["document_binding"]["snapshot_id"],
-            }
+            raise _error("Family 11 structurally absent printed total lacks upstream control")
         total_cells.append(projected_total_cell)
         total_refs.append(label_ref)
         total_surfaces.append(label_surface)
@@ -3111,8 +3301,7 @@ def project_loan_geography_numeric_input_v1(
         )
     mode = (
         "REPEATED_FULL_SEGMENT_ONE_PERIOD_PER_PAGE"
-        if document["graphs"][0]["continuation"]["mode"]
-        == "ADJACENT_REPEATED_FULL_SEGMENTS_PERIOD_COMPLEMENT"
+        if logical[0]["continuation"]["mode"] == "ADJACENT_REPEATED_FULL_SEGMENTS_PERIOD_COMPLEMENT"
         else "SINGLE_PAGE_GEOGRAPHY_ROWS_ACCOUNTING_COLUMNS"
         if source_segments[0]["layout_mode"] == "ROLES_AS_ROWS"
         else "SINGLE_PAGE_GEOGRAPHY_COLUMNS_ACCOUNTING_ROWS"
@@ -3148,3 +3337,252 @@ def project_loan_geography_numeric_input_v1(
         "structure_challenger_refs": [],
         "unit_context": unit_context,
     }
+
+
+def _validated_broad_total_control_adjudication_v1(value: Any) -> dict[str, Any]:
+    fields = {
+        "authority",
+        "claim_boundary",
+        "control_result_ids",
+        "decision_reason",
+        "disposition",
+        "family_id",
+        "format_version",
+        "numeric_reconciliation",
+        "period_lane_count",
+        "result_id",
+        "scope_ids",
+        "source_document_graph_result_id",
+        "source_structural_disposition",
+        "total_control_request_set_id",
+    }
+    if (
+        type(value) is not dict
+        or set(value) != fields
+        or value["format_version"] != BROAD_TOTAL_CONTROL_ADJUDICATION_FORMAT_VERSION
+        or value["family_id"] != FAMILY_ID
+        or value["authority"] != _BROAD_TOTAL_CONTROL_ADJUDICATION_AUTHORITY
+        or value["claim_boundary"] != _BROAD_TOTAL_CONTROL_ADJUDICATION_CLAIM_BOUNDARY
+        or value["source_structural_disposition"] != "BROAD_POPULATION_BOUNDED_ABSENCE"
+        or value["disposition"] not in {_MAPPING_REVIEW_READY, "SOURCE_ONLY"}
+        or value["decision_reason"]
+        not in {
+            _BROAD_TOTAL_CONTROL_MATCH_REASON,
+            _BROAD_TOTAL_CONTROL_MISMATCH_REASON,
+            _BROAD_TOTAL_CONTROL_LOCAL_CONFLICT_REASON,
+        }
+        or type(value["period_lane_count"]) is not int
+        or value["period_lane_count"] <= 0
+        or type(value["scope_ids"]) is not list
+        or len(value["scope_ids"]) != value["period_lane_count"]
+        or any(scope_id != "BROAD_TOTAL_LOANS" for scope_id in value["scope_ids"])
+        or type(value["source_document_graph_result_id"]) is not str
+        or not value["source_document_graph_result_id"].startswith("lgstv1:document:")
+        or type(value["total_control_request_set_id"]) is not str
+        or not value["total_control_request_set_id"].startswith("lgstv1:total-control-request-set:")
+        or type(value["control_result_ids"]) is not list
+        or len(value["control_result_ids"]) != value["period_lane_count"]
+        or len(value["control_result_ids"]) != len(set(value["control_result_ids"]))
+        or any(
+            type(control_id) is not str or not control_id.startswith("cltcv1:result:")
+            for control_id in value["control_result_ids"]
+        )
+    ):
+        raise _error("Family 11 broad-total control adjudication contract drifted")
+
+    numeric = value["numeric_reconciliation"]
+    numeric_exact = False
+    if numeric is None:
+        if value["decision_reason"] != _BROAD_TOTAL_CONTROL_LOCAL_CONFLICT_REASON:
+            raise _error("Family 11 broad-total control adjudication numeric result drifted")
+    else:
+        from bctc_ai.evaluation.loan_geography_numeric_reconciliation_v1 import (
+            validate_loan_geography_numeric_reconciliation_v1,
+        )
+
+        numeric = validate_loan_geography_numeric_reconciliation_v1(numeric)
+        checks = numeric["accounting_checks"]
+        numeric_exact = (
+            numeric["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
+            and len(checks) == value["period_lane_count"]
+            and all(
+                check["status"]
+                in {
+                    "EXACT_OBSERVED_EQUATION",
+                    "EXACT_EQUATION_UNIQUELY_SELECTED_OBSERVED_CANDIDATES",
+                }
+                and check["residual"] == 0
+                for check in checks
+            )
+            and all(
+                lane["resolution_mode"] == _UPSTREAM_TOTAL_CONTROL_MODE
+                for lane in numeric["printed_customer_loan_total"]["control_evidence"]
+            )
+        )
+        expected_reason = (
+            _BROAD_TOTAL_CONTROL_MATCH_REASON
+            if numeric_exact
+            else _BROAD_TOTAL_CONTROL_MISMATCH_REASON
+        )
+        if value["decision_reason"] != expected_reason:
+            raise _error("Family 11 broad-total control adjudication decision drifted")
+    expected_disposition = _MAPPING_REVIEW_READY if numeric_exact else "SOURCE_ONLY"
+    if value["disposition"] != expected_disposition:
+        raise _error("Family 11 broad-total control adjudication disposition drifted")
+
+    material = canonical_clone_v1(value)
+    result_id = material.pop("result_id")
+    if result_id != "lgstv1:broad-total-adjudication:" + canonical_json_sha256_v1(material):
+        raise _error("Family 11 broad-total control adjudication identity drifted")
+    return canonical_clone_v1(value)
+
+
+def adjudicate_loan_geography_broad_total_control_v1(
+    document: Mapping[str, Any],
+    document_packet: Mapping[str, Any],
+    *,
+    upstream_total_control_requests: Mapping[str, Any],
+    upstream_total_control_source_document: Mapping[str, Any],
+    upstream_total_control_source_snapshot: Mapping[str, Any],
+    upstream_total_controls: Sequence[Mapping[str, Any]],
+    document_context: Mapping[str, Any] | None = None,
+    visible_dash_evidence: Sequence[Any] = (),
+) -> dict[str, Any]:
+    """Adjudicate only broad-total geography against RNID716-equivalent controls.
+
+    The broad label is never sufficient.  Every period lane must bind a
+    publicly replayed customer-loan total and close the observed
+    domestic-plus-foreign equation exactly.  A semantic/numeric mismatch stays
+    ``SOURCE_ONLY``; malformed or forged evidence raises instead of being
+    laundered into that disposition.
+    """
+
+    typed_document = _validated_document_envelope(document)
+    if typed_document["disposition"] != "BROAD_POPULATION_BOUNDED_ABSENCE":
+        raise _error("Family 11 broad-total adjudication requires a broad source document")
+    # This gate rejects mixed/different populations before any coincidental
+    # numeric equality can influence the decision.
+    source_graph = _projection_source_graph(
+        typed_document, allow_broad_total_control_candidate=True
+    )
+    requests = _validated_total_control_request_set(upstream_total_control_requests)
+    local_total_conflict = False
+    try:
+        numeric_input = project_loan_geography_numeric_input_v1(
+            typed_document,
+            document_packet,
+            document_context=document_context,
+            upstream_total_control_requests=requests,
+            upstream_total_control_source_document=upstream_total_control_source_document,
+            upstream_total_control_source_snapshot=upstream_total_control_source_snapshot,
+            upstream_total_controls=upstream_total_controls,
+        )
+    except LoanGeographyScopedTableAdapterV1Error as exc:
+        if str(exc) != (
+            "Family 11 local geography total conflicts with authenticated "
+            "customer-loan total control"
+        ):
+            raise
+        local_total_conflict = True
+        numeric_input = None
+
+    # Projection above publicly replays each control before it can either close
+    # an equation or establish the narrowly handled local-total conflict.
+    typed_controls = [_validated_upstream_total_control(item) for item in upstream_total_controls]
+    controls_by_period = {
+        _iso_period(control["requested_period_end"]): control for control in typed_controls
+    }
+    ordered_control_ids = [
+        controls_by_period[lane["period_end"]]["result_id"] for lane in requests["lane_requests"]
+    ]
+
+    numeric = None
+    if not local_total_conflict:
+        from bctc_ai.evaluation.loan_geography_numeric_reconciliation_v1 import (
+            build_loan_geography_numeric_reconciliation_v1,
+        )
+
+        numeric = build_loan_geography_numeric_reconciliation_v1(
+            numeric_input, visible_dash_evidence=visible_dash_evidence
+        )
+    numeric_exact = numeric is not None and (
+        numeric["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
+        and len(numeric["accounting_checks"]) == len(requests["lane_requests"])
+        and all(
+            check["status"]
+            in {
+                "EXACT_OBSERVED_EQUATION",
+                "EXACT_EQUATION_UNIQUELY_SELECTED_OBSERVED_CANDIDATES",
+            }
+            and check["residual"] == 0
+            for check in numeric["accounting_checks"]
+        )
+    )
+    reason = (
+        _BROAD_TOTAL_CONTROL_LOCAL_CONFLICT_REASON
+        if local_total_conflict
+        else _BROAD_TOTAL_CONTROL_MATCH_REASON
+        if numeric_exact
+        else _BROAD_TOTAL_CONTROL_MISMATCH_REASON
+    )
+    material = {
+        "authority": canonical_clone_v1(_BROAD_TOTAL_CONTROL_ADJUDICATION_AUTHORITY),
+        "claim_boundary": _BROAD_TOTAL_CONTROL_ADJUDICATION_CLAIM_BOUNDARY,
+        "control_result_ids": ordered_control_ids,
+        "decision_reason": reason,
+        "disposition": _MAPPING_REVIEW_READY if numeric_exact else "SOURCE_ONLY",
+        "family_id": FAMILY_ID,
+        "format_version": BROAD_TOTAL_CONTROL_ADJUDICATION_FORMAT_VERSION,
+        "numeric_reconciliation": canonical_clone_v1(numeric),
+        "period_lane_count": len(requests["lane_requests"]),
+        "scope_ids": [
+            segment["population_scope"]["scope_id"] for segment in source_graph["segments"]
+        ],
+        "source_document_graph_result_id": typed_document["result_id"],
+        "source_structural_disposition": typed_document["disposition"],
+        "total_control_request_set_id": requests["request_set_id"],
+    }
+    return _validated_broad_total_control_adjudication_v1(
+        {
+            **material,
+            "result_id": "lgstv1:broad-total-adjudication:" + canonical_json_sha256_v1(material),
+        }
+    )
+
+
+def validate_loan_geography_broad_total_control_adjudication_v1(
+    value: Any,
+) -> dict[str, Any]:
+    """Validate one content-addressed broad-total control decision."""
+
+    return _validated_broad_total_control_adjudication_v1(value)
+
+
+def validate_loan_geography_broad_total_control_adjudication_replay_v1(
+    value: Any,
+    document: Mapping[str, Any],
+    document_packet: Mapping[str, Any],
+    *,
+    upstream_total_control_requests: Mapping[str, Any],
+    upstream_total_control_source_document: Mapping[str, Any],
+    upstream_total_control_source_snapshot: Mapping[str, Any],
+    upstream_total_controls: Sequence[Mapping[str, Any]],
+    document_context: Mapping[str, Any] | None = None,
+    visible_dash_evidence: Sequence[Any] = (),
+) -> dict[str, Any]:
+    """Rebuild a broad-total decision from its complete source and controls."""
+
+    persisted = _validated_broad_total_control_adjudication_v1(value)
+    rebuilt = adjudicate_loan_geography_broad_total_control_v1(
+        document,
+        document_packet,
+        document_context=document_context,
+        upstream_total_control_requests=upstream_total_control_requests,
+        upstream_total_control_source_document=upstream_total_control_source_document,
+        upstream_total_control_source_snapshot=upstream_total_control_source_snapshot,
+        upstream_total_controls=upstream_total_controls,
+        visible_dash_evidence=visible_dash_evidence,
+    )
+    if not same_typed_json_v1(persisted, rebuilt):
+        raise _error("Family 11 broad-total control adjudication does not replay exactly")
+    return rebuilt

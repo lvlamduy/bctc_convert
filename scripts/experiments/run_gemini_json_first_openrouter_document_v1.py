@@ -37,6 +37,9 @@ from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
     render_full_pdf_page_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
+    CKEY_GATEWAY,
+    CKEY_SERVICE_TIER,
+    GOOGLE_BATCH_SERVICE_TIER,
     GOOGLE_MODEL,
     GOOGLE_STANDARD_SERVICE_TIER,
     OPENROUTER_PROVIDER,
@@ -57,16 +60,20 @@ from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_sha256_v1,
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
+    GeminiFinancialPageStoreV1Error,
     build_financial_document_manifest_v1,
     extraction_cache_key_v1,
     ingest_financial_page_extraction_v1,
     initialize_gemini_financial_page_store_v1,
+    load_page_json_versions_v1,
     lookup_cached_page_json_v1,
     usage_summary_v1,
 )
 
 OPENROUTER_SELECTED_PROVIDER = "Google"
 OPENROUTER_STANDARD_FALLBACK_SELECTED_PROVIDER = "Google AI Studio"
+AGY_GATEWAY = "AGY_CLI"
+AGY_SERVICE_TIERS = ("agy-low", "agy-medium", "agy-high")
 
 
 class RunGeminiJsonFirstOpenRouterDocumentV1Error(RuntimeError):
@@ -153,6 +160,83 @@ def _effective_provider_attempts_v1(configured: int | None, *, stop_on_transient
     if configured is None:
         return 1 if stop_on_transient else 2
     return configured
+
+
+def _cross_provider_routes_v1() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    allowed = [
+        *({"gateway": AGY_GATEWAY, "requested_service_tier": tier} for tier in AGY_SERVICE_TIERS),
+        {"gateway": CKEY_GATEWAY, "requested_service_tier": CKEY_SERVICE_TIER},
+        {
+            "gateway": "GOOGLE_GEMINI_API",
+            "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
+        },
+        {
+            "gateway": "GOOGLE_GEMINI_BATCH_API",
+            "requested_service_tier": GOOGLE_BATCH_SERVICE_TIER,
+        },
+        {"gateway": "OPENROUTER", "requested_service_tier": OPENROUTER_SERVICE_TIER},
+        {
+            "gateway": "OPENROUTER",
+            "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
+        },
+    ]
+    by_key = {(item["gateway"], item["requested_service_tier"]): item for item in allowed}
+    order = [
+        ("OPENROUTER", OPENROUTER_SERVICE_TIER),
+        (AGY_GATEWAY, "agy-low"),
+        (AGY_GATEWAY, "agy-medium"),
+        (AGY_GATEWAY, "agy-high"),
+        (CKEY_GATEWAY, CKEY_SERVICE_TIER),
+        ("OPENROUTER", OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER),
+        ("GOOGLE_GEMINI_BATCH_API", GOOGLE_BATCH_SERVICE_TIER),
+        ("GOOGLE_GEMINI_API", GOOGLE_STANDARD_SERVICE_TIER),
+    ]
+    return allowed, [by_key[key] for key in order]
+
+
+def _cross_provider_cached_page_json_v1(
+    database: Path,
+    *,
+    source_sha256: str,
+    source_logical_name: str,
+    physical_page: int,
+    image_sha256: str,
+    prompt_sha256: str,
+    response_schema_sha256: str,
+) -> dict[str, Any] | None:
+    """Reuse a page already authenticated by Agy or CKey before any resend."""
+
+    allowed, preferred = _cross_provider_routes_v1()
+    try:
+        manifest = build_financial_document_manifest_v1(
+            database,
+            source_sha256=source_sha256,
+            source_logical_name=source_logical_name,
+            expected_physical_pages=[physical_page],
+            page_image_sha256s={physical_page: image_sha256},
+            prompt_sha256=prompt_sha256,
+            response_schema_sha256=response_schema_sha256,
+            requested_model=GOOGLE_MODEL,
+            allowed_gateway_service_tiers=allowed,
+            preferred_gateway_service_tiers=preferred,
+        )
+    except GeminiFinancialPageStoreV1Error as exc:
+        if str(exc) in {
+            "document manifest page frontier is incomplete",
+            "document manifest source is not unique in the store",
+        }:
+            return None
+        raise
+    pages = manifest.get("pages")
+    if type(pages) is not list or len(pages) != 1:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error("cross-provider page manifest is invalid")
+    version_id = pages[0].get("page_json_version_id")
+    loaded = load_page_json_versions_v1(database, page_json_version_ids=[version_id])
+    if len(loaded) != 1 or loaded[0].get("physical_page") != physical_page:
+        raise RunGeminiJsonFirstOpenRouterDocumentV1Error(
+            "cross-provider cached page binding drifted"
+        )
+    return loaded[0]["page_json"]
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -602,6 +686,17 @@ def _extract_page(
                 page=rendered.page,
                 cached_json=cached,
             )
+    cached = _cross_provider_cached_page_json_v1(
+        database,
+        source_sha256=source_sha256,
+        source_logical_name=source_logical_name,
+        physical_page=physical_page,
+        image_sha256=rendered.page["image_sha256"],
+        prompt_sha256=prompt_sha256,
+        response_schema_sha256=response_schema_sha256,
+    )
+    if cached is not None:
+        return _PageOutcome(physical_page=physical_page, page=rendered.page, cached_json=cached)
     replayed, replay_source, semantic_failure_present = _replay_prior_semantic_result_v1(
         artifact_dir=semantic_replay_source_dir or artifact_dir,
         physical_page=physical_page,

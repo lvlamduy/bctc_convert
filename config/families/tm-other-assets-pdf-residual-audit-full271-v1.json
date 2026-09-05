@@ -1,0 +1,15 @@
+{
+  "corpus_manifest_index_id": "gjfccmiv1:index:8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a",
+  "family_id": "OTHER_ASSETS",
+  "format_version": "OTHER_ASSETS_PDF_RESIDUAL_AUDIT_SPEC_V1",
+  "residuals": [],
+  "review_contract": {
+    "alpha": false,
+    "colorspace": "RGB",
+    "format": "PNG",
+    "matrix": [1, 1],
+    "renderer": "PyMuPDF",
+    "scope": "EVERY_PRIMARY_BALANCE_STATEMENT_PAGE_FOR_EVERY_NOT_OBSERVED_DOCUMENT",
+    "visual_disposition_rule": "NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY22_ROOT_OR_DETAIL_ROW"
+  }
+}

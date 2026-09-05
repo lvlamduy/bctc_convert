@@ -1,35 +1,27 @@
 {
   "children": [
     {
-      "matchers": [{"aliases": ["Thu lãi tiền gửi", "Thu nhập lãi tiền gửi", "Thu nhập từ lãi tiền gửi", "Thu nhập lãi từ tiền gửi"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu lãi tiền gửi", "Thu nhập lãi tiền gửi", "Thu nhập từ lãi tiền gửi", "Thu nhập lãi từ tiền gửi", "Thu nhập lãi tiền gửi tại các TCTD khác", "Lãi từ tiền gửi tại các tổ chức tín dụng khác", "Từ tiền gửi tại các tổ chức tín dụng khác"], "within_role": null}],
       "presence": "OPTIONAL", "role": "DEPOSIT_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu lãi cho vay", "Thu nhập lãi cho vay", "Thu nhập lãi cho vay khách hàng", "Thu nhập lãi từ cho vay khách hàng", "Thu nhập từ lãi cho vay khách hàng"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu lãi cho vay", "Thu lãi tiền vay", "Thu nhập lãi cho vay", "Thu nhập lãi cho vay khách hàng", "Thu nhập lãi từ cho vay khách hàng", "Thu nhập từ lãi cho vay", "Thu nhập từ lãi cho vay khách hàng"], "within_role": null}],
       "presence": "OPTIONAL", "role": "CUSTOMER_LOAN_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu nhập lãi cho vay khách hàng và các TCTD khác"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu nhập lãi cho vay khách hàng và các TCTD khác", "Lãi từ cho vay khách hàng và các tổ chức tín dụng khác", "Từ cho vay khách hàng và các tổ chức tín dụng khác"], "within_role": null}],
       "presence": "OPTIONAL", "role": "CUSTOMER_AND_OTHER_CREDIT_INSTITUTION_LOAN_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu lãi từ kinh doanh, đầu tư chứng khoán", "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ", "Thu lãi từ đầu tư chứng khoán nợ", "Thu nhập lãi từ kinh doanh, đầu tư chứng khoán", "Thu nhập lãi từ kinh doanh, đầu tư chứng khoán nợ", "Thu nhập lãi từ chứng khoán nợ"], "within_role": null}],
-      "presence": "OPTIONAL", "role": "SECURITIES_INTEREST", "role_kind": "STRUCTURAL_GROUP"
+      "matchers": [{"aliases": ["Thu lãi từ kinh doanh, đầu tư chứng khoán", "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ", "Thu từ lãi kinh doanh, đầu tư chứng khoán nợ", "Thu từ lãi đầu tư chứng khoán", "Thu lãi từ đầu tư chứng khoán nợ", "Thu lãi từ hoạt động đầu tư chứng khoán", "Thu nhập từ đầu tư chứng khoán nợ", "Thu nhập lãi chứng khoán đầu tư", "Thu nhập lãi từ đầu tư chứng khoán", "Thu nhập lãi từ các khoản đầu tư chứng khoán nợ", "Thu nhập lãi từ đầu tư chứng khoán nợ", "Thu nhập lãi từ kinh doanh, đầu tư chứng khoán", "Thu nhập lãi từ kinh doanh, đầu tư chứng khoán nợ", "Thu nhập lãi từ chứng khoán nợ", "Lãi từ chứng khoán đầu tư", "Từ chứng khoán đầu tư", "Thu lãi từ chứng khoán kinh doanh", "Lãi thu từ chứng khoán kinh doanh", "Thu nhập lãi từ kinh doanh chứng khoán", "Từ chứng khoán kinh doanh", "Thu lãi từ chứng khoán đầu tư", "Lãi thu từ chứng khoán đầu tư", "Thu nhập lãi từ chứng khoán đầu tư", "Thu lãi từ đầu tư chứng khoán đầu tư", "Trong đó: Thu lãi từ chứng khoán đầu tư"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "SECURITIES_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu lãi từ chứng khoán kinh doanh", "Lãi thu từ chứng khoán kinh doanh", "Thu nhập lãi từ kinh doanh chứng khoán", "từ chứng khoán kinh doanh"], "within_role": "SECURITIES_INTEREST"}],
-      "presence": "OPTIONAL", "role": "TRADING_SECURITIES_INTEREST_COMPONENT", "role_kind": "ADDITIVE_CHILD"
-    },
-    {
-      "matchers": [{"aliases": ["Thu lãi từ chứng khoán đầu tư", "Lãi thu từ chứng khoán đầu tư", "Thu nhập lãi từ chứng khoán đầu tư", "Thu lãi từ đầu tư chứng khoán đầu tư", "Trong đó: Thu lãi từ chứng khoán đầu tư", "từ chứng khoán đầu tư"], "within_role": "SECURITIES_INTEREST"}],
-      "presence": "OPTIONAL", "role": "INVESTMENT_SECURITIES_INTEREST_COMPONENT", "role_kind": "ADDITIVE_CHILD"
-    },
-    {
-      "matchers": [{"aliases": ["Thu nhập lãi cho thuê tài chính", "Thu lãi cho thuê tài chính", "Thu từ cho thuê tài chính"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu nhập lãi cho thuê tài chính", "Thu lãi cho thuê tài chính", "Thu từ cho thuê tài chính", "Lãi từ cho thuê tài chính", "Từ cho thuê tài chính"], "within_role": null}],
       "presence": "OPTIONAL", "role": "FINANCE_LEASE_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu phí từ nghiệp vụ bảo lãnh", "Thu từ nghiệp vụ bảo lãnh", "Thu nhập từ nghiệp vụ bảo lãnh", "Thu phí nghiệp vụ bảo lãnh", "Thu nhập từ hoạt động bảo lãnh"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu phí từ nghiệp vụ bảo lãnh", "Thu phí từ bảo lãnh", "Thu từ nghiệp vụ bảo lãnh", "Thu từ nghiệp vụ bảo lãnh ngân hàng", "Thu nghiệp vụ bảo lãnh", "Thu nhập từ nghiệp vụ bảo lãnh", "Thu phí nghiệp vụ bảo lãnh", "Thu phí hoạt động bảo lãnh", "Thu nhập từ hoạt động bảo lãnh", "Lãi từ nghiệp vụ bảo lãnh", "Từ nghiệp vụ bảo lãnh"], "within_role": null}],
       "presence": "OPTIONAL", "role": "GUARANTEE_FEE_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -37,12 +29,20 @@
       "presence": "OPTIONAL", "role": "LETTER_OF_CREDIT_FEE_INCOME", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu lãi từ nghiệp vụ mua bán nợ", "Thu nhập lãi từ nghiệp vụ mua bán nợ", "Thu nhập lãi từ nghiệp vụ mua nợ", "Thu nhập từ nghiệp vụ mua bán nợ"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu lãi từ nghiệp vụ mua bán nợ", "Thu lãi từ nghiệp vụ mua nợ", "Thu nhập lãi nghiệp vụ mua bán nợ", "Thu nhập lãi từ nghiệp vụ mua bán nợ", "Thu nhập lãi từ nghiệp vụ mua nợ", "Thu nhập từ nghiệp vụ mua bán nợ", "Thu từ nghiệp vụ mua bán nợ", "Thu từ nghiệp vụ bán nợ"], "within_role": null}],
       "presence": "OPTIONAL", "role": "PURCHASED_DEBT_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu khác từ hoạt động tín dụng", "Thu các hoạt động tín dụng khác", "Thu nhập khác từ hoạt động tín dụng"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu lãi từ hợp đồng góp vốn đầu tư"], "presence_anchor": false, "within_role": null}],
+      "presence": "OPTIONAL", "role": "CAPITAL_CONTRIBUTION_INTEREST_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu khác từ hoạt động tín dụng", "Thu các hoạt động tín dụng khác", "Thu nhập khác từ hoạt động tín dụng", "Thu nhập từ hoạt động tín dụng khác", "Từ hoạt động tín dụng khác"], "within_role": null}],
       "presence": "OPTIONAL", "role": "OTHER_CREDIT_INCOME", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Trong đó: Phí liên quan đến tín dụng"], "presence_anchor": false, "within_role": null}],
+      "presence": "OPTIONAL", "role": "CREDIT_RELATED_FEE_DETAIL_SOURCE_ONLY", "role_kind": "NONADDITIVE_CHILD"
     }
   ],
   "family_id": "INTEREST_INCOME",

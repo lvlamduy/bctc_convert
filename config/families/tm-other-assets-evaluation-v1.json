@@ -2,7 +2,6 @@
   "aggregate_duplicate_roles": [
     "CIP_TO_OTHER_ASSETS",
     "DEPOSITS_COLLATERAL",
-    "OTHER_INTEREST",
     "OTHER_RECEIVABLE",
     "PREPAID_COST",
     "TAX_OVERPAYMENT_DEDUCTIBLE",
@@ -15,7 +14,9 @@
   "context_total_mapping_roles": [
     "RECEIVABLES",
     "CONSTRUCTION_IN_PROGRESS",
+    "FIXED_ASSET_PURCHASE_REPAIR",
     "EXTERNAL_RECEIVABLES",
+    "INTERNAL_RECEIVABLES",
     "OTHER_RECEIVABLE",
     "INTEREST_FEE_RECEIVABLES",
     "OTHER_ASSET_BRANCH",
@@ -34,7 +35,9 @@
   ],
   "detail_context_roles": [
     "CONSTRUCTION_IN_PROGRESS",
+    "FIXED_ASSET_PURCHASE_REPAIR",
     "EXTERNAL_RECEIVABLES",
+    "INTERNAL_RECEIVABLES",
     "OTHER_RECEIVABLE",
     "COLLATERAL_ASSET"
   ],
@@ -61,13 +64,21 @@
       "magnitude_power10": 9
     },
     {
-      "accepted": false,
+      "accepted": true,
       "aliases": ["VND", "Đồng"],
       "canonical_unit": "VND",
       "magnitude_power10": 0
     }
   ],
   "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
+  "continuation_period_axis_policy": "ADJACENT_PAGE_EXPLICIT_CONTINUATION_INHERITS_COMPLETE_BLANK_HEADER_AXIS",
+  "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
+  "numbered_subsection_unit_axis_policy": "SAME_PAGE_ADJACENT_EXPLICIT_OWNER_SUBSECTION_INHERITS_UNIT",
+  "owner_outline_continuation_policy": "SAME_SECTION_NUMBERED_TABLE_PRECEDES_HIGHER_NUMBERED_NARRATIVE_RESET",
+  "owner_summary_structural_role_policy": "OWNER_TABLE_ROOT_SIBLING_FRONTIER_PREFERS_STRUCTURAL_ROLE",
+  "ordered_titleless_money_table_narrative_context_policy": "ONE_TO_ONE_ORDERED_EXACT_DECLARED_CONTEXTS",
+  "primary_statement_source_result_fallback_policy": "UNIQUE_SHALLOWEST_STRUCTURAL_EXACT_VISIBLE_ROOT_WHEN_NOTE_NOT_OBSERVED",
+  "family_root_population_policy": "EXPLICIT_PRIMARY_STATEMENT_SOURCE_ROOT_SUBTREE_OTHERWISE_WHOLE_TABLE",
   "root_component_roles": [
     "RECEIVABLES",
     "INTEREST_FEE_RECEIVABLES",
@@ -78,6 +89,15 @@
   "role_unit_overrides": [
     {"role": "GOODWILL_ALLOCATION_YEARS", "unit": "YEARS"}
   ],
+  "row_population_context_policy": "AT_LEAST_TWO_DECLARED_CHILD_ROLES",
+  "row_population_context_roles_requiring_explicit_heading": ["CIP_MOVEMENT"],
+  "source_only_detail_context_roles": [
+    "CONSTRUCTION_IN_PROGRESS",
+    "FIXED_ASSET_PURCHASE_REPAIR",
+    "INTERNAL_RECEIVABLES",
+    "OTHER_RECEIVABLE"
+  ],
+  "sole_table_detail_narrative_context_policy": "TITLELESS_SOLE_MONEY_TABLE_EXACT_LONGEST_DECLARED_CONTEXT",
   "table_context_roles": [
     "RECEIVABLES",
     "INTEREST_FEE_RECEIVABLES",
@@ -89,6 +109,15 @@
   "typed_control_exclusions": [
     {
       "aliases": [
+        "chi tiết biến động lợi thế thương mại trong kỳ kế toán như sau",
+        "lợi thế thương mại"
+      ],
+      "disposition": "GOODWILL_DETAIL_WITH_NON_PERIOD_OR_MOVEMENT_AXIS_SOURCE_ONLY",
+      "match_mode": "EXACT_NORMALIZED",
+      "surface_kinds": ["TABLE_TITLE"]
+    },
+    {
+      "aliases": [
         "tài sản thuế thu nhập doanh nghiệp hoãn lại",
         "deferred tax asset"
       ],
@@ -98,11 +127,18 @@
       "aliases": [
         "dự phòng rủi ro cho các tài sản Có nội bảng khác",
         "dự phòng rủi ro các tài sản Có nội bảng khác",
+        "dự phòng cho tài sản Có khác",
         "dự phòng tài sản Có khác",
         "biến động dự phòng rủi ro",
         "biến động quỹ dự phòng rủi ro"
       ],
-      "disposition": "OTHER_ASSET_PROVISION_MOVEMENT_CONTROL"
+      "disposition": "OTHER_ASSET_PROVISION_MOVEMENT_CONTROL",
+      "required_row_label_alias_groups": [
+        ["Số dư đầu kỳ", "Số dư đầu năm"],
+        ["Trích lập dự phòng", "Hoàn nhập dự phòng", "Sử dụng dự phòng"],
+        ["Số dư cuối kỳ", "Số dư cuối năm"]
+      ],
+      "surface_kinds": ["SECTION_NARRATIVE", "SECTION_TITLE", "TABLE_TITLE"]
     },
     {
       "aliases": [
@@ -112,5 +148,6 @@
       ],
       "disposition": "FINANCIAL_INSTRUMENT_OR_FAIR_VALUE_CONTROL"
     }
-  ]
+  ],
+  "validation_only_roles": ["INTEREST_FEE_RECEIVABLES"]
 }

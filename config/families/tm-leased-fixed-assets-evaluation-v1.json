@@ -22,7 +22,7 @@
     {
       "branch_role": "DEPRECIATION_BRANCH",
       "ending_role": "DEP_ENDING",
-      "hierarchy_aliases": ["Hao mòn lũy kế", "Khấu hao lũy kế", "Giá trị hao mòn lũy kế"],
+      "hierarchy_aliases": ["Hao mòn lũy kế", "Khấu hao lũy kế", "Giá trị hao mòn lũy kế", "Giá trị khấu hao lũy kế"],
       "opening_role": "DEP_OPENING",
       "rollforward_kind": "SIGNED_ADDITIVE",
       "subtotal_roles": []
@@ -34,6 +34,7 @@
   "header_hard_negative_aliases": [
     "Tài sản cố định hữu hình",
     "TSCĐ hữu hình",
+    "Tài sản cố định khác",
     "Tài sản cố định vô hình",
     "TSCĐ vô hình",
     "Bất động sản đầu tư",
@@ -74,6 +75,10 @@
   ],
   "period_policy": "UNIQUE_SOURCE_VISIBLE_OR_TYPED_DOCUMENT_REPORTING_DATE_WITH_COMPARATIVE_ENDPOINT_CONTINUITY",
   "row_width_policy": "UNIQUE_RIGHT_EDGE_TOTAL_WITH_ALL_EQUATION_SEALED_RELOCATION_ONLY",
+  "source_only_carrying_control": {
+    "control_kind": "COST_MINUS_DEPRECIATION_ENDPOINTS_EXACT_NO_SCHEMA_MAPPING",
+    "hierarchy_aliases": ["Giá trị còn lại"]
+  },
   "subtotal_policy": "VISIBLE_SUBTOTAL_AND_DIRECT_CHILDREN_COEXIST_BUT_VERTICAL_CONSUMES_EXACTLY_ONE_FRONTIER",
   "total_column_aliases": ["Tổng cộng", "Tổng"]
 }

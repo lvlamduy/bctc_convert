@@ -21,11 +21,6 @@
     {"report_norm_id": 5975, "role": "PAYMENT_SERVICE_RECEIVABLE"},
     {"report_norm_id": 5976, "role": "WITHOUT_RECOURSE_DOCUMENT_RECEIVABLE"},
     {"report_norm_id": 981, "role": "OTHER_RECEIVABLE"},
-    {"report_norm_id": 982, "role": "INTEREST_FEE_RECEIVABLES"},
-    {"report_norm_id": 983, "role": "CREDIT_INTEREST"},
-    {"report_norm_id": 984, "role": "DEPOSIT_INTEREST"},
-    {"report_norm_id": 985, "role": "DERIVATIVE_INTEREST"},
-    {"report_norm_id": 986, "role": "OTHER_INTEREST"},
     {"report_norm_id": 987, "role": "OTHER_ASSET_BRANCH"},
     {"report_norm_id": 988, "role": "ENTRUSTED_INVESTMENT"},
     {"report_norm_id": 989, "role": "PREPAID_COST"},
@@ -64,6 +59,6 @@
     {"report_norm_id": 1022, "role": "GRADE_4"},
     {"report_norm_id": 1023, "role": "GRADE_5"}
   ],
-  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
+  "root_mapping_policy": "SOURCE_VISIBLE_PRIMARY_RESULT_OR_EXACT_NOTE_EQUATION",
   "schema_period_type": "SNAPSHOT"
 }

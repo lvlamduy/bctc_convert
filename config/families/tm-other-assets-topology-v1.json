@@ -13,7 +13,7 @@
       "presence": "OPTIONAL", "role": "CONSTRUCTION_IN_PROGRESS", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Mua sắm sửa chữa lớn TSCĐ", "Mua sắm tài sản cố định", "Mua sắm sửa chữa lớn tài sản cố định"], "within_role": "RECEIVABLES"}],
+      "matchers": [{"aliases": ["Mua sắm sửa chữa lớn TSCĐ", "Mua sắm tài sản cố định", "Mua sắm sửa chữa lớn tài sản cố định", "Mua sắm tài sản cố định và xây dựng cơ bản dở dang"], "within_role": "RECEIVABLES"}],
       "presence": "OPTIONAL", "role": "FIXED_ASSET_PURCHASE_REPAIR", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -74,6 +74,7 @@
     {
       "matchers": [
         {"aliases": ["Phải thu khác", "Các khoản phải thu khác", "Các khoản phải thu bên ngoài khác", "Các khoản phải thu khác từ bên ngoài", "Phải thu bên ngoài khác", "Các khoản phải thu từ bán nợ"], "within_role": "RECEIVABLES"},
+        {"aliases": ["Các khoản khác"], "within_role": "RECEIVABLES"},
         {"aliases": ["Khác"], "within_role": "RECEIVABLES"}
       ],
       "presence": "OPTIONAL", "role": "OTHER_RECEIVABLE", "role_kind": "ADDITIVE_CHILD"
@@ -81,22 +82,6 @@
     {
       "matchers": [{"aliases": ["Các khoản lãi, phí phải thu"], "within_role": null}],
       "presence": "OPTIONAL", "role": "INTEREST_FEE_RECEIVABLES", "role_kind": "STRUCTURAL_GROUP"
-    },
-    {
-      "matchers": [{"aliases": ["Từ cho vay khách hàng", "Lãi phải thu từ hoạt động tín dụng", "Lãi phải thu hoạt động tín dụng và phí phải thu"], "within_role": "INTEREST_FEE_RECEIVABLES"}],
-      "presence": "OPTIONAL", "role": "CREDIT_INTEREST", "role_kind": "ADDITIVE_CHILD"
-    },
-    {
-      "matchers": [{"aliases": ["Từ tiền gửi và cho vay các tổ chức tín dụng khác", "Từ tiền gửi và cho vay các TCTD khác", "Lãi phải thu từ tiền gửi"], "within_role": "INTEREST_FEE_RECEIVABLES"}],
-      "presence": "OPTIONAL", "role": "DEPOSIT_INTEREST", "role_kind": "ADDITIVE_CHILD"
-    },
-    {
-      "matchers": [{"aliases": ["Từ giao dịch phái sinh", "Lãi phải thu từ công cụ tài chính phái sinh", "Từ các giao dịch phái sinh"], "within_role": "INTEREST_FEE_RECEIVABLES"}],
-      "presence": "OPTIONAL", "role": "DERIVATIVE_INTEREST", "role_kind": "ADDITIVE_CHILD"
-    },
-    {
-      "matchers": [{"aliases": ["Từ các nguồn khác", "Lãi phải thu từ đầu tư chứng khoán", "Từ các khoản chứng khoán đầu tư", "Lãi và phí phải thu khác", "Phí phải thu", "Phí phải thu từ nghiệp vụ L/C", "Lãi phải thu từ hoạt động mua nợ", "Lãi phải thu từ nghiệp vụ mua nợ", "Phí phải thu từ nghiệp vụ mua hẳn miễn truy đòi bộ chứng từ"], "within_role": "INTEREST_FEE_RECEIVABLES"}],
-      "presence": "OPTIONAL", "role": "OTHER_INTEREST", "role_kind": "ADDITIVE_CHILD"
     },
     {
       "matchers": [{"aliases": ["Tài sản Có khác", "Tài sản Có khác (mục con)"], "within_role": null}],
@@ -195,7 +180,7 @@
       "presence": "OPTIONAL", "role": "GOODWILL_UNALLOCATED_CLOSE", "role_kind": "TOTAL"
     },
     {
-      "matchers": [{"aliases": ["Biến động chi phí XDCB dở dang", "Biến động về xây dựng cơ bản dở dang"], "within_role": null}],
+      "matchers": [{"aliases": ["Biến động chi phí XDCB dở dang", "Biến động về xây dựng cơ bản dở dang", "Thay đổi khoản mục chi phí xây dựng cơ bản dở dang trong năm như sau", "Thay đổi khoản mục chi phí xây dựng cơ bản dở dang trong kỳ như sau"], "within_role": null}],
       "presence": "OPTIONAL", "role": "CIP_MOVEMENT", "role_kind": "STRUCTURAL_GROUP"
     },
     {
@@ -269,7 +254,6 @@
   "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
   "required_role_combinations": [
     ["RECEIVABLES"],
-    ["INTEREST_FEE_RECEIVABLES"],
     ["OTHER_ASSET_BRANCH"],
     ["GOODWILL_CURRENT"],
     ["CIP_MOVEMENT"],

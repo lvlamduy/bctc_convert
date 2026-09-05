@@ -1,0 +1,130 @@
+from __future__ import annotations
+
+import copy
+import importlib.util
+import json
+from pathlib import Path
+
+import pytest
+
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+
+ROOT = Path(__file__).resolve().parents[2]
+RUNNER_PATH = (
+    ROOT
+    / "scripts/experiments/"
+    "run_gemini_json_trading_securities_activity_accounting_family_v1.py"
+)
+SPEC = importlib.util.spec_from_file_location("run_family32_v1", RUNNER_PATH)
+assert SPEC is not None and SPEC.loader is not None
+runner = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(runner)
+FULL271_SPEC = (
+    ROOT
+    / "config/families/"
+    "tm-trading-securities-activity-pdf-residual-audit-full271-v1.json"
+)
+COMMON204_SPEC = (
+    ROOT
+    / "config/families/"
+    "tm-trading-securities-activity-pdf-residual-audit-common204-v1.json"
+)
+
+
+def _json(path: Path) -> dict:
+    return json.loads(path.read_bytes())
+
+
+def test_runner_pins_shared_multitable_implementation() -> None:
+    runner._assert_shared_pins_v1()
+
+
+def test_shared_multitable_pin_drift_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(runner, "_sha256", lambda _path: "0" * 64)
+    with pytest.raises(
+        runner.RunGeminiJsonTradingSecuritiesActivityV1Error,
+        match="shared implementation pin drifted",
+    ):
+        runner._assert_shared_pins_v1()
+
+
+@pytest.mark.parametrize(
+    ("path", "count", "blank_count", "conflict_count"),
+    [
+        (FULL271_SPEC, 44, 8, 1),
+        (COMMON204_SPEC, 28, 4, 0),
+    ],
+)
+def test_pdf_residual_specs_seal_every_reviewed_primary_statement(
+    path: Path,
+    count: int,
+    blank_count: int,
+    conflict_count: int,
+) -> None:
+    checked = runner._validate_pdf_residual_spec_v1(_json(path))
+    assert len(checked["residuals"]) == count
+    assert sum(
+        item["disposition"]
+        == "SOURCE_VISIBLE_FAMILY_ROOT_ALL_VALUE_LANES_TRULY_BLANK"
+        for item in checked["residuals"]
+    ) == blank_count
+    assert sum(
+        item["disposition"]
+        == "GENUINE_SOURCE_CONFLICT_ROOT_DASH_COMPONENT_PROVISION_NONZERO"
+        for item in checked["residuals"]
+    ) == conflict_count
+    assert all(
+        item["primary_income_statement_page_axis"]
+        for item in checked["residuals"]
+    )
+
+
+def test_pdf_residual_render_or_disposition_tampering_fails_closed() -> None:
+    render_tamper = _json(FULL271_SPEC)
+    render_tamper["residuals"][0]["primary_income_statement_page_axis"][0][
+        "pdf_page_render_sha256"
+    ] = "0" * 64
+    with pytest.raises(
+        runner.RunGeminiJsonTradingSecuritiesActivityV1Error,
+        match="identity drifted",
+    ):
+        runner._validate_pdf_residual_spec_v1(render_tamper)
+
+    disposition_tamper = _json(FULL271_SPEC)
+    residual = disposition_tamper["residuals"][0]
+    residual["disposition"] = "DERIVED_ZERO_FROM_BLANK"
+    material = {
+        key: copy.deepcopy(value)
+        for key, value in residual.items()
+        if key != "residual_audit_id"
+    }
+    residual["residual_audit_id"] = (
+        "gjtsapdfv1:residual:" + canonical_json_sha256_v1(material)
+    )
+    with pytest.raises(
+        runner.RunGeminiJsonTradingSecuritiesActivityV1Error,
+        match="invalid or unordered",
+    ):
+        runner._validate_pdf_residual_spec_v1(disposition_tamper)
+
+
+def test_pdf_residual_status_disposition_pairing_rejects_resealed_conflict() -> None:
+    tampered = _json(FULL271_SPEC)
+    residual = tampered["residuals"][0]
+    residual["status"] = runner.generic.UNRESOLVED
+    residual["reasons"] = ["SOURCE_VISIBLE_FAMILY_RESULT_COMPONENT_VETO_MISMATCH"]
+    material = {
+        key: copy.deepcopy(value)
+        for key, value in residual.items()
+        if key != "residual_audit_id"
+    }
+    residual["residual_audit_id"] = (
+        "gjtsapdfv1:residual:" + canonical_json_sha256_v1(material)
+    )
+    with pytest.raises(
+        runner.RunGeminiJsonTradingSecuritiesActivityV1Error,
+        match="status/disposition pairing is invalid",
+    ):
+        runner._validate_pdf_residual_spec_v1(tampered)

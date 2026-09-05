@@ -1,0 +1,483 @@
+{
+  "corpus_manifest_index_id": "gjfccmiv1:index:8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a",
+  "family_id": "CREDIT_RISK_PROVISION_EXPENSE",
+  "format_version": "CREDIT_RISK_PROVISION_EXPENSE_PDF_RESIDUAL_AUDIT_SPEC_V1",
+  "residuals": [
+    {
+      "disposition": "TRUE_SOURCE_VISIBLE_CUSTOMER_MOVEMENT_GROSS_NET_AND_DURATION_PRESENTATION_AMBIGUITY_NO_MAPPING",
+      "document_ordinal": 21,
+      "pdf_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:f80bb8dfc413f6b5826fe61a530ac4b77deb6ce20543476296b52118610533a2",
+          "pdf_page_render_sha256": "ff8cb6ebc879f8cc33bde1670873d10e5e6230e87be02ad21428dfcb6eb28c62",
+          "physical_page": 1
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5fb50f428076ce0837167e17cf36814697a4d90e892c218ceb7fd0a4ceec260e",
+          "pdf_page_render_sha256": "d0e531a602989b02c9d7387f801a0e05ca3295e449f7d6c787658d732c7fe258",
+          "physical_page": 2
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9ef98c85848a47a4c3a882f3d7a19b83398bb27f35378a771fe07bbcfd24eb5c",
+          "pdf_page_render_sha256": "442f8e582700f90fa26f8dfec098bb6ccdaf00a4e2a3e040ad17c64f63cceb00",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:62356ae5192d004a3a73aef5a23893cc54d8f90541d7b0dd4ec178f3f1a7e3fa",
+          "pdf_page_render_sha256": "ea12ef366159fec14a9f9dde250224cf4636aee987c0795a5f97aa9041c080b6",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:b675781add25de79825691338bfbeaf6de912eae52ed626c4cc25ad132a84a2d",
+          "pdf_page_render_sha256": "f63b3956ee8ef0df7c31d813979a8a8b07ccdd9a705778c50a47fc0476ac930f",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:25b9c5cffccac34249fb9ab60a977c74c323b5e07e415455399f65641ddd98cc",
+          "pdf_page_render_sha256": "948f52178ea58fd1934866d3e0362597847809f8fc1edfdac1adac44d3d9545e",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2d08ac10702b4f38e5c3966c58c536a7be19e57f5e76e94dbcbae5941aaa74b0",
+          "pdf_page_render_sha256": "90110addbbe8d39737d4d04fc31837d87b2311cd45809697423c5bc3bf8ade3d",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e6ac6e81a75f04b9ed3b6bbc702377ea4020bbe76ecd6244b17541a64db81eb2",
+          "pdf_page_render_sha256": "37361291bf7d4bc2986b0b4805e8a53d8a55f0119ee9cd30b493a6c63c7479ad",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:1ea9187303075d47b053c259d11a030b91f9ab596e13a27fee579c977e1dd74e",
+          "pdf_page_render_sha256": "fcac753fb66a704fc0344b9172d2056b00b29acdbe252df60a477f482611253d",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:f7869af11161dffb326663a157459ae5ae489feb2db4d2f871124b5aa0ae4ae6",
+          "pdf_page_render_sha256": "69f8f597f85ed8a323476fd756e399620eb691d0c8e0b809d935f7277e033598",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:b095878ffa6f9984005f2f57b67ea89b5c4bf5617a33fd3972963051bd5d63d7",
+          "pdf_page_render_sha256": "e888dcd0fe47712754b2448c0985d037261f4cc446a314fc75bcf8cd8d75921b",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2d02e46de354693db9f21a67c203c35521bf7568436ff0a5a1c0b6d169e807d6",
+          "pdf_page_render_sha256": "7744fa8eca90021ff1e4186711a8b50f2bdd7e1f6daa834bd36ff1814bdaf66b",
+          "physical_page": 12
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:584824487e53cf7c97f65a327a520002a60d2efd216c4ada7a97ff97e058ed0a",
+          "pdf_page_render_sha256": "c17e23b87f60dedfd0aff49e5a9fa3eaa3335b7430dc986dc9cf242bf54d67fe",
+          "physical_page": 13
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9e08179f8f98eae0cca591ac12f3ab7eb84c5f0006bbf0b782c432abc23f16c5",
+          "pdf_page_render_sha256": "67caa9a07d5f12540edbe02625b293124d56957c80ff5d34f316a340474c61ed",
+          "physical_page": 14
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9cf50a69dfdb2121d299f4f91891026cb7fd9febd2d8cbe947c7479893ef42f8",
+          "pdf_page_render_sha256": "bb5012653470ba08c6491ab114fd81c1b04e337b227e4106c837aec5f7e915bd",
+          "physical_page": 15
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e9da6534d0eb1fa82ad95be834caa5c0fcb426ff2e93ed8b0ea80a2e45d72aa1",
+          "pdf_page_render_sha256": "541906dd46d23234b4fb49c53954abfd04442e0e73111143a2d4d4031f76266b",
+          "physical_page": 16
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ea77e7a0df497d5453f5b0b9801e68081ae5d74163c1b884c936361d679bd271",
+          "pdf_page_render_sha256": "d2111e180162ce9287da218c573b9deefeb5ed4fe3820e6d44263e6ff4db5ccd",
+          "physical_page": 17
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:0e35c3098a76d385f231cbc55682f239d2e0c69deb13505656f187656e530b9e",
+          "pdf_page_render_sha256": "c52804c154de371b56c8089c5bb633d541ff3d7aa14f0b75c0d986c2a6886090",
+          "physical_page": 18
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:294ed0b1e9dcc60c1c4e4e38f42731f9d560834e4da48bd1c8cc76e7006c342c",
+          "pdf_page_render_sha256": "d2aa84349d3a43554db1d29f8fb96c1f7c8c12a2058ef44b3734934a8862bac6",
+          "physical_page": 19
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:816e46af222eb1a2a004c9f76c5e9e29e6be16dc9a62db067573adc9a7a761d2",
+          "pdf_page_render_sha256": "6b63d63cb989ef0998a57da85778a4ebb77a5eb40e6667bbadd5f49a81a36613",
+          "physical_page": 20
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:46bd26dd861b457cbaf677cdc980c38d39449877d212e587c3b6011c824ceb2d",
+          "pdf_page_render_sha256": "8e4409ea71f51b9b9f9fdde41f8c22db0550545489fb0097953e7e5fa1da2932",
+          "physical_page": 21
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:b525b5eacf7d97ecc0c589ed14f0057be52cab8f250fd1bcdbcbcb1009d02476",
+          "pdf_page_render_sha256": "7ee13e3ab186df141ee4160916ea7622caf7c9c08fa0dd56bb3bc68573fad2af",
+          "physical_page": 22
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a16b1dc395c87eba6be43d405e6207dc409059869df9a3eec683a6d74fe3344d",
+          "pdf_page_render_sha256": "018da5694dd95795836d0de3ac0455888c0849d5dc3113d6a79a478e47796806",
+          "physical_page": 23
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6a35adf33e808a44402f8ded78edaebb7c08ea8d9079c500c50ec73f0a4a41cf",
+          "pdf_page_render_sha256": "6853985a629b314223209669cae3ed4ed2f881d2cdd8f43ad854967a31da5096",
+          "physical_page": 24
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:eb42f9b484b42f63043b81c174aa18b6f521d1c148eec109c7da04e56499fa4b",
+          "pdf_page_render_sha256": "2d499d7fc62bfd74bb317e0ebb67f32a9301020ed26f30b0f20d1c3150402406",
+          "physical_page": 25
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2fe6caae65c4d7050550652b4c52baa683da0defabea7c0d092bf4f6a1408b98",
+          "pdf_page_render_sha256": "2d38de47c7adaf7a9981c485a52da794e9c6b06fb90adba09cfd1e6ad7e43978",
+          "physical_page": 26
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:8ff561a25d472d739c30a960ac1ea3629cae339a60eb6c6f61177a47288cd526",
+          "pdf_page_render_sha256": "c3b76094166d19119f689007958a7277c7c49b622c13aad5997254f6b0e46ffc",
+          "physical_page": 27
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:613bc603a40faaa517c58aba847f1eba41318df8b2c763feb1fe79cd115488d4",
+          "pdf_page_render_sha256": "49384a4768aec9c3dad0ed9901557f9a44e6aaf56626ac0b65bcc98bc14a28ac",
+          "physical_page": 28
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5d4ed9b86550297b43f4e499d46edde5e03b16ef6c13d3364a416d3c98b0a793",
+          "pdf_page_render_sha256": "187366df9d3b772718b6b0f76f34b92e24e006f81bf3939e11fda822e2eb95b8",
+          "physical_page": 29
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:de48acfefdc06b96dfbb7d70150a322fb8bb0d973d21cfa88f565f21e0f81eff",
+          "pdf_page_render_sha256": "a64f4db87fcb61db4f652b29ede3e9b2a889a4964cae87b803bfeea74c12e4a8",
+          "physical_page": 30
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:880bb2bcec7f7623ef76229dc9c94bd51aa6d23ecdc991ddfab8dcaf2ab1cbba",
+          "pdf_page_render_sha256": "523c292a1107ecc5e7bc8a41ea0e9eaf2491982da78f78f17f000f742e5bdd22",
+          "physical_page": 31
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:13bb6fb32994e8b85fb63529fad6725876995bc5fdaea67433dcddb193d5914a",
+          "pdf_page_render_sha256": "2137fbb4c7ef8d70307fffc328cfe66a4ca3e239a8b43553760ecf3c5cf904ab",
+          "physical_page": 32
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:f111233d87f72a9da290a3d722016d4f48c8f340e876dc41059e29096afc4574",
+          "pdf_page_render_sha256": "cebff12d012ad6158e0173803e2a4445a0d2f0ac84ca6db07b984dab3baa4909",
+          "physical_page": 33
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:d171ab8420071a85a5160ae0bae7109b37fb16578a9910ce6e3d0bb56c042c82",
+          "pdf_page_render_sha256": "d35acaeeaf165a72dd620979b00050fe4f3e44419e585909f3433b11cf97f591",
+          "physical_page": 34
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:d837d6e277258a02c3fb861c6995be522070ece4b84f3e6101e542b203ae230f",
+          "pdf_page_render_sha256": "fc9b6529df78759e33888e046908f8aa4e604cf0814c9886b2a91e94f8edfecd",
+          "physical_page": 35
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:823e6ce9e40bbfabb8ec98098cbe695f3cfec6a2086bd238fc52dce5aa121990",
+          "pdf_page_render_sha256": "394f8968cd0592f89b422f5b564c0a346e07ee107c76327363082fc07ec9054c",
+          "physical_page": 36
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:05e0535a05bb2c7f63360d8f618a6dfcdfa43afe54e152ddae2c285d8a0e211f",
+          "pdf_page_render_sha256": "23f146824924e0e74d96db872370183303649f4628790fe20f53f380aac66f52",
+          "physical_page": 37
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e83984413198672464c38a8ab95696cec0c107f1dc3d48fb2bf8e75b0b07f9e0",
+          "pdf_page_render_sha256": "cc836889c08e6afd7d638640de9276f306b09316560fb21022ecfec347d322e4",
+          "physical_page": 38
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6f374ab57e2776d3a4ce50c94bfa7eb71d80e5a6df4b662b0cdf984ea16f5a5c",
+          "pdf_page_render_sha256": "ce1824b32eab7cb307469d8fd5dc59fc7e7b0659795067ca0f54277867d3cb54",
+          "physical_page": 39
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5a54efbc50ec11d91e144e1248bdb5f49ddc06439d4702818796740e682cbcf6",
+          "pdf_page_render_sha256": "8dfc1949b5a37113cef2fe990f952966b0afb27356d7082ca5caa0496fc568c3",
+          "physical_page": 40
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:66c60660d8c9e530ba438bd3921708ae241325cd7d42ffa0172f8c39922db385",
+          "pdf_page_render_sha256": "1a9ab0f9d0ecb78df33ceb4bd59882e149e9a41ed3dc53291c317a25b535fa10",
+          "physical_page": 41
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:30ce48d96e1870d6e6b2ac080b92d999997bf40692a38505b01da17a40ce003d",
+          "pdf_page_render_sha256": "2ab518b9a68a437478d6b45f6640af568b572330a8ef5b5ef71395dd8a9bbf6c",
+          "physical_page": 42
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:d2ce537fa3e75b4069b6c16cea82393c2099da1baa6d361b3c2e52e1871fafa3",
+          "pdf_page_render_sha256": "a04bde69ad975c0c8513fbbeea0fb89f4712fd67522bcb627d67fec422a73b5e",
+          "physical_page": 43
+        }
+      ],
+      "source_logical_name": "vietstock_bctc/BAB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "88f1327e937ef29fe3eca5c11a28601ebdc48f22a7bac970b4b939f771ee1ad1",
+      "source_size_bytes": 11796790,
+      "trial_status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+      "residual_audit_id": "gjcrpefav1:residual:6b2d02905e106c2bc1affba1a015a99cb68a19cb5ab31664914bfbe5cdf812ac"
+    },
+    {
+      "disposition": "TRUE_SOURCE_VISIBLE_CUSTOMER_MOVEMENT_GROSS_NET_AND_DURATION_PRESENTATION_AMBIGUITY_NO_MAPPING",
+      "document_ordinal": 22,
+      "pdf_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:160b4a9acb981ca433c6e37cf062cee8a48896c2cc990603151bb83d85c3b3ff",
+          "pdf_page_render_sha256": "b2b4303039a5f0d90b8a916f8d0ed7d53a95fa9a6d069d5925633a4c5163251a",
+          "physical_page": 1
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:c24368def79c5a286e3d19f6e2fe297a9705397a6a11c3d894905be6cf247c15",
+          "pdf_page_render_sha256": "2b5ce5cb7531a04d7d43084d47bec371abd7c00524e421198472532d6a4679b9",
+          "physical_page": 2
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:84147572ddd0e32fede15043840e4b248f95636880f3fb74e55ed4d1ea93d23d",
+          "pdf_page_render_sha256": "72f42e99a870a31c16fa49a8d0bc2145163f003c7d43b441111c66b1259511fb",
+          "physical_page": 3
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:8cd02ffa94626c857f08d8b32aebdbfe1e85159b916637a24b909a0acb12390d",
+          "pdf_page_render_sha256": "0c78a38f1a01f45f1b82be8260dc88141f46491f51228ebf8ffdca5a07f08691",
+          "physical_page": 4
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ba07a4901d13f121f7e90274e0de62d9c1a4016ecd0821acd9001ee28624c091",
+          "pdf_page_render_sha256": "31dc02406fdbcedf9337a0bcfb6841a9514acc8ee8bb637dc754c3de8109325a",
+          "physical_page": 5
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3baa07d4484771c524267ee2c3184fdfa7d3ffbb4db85bb176210eebc299878d",
+          "pdf_page_render_sha256": "c4ba4f31dbd6ab084d05657fea0e54f53a205aef238bef62dd9997503a867f3d",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2f3e844174304880925ba82733784311418587dca8d7b1db3c71e9cee7e790ef",
+          "pdf_page_render_sha256": "bf53bd49c9d0f9a76de34e4f778e97e5f9c221cf4bafa853bcfd9ce122f523e7",
+          "physical_page": 7
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:627ded08e3c454149851d7bf81e3f24a4915fc7422140217a68f97f5a14d0237",
+          "pdf_page_render_sha256": "05a9a1956abc16f7cf880fe73ce44e6af18600ed4c150660faf6d5d20713440a",
+          "physical_page": 8
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6e4d441e1af978b2412c54177aa62be3319542b4f3a0efdfc115cff806092414",
+          "pdf_page_render_sha256": "a66ebe495f3d14c44924c7e322cd7c4e53ebacfe78c15b0ab2f87833a6b42d69",
+          "physical_page": 9
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:aa1f6ae0c8e252f353e626a1e7deec71c16192b61e5792f2472783d3bd458d24",
+          "pdf_page_render_sha256": "e4ba9d148ceb1ef1c2ff392f505cb7678f1747bd13b8ea219b7095936fb11de6",
+          "physical_page": 10
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:2f1322fd619cedf1dd498c59c71b842150409389f4e6ddf70e4f7a9490d7115d",
+          "pdf_page_render_sha256": "e5a5a0a9e831b795ebdbdb6347f7ed4904586f2f802fa12545c0c619d20c0ba5",
+          "physical_page": 11
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:3027b157b7d7831cf9e5c91162cf07a47baf801606fb9b6f9b06b8e1da48cd9b",
+          "pdf_page_render_sha256": "aadb149dd159a160474c44f4a76929054f6e929b991303a2f2eb87933e909655",
+          "physical_page": 12
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ad7bb69e05834b258b94a7b81a68fe9322822541d1d874965fd5e58d53e66ff8",
+          "pdf_page_render_sha256": "58172663a8c31066fc820b547e45302eb84ef10bd0cd258bd88e65a9c301fe4c",
+          "physical_page": 13
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:f999a3c3c398493dba018b018488a85efe03e26bfe132164dcf3b3bc65d8fade",
+          "pdf_page_render_sha256": "aa56896706a7b33c129b2732518debb1d891c544560dd45c8b402e1bbb6b7adb",
+          "physical_page": 14
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:f36626f4860e775cc0728e8ff9f8364f4701cba90a4885f7438410053840ce11",
+          "pdf_page_render_sha256": "b941a633acb45e4709e72878ecf12cc819363f3ed1d7a6e483b3cac5bb006c55",
+          "physical_page": 15
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:a055ef203e77017878aa1ba9465190794e60b3a6f897e9e56ae050cf4d63fdd1",
+          "pdf_page_render_sha256": "8595ee2b0650d3385a07dfb9ab21d68e86936d468b2699508eed82e9cec842fc",
+          "physical_page": 16
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:0d50faece47844ca11982df4c14822e425c9441f020f6227beb79a9d3882edd7",
+          "pdf_page_render_sha256": "6b4ddfa3e7b6b9c3b1f83f32f79bb67bf1992afd74a42a3a33bf4ad4a7cc16f0",
+          "physical_page": 17
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:55c3a429267491e8df384f09189cc4dc0d852413831c3db3490c86873622f5a9",
+          "pdf_page_render_sha256": "126635ca533d68a45954ec1d9fac9f1819c2f6e4e203ae2f33eeb23910eea441",
+          "physical_page": 18
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:f0685e33128352dc54a6dc81fb848b006b257349fc8c81ea7d3f6a11f87619c2",
+          "pdf_page_render_sha256": "585ce88f8a25318bd8cff4f0a815b468d8e9299e2192fc5aba8f866561eb58e3",
+          "physical_page": 19
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:8071762f6590f079c3cee7962c1b8078ebc5a59d9b4c4bd36ebcaf4a7450af96",
+          "pdf_page_render_sha256": "86c9a94a238fdf1602ac0ce9bb682f66148c00160f9062ef61a31728daff3630",
+          "physical_page": 20
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e995548b6c1a10e8a4a49a7e47fe7d0d1fe342a76483d63ce6cc672939b2d22d",
+          "pdf_page_render_sha256": "bcc92a762752849a380a4783dab7ae4dcaf304f21fddad73acd16ddbadae11f5",
+          "physical_page": 21
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:75a4e4d6dab0b1a94b317f30eefe5bf3e1061849ab767d7933555e5fb6f51688",
+          "pdf_page_render_sha256": "f5054c9d156d5a8d32d52182cfed1cef0f4db57100c49ec65d5df58a635f4178",
+          "physical_page": 22
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:26f3ffc27784c0634863f20bddc97af451a64e86f808b28ffca971f95b4a7302",
+          "pdf_page_render_sha256": "68abf901787489720d01b12bf34aad677c982380c892314daf3d438be981d48e",
+          "physical_page": 23
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:c93826e56fce8ee26fdb06ebdbec310138f415a9697176a3388b878070f0456d",
+          "pdf_page_render_sha256": "0678c8cc9a5aa8d6c7080f4208ed5f5fd06d2ca78ce0f3b98764ce3b40ff86ac",
+          "physical_page": 24
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5e33e0a3ff4fc02768c0294539bc5136f0c42bce45a42ab5d0092c6c560b2a82",
+          "pdf_page_render_sha256": "b533b45dff8308d2562b721e93dd6b8633f34610d74b84f3da8b0627c76c560b",
+          "physical_page": 25
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:c5cdf0b3076ceec593ff09ca90747b0b279aedd2ea7660cc432b498b38b7cf52",
+          "pdf_page_render_sha256": "cf2a38fa5e2783dcd108d748276df10adc64aaa149aa0f2be4c2bc7cf40f7fec",
+          "physical_page": 26
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:158583b41ca67dfa8a6f9fcd2d41466acaf2cf77e61be36bd12256038da3161e",
+          "pdf_page_render_sha256": "82d00e6902573715f437b558a78c35c5cd1adca4bb93f1970e1f1c03e86af07b",
+          "physical_page": 27
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:adb1d28059391454595f90ccc85c525778c46b1b01e6fa022ce156596a0e73e4",
+          "pdf_page_render_sha256": "a7972380acc202238d79b8c71d05e31f3a2c423d35a84d0842fef239ba5457da",
+          "physical_page": 28
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:fce07ab2f087f94ec23d5c7290c2f21de05d6ca801f8cce6e6606b8587386596",
+          "pdf_page_render_sha256": "07ccd8deb36421b15b3101f8e6e6e0b930fac31f9d96a5e0c86aed3378660cf1",
+          "physical_page": 29
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ec6db14fb7b8d9f79b5c2689b5827bb9d017d5752cee6d9a611883c976ff9fd1",
+          "pdf_page_render_sha256": "7e2e68a3af07e4810dbbc3956b38b4314981183d433312e15603895c494b9c51",
+          "physical_page": 30
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:ef8d5c9540214926042c6a4ec2092f74c1ec0190c4a230d5ef476eac33938520",
+          "pdf_page_render_sha256": "9ae6eae2f57dda9b59810e574af3fc8379fd1c50214644decc1dea57ea4cd9aa",
+          "physical_page": 31
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:1cbd2c4a56da043023d51c3475cd8c96eae94dc3c9821e6f085ec19eb6b0e9a9",
+          "pdf_page_render_sha256": "76c2e3d6139bb02ceeccb12f237070862d0dd7b2e7d877d38c27510c885b95c2",
+          "physical_page": 32
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6f431e08d81b2c06ea4abe6bc1580efa864f08ea59aa981bc8a558eb413d4a38",
+          "pdf_page_render_sha256": "bbd65b55a1ecc5586e206aad54e8227e2c628cfbafa6b1cb6472e81daa2df554",
+          "physical_page": 33
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:5bd04d1328d9752e4d6291ec5b2f25f7b32f7fee8bd3dbc76ca11e0f7b276448",
+          "pdf_page_render_sha256": "41e24c3b7e5f0130fd81440c41077ad3a2b1afd7babe90620e27679b59c658ad",
+          "physical_page": 34
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:91db688a6b1aa2890d8d1f62c6100833161c6f1d83a21b30748493a3de7ab0e4",
+          "pdf_page_render_sha256": "540e42e8c454294dfbdff04d291787caddb94c88b1ab06ed7a16622892b6bcc1",
+          "physical_page": 35
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:02e5549275df76d407aaabb9d28fa8b02d81f97b0b8f19b0985a0f829c194d1a",
+          "pdf_page_render_sha256": "c98b52c3253084c83f457dab9d410013fb191ad589a410b83de48c5b158944c0",
+          "physical_page": 36
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:6f7d08f402dd6b62f3bb93d38e88ed9c245844484f5719482830ccb248fcc125",
+          "pdf_page_render_sha256": "746946c65bb06910ff1ee6ffe6300979d788aa5685aa4b79c4c991b680cc4837",
+          "physical_page": 37
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:fec4fa5cf27a3ed45d9e9c1a3c51cb5111445db3575d9cfda073ca80f72e4369",
+          "pdf_page_render_sha256": "4b81fb80b5c230ca0c6dc5d6fb06045ae265260df2465964f02a3d1b11bb3a27",
+          "physical_page": 38
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:7562a9444b6d8be854c66e87d82c25255a44525047f2a50ccd530e718f731562",
+          "pdf_page_render_sha256": "8dbba17932b6039047a3427cdf7b7f593775fce2450b929b97c74bb411e4c3f7",
+          "physical_page": 39
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:37018d0e555db49503920e14095d3a657be0399f533329e57ca3077ad97b735a",
+          "pdf_page_render_sha256": "66cbe8c317003ec7bfe01086efa4b5fe2a5df5842a6e2c618da36664fd23ec98",
+          "physical_page": 40
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:9081cae4fd919170c39ed635baf1f910d72826e40770b974093147f0111a3fdc",
+          "pdf_page_render_sha256": "f62af405d69260fa09db04c97791543f31e46ac6abeaea15ddd717b691fd6a86",
+          "physical_page": 41
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:621bcc4aafb2d1aff63d198805a5c89457b4cccdd103c60c69c9a450dad4c805",
+          "pdf_page_render_sha256": "b976c0f6386a5c2071852eff619ce3fef43a4cdecb87449bb452e1e5941ec6db",
+          "physical_page": 42
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:453c49a45d9ba085ed81c253b7c37a689bb11b43d023758bdcb22b9cc6615d03",
+          "pdf_page_render_sha256": "06cf7aca60d12974b85ac13e2c2a4b310a917432b74827080debb3c0c8f4adbe",
+          "physical_page": 43
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:d61e81c882bf883a5bc544da9f9074751bd421573d3253b582343330c4f28e8f",
+          "pdf_page_render_sha256": "98ce04b98037cf1f65936e526e9389fa5e738a3c1aaa917d0d7480a05442a784",
+          "physical_page": 44
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e33f5d1545a79029da9dfcbd167264acbbfdc4d03e4ea2e14fdc04af58960242",
+          "pdf_page_render_sha256": "7bca3bbc0dc1a5eec057da8314eb7a6b47bb75a1b27667ebb2563bc3e97365a6",
+          "physical_page": 45
+        }
+      ],
+      "source_logical_name": "vietstock_bctc/BAB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+      "source_sha256": "221e11e2fa500543df6aa4f7e2cf3c58465596accd1e58827225ad6ab70bf7c5",
+      "source_size_bytes": 12210833,
+      "trial_status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+      "residual_audit_id": "gjcrpefav1:residual:28528792a10ccf59d6ddfca7b80824c868ac1cd65e1f0f0ae0d3d7d530baa9c1"
+    }
+  ],
+  "review_contract": {
+    "render_contract": {
+      "alpha": false,
+      "colorspace": "RGB",
+      "format": "PNG",
+      "matrix": [
+        1,
+        1
+      ],
+      "renderer": "PyMuPDF"
+    },
+    "scope": "EVERY_PDF_PAGE_FOR_EVERY_NOT_OBSERVED_OR_UNRESOLVED_DOCUMENT",
+    "visual_disposition_rule": "NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY37_ROW_OR_EXPLICIT_SOURCE_AMBIGUITY"
+  }
+}

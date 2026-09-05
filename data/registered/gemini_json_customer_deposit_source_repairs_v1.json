@@ -1,0 +1,261 @@
+{
+  "family_id": "CUSTOMER_DEPOSIT_CLASSIFICATION",
+  "format_version": "GEMINI_JSON_CUSTOMER_DEPOSIT_AUTHENTICATED_SOURCE_REPAIR_SPEC_V1",
+  "policy": "ONLY_PDF_VISIBLE_ACCOUNTING_DASH_MISSING_AS_NULL_NO_BLANK_ZERO_INFERENCE",
+  "render_contract": {
+    "alpha": false,
+    "colorspace": "RGB",
+    "format": "PNG",
+    "render_dpi": 300,
+    "renderer": "BCTC_AI_FULL_PDF_PAGE_RENDER_V1_PYMUPDF"
+  },
+  "repair_axis_sha256": "4e40b2ebfba53aca39f91635fadc3dc4eb7afd61e141390a68c8e801d58c1980",
+  "repairs": [
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          350,
+          920,
+          2350,
+          1180
+        ],
+        "pixel_height": 260,
+        "pixel_width": 2000,
+        "rgb_sha256": "3845ff24412bcfa479bcc07f14de24d433c1de1602e83258b6b61555fb7138b0"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:dca8790a58f5eb73ca31a612e777df7022dc9a18b157b0ed698627180c8af0c3",
+        "physical_page": 37,
+        "row_ordinal": 7,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "e62f0535b715b9e1df64e9ef78302938993035af4961fb2c7c1650594947b254",
+        "image_size_bytes": 3453837,
+        "media_type": "image/png",
+        "physical_page": 37,
+        "pixel_height": 3300,
+        "pixel_width": 2550,
+        "render_dpi": 300,
+        "render_receipt_sha256": "22e5a078c04ca1b79528be0a82d4bc142bacd2263fbd75ac43635998872c77be"
+      },
+      "repair_id": "gjfcdav1:source-repair:565d2075b50a3b6081fb7e539745563af2ac90464c28580c944176b9299b4c8d",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/VAB/2025/2_vab_2025_4_15_527ed46_vi_baocaotaichinh_q1_2025.pdf",
+        "source_sha256": "067ddd883bf49ab6706bd19d1d5b2004829d1463fd1a5ea4b079df80382db53e",
+        "source_size_bytes": 13565037
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          280,
+          1320,
+          2320,
+          1570
+        ],
+        "pixel_height": 250,
+        "pixel_width": 2040,
+        "rgb_sha256": "69fb9068d3d8e63fd053a22976fb1011e90cbff5c644ab9ace1e2ea7253fee8a"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:a82acd55ec7d29e5df69a41cca4cb3126b01972cdf77898bfd19b07436ebf121",
+        "physical_page": 38,
+        "row_ordinal": 7,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "71f651da6de1b639748f49622c7030721c86c62907d104f4e33be9c21bf4a02e",
+        "image_size_bytes": 3645751,
+        "media_type": "image/png",
+        "physical_page": 38,
+        "pixel_height": 3546,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "df443a6ad8ba581867a86af5b3f5b70925307b45820af988635f5324a602cc07"
+      },
+      "repair_id": "gjfcdav1:source-repair:01614275b6b008ab41c05b885c3979946ce5994aec0fa7c8c5139b73717d6beb",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+        "source_sha256": "ffa4437346494781250e3a18998202d559cb6f70d9823f2a0189b5629aa73781",
+        "source_size_bytes": 17311953
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          280,
+          1840,
+          2320,
+          2100
+        ],
+        "pixel_height": 260,
+        "pixel_width": 2040,
+        "rgb_sha256": "85eebbe9223e6e20f248495a99a5639bd7837576bf552879af1d9212c1c1fd4c"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e662aba7f4d25d5e5b1b48fa297303b189f256a2bf9d993d11fc3701a9fef882",
+        "physical_page": 36,
+        "row_ordinal": 7,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "4f27ef519a6fe9cb1ef577a2fc4807ab230032cdacc740063a66e535ca34d44e",
+        "image_size_bytes": 1160421,
+        "media_type": "image/png",
+        "physical_page": 36,
+        "pixel_height": 3496,
+        "pixel_width": 2484,
+        "render_dpi": 300,
+        "render_receipt_sha256": "eb6455f57c38a516b6372816c4222771ac2e3636bf3a782da08902a6c0cb2780"
+      },
+      "repair_id": "gjfcdav1:source-repair:2bcaa6a2fc8888e41bf89aa01a50009d499326a6039e53b3a9952fc646801fba",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC HOP NHAT QUY 2.2025 TVIET_0001-da nen.pdf",
+        "source_sha256": "fc653f4dd792a56ea076938379d7dd25d415471622418b8b9a48af6d000cd852",
+        "source_size_bytes": 6519529
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          300,
+          1400,
+          2340,
+          1610
+        ],
+        "pixel_height": 210,
+        "pixel_width": 2040,
+        "rgb_sha256": "78402b8d762ce6159026912586098a2eb63c1920ab5e8c449466fdfdb82d3c1b"
+      },
+      "locator": {
+        "column_ordinal": 1,
+        "page_json_version_id": "gfpstorev1:json:93ea23bc8e6cd49c9b185eca604b11f6b570ec9b8d783f8d970f8b109d1d5ad5",
+        "physical_page": 38,
+        "row_ordinal": 7,
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "86ff12e1da35cf968af0751a5ed5c20faab1c9ad40afeb3395de5d36c6af118e",
+        "image_size_bytes": 1074793,
+        "media_type": "image/png",
+        "physical_page": 38,
+        "pixel_height": 3496,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "render_receipt_sha256": "fbd562cef163a22b575db170f3296d4b5a3bb371b5586e77a1273f8265844e0b"
+      },
+      "repair_id": "gjfcdav1:source-repair:d97eff2fe5c4af8919bcc93e4488a33e55e3ac0f534d73ab653b6a8af3ee225b",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "source_sha256": "4674c38da83bb1a43c7898cabc7812e60c526d6429e2558ef82b42fdb1ee381b",
+        "source_size_bytes": 12533597
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          300,
+          1400,
+          2340,
+          1610
+        ],
+        "pixel_height": 210,
+        "pixel_width": 2040,
+        "rgb_sha256": "78402b8d762ce6159026912586098a2eb63c1920ab5e8c449466fdfdb82d3c1b"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:93ea23bc8e6cd49c9b185eca604b11f6b570ec9b8d783f8d970f8b109d1d5ad5",
+        "physical_page": 38,
+        "row_ordinal": 7,
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "86ff12e1da35cf968af0751a5ed5c20faab1c9ad40afeb3395de5d36c6af118e",
+        "image_size_bytes": 1074793,
+        "media_type": "image/png",
+        "physical_page": 38,
+        "pixel_height": 3496,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "render_receipt_sha256": "fbd562cef163a22b575db170f3296d4b5a3bb371b5586e77a1273f8265844e0b"
+      },
+      "repair_id": "gjfcdav1:source-repair:e0aa2b155a60fa5a1f081a00280a55b8d59131f0abc4c6219ac6bdc433fa7705",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "source_sha256": "4674c38da83bb1a43c7898cabc7812e60c526d6429e2558ef82b42fdb1ee381b",
+        "source_size_bytes": 12533597
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          280,
+          1530,
+          2320,
+          1790
+        ],
+        "pixel_height": 260,
+        "pixel_width": 2040,
+        "rgb_sha256": "bf7f0760c7b0f310f1a0dedc2609f915039342569c7a78b3d00310e90b9123de"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:a0db2db788b1ee545b0bb8c4e2073f1e5452e4ffc6d01dda2ca73ff590b30b83",
+        "physical_page": 36,
+        "row_ordinal": 7,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "242f7f202fb1c44db85b1b3104aca3ebc38485ab3073171cbde2081687d5ea3e",
+        "image_size_bytes": 1082482,
+        "media_type": "image/png",
+        "physical_page": 36,
+        "pixel_height": 3484,
+        "pixel_width": 2471,
+        "render_dpi": 300,
+        "render_receipt_sha256": "6b8d0fdf351840b4170b6ad7662be26b8ead0930c34293aa85b91bcdd71551c2"
+      },
+      "repair_id": "gjfcdav1:source-repair:c3e4d64b71a199f983cac6a5a5b8131559b43caad0bafc5cad0ae6cb68b5d31a",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC RIENG LE QUY 2.2025-TV_0001-da nen.pdf",
+        "source_sha256": "30768f3095999e9d8ca315fd93a49ea25cfc151897e7cda89929be8fb71c1956",
+        "source_size_bytes": 6749981
+      }
+    }
+  ]
+}

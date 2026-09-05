@@ -23,6 +23,7 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
 )
+from bctc_ai.storage import gemini_financial_page_store_v1 as target
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
     GeminiFinancialPageStoreV1Error,
     _dual_axis_header_leaf_v1,
@@ -202,6 +203,101 @@ def _dual_axis_page_for_query(orientation: str, *, broad_metric: bool = False) -
             }
         ],
         "status": "FINANCIAL_NOTE_CONTENT",
+    }
+
+
+def _stacked_dual_axis_page_for_query(*, asymmetric: bool = False) -> dict:
+    page = _dual_axis_page_for_query("ROW_ROLES_METRIC_COLUMN")
+    rows = []
+    for period, domestic, foreign in (
+        ("31/12/2025", "10", "1"),
+        ("31/12/2024", "9", "1"),
+    ):
+        for label, value in (("Trong nước", domestic), ("Nước ngoài", foreign)):
+            rows.append(
+                {
+                    "hierarchy_path_exact": [period, label],
+                    "label_exact": label,
+                    "row_kind": "ITEM",
+                    "values_exact": [value],
+                }
+            )
+    if asymmetric:
+        rows.pop()
+    page["sections"][0]["tables"][0]["rows"] = rows
+    return page
+
+
+def _customer_loan_balance_control_page() -> dict:
+    return {
+        "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
+        "sections": [
+            {
+                "content_kind": "PRIMARY_STATEMENT",
+                "narratives_exact": [],
+                "statement_type": "BALANCE_SHEET",
+                "tables": [
+                    {
+                        "columns": [
+                            {"header_path_exact": ["31/12/2025"], "value_kind": "MONEY"},
+                            {"header_path_exact": ["31/12/2024"], "value_kind": "MONEY"},
+                        ],
+                        "continuation": "NONE",
+                        "rows": [
+                            {
+                                "hierarchy_path_exact": [
+                                    "VI. Cho vay khách hàng",
+                                    "1. Cho vay khách hàng",
+                                ],
+                                "label_exact": "1. Cho vay khách hàng",
+                                "row_kind": "ITEM",
+                                "values_exact": ["10", "9"],
+                            }
+                        ],
+                        "title_exact": None,
+                        "unit_exact": "Triệu đồng Việt Nam",
+                    }
+                ],
+                "title_exact": "BÁO CÁO TÌNH HÌNH TÀI CHÍNH tại ngày 31 tháng 12 năm 2025",
+            }
+        ],
+        "status": "PRIMARY_FINANCIAL_STATEMENT",
+    }
+
+
+def _external_population_control_policy() -> dict:
+    return {
+        "candidate_context": {
+            "hard_negative_aliases": [
+                "bao cao bo phan",
+                "bo phan chia theo khu vuc dia ly",
+            ],
+            "partial_axis_owner_aliases": ["khu vuc dia ly"],
+        },
+        "control_report_norm_id": 716,
+        "control_source": {
+            "content_kind": "PRIMARY_STATEMENT",
+            "hierarchy_match_rule": (
+                "NUMBERED_LABEL_OR_REPEATED_UNNUMBERED_EXACT_LABEL"
+            ),
+            "label_aliases": ["cho vay khach hang"],
+            "label_match_rule": "EXACT_WITH_OPTIONAL_LEADING_ONE",
+            "row_kind": "ITEM",
+            "statement_type": "BALANCE_SHEET",
+        },
+        "controlled_metric_aliases": [
+            "tong du no cho vay",
+            "tong du no cho vay khach hang",
+        ],
+        "format_version": "GEMINI_JSON_DUAL_AXIS_EXTERNAL_POPULATION_CONTROL_V1",
+        "match_rule": "EXACT_PERIOD_UNIT_MAGNITUDE_AND_INTEGER_EQUALITY",
+        "query_gate_metric_aliases": ["tong du no cho vay"],
+        "unit_decimal_magnitude_by_alias": {
+            "trieu dong": 6,
+            "trieu dong viet nam": 6,
+            "trieu vnd": 6,
+            "vnd": 0,
+        },
     }
 
 
@@ -391,6 +487,7 @@ def test_family_anchor_lookup_forms_cover_harmless_financial_label_punctuation()
     assert "chung khoan chinh phu, chinh quyen dia phuong" in forms
     assert "cho vay cac to chuc kinh te, ca nhan trong nuoc(*)" in forms
     assert "cho vay cac to chuc - kinh te ca nhan trong nuoc" in forms
+    assert "▪ cho vay cac tctd khac bang vnd" in forms
 
 
 def test_dual_axis_query_shortlists_rows_then_decodes_exact_transposed_headers(
@@ -442,6 +539,274 @@ def test_dual_axis_query_shortlists_rows_then_decodes_exact_transposed_headers(
     assert broad["page_json_version_id"] not in {
         region["page_json_version_id"] for region in queried["regions"]
     }
+
+
+def test_dual_axis_query_shortlists_exact_stacked_period_row_groups_only(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    stacked = _ingest(
+        path,
+        physical_page=7,
+        page_json=_stacked_dual_axis_page_for_query(),
+    )
+    asymmetric = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="8" * 64,
+        page_json=_stacked_dual_axis_page_for_query(asymmetric=True),
+    )
+
+    queried = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=[
+            stacked["page_json_version_id"],
+            asymmetric["page_json_version_id"],
+        ],
+        metric_aliases=["Cho vay khách hàng"],
+        role_aliases={
+            "DOMESTIC_TOTAL": ["Trong nước"],
+            "FOREIGN_TOTAL": ["Nước ngoài"],
+        },
+        unit_aliases=["Triệu đồng", "Triệu VND"],
+    )
+
+    assert len(queried["regions"]) == 1
+    region = queried["regions"][0]
+    assert region["page_json_version_id"] == stacked["page_json_version_id"]
+    assert region["orientation"] == "ROW_ROLES_METRIC_COLUMN"
+    groups = region["axis_evidence"]["stacked_period_role_groups"]
+    assert [group["period_end"] for group in groups] == ["2025-12-31", "2024-12-31"]
+    assert all(set(group["roles"]) == {"DOMESTIC_TOTAL", "FOREIGN_TOTAL"} for group in groups)
+    assert queried["query_receipt"]["stacked_period_row_region_count"] == 1
+    assert asymmetric["page_json_version_id"] not in {
+        item["page_json_version_id"] for item in queried["regions"]
+    }
+
+
+def test_dual_axis_query_normalizes_literal_escape_reversed_foreign_alias_and_narrative_date(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    page = _dual_axis_page_for_query("ROW_ROLES_METRIC_COLUMN")
+    section = page["sections"][0]
+    table = section["tables"][0]
+    table["columns"][0]["header_path_exact"] = ["Cho vay\\nkhách hàng", "VND"]
+    table["rows"][1]["label_exact"] = "Ngoài nước"
+    table["rows"][1]["hierarchy_path_exact"] = ["Ngoài nước"]
+    table["title_exact"] = None
+    section["narratives_exact"] = ["Số liệu tại ngày 31 tháng 12 năm 2025."]
+    stored = _ingest(path, page_json=page)
+
+    queried = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=[stored["page_json_version_id"]],
+        metric_aliases=["Cho vay khách hàng"],
+        role_aliases={
+            "DOMESTIC_TOTAL": ["Trong nước"],
+            "FOREIGN_TOTAL": ["Nước ngoài", "Ngoài nước"],
+        },
+        unit_aliases=["Triệu đồng", "Triệu VND", "VND"],
+    )
+
+    assert len(queried["regions"]) == 1
+    period = queried["document_context_by_source"]["report.pdf"]["period_evidence"]
+    assert any(record["source_kind"] == "SECTION_NARRATIVE" for record in period)
+    assert queried["query_receipt"]["target_document_narrative_record_count"] == 1
+
+
+def test_dual_axis_query_retains_parent_owned_single_role_and_rejects_unowned_collision(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    owned_page = _dual_axis_page_for_query("METRIC_ROW_ROLE_COLUMNS")
+    owned_table = owned_page["sections"][0]["tables"][0]
+    del owned_table["columns"][1]
+    del owned_table["rows"][0]["values_exact"][1]
+    owned = _ingest(path, page_json=owned_page)
+
+    unowned_page = deepcopy(owned_page)
+    unowned_page["sections"][0]["title_exact"] = "Thuyết minh khác"
+    unowned_page["sections"][0]["narratives_exact"] = []
+    unowned_page["sections"][0]["tables"][0]["title_exact"] = "31/12/2025"
+    unowned = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="8" * 64,
+        page_json=unowned_page,
+    )
+
+    queried = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=[
+            owned["page_json_version_id"],
+            unowned["page_json_version_id"],
+        ],
+        metric_aliases=[
+            "Cho vay khách hàng",
+            "Tổng dư nợ cho vay",
+            "Tổng dư nợ cho vay khách hàng",
+        ],
+        role_aliases={
+            "DOMESTIC_TOTAL": ["Trong nước"],
+            "FOREIGN_TOTAL": ["Nước ngoài"],
+        },
+        unit_aliases=["Triệu đồng", "Triệu VND", "Triệu đồng Việt Nam", "VND"],
+        external_population_control=_external_population_control_policy(),
+    )
+
+    assert [region["page_json_version_id"] for region in queried["regions"]] == [
+        owned["page_json_version_id"]
+    ]
+    assert queried["regions"][0]["axis_evidence"]["roles"]["FOREIGN_TOTAL"] == {
+        "presence": "ABSENT_SOURCE_AXIS_ROLE"
+    }
+
+
+def test_dual_axis_broad_population_gate_requires_every_period_to_match_rnid716(
+    tmp_path,
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    control = _ingest(
+        path,
+        physical_page=1,
+        image_sha256="1" * 64,
+        page_json=_customer_loan_balance_control_page(),
+    )
+    current_page = _dual_axis_page_for_query("ROW_ROLES_METRIC_COLUMN")
+    current_page["sections"][0]["tables"][0]["columns"][0]["header_path_exact"] = [
+        "Tổng dư nợ cho vay",
+        "Triệu đồng",
+    ]
+    current_page["sections"][0]["tables"][0]["title_exact"] = None
+    current = _ingest(path, page_json=current_page)
+
+    query_args = {
+        "metric_aliases": [
+            "Cho vay khách hàng",
+            "Tổng dư nợ cho vay",
+            "Tổng dư nợ cho vay khách hàng",
+        ],
+        "role_aliases": {
+            "DOMESTIC_TOTAL": ["Trong nước"],
+            "FOREIGN_TOTAL": ["Nước ngoài"],
+        },
+        "unit_aliases": ["Triệu đồng", "Triệu VND", "Triệu đồng Việt Nam", "VND"],
+        "external_population_control": _external_population_control_policy(),
+    }
+    matched = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=[
+            control["page_json_version_id"],
+            current["page_json_version_id"],
+        ],
+        **query_args,
+    )
+    assert len(matched["regions"]) == 1
+    assert matched["regions"][0]["external_population_control"]["status"] == (
+        "ACCEPTED_EXACT_EXTERNAL_POPULATION_CONTROL"
+    )
+    controls = matched["document_context_by_source"]["report.pdf"][
+        "external_population_controls"
+    ]
+    assert [(record["period"], record["coefficient"]) for record in controls] == [
+        ("2024-12-31", 9),
+        ("2025-12-31", 10),
+    ]
+
+    prior_page = deepcopy(current_page)
+    prior_table = prior_page["sections"][0]["tables"][0]
+    prior_table["title_exact"] = "Tại ngày 31 tháng 12 năm 2024"
+    prior_table["rows"][0]["values_exact"] = ["11"]
+    prior_table["rows"][1]["values_exact"] = ["-"]
+    prior = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="8" * 64,
+        page_json=prior_page,
+    )
+    rejected = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=[
+            control["page_json_version_id"],
+            current["page_json_version_id"],
+            prior["page_json_version_id"],
+        ],
+        **query_args,
+    )
+    assert rejected["regions"] == []
+    gate = rejected["query_receipt"]["external_population_control"]
+    assert gate["accepted_query_gate_count"] == 0
+    assert gate["deferred_query_gate_count"] == 0
+    assert gate["rejected_query_gate_count"] == 2
+    assert gate["region_count_before_query_gate"] == 2
+    assert gate["region_count_after_query_gate"] == 0
+
+
+def test_dual_axis_rnid716_control_selects_nested_unnumbered_gross_leaf(tmp_path) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    control_page = _customer_loan_balance_control_page()
+    control_rows = control_page["sections"][0]["tables"][0]["rows"]
+    control_rows[:] = [
+        {
+            "hierarchy_path_exact": ["TÀI SẢN", "Cho vay khách hàng"],
+            "label_exact": "Cho vay khách hàng",
+            "row_kind": "ITEM",
+            "values_exact": ["8", "7"],
+        },
+        {
+            "hierarchy_path_exact": [
+                "TÀI SẢN",
+                "Cho vay khách hàng",
+                "Cho vay khách hàng",
+            ],
+            "label_exact": "Cho vay khách hàng",
+            "row_kind": "ITEM",
+            "values_exact": ["10", "9"],
+        },
+    ]
+    control = _ingest(
+        path,
+        physical_page=1,
+        image_sha256="1" * 64,
+        page_json=control_page,
+    )
+    geography_page = _dual_axis_page_for_query("ROW_ROLES_METRIC_COLUMN")
+    geography_page["sections"][0]["tables"][0]["columns"][0][
+        "header_path_exact"
+    ] = ["Tổng dư nợ cho vay", "Triệu đồng"]
+    geography = _ingest(path, page_json=geography_page)
+
+    queried = query_selected_dual_axis_family_regions_v1(
+        path,
+        selected_page_json_version_ids=[
+            control["page_json_version_id"],
+            geography["page_json_version_id"],
+        ],
+        metric_aliases=[
+            "Cho vay khách hàng",
+            "Tổng dư nợ cho vay",
+            "Tổng dư nợ cho vay khách hàng",
+        ],
+        role_aliases={
+            "DOMESTIC_TOTAL": ["Trong nước"],
+            "FOREIGN_TOTAL": ["Nước ngoài"],
+        },
+        unit_aliases=["Triệu đồng", "Triệu VND", "Triệu đồng Việt Nam", "VND"],
+        external_population_control=_external_population_control_policy(),
+    )
+
+    assert len(queried["regions"]) == 1
+    controls = queried["document_context_by_source"]["report.pdf"][
+        "external_population_controls"
+    ]
+    assert [(record["period"], record["coefficient"]) for record in controls] == [
+        ("2024-12-31", 9),
+        ("2025-12-31", 10),
+    ]
 
 
 def test_dual_axis_query_retains_decorated_document_table_unit_carrier(tmp_path) -> None:
@@ -544,6 +909,37 @@ def _result() -> ProviderResultV1:
     )
 
 
+def _agy_low_result() -> ProviderResultV1:
+    usage = {
+        "actual_cost_usd": "0.000000000000",
+        "billing_disposition": "AGY_LOCAL_SUBSCRIPTION_NO_INCREMENTAL_API_CHARGE",
+        "cached_input_tokens": 0,
+        "input_tokens": 5000,
+        "output_tokens": 1000,
+        "thought_tokens": 100,
+        "total_tokens": 6100,
+    }
+    attempt = {
+        "attempt_ordinal": 1,
+        "credential_slot": "AGY_AUTHENTICATED_LOCAL_SESSION",
+        "elapsed_seconds": "12.300",
+        "http_status": None,
+        "outcome": "COMPLETED",
+        "provider": "AGY_CLI",
+        "usage": usage,
+    }
+    return ProviderResultV1(
+        output_text=json.dumps(_page(), ensure_ascii=False),
+        raw_response_bytes=b'{"provider":"agy-response"}',
+        provider_name="Agy",
+        provider_model="gemini-3.7-flash-low",
+        service_tier="agy-low",
+        attempts=(attempt,),
+        usage=usage,
+        response_id_sha256="9" * 64,
+    )
+
+
 def _ingest(
     path: Path,
     *,
@@ -555,6 +951,7 @@ def _ingest(
     prompt_sha256: str = "d" * 64,
     prompt_variant: str = "compact",
     response_schema_sha256: str = "e" * 64,
+    requested_service_tier: str = "flex",
     provider_result: ProviderResultV1 | None = None,
     page_json: dict[str, object] | None = None,
 ) -> dict[str, str]:
@@ -579,11 +976,68 @@ def _ingest(
         prompt_sha256=prompt_sha256,
         response_schema_sha256=response_schema_sha256,
         requested_model="gemini-3.7-flash",
-        requested_service_tier="flex",
+        requested_service_tier=requested_service_tier,
         thinking_level="low",
         provider_result=provider_result or _result(),
         page_json=page_json or _page(),
     )
+
+
+def _register_specialized_test_receipt_v1(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    *,
+    store: Path,
+    page_json_version_id: str,
+) -> Path:
+    store_receipt = target._specialized_extraction_store_receipt_v1(
+        store, page_json_version_id=page_json_version_id
+    )
+    provenance = {
+        "claim_format_version": ("GEMINI_JSON_FIRST_AGY_SCHEMA_ALIGNMENT_RECOVERY_CLAIM_V1"),
+        "claim_receipt_sha256": "1" * 64,
+        "completion_format_version": "GEMINI_JSON_FIRST_AGY_TASK_SUCCESS_V1",
+        "completion_receipt_sha256": "2" * 64,
+        "document_manifest_id": "gfdmv1:manifest:" + "3" * 64,
+        "provider_job_ref": "agyjobv1:" + "4" * 64,
+        "repair_instruction_sha256": "5" * 64,
+        "repair_registry_entry_sha256": "6" * 64,
+        "task_id": "gjfptaskv1:" + "7" * 64,
+    }
+    material = {"provenance": provenance, "store_receipt": store_receipt}
+    registry = {
+        "authorizations": [
+            {
+                "authorization_id": "gfpseav1:authorization:" + canonical_json_sha256_v1(material),
+                **material,
+            }
+        ],
+        "format_version": (
+            "GEMINI_FINANCIAL_PAGE_SPECIALIZED_EXTRACTION_AUTHORIZATION_REGISTRY_V1"
+        ),
+        "policy": {
+            "exact_page_json_version_only": True,
+            "implicit_prompt_variants": False,
+            "recovery_provenance_required": True,
+        },
+    }
+    registry_path = tmp_path / "specialized-extraction-authorizations.json"
+    registry_bytes = canonical_json_bytes_v1(registry) + b"\n"
+    registry_path.write_bytes(registry_bytes)
+    monkeypatch.setattr(
+        target, "_SPECIALIZED_EXTRACTION_AUTHORIZATION_REGISTRY_PATH", registry_path
+    )
+    monkeypatch.setattr(
+        target,
+        "_SPECIALIZED_EXTRACTION_AUTHORIZATION_REGISTRY_SHA256",
+        sha256(registry_bytes).hexdigest(),
+    )
+    monkeypatch.setattr(
+        target,
+        "_SPECIALIZED_EXTRACTION_AUTHORIZED_PAGE_JSON_VERSION_IDS",
+        frozenset({page_json_version_id}),
+    )
+    return registry_path
 
 
 def test_store_is_append_only_indexed_and_cache_addressed(tmp_path) -> None:
@@ -845,6 +1299,47 @@ def test_selected_family_query_excludes_retry_versions_and_returns_local_context
             "Các công cụ tài chính phái sinh và các tài sản/(khoản nợ) tài chính khác"
         ],
     )[0]["anchor_row_ids"] == [["__TITLE_ANCHOR__:1"], ["r1"]]
+    narrative_parent_page = deepcopy(parent_title_page)
+    narrative_parent_page["sections"][0]["title_exact"] = "Thuyết minh báo cáo tài chính"
+    narrative_parent_page["sections"][0]["narratives_exact"] = [
+        "Phân tích dư nợ cho vay khách hàng theo tiền tệ như sau:"
+    ]
+    narrative_parent_page["sections"][0]["tables"][0]["title_exact"] = None
+    narrative_row = narrative_parent_page["sections"][0]["tables"][0]["rows"][0]
+    narrative_row["label_exact"] = "Bằng VND"
+    narrative_row["hierarchy_path_exact"] = ["Bằng VND"]
+    narrative_parent = _ingest(
+        path,
+        physical_page=14,
+        image_sha256="7" * 64,
+        page_json=narrative_parent_page,
+    )
+    narrative_regions = query_selected_family_anchor_regions_v1(
+        path,
+        selected_page_json_version_ids=[narrative_parent["page_json_version_id"]],
+        anchor_aliases=[
+            ["Phân tích dư nợ cho vay khách hàng theo tiền tệ như sau"],
+            ["Bằng VND"],
+        ],
+        title_anchor_aliases=[
+            "Phân tích dư nợ cho vay khách hàng theo tiền tệ như sau"
+        ],
+    )
+    assert narrative_regions[0]["anchor_row_ids"] == [
+        ["__SECTION_NARRATIVE_ANCHOR__:1"],
+        ["r1"],
+    ]
+    assert (
+        query_selected_family_anchor_regions_v1(
+            path,
+            selected_page_json_version_ids=[narrative_parent["page_json_version_id"]],
+            anchor_aliases=[
+                ["Phân tích dư nợ cho vay khách hàng theo tiền tệ như sau"],
+                ["Bằng VND"],
+            ],
+        )
+        == []
+    )
     hits = query_selected_family_anchor_hits_v1(
         path,
         selected_page_json_version_ids=selected,
@@ -969,6 +1464,200 @@ def test_selected_page_extraction_receipts_preserve_source_prompt_and_order(tmp_
     )
     assert [record["physical_page"] for record in loaded] == [7, 8]
     assert all(record["page_json"] == _page() for record in loaded)
+
+
+def test_schema_alignment_receipt_requires_exact_registered_provenance(
+    tmp_path, monkeypatch
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    response_schema_sha256 = canonical_json_sha256_v1(financial_page_json_response_schema_v1())
+    specialized = _ingest(
+        path,
+        prompt_sha256="f" * 64,
+        prompt_variant="schema_alignment",
+        response_schema_sha256=response_schema_sha256,
+        requested_service_tier="agy-low",
+        provider_result=_agy_low_result(),
+    )
+    ordinary = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="8" * 64,
+        prompt_sha256="d" * 64,
+        prompt_variant="simple",
+    )
+    _register_specialized_test_receipt_v1(
+        monkeypatch,
+        tmp_path,
+        store=path,
+        page_json_version_id=specialized["page_json_version_id"],
+    )
+
+    receipts = selected_page_extraction_receipts_v1(
+        path,
+        page_json_version_ids=[
+            specialized["page_json_version_id"],
+            ordinary["page_json_version_id"],
+        ],
+    )
+    assert [receipt["prompt_variant"] for receipt in receipts] == [
+        "schema_alignment",
+        "simple",
+    ]
+    assert [
+        hit["page_json_version_id"]
+        for hit in query_selected_family_anchor_hits_v1(
+            path,
+            selected_page_json_version_ids=[specialized["page_json_version_id"]],
+            anchor_aliases=["Cho vay các TCKT"],
+        )
+    ] == [specialized["page_json_version_id"]]
+    assert (
+        load_page_json_versions_v1(
+            path, page_json_version_ids=[specialized["page_json_version_id"]]
+        )[0]["prompt_variant"]
+        == "schema_alignment"
+    )
+    assert (
+        document_page_extraction_frontier_v1(
+            path,
+            source_sha256="b" * 64,
+            source_logical_name="report.pdf",
+            expected_physical_pages=[7, 8],
+            render_dpi=200,
+        )[7]["prompt_variant"]
+        == "schema_alignment"
+    )
+
+
+@pytest.mark.parametrize(
+    ("statement", "parameters", "error"),
+    [
+        (
+            "UPDATE extraction_run SET prompt_sha256=? WHERE prompt_variant=?",
+            ("0" * 64, "schema_alignment"),
+            "specialized extraction store receipt does not match authorization",
+        ),
+        (
+            "UPDATE extraction_run SET prompt_variant=? WHERE prompt_variant=?",
+            ("simple", "schema_alignment"),
+            "specialized extraction receipt prompt variant drifted",
+        ),
+        (
+            "UPDATE page SET image_sha256=? WHERE physical_page=?",
+            ("0" * 64, 7),
+            "specialized extraction store receipt does not match authorization",
+        ),
+        (
+            "UPDATE provider_attempt SET outcome=? WHERE provider=?",
+            ("FORGED", "AGY_CLI"),
+            "specialized extraction store receipt does not match authorization",
+        ),
+    ],
+)
+def test_schema_alignment_receipt_rejects_store_tamper(
+    tmp_path, monkeypatch, statement, parameters, error
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    specialized = _ingest(
+        path,
+        prompt_sha256="f" * 64,
+        prompt_variant="schema_alignment",
+        response_schema_sha256=canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
+        requested_service_tier="agy-low",
+        provider_result=_agy_low_result(),
+    )
+    _register_specialized_test_receipt_v1(
+        monkeypatch,
+        tmp_path,
+        store=path,
+        page_json_version_id=specialized["page_json_version_id"],
+    )
+    with sqlite3.connect(path) as connection:
+        connection.execute(statement, parameters)
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match=error):
+        selected_page_extraction_receipts_v1(
+            path, page_json_version_ids=[specialized["page_json_version_id"]]
+        )
+
+
+def test_schema_alignment_receipt_rejects_registry_drift_unknown_and_duplicate(
+    tmp_path, monkeypatch
+) -> None:
+    path = tmp_path / "store.sqlite3"
+    initialize_gemini_financial_page_store_v1(path)
+    kwargs = {
+        "prompt_sha256": "f" * 64,
+        "prompt_variant": "schema_alignment",
+        "response_schema_sha256": canonical_json_sha256_v1(
+            financial_page_json_response_schema_v1()
+        ),
+        "requested_service_tier": "agy-low",
+        "provider_result": _agy_low_result(),
+    }
+    authorized = _ingest(path, **kwargs)
+    unregistered = _ingest(
+        path,
+        physical_page=8,
+        image_sha256="8" * 64,
+        **kwargs,
+    )
+    ordinary = _ingest(
+        path,
+        physical_page=9,
+        image_sha256="9" * 64,
+        prompt_sha256="d" * 64,
+        prompt_variant="simple",
+    )
+    unknown = _ingest(
+        path,
+        physical_page=10,
+        image_sha256="a" * 64,
+        prompt_sha256="a" * 64,
+        prompt_variant="unknown-specialized-prompt",
+    )
+    registry_path = _register_specialized_test_receipt_v1(
+        monkeypatch,
+        tmp_path,
+        store=path,
+        page_json_version_id=authorized["page_json_version_id"],
+    )
+
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="frontier is invalid"):
+        selected_page_extraction_receipts_v1(
+            path,
+            page_json_version_ids=[
+                authorized["page_json_version_id"],
+                authorized["page_json_version_id"],
+            ],
+        )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="is not registered"):
+        selected_page_extraction_receipts_v1(
+            path, page_json_version_ids=[unregistered["page_json_version_id"]]
+        )
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="order or prompt is invalid"):
+        selected_page_extraction_receipts_v1(
+            path, page_json_version_ids=[unknown["page_json_version_id"]]
+        )
+    ordered = selected_page_extraction_receipts_v1(
+        path,
+        page_json_version_ids=[
+            ordinary["page_json_version_id"],
+            authorized["page_json_version_id"],
+        ][::-1],
+    )
+    assert [item["page_json_version_id"] for item in ordered] == [
+        authorized["page_json_version_id"],
+        ordinary["page_json_version_id"],
+    ]
+
+    registry_path.write_bytes(registry_path.read_bytes() + b" ")
+    with pytest.raises(GeminiFinancialPageStoreV1Error, match="registry content drifted"):
+        selected_page_extraction_receipts_v1(
+            path, page_json_version_ids=[authorized["page_json_version_id"]]
+        )
 
 
 def test_selected_family_query_fails_closed_on_invalid_frontier_or_anchor_assignment(

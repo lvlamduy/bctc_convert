@@ -10,7 +10,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Thu nhập từ hoạt động khác", "Thu nhập hoạt động khác"], "within_role": null}
+        {"aliases": ["Thu nhập từ hoạt động khác", "Thu nhập hoạt động khác", "Thu nhập hoạt động kinh doanh khác", "Thu từ hoạt động khác"], "within_role": null}
       ],
       "presence": "OPTIONAL",
       "role": "INCOME_PARENT",
@@ -31,12 +31,26 @@
             "Chuyển nhượng, thanh lý tài sản",
             "Thu lãi trả chậm từ thanh lý tài sản",
             "Thu nhập từ chuyển nhượng, thanh lý tài sản",
+            "Thu nhập thuần từ thanh lý tài sản cố định",
             "Thu nhập từ thanh lý tài sản cố định",
+            "Thu nhập từ thanh lý tài sản gán xiết nợ",
             "Thu nhập từ thanh lý tài sản khác",
+            "Thu bán tài sản gán nợ",
+            "Thu từ bán tài sản gán nợ",
+            "Thu thanh lý tài sản cố định",
+            "Thu từ chuyển nhượng thanh lý tài sản",
+            "Thu từ thanh lý tài sản",
+            "Thu từ thanh lý, nhượng bán tài sản cố định",
             "Thu từ thanh lý tài sản cố định",
             "Thu từ thanh lý tài sản khác"
           ],
           "within_role": "INCOME_PARENT"
+        },
+        {
+          "aliases": [
+            "Thu bán tài sản gán nợ"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -52,7 +66,8 @@
             "Thu nhập về các công cụ tài chính phái sinh khác",
             "Thu từ các công cụ tài chính phái sinh khác",
             "Thu từ các giao dịch phái sinh hàng hóa và lãi suất",
-            "Thu từ nghiệp vụ hoán đổi lãi suất"
+            "Thu từ nghiệp vụ hoán đổi lãi suất",
+            "Thu từ các hợp đồng hoán đổi lãi suất"
           ],
           "within_role": "INCOME_PARENT"
         },
@@ -83,10 +98,15 @@
             "Thu hồi nợ xấu,nợ đã xử lý, nợ đã xóa sổ trước đây",
             "Thu hồi nợ xấu đã sử dụng dự phòng để xử lý rủi ro",
             "Thu hồi nợ đã xử lý rủi ro",
+            "Thu hồi các khoản nợ đã xóa",
             "Thu nhập từ các khoản cho vay đã xử lý bằng quỹ dự phòng rủi ro",
             "Thu nhập từ nợ xấu đã được xử lý",
             "Thu nhập từ nợ đã xử lý rủi ro",
             "Thu từ các khoản nợ đã xử lý",
+            "Thu từ các khoản nợ đã được xử lý",
+            "Thu từ các khoản nợ đã được xử lý trước đây",
+            "Thu từ các khoản nợ đã được xử lý xoá, bù đắp bằng nguồn rủi ro",
+            "Thu nợ khó đòi đã xử lý bằng dự phòng rủi ro",
             "Thu từ nợ xấu đã được xử lý",
             "Thu từ nợ đã xử lý rủi ro"
           ],
@@ -95,6 +115,8 @@
         {
           "aliases": [
             "Thu từ các khoản nợ đã xử lý",
+            "Thu hồi các khoản nợ đã xóa",
+            "Thu nợ khó đòi đã xử lý bằng dự phòng rủi ro",
             "Thu từ nợ xấu đã được xử lý",
             "Thu từ nợ đã xử lý rủi ro"
           ],
@@ -107,7 +129,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Thu từ hoạt động kinh doanh bất động sản"], "within_role": "INCOME_PARENT"}
+        {"aliases": ["Lãi từ thanh lý bất động sản đầu tư", "Thu từ hoạt động kinh doanh bất động sản"], "within_role": "INCOME_PARENT"}
       ],
       "presence": "OPTIONAL",
       "role": "INCOME_REAL_ESTATE",
@@ -127,8 +149,11 @@
           "aliases": [
             "Thu từ hoạt động bán nợ",
             "Thu từ hoạt động mua bán nợ",
+            "Thu từ nghiệp vụ bán nợ",
+            "Thu nghiệp vụ mua bán nợ",
             "Thu nhập từ nghiệp vụ bán nợ",
-            "Thu từ nghiệp vụ mua bán nợ"
+            "Thu từ nghiệp vụ mua bán nợ",
+            "Thu về nghiệp vụ mua bán nợ"
           ],
           "within_role": "INCOME_PARENT"
         }
@@ -139,7 +164,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Hoàn nhập dự phòng", "Thu từ hoàn nhập dự phòng"], "within_role": "INCOME_PARENT"}
+        {"aliases": ["Hoàn nhập dự phòng", "Thu từ hoàn nhập dự phòng", "Thu từ hoàn nhập các khoản phải thu"], "within_role": "INCOME_PARENT"}
       ],
       "presence": "OPTIONAL",
       "role": "INCOME_PROVISION_REVERSAL",
@@ -154,10 +179,21 @@
             "Thu nhập khác",
             "Thu nhập hỗ trợ và thu nhập khác",
             "Thu nhập từ hoạt động kinh doanh khác",
+            "Thu nhập từ hoạt động cho thuê tài sản",
             "Thu từ hoạt động kinh doanh khác",
-            "Thu từ phạt vi phạm hợp đồng"
+            "Thu từ hoạt động hỗ trợ đại lý bảo hiểm",
+            "Thu về hoạt động kinh doanh khác",
+            "Thu từ phạt vi phạm hợp đồng",
+            "Hoàn ứng chi phí hoạt động",
+            "Thu phạt đặt cọc thuê tòa nhà Viet Capital Center (*)"
           ],
           "within_role": "INCOME_PARENT"
+        },
+        {
+          "aliases": [
+            "Thu khác"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -166,7 +202,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Chi phí từ hoạt động khác", "Chi phí hoạt động khác", "Chi phí cho hoạt động khác"], "within_role": null}
+        {"aliases": ["Chi phí từ hoạt động khác", "Chi phí hoạt động khác", "Chi phí hoạt động kinh doanh khác", "Chi phí cho hoạt động khác", "Chi phí liên quan đến hoạt động khác", "Chi phí khác", "Chi từ hoạt động khác"], "within_role": null}
       ],
       "presence": "OPTIONAL",
       "role": "EXPENSE_PARENT",
@@ -183,7 +219,9 @@
             "Chi phí từ giao dịch phái sinh hàng hóa và lãi suất",
             "Chi từ các công cụ phái sinh khác",
             "Chi từ các công cụ tài chính phái sinh khác",
-            "Chi về các công cụ tài chính phái sinh khác"
+            "Chi về các công cụ tài chính phái sinh khác",
+            "Chi về các hợp đồng hoán đổi lãi suất",
+            "Lỗ từ hợp đồng hoán đổi lãi suất"
           ],
           "within_role": "EXPENSE_PARENT"
         }
@@ -198,6 +236,11 @@
           "aliases": [
             "Chuyển nhượng, thanh lý tài sản",
             "Chi phí từ chuyển nhượng, thanh lý tài sản",
+            "Chi thanh lý tài sản cố định",
+            "Chi từ thanh lý tài sản khác",
+            "Chi từ thanh lý, nhượng bán tài sản cố định",
+            "Chi phí từ thanh lý tài sản cố định",
+            "Tài sản cố định giảm trong kỳ",
             "Chi về thanh lý tài sản cố định",
             "Chi về thanh lý tài sản khác"
           ],
@@ -210,7 +253,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Chi từ nghiệp vụ mua bán nợ", "Chi về nghiệp vụ bán nợ"], "within_role": "EXPENSE_PARENT"}
+        {"aliases": ["Chi từ nghiệp vụ mua bán nợ", "Chi về nghiệp vụ bán nợ", "Chi về nghiệp vụ mua bán nợ"], "within_role": "EXPENSE_PARENT"}
       ],
       "presence": "OPTIONAL",
       "role": "EXPENSE_DEBT_SALE",
@@ -218,7 +261,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Chi công tác xã hội", "Chi hỗ trợ công tác xã hội"], "within_role": "EXPENSE_PARENT"}
+        {"aliases": ["Chi công tác xã hội", "Chi hỗ trợ công tác xã hội", "Chi phí cho hoạt động công tác xã hội"], "within_role": "EXPENSE_PARENT"}
       ],
       "presence": "OPTIONAL",
       "role": "EXPENSE_SOCIAL",
@@ -240,6 +283,8 @@
             "Chi khác",
             "Chi phí khác",
             "Chi phí tài trợ khác",
+            "Chi phí xử lý nợ, chi phí khác",
+            "Chi phí liên quan đến hoạt động kinh doanh khác",
             "Chi về hoạt động kinh doanh khác"
           ],
           "within_role": "EXPENSE_PARENT"
@@ -268,6 +313,8 @@
       "Lỗ thuần từ hoạt động khác",
       "Lãi thuần từ hoạt động kinh doanh khác",
       "Lãi/lỗ thuần từ hoạt động kinh doanh khác",
+      "Lãi/lỗ thuần từ các hoạt động kinh doanh khác",
+      "Lãi lỗ từ hoạt động khác",
       "Lãi thuần"
     ],
     "resolution_mode": "EXPLICIT_ONLY",

@@ -17,7 +17,7 @@
     {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
     {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
     {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
-    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+    {"accepted": true, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
   ],
   "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
   "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",

@@ -11,7 +11,7 @@ import re
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import date
-from typing import Any
+from typing import Any, NamedTuple
 
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
     compile_accounting_family_topology_spec_v1,
@@ -44,6 +44,23 @@ _DIGITS = re.compile(r"^\d+$")
 _GROUPED = re.compile(r"^\d{1,3}(?:[., ]\d{3})+$")
 _PERIOD_ROLES = ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
 _ROLE_KINDS = {"ADDITIVE_CHILD", "STRUCTURAL_GROUP"}
+_RELATIVE_PERIOD_RESTATEMENT_SUFFIXES = {
+    "",
+    "nay",
+    "da duoc trinh bay lai",
+    "da trinh bay lai",
+    "duoc trinh bay lai",
+    "trinh bay lai",
+}
+
+
+class _PeriodToken(NamedTuple):
+    """One exact visible period carrier without inventing a cutoff date."""
+
+    period_end: date | None
+    role_hint: str | None
+    period_year: int | None
+    label: str
 
 
 class GeminiJsonStackedPeriodAccountingFamilyV1Error(ValueError):
@@ -323,22 +340,118 @@ def compile_gemini_json_stacked_period_family_specs_v1(
     }
 
 
-def _date_token(value: Any) -> tuple[date, str] | None:
+def _relative_period_role(value: str) -> str | None:
+    matches = []
+    for prefixes, role in (
+        (
+            (
+                "tai ngay cuoi ky",
+                "tai ngay cuoi quy",
+                "tai ngay cuoi nam",
+                "so du cuoi ky",
+                "so du cuoi quy",
+                "so du cuoi nam",
+                "so cuoi ky",
+                "so cuoi quy",
+                "so cuoi nam",
+                "cuoi ky",
+                "cuoi quy",
+                "cuoi nam",
+            ),
+            "CURRENT_PERIOD",
+        ),
+        (
+            (
+                "tai ngay dau ky",
+                "tai ngay dau quy",
+                "tai ngay dau nam",
+                "so du dau ky",
+                "so du dau quy",
+                "so du dau nam",
+                "so dau ky",
+                "so dau quy",
+                "so dau nam",
+                "dau ky",
+                "dau quy",
+                "dau nam",
+            ),
+            "COMPARATIVE_PERIOD",
+        ),
+    ):
+        for prefix in prefixes:
+            if value == prefix:
+                matches.append(role)
+                break
+            if not value.startswith(prefix + " "):
+                continue
+            suffix = value[len(prefix) + 1 :]
+            if (
+                suffix in _RELATIVE_PERIOD_RESTATEMENT_SUFFIXES
+                or _DATE_DMY.fullmatch(suffix) is not None
+                or _DATE_WORDS.fullmatch(suffix) is not None
+                or _YEAR.fullmatch(suffix) is not None
+            ):
+                matches.append(role)
+                break
+    return matches[0] if len(set(matches)) == 1 else None
+
+
+def _date_token(value: Any) -> _PeriodToken | None:
     folded = _normalized(value)
     if not folded:
         return None
+    # A bounded visible list marker (``1 Tại ngày cuối kỳ``) is presentation,
+    # not part of the period phrase. Keep the original surface for the
+    # receipt while classifying the exact text after that marker.
+    relative_surface = re.sub(
+        r"^(?:[ivxlcdm]+[.)]|\d+(?:[.)]|\s*[-–—])?)\s+",
+        "",
+        folded,
+    )
+    role_hint = _relative_period_role(relative_surface)
     match = _DATE_DMY.search(folded) or _DATE_WORDS.search(folded)
     if match is not None:
         try:
             parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
         except ValueError:
             return None
-        return parsed, match.group(0)
+        return _PeriodToken(parsed, role_hint, parsed.year, match.group(0))
     years = _YEAR.findall(folded)
     if len(set(years)) == 1:
         year = int(years[0])
-        return date(year, 12, 31), years[0]
+        return _PeriodToken(None, role_hint, year, folded if role_hint else years[0])
+    if role_hint is not None:
+        return _PeriodToken(None, role_hint, None, folded)
     return None
+
+
+def _period_identity(token: _PeriodToken) -> tuple[str, str]:
+    if token.period_end is not None:
+        return "DATE", token.period_end.isoformat()
+    if token.role_hint is not None:
+        return "ROLE", token.role_hint
+    if token.period_year is not None:
+        return "YEAR", str(token.period_year)
+    raise _error("Gemini JSON stacked-period period token has no identity")
+
+
+def _merged_period_token(tokens: Sequence[_PeriodToken]) -> _PeriodToken | None:
+    if not tokens:
+        return None
+    dates = {token.period_end for token in tokens if token.period_end is not None}
+    roles = {token.role_hint for token in tokens if token.role_hint is not None}
+    years = {token.period_year for token in tokens if token.period_year is not None}
+    if len(dates) > 1 or len(roles) > 1 or len(years) > 1:
+        return None
+    period_end = next(iter(dates), None)
+    role_hint = next(iter(roles), None)
+    period_year = next(iter(years), None)
+    if period_end is not None:
+        if period_year is not None and period_year != period_end.year:
+            return None
+        period_year = period_end.year
+    labels = sorted({token.label for token in tokens})
+    return _PeriodToken(period_end, role_hint, period_year, " / ".join(labels))
 
 
 def _money(value: Any) -> dict[str, Any]:
@@ -413,7 +526,12 @@ def _infer_ordered_structural_owners_v1(
                     current_structural_role = None
 
 
-def _column_lane_roles(columns: list[dict[str, Any]], layout: dict[str, Any]) -> list[str]:
+def _column_lane_roles(
+    columns: list[dict[str, Any]],
+    layout: dict[str, Any],
+    *,
+    column_period_tokens: Sequence[_PeriodToken | None],
+) -> list[str]:
     declared = {item["role"]: item for item in layout["lane_roles"]}
     primary: list[str | None] = []
     for column in columns:
@@ -457,9 +575,102 @@ def _column_lane_roles(columns: list[dict[str, Any]], layout: dict[str, Any]) ->
                 conditional_roles.append(conditional["role"])
         if len(set(conditional_roles)) == 1:
             result[index] = conditional_roles[0]
+    if all(role is None for role in result):
+        identities = [
+            _period_identity(token) if token is not None else None for token in column_period_tokens
+        ]
+        unique_identities = {identity for identity in identities if identity is not None}
+        singleton_sequences = [
+            sequence for sequence in layout["allowed_lane_role_sequences"] if len(sequence) == 1
+        ]
+        if (
+            len(unique_identities) == 2
+            and all(identity is not None for identity in identities)
+            and all(identities.count(identity) == 1 for identity in unique_identities)
+            and len(singleton_sequences) == 1
+        ):
+            result = [singleton_sequences[0][0] for _column in columns]
     if any(role is None for role in result):
         raise _error("Gemini JSON stacked-period column lane is unresolved")
-    return [str(role) for role in result]
+    resolved = [str(role) for role in result]
+    allowed = layout["allowed_lane_role_sequences"]
+    identities = [
+        _period_identity(token) if token is not None else None for token in column_period_tokens
+    ]
+    unique_identities = {identity for identity in identities if identity is not None}
+    if len(unique_identities) == 2 and all(identity is not None for identity in identities):
+        compressed = [
+            identity
+            for index, identity in enumerate(identities)
+            if index == 0 or identity != identities[index - 1]
+        ]
+        if len(compressed) != 2 or set(compressed) != unique_identities:
+            raise _error("Gemini JSON stacked-period horizontal period groups are not contiguous")
+        sequences = [
+            [role for role, found in zip(resolved, identities, strict=True) if found == identity]
+            for identity in compressed
+        ]
+    else:
+        sequences = [resolved]
+    if any(sequence not in allowed for sequence in sequences):
+        raise _error("Gemini JSON stacked-period lane sequence is not declared")
+    return resolved
+
+
+def _semantic_money_table_axes(
+    columns: list[dict[str, Any]], rows: list[dict[str, Any]]
+) -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[int],
+    list[tuple[int, dict[str, Any]]],
+]:
+    """Remove one exact row-ordinal control column from the money frontier."""
+
+    non_money = [
+        index for index, column in enumerate(columns) if column.get("value_kind") != "MONEY"
+    ]
+    if not non_money:
+        return columns, rows, list(range(1, len(columns) + 1)), []
+    if len(non_money) != 1:
+        raise _error("Gemini JSON stacked-period candidate has a non-money lane")
+    control_index = non_money[0]
+    control_column = columns[control_index]
+    header = _normalized(
+        " ".join(
+            str(value) for value in control_column.get("header_path_exact", []) if value is not None
+        )
+    )
+    if header not in {"", "stt", "so thu tu"}:
+        raise _error("Gemini JSON stacked-period candidate has a non-money lane")
+    filtered_rows = []
+    for row in rows:
+        values = row.get("values_exact")
+        if type(values) is not list or len(values) != len(columns):
+            raise _error("Gemini JSON stacked-period row value axis is invalid")
+        marker = values[control_index]
+        if marker is not None and str(marker).strip() not in {"", "-", "–", "—", "_"}:
+            # ``row_kind`` is advisory model interpretation.  Some banks put
+            # a visible list number on a structural parent but Gemini calls
+            # that row ITEM.  A blank/STT column whose populated surface is
+            # itself only a bounded Arabic/Roman ordinal remains exact
+            # presentation control evidence regardless of that advisory kind.
+            if re.fullmatch(r"(?:\d{1,2}|[ivxlcdm]+)", _normalized(marker)) is None:
+                raise _error("Gemini JSON stacked-period non-money lane is not an ordinal control")
+        filtered_rows.append(
+            {
+                **row,
+                "values_exact": [
+                    value for index, value in enumerate(values) if index != control_index
+                ],
+            }
+        )
+    return (
+        [column for index, column in enumerate(columns) if index != control_index],
+        filtered_rows,
+        [index + 1 for index in range(len(columns)) if index != control_index],
+        [(control_index + 1, control_column)],
+    )
 
 
 def _row_role(
@@ -505,16 +716,16 @@ def _table_periods(
     rows: list[dict[str, Any]],
     *,
     section_context: Sequence[Any],
-    table_period_fallback: tuple[date, str] | None = None,
-) -> tuple[list[tuple[date, str] | None], list[tuple[date, str] | None]]:
-    column_dates = []
+    table_period_fallback: _PeriodToken | None = None,
+) -> tuple[list[_PeriodToken | None], list[_PeriodToken | None]]:
+    column_dates: list[_PeriodToken | None] = []
     for column in columns:
         tokens = [
             token
             for value in column["header_path_exact"]
             if (token := _date_token(value)) is not None
         ]
-        column_dates.append(tokens[0] if len({token[0] for token in tokens}) == 1 else None)
+        column_dates.append(_merged_period_token(tokens))
     title_token = _date_token(table.get("title_exact"))
     section_tokens = [
         token for value in section_context if (token := _date_token(value)) is not None
@@ -524,28 +735,25 @@ def _table_periods(
     # itself has no exact period carrier.
     table_token = title_token
     if table_token is None:
-        table_token = (
-            section_tokens[0]
-            if len({token[0] for token in section_tokens}) == 1
-            else table_period_fallback
-        )
-    unique_column_dates = {token[0] for token in column_dates if token is not None}
+        table_token = _merged_period_token(section_tokens) or table_period_fallback
+    unique_column_dates = {_period_identity(token) for token in column_dates if token is not None}
     if len(unique_column_dates) == 1:
         representative = next(token for token in column_dates if token is not None)
         column_dates = [token or representative for token in column_dates]
     row_dates = []
     preceding_row_token = None
     for row in rows:
-        tokens = [
-            token
-            for value in row.get("hierarchy_path_exact", [])
-            if (token := _date_token(value)) is not None
-        ]
-        explicit = tokens[0] if len({token[0] for token in tokens}) == 1 else None
+        row_surfaces = list(row.get("hierarchy_path_exact", []))
+        if row.get("label_exact") not in row_surfaces:
+            row_surfaces.append(row.get("label_exact"))
+        tokens = [token for value in row_surfaces if (token := _date_token(value)) is not None]
+        explicit = _merged_period_token(tokens)
         if explicit is not None:
             preceding_row_token = explicit
         row_dates.append(explicit or preceding_row_token)
-    has_row_period_axis = len({token[0] for token in row_dates if token is not None}) >= 2
+    has_row_period_axis = (
+        len({_period_identity(token) for token in row_dates if token is not None}) >= 2
+    )
     if has_row_period_axis:
         # Stacked row-period blocks are the local carrier.  Discard a broader
         # section/reporting date so it cannot create a third false period.
@@ -555,15 +763,63 @@ def _table_periods(
     return column_dates, row_dates
 
 
-def _period_roles(tokens: set[tuple[date, str]]) -> dict[date, tuple[str, str]]:
-    dates = sorted({token[0] for token in tokens}, reverse=True)
-    if len(dates) != 2:
+def _period_roles(tokens: set[_PeriodToken]) -> dict[_PeriodToken, tuple[str, str]]:
+    if not tokens:
         raise _error("Gemini JSON stacked-period region does not expose exactly two periods")
-    labels = {token[0]: token[1] for token in tokens}
-    return {
-        dates[0]: ("CURRENT_PERIOD", labels[dates[0]]),
-        dates[1]: ("COMPARATIVE_PERIOD", labels[dates[1]]),
+    token_roles: dict[_PeriodToken, str] = {}
+    dates = sorted(
+        {token.period_end for token in tokens if token.period_end is not None}, reverse=True
+    )
+    years = sorted(
+        {token.period_year for token in tokens if token.period_year is not None}, reverse=True
+    )
+    if len(dates) == 2:
+        role_by_date = {dates[0]: "CURRENT_PERIOD", dates[1]: "COMPARATIVE_PERIOD"}
+        for token in tokens:
+            role = role_by_date.get(token.period_end)
+            if role is None and token.role_hint is not None:
+                role = token.role_hint
+            elif role is None and token.period_year is not None:
+                matching = {
+                    found_role
+                    for found_date, found_role in role_by_date.items()
+                    if found_date.year == token.period_year
+                }
+                role = next(iter(matching)) if len(matching) == 1 else None
+            if role is None or (token.role_hint is not None and token.role_hint != role):
+                raise _error("Gemini JSON stacked-period period evidence conflicts")
+            token_roles[token] = role
+    elif len(dates) > 2:
+        raise _error("Gemini JSON stacked-period region does not expose exactly two periods")
+    elif len(years) == 2:
+        role_by_year = {years[0]: "CURRENT_PERIOD", years[1]: "COMPARATIVE_PERIOD"}
+        for token in tokens:
+            role = role_by_year.get(token.period_year)
+            if role is None and token.role_hint is not None:
+                role = token.role_hint
+            if role is None or (token.role_hint is not None and token.role_hint != role):
+                raise _error("Gemini JSON stacked-period period evidence conflicts")
+            token_roles[token] = role
+    elif {token.role_hint for token in tokens if token.role_hint is not None} == set(_PERIOD_ROLES):
+        if any(token.role_hint is None for token in tokens):
+            raise _error("Gemini JSON stacked-period period evidence conflicts")
+        token_roles = {token: str(token.role_hint) for token in tokens}
+    else:
+        raise _error("Gemini JSON stacked-period region does not expose exactly two periods")
+    if set(token_roles.values()) != set(_PERIOD_ROLES):
+        raise _error("Gemini JSON stacked-period region does not expose exactly two periods")
+    labels_by_role = {
+        role: sorted(
+            (token for token, found_role in token_roles.items() if found_role == role),
+            key=lambda token: (
+                token.period_end is None,
+                token.period_year is None,
+                token.label,
+            ),
+        )[0].label
+        for role in _PERIOD_ROLES
     }
+    return {token: (role, labels_by_role[role]) for token, role in token_roles.items()}
 
 
 def _sum(records: Sequence[dict[str, Any]], lane_roles: Sequence[str]) -> dict[str, int]:
@@ -672,6 +928,12 @@ def _presentation_net_equation_receipt_v1(
                 and visible_cell["coefficient"] == -computed
             ):
                 binding_kind = "ASSET_LIABILITY_SIDE_PLACED_MAGNITUDE"
+            elif (
+                computed < 0
+                and visible_lane == "LIABILITY_CARRYING_VALUE"
+                and visible_cell["coefficient"] == computed
+            ):
+                binding_kind = "ASSET_LIABILITY_SIDE_PLACED_SIGNED_VALUE"
         if binding_kind is not None:
             exact.append(
                 {
@@ -684,14 +946,33 @@ def _presentation_net_equation_receipt_v1(
                     "visible_lane_role": visible_lane,
                 }
             )
-    if len(exact) != 1:
+    if not exact:
         return None
-    return {
+    result = {
         "equation_kind": "VISIBLE_NET_PRESENTATION_EQUATION",
-        "matching_alternative": exact[0],
         "period_role": presentation["period_role"],
         "row_id": presentation["row_id"],
     }
+    if len(exact) == 1:
+        result["matching_alternative"] = exact[0]
+        return result
+    # A zero component can make the declared + and - alternatives identical.
+    # This is not a choice between different values: retain every exact
+    # alternative only when their visible and computed outcomes are identical.
+    outcome_keys = {
+        (
+            alternative["binding_kind"],
+            alternative["computed_signed_value"],
+            alternative["result_lane_role"],
+            alternative["visible_coefficient"],
+            alternative["visible_lane_role"],
+        )
+        for alternative in exact
+    }
+    if len(outcome_keys) != 1:
+        return None
+    result["matching_alternatives"] = exact
+    return result
 
 
 def _candidate_id_material(candidate: dict[str, Any]) -> dict[str, Any]:
@@ -732,9 +1013,9 @@ def evaluate_gemini_json_stacked_period_family_region_v1(
     layout = compiled_specs["layout"]
     role_kinds = {child["role"]: child["role_kind"] for child in topology["children"]}
     raw_tables = []
-    tokens: set[tuple[date, str]] = set()
+    tokens: set[_PeriodToken] = set()
     reasons: list[str] = []
-    period_fallback_by_ref: dict[tuple[str, str], tuple[date, str]] = {}
+    period_fallback_by_ref: dict[tuple[str, str], _PeriodToken] = {}
     selected_by_section: dict[str, list[tuple[str, dict[str, Any], dict[str, Any]]]] = defaultdict(
         list
     )
@@ -747,7 +1028,9 @@ def evaluate_gemini_json_stacked_period_family_region_v1(
             if "chi tiet" not in _normalized(value) or "tai ngay" not in _normalized(value):
                 continue
             token = _date_token(value)
-            if token is not None and token[0] not in {item[0] for item in ordered_tokens}:
+            if token is not None and _period_identity(token) not in {
+                _period_identity(item) for item in ordered_tokens
+            }:
                 ordered_tokens.append(token)
         if len(tables_in_section) == len(ordered_tokens) and len(ordered_tokens) in {1, 2}:
             for (table_id, _section, _table), token in zip(
@@ -761,7 +1044,9 @@ def evaluate_gemini_json_stacked_period_family_region_v1(
             reasons.append(f"TABLE_AXIS_INCOMPLETE:{section_id}:{table_id}")
             continue
         try:
-            lane_roles = _column_lane_roles(columns, layout)
+            columns, rows, source_column_ordinals, control_columns = _semantic_money_table_axes(
+                columns, rows
+            )
             column_dates, row_dates = _table_periods(
                 table,
                 columns,
@@ -769,12 +1054,28 @@ def evaluate_gemini_json_stacked_period_family_region_v1(
                 section_context=[section.get("title_exact")],
                 table_period_fallback=period_fallback_by_ref.get((section_id, table_id)),
             )
+            lane_roles = _column_lane_roles(
+                columns,
+                layout,
+                column_period_tokens=column_dates,
+            )
         except GeminiJsonStackedPeriodAccountingFamilyV1Error as exc:
             reasons.append(f"TABLE_AXIS_ERROR:{section_id}:{table_id}:{exc}")
             continue
         tokens.update(token for token in column_dates + row_dates if token is not None)
         raw_tables.append(
-            (section_id, table_id, table, columns, rows, lane_roles, column_dates, row_dates)
+            (
+                section_id,
+                table_id,
+                table,
+                columns,
+                rows,
+                lane_roles,
+                column_dates,
+                row_dates,
+                source_column_ordinals,
+                control_columns,
+            )
         )
     try:
         period_by_date = _period_roles(tokens)
@@ -794,16 +1095,33 @@ def evaluate_gemini_json_stacked_period_family_region_v1(
         lane_roles,
         column_dates,
         row_dates,
+        source_column_ordinals,
+        control_columns,
     ) in raw_tables:
-        for ordinal, (column, lane_role, token) in enumerate(
-            zip(columns, lane_roles, column_dates, strict=True), start=1
+        for ordinal, control_column in control_columns:
+            column_receipts.append(
+                {
+                    "column_ordinal": ordinal,
+                    "header_path_exact": canonical_clone_v1(control_column["header_path_exact"]),
+                    "lane_role": "SOURCE_ONLY_CONTROL",
+                    "period_role": None,
+                    "section_id": section_id,
+                    "table_id": table_id,
+                }
+            )
+        for column, lane_role, token, ordinal in zip(
+            columns,
+            lane_roles,
+            column_dates,
+            source_column_ordinals,
+            strict=True,
         ):
             column_receipts.append(
                 {
                     "column_ordinal": ordinal,
                     "header_path_exact": canonical_clone_v1(column["header_path_exact"]),
                     "lane_role": lane_role,
-                    "period_role": period_by_date.get(token[0], (None, None))[0] if token else None,
+                    "period_role": period_by_date.get(token, (None, None))[0] if token else None,
                     "section_id": section_id,
                     "table_id": table_id,
                 }
@@ -817,16 +1135,20 @@ def evaluate_gemini_json_stacked_period_family_region_v1(
             role, owner = _row_role(row, topology=topology, aliases_by_role=aliases_by_role)
             values_by_period_lane: dict[tuple[str, str], dict[str, Any]] = {}
             try:
-                for column_ordinal, (source, lane_role, column_token) in enumerate(
-                    zip(values, lane_roles, column_dates, strict=True), start=1
+                for source, lane_role, column_token, column_ordinal in zip(
+                    values,
+                    lane_roles,
+                    column_dates,
+                    source_column_ordinals,
+                    strict=True,
                 ):
                     # A visible row-period group is more local than a table or
                     # section date.  Horizontal tables have no row token and
                     # therefore continue to use their per-column dates.
                     token = row_token or column_token
-                    if token is None or token[0] not in period_by_date:
+                    if token is None or token not in period_by_date:
                         raise _error("one valued row has no exact period carrier")
-                    period_role, resolved_period = period_by_date[token[0]]
+                    period_role, resolved_period = period_by_date[token]
                     cell = {
                         **_money(source),
                         "column_ordinal": column_ordinal,
@@ -885,9 +1207,19 @@ def evaluate_gemini_json_stacked_period_family_region_v1(
                     presentations_by_period[period_role].append(record)
                 elif (
                     row.get("row_kind") == "TOTAL"
-                    or (row.get("row_kind") == "SUBTOTAL" and row.get("label_exact") is None)
+                    or (
+                        row.get("row_kind") == "SUBTOTAL"
+                        and (
+                            row.get("label_exact") is None
+                            or normalized_label in {"tong", "tong cong"}
+                        )
+                    )
                     or is_labeled_period_total
                 ):
+                    if is_labeled_period_total and any(
+                        cell["source_text"] is None for cell in values_by_lane.values()
+                    ):
+                        record["total_binding_kind"] = "LABELED_PERIOD_PARTIAL_LANE_TOTAL"
                     totals_by_period[period_role].append(record)
                 elif has_value and row.get("row_kind") not in {"GROUP", "HEADER"}:
                     reasons.append(
@@ -997,29 +1329,56 @@ def evaluate_gemini_json_stacked_period_family_region_v1(
             continue
         direct_sum = _sum(list(unique_direct.values()), lanes)
         if totals:
-            total = {
-                lane: totals[0]["values_by_lane"].get(lane, {"coefficient": 0})["coefficient"]
-                for lane in lanes
-            }
-            total_record = {
-                **totals[0],
-                "role": topology["parent"]["role"],
-            }
-            receipt, reason = _visible_lane_equation_receipt(
-                total_record,
-                equations=compiled_specs["schema"]["accounting_equations"],
-            )
-            if receipt is not None:
-                equation_receipts.append(receipt)
-            if reason is not None:
-                reasons.append(reason)
-            if direct_sum != total:
-                reasons.append(
-                    "VISIBLE_FAMILY_TOTAL_NOT_EXACT_DIRECT_FRONTIER:"
-                    f"{period_role}:{totals[0]['row_id']}"
+            if totals[0].get("total_binding_kind") == "LABELED_PERIOD_PARTIAL_LANE_TOTAL":
+                visible_lanes = sorted(
+                    lane
+                    for lane, cell in totals[0]["values_by_lane"].items()
+                    if cell["source_text"] is not None
                 )
-                continue
-            result_carrier = totals[0]["row_id"]
+                if not visible_lanes or any(
+                    totals[0]["values_by_lane"][lane]["coefficient"] != direct_sum[lane]
+                    for lane in visible_lanes
+                ):
+                    reasons.append(
+                        "VISIBLE_PARTIAL_PERIOD_TOTAL_NOT_EXACT_DIRECT_FRONTIER:"
+                        f"{period_role}:{totals[0]['row_id']}"
+                    )
+                    continue
+                equation_receipts.append(
+                    {
+                        "equation_kind": "VISIBLE_PARTIAL_PERIOD_LANE_TOTAL",
+                        "period_role": period_role,
+                        "result_carrier": totals[0]["row_id"],
+                        "values_by_lane": {lane: direct_sum[lane] for lane in visible_lanes},
+                        "visible_lane_roles": visible_lanes,
+                    }
+                )
+                total = direct_sum
+                result_carrier = "NOT_PRINTED_EXHAUSTIVE_VISIBLE_DIRECT_FRONTIER"
+            else:
+                total = {
+                    lane: totals[0]["values_by_lane"].get(lane, {"coefficient": 0})["coefficient"]
+                    for lane in lanes
+                }
+                total_record = {
+                    **totals[0],
+                    "role": topology["parent"]["role"],
+                }
+                receipt, reason = _visible_lane_equation_receipt(
+                    total_record,
+                    equations=compiled_specs["schema"]["accounting_equations"],
+                )
+                if receipt is not None:
+                    equation_receipts.append(receipt)
+                if reason is not None:
+                    reasons.append(reason)
+                if direct_sum != total:
+                    reasons.append(
+                        "VISIBLE_FAMILY_TOTAL_NOT_EXACT_DIRECT_FRONTIER:"
+                        f"{period_role}:{totals[0]['row_id']}"
+                    )
+                    continue
+                result_carrier = totals[0]["row_id"]
         else:
             total = direct_sum
             result_carrier = "NOT_PRINTED_EXHAUSTIVE_VISIBLE_DIRECT_FRONTIER"

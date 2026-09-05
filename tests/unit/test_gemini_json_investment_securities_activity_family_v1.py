@@ -8,16 +8,18 @@ from typing import Any
 import pytest
 
 from bctc_ai.evaluation import gemini_json_region_repair_queue_v1 as repair_queue
+from bctc_ai.evaluation.gemini_json_investment_securities_activity_family_v1 import (
+    GeminiJsonInvestmentSecuritiesActivityFamilyV1Error,
+    build_gemini_json_investment_securities_activity_region_query_receipt_v1,
+    compile_gemini_json_investment_securities_activity_family_specs_v1,
+    evaluate_gemini_json_investment_securities_activity_family_cluster_v1,
+    validate_gemini_json_investment_securities_activity_family_candidate_replay_v1,
+)
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     NOT_OBSERVED,
     READY,
     UNRESOLVED,
-    GeminiJsonMultitableHierarchicalFamilyV1Error,
-    build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
     coalesce_gemini_json_multitable_hierarchical_document_v1,
-    compile_gemini_json_multitable_hierarchical_family_specs_v1,
-    evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
-    validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1,
 )
 from bctc_ai.evaluation.gemini_json_region_repair_v1 import (
     GeminiJsonRegionRepairV1Error,
@@ -38,7 +40,7 @@ def _json(name: str) -> dict[str, Any]:
 
 
 def _compiled() -> dict[str, Any]:
-    return compile_gemini_json_multitable_hierarchical_family_specs_v1(
+    return compile_gemini_json_investment_securities_activity_family_specs_v1(
         _json("tm-investment-securities-activity-topology-v1.json"),
         _json("tm-investment-securities-activity-evaluation-v1.json"),
         _json("tm-investment-securities-activity-schema-binding-v1.json"),
@@ -136,8 +138,10 @@ def _candidate_and_replay_inputs(
     assert cluster["status"] == READY
     regions = cluster["component_regions"]
     pages = {VERSION_ID: page}
-    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions)
-    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+    receipt = build_gemini_json_investment_securities_activity_region_query_receipt_v1(
+        regions
+    )
+    candidate = evaluate_gemini_json_investment_securities_activity_family_cluster_v1(
         regions=regions,
         page_json_by_version=pages,
         compiled_specs=_compiled(),
@@ -203,6 +207,189 @@ def test_investment_securities_vocabulary_and_other_role_are_declarative() -> No
         "OTHER_INVESTMENT_SECURITIES",
         "PROVISION_INVESTMENT_SECURITIES",
     }
+
+
+@pytest.mark.parametrize(
+    ("row_index", "label", "role"),
+    [
+        (0, "Lỗ thuần từ mua bán chứng khoán đầu tư", "FAMILY_ROOT_TOTAL"),
+        (0, "(Lỗ) thuần từ mua bán chứng khoán đầu tư", "FAMILY_ROOT_TOTAL"),
+        (0, "Lỗ thuần từ mua bán CK đầu tư", "FAMILY_ROOT_TOTAL"),
+        (0, "(Lỗ)/ lãi thuần từ mua bán CK đầu tư", "FAMILY_ROOT_TOTAL"),
+        (
+            1,
+            "Thu nhập từ mua bán chứng khoán sẵn sàng để bán",
+            "INCOME_INVESTMENT_SECURITIES",
+        ),
+        (
+            2,
+            "(Chi phí) về mua bán chứng khoán sẵn sàng để bán",
+            "EXPENSE_INVESTMENT_SECURITIES",
+        ),
+        (2, "Chi cho kinh doanh chứng khoán đầu tư", "EXPENSE_INVESTMENT_SECURITIES"),
+        (2, "Lỗ từ mua bán chứng khoán đầu tư", "EXPENSE_INVESTMENT_SECURITIES"),
+        (
+            3,
+            "(Chi phí)/Hoàn nhập dự phòng rủi ro chứng khoán đầu tư",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "(Chi phí)/Hoàn nhập dự phòng chứng khoán đầu tư",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Dự phòng / (hoàn nhập dự phòng) rủi ro chứr",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Dự phòng/ (Hoàn nhập) dự phòng chứng khoán đầu tư",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Dự phòng / (hoàn nhập dự phòng) rủi ro chứng khoán đầu tư",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Hoàn nhập/Trích lập dự phòng giảm giá chứng khoán đầu tư",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "(Trích lập)/hoàn nhập dự phòng giảm giá chứng khoán đầu tư",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Trích lập dự phòng rủi ro chứng khoán đầu tư",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Dự phòng chung chứng khoán đầu tư hoàn nhập trong kỳ",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Dự phòng cụ thể chứng khoán đầu tư trích lập trong kỳ",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Hoàn nhập dự phòng chung chứng khoán đầu tư",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Trích lập/(hoàn nhập) dự phòng rủi ro chứng khoán sẵn sàng để bán",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "(Trích lập)/hoàn nhập dự phòng rủi ro chứng khoán sẵn sàng để bán",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (3, "Hoàn nhập dự phòng rủi ro", "PROVISION_INVESTMENT_SECURITIES"),
+        (
+            3,
+            "Hoàn nhập/(trích lập) dự phòng chung cho trái phiếu doanh nghiệp "
+            "chưa niêm yết (Thuyết minh 12.3)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "(Trích lập)/Hoàn nhập dự phòng chung cho trái phiếu doanh nghiệp "
+            "chưa niêm yết (Thuyết minh 12.2)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Hoàn nhập dự phòng chung\ncho trái phiếu doanh nghiệp chưa niêm yết\n"
+            "(Thuyết minh 12.3)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Trích lập dự phòng cụ thể\ncho trái phiếu doanh nghiệp chưa niêm "
+            "yết\n(Thuyết minh 12.3)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Hoàn nhập dự phòng chung chứng khoán nợ sẵn sàng để bán "
+            "(Thuyết minh 13.3)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Trích lập dự phòng giảm giá chứng khoán nợ sẵn sàng để bán\n"
+            "(Thuyết minh 15.3)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Hoàn nhập dự phòng cụ thể chứng khoán đầu tư nắm giữ đến\n"
+            "ngày đáo hạn (Thuyết minh 15.3)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Trích lập dự phòng cụ thể chứng khoán đầu tư nắm giữ đến ngày "
+            "đáo hạn(Thuyết minh 13.3)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Trích lập dự phòng cụ thể chứng khoán nợ đầu tư nắm giữ\n"
+            "đến ngày đáo hạn (Thuyết minh 13.3)",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "(Trích lập)/hoàn nhập dự phòng chung chứng khoán đầu tư sẵn sàng\n"
+            "để bán (Thuyết minh 11(i))",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "Hoàn nhập/ (trích lập) dự phòng rủi ro",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+        (
+            3,
+            "(Trích)/ hoàn nhập dự phòng rủi ro",
+            "PROVISION_INVESTMENT_SECURITIES",
+        ),
+    ],
+)
+def test_investment_securities_current_source_aliases_map_exact_roles(
+    row_index: int,
+    label: str,
+    role: str,
+) -> None:
+    page = _page()
+    row = page["sections"][0]["tables"][0]["rows"][row_index]
+    row["label_exact"] = label
+    row["hierarchy_path_exact"] = [label] if row_index == 0 else [ROOT_LABEL, label]
+    candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    assert role in {mapping["role"] for mapping in candidate["mappings"]}
+
+
+def test_investment_securities_source_visible_vnd_unit_maps_without_rescaling() -> None:
+    page = _page()
+    table = page["sections"][0]["tables"][0]
+    table["unit_exact"] = "VND"
+    table["columns"][0]["header_path_exact"] = ["Năm 2025", "VND"]
+    table["columns"][1]["header_path_exact"] = ["Năm 2024", "VND"]
+    candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    assert all(mapping["unit"] == "VND" for mapping in candidate["mappings"])
+    assert candidate["mappings"][0]["values"][0]["coefficient"] == 100
 
 
 def test_investment_securities_combined_umbrella_consumes_only_its_subtree() -> None:
@@ -278,7 +465,7 @@ def test_investment_securities_duplicate_period_and_unit_conflicts_fail_closed()
 
 
 def test_investment_securities_net_mismatch_is_unresolved_without_mappings() -> None:
-    candidate = _evaluate(_page(net=("66", "59")))
+    candidate = _evaluate(_page(net=("68", "61")))
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
 
@@ -290,10 +477,10 @@ def test_investment_securities_candidate_replay_rejects_coherent_drift() -> None
     material = {key: value for key, value in forged.items() if key != "candidate_id"}
     forged["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(material)
     with pytest.raises(
-        GeminiJsonMultitableHierarchicalFamilyV1Error,
+        GeminiJsonInvestmentSecuritiesActivityFamilyV1Error,
         match="candidate replay drifted",
     ):
-        validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
+        validate_gemini_json_investment_securities_activity_family_candidate_replay_v1(
             forged,
             regions=regions,
             page_json_by_version=pages,
@@ -422,11 +609,13 @@ def test_page_retry_projection_plan_binds_one_typed_unresolved_candidate(
         page_records=[_record(base)], compiled_specs=_compiled()
     )
     regions = cluster["component_regions"]
-    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+    candidate = evaluate_gemini_json_investment_securities_activity_family_cluster_v1(
         regions=regions,
         page_json_by_version={VERSION_ID: base},
         compiled_specs=_compiled(),
-        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions),
+        query_receipt=build_gemini_json_investment_securities_activity_region_query_receipt_v1(
+            regions
+        ),
     )
     assert candidate["status"] == UNRESOLVED
     checked_sweep = {

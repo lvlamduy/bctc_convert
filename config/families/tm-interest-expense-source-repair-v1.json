@@ -1,0 +1,529 @@
+{
+  "family_id": "INTEREST_EXPENSE",
+  "format_version": "INTEREST_EXPENSE_AUTHENTICATED_SOURCE_REPAIR_SPEC_V1",
+  "render_contract": {
+    "alpha": false,
+    "colorspace": "RGB",
+    "format": "PNG",
+    "matrix": [
+      2,
+      2
+    ],
+    "renderer": "PyMuPDF"
+  },
+  "repairs": [
+    {
+      "after_exact": "-",
+      "before_exact": "-带有横线-",
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:65714b974a862eb86b12bbb6147ca8404f9b02af423116368b2c2813ae67be23",
+        "physical_page": 24,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "28da821614f401be23ec10b33d3e8f8daa6d6c98e58479ba06ee743119c009bf",
+      "repair_id": "gjiefav1:repair:d151c7770d3e9b1d8cf3980222e3ef6b3093e826f81ed61013ea4c509491cf19",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "836a7a4c5f0f73bf145af4bfe6c8394215bb69881cbae702ac591966db88259a"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:65714b974a862eb86b12bbb6147ca8404f9b02af423116368b2c2813ae67be23",
+        "physical_page": 24,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "28da821614f401be23ec10b33d3e8f8daa6d6c98e58479ba06ee743119c009bf",
+      "repair_id": "gjiefav1:repair:584d93cc404231f3c7b04abca96bf536c7d52db0199638dd84b7074ac53fdc59",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "836a7a4c5f0f73bf145af4bfe6c8394215bb69881cbae702ac591966db88259a"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": "-ktCap-",
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:1c6177547c2ded2b65923e2010caece7c609452585d349e8906f1e191e233b3c",
+        "physical_page": 24,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "fa55dd78b6856d77195ed796dfed66afa97d867587bca7ec824086fa4b04660d",
+      "repair_id": "gjiefav1:repair:6612d52a3950733a6bfd677e13dcc991d9e98bf3c99842493a4c9b3d6774ab7a",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "2945ee34c5c6fcbe1f63ac8e4dd060c6c58f6eec50d91840baf6dfe9ff608fe1"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:1c6177547c2ded2b65923e2010caece7c609452585d349e8906f1e191e233b3c",
+        "physical_page": 24,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "fa55dd78b6856d77195ed796dfed66afa97d867587bca7ec824086fa4b04660d",
+      "repair_id": "gjiefav1:repair:d4a653b493179283f6feaed10219668927b8b377377f0d765e87fe09dbaf6138",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "2945ee34c5c6fcbe1f63ac8e4dd060c6c58f6eec50d91840baf6dfe9ff608fe1"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:8d7a6e59438de6efbffb2c466e58c5c5de5661f07d4be5fba282cd91983f8360",
+        "physical_page": 23,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "1d4eaff97af98bc2b5052c77a9618d5e26093f81af4faaf0e5f02f5ae964fada",
+      "repair_id": "gjiefav1:repair:ebf07aac9aa87a427ce973e09ad71bfae4f1695454a977a27231ea02852075da",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "81a2d60256aaac5f949209dcd60e3658e6806c28a51a0754429353cf39510c45"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:8d7a6e59438de6efbffb2c466e58c5c5de5661f07d4be5fba282cd91983f8360",
+        "physical_page": 23,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "1d4eaff97af98bc2b5052c77a9618d5e26093f81af4faaf0e5f02f5ae964fada",
+      "repair_id": "gjiefav1:repair:9f6c30d013b3fb14726cd4ffb4d62e93bbb2ad6ae62bdaa95778c502dce4b03e",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 5,
+      "source_sha256": "81a2d60256aaac5f949209dcd60e3658e6806c28a51a0754429353cf39510c45"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": "-ktCap-",
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:230d62438df8853b2c72e1badd7b346d9bc0d28ce5195243450d1aa9d03ca5aa",
+        "physical_page": 29,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "22dfc2c8a8add31a5abee09c5bc091dd5eb4bcf31d3fa36e02b750679fc0da89",
+      "repair_id": "gjiefav1:repair:dab933e30c8f097d0c021839c9c604758adeca3ead3b2e53cec39cdcd911ed31",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "8ee2777d76997035f7dc33dfd8d0466bef2671b34ca9575df3bfef25f4d3678a"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:230d62438df8853b2c72e1badd7b346d9bc0d28ce5195243450d1aa9d03ca5aa",
+        "physical_page": 29,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "22dfc2c8a8add31a5abee09c5bc091dd5eb4bcf31d3fa36e02b750679fc0da89",
+      "repair_id": "gjiefav1:repair:2ce56003eee814e8d63d5eeb7a8bc2e2d9ee43469c0ecb03e1d7ac638ee9439d",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "8ee2777d76997035f7dc33dfd8d0466bef2671b34ca9575df3bfef25f4d3678a"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": "-单?",
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:43c7c10503a0b96586138a96efdef3329bd9de45128c18ecddaa5e4764e0c828",
+        "physical_page": 29,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "c08d770c7ff7e91598100c09aac858bdc5e13c1023831a01d3169a337d35b611",
+      "repair_id": "gjiefav1:repair:80a2ef5bc83a742e895704494d705041a1e4cde36dd7932d5c2a40299eba26dd",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "53acf3efe316ea4596f59deace2f1413cdf01d7700a367b9bd2f7432f0e89f0e"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": "-ktCap",
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:2fb0d681028a9053baa152693660f498cab37d9734e0db6b8a589b1e0e5fca3b",
+        "physical_page": 29,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "46870157ac238864ec838773e7b14526cb41c5a82482c58fb71c6ecc1118243a",
+      "repair_id": "gjiefav1:repair:287b36cbdb10d02f9e06ba9889aa89c8348cc962242fb1bd101964281b9ad18a",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "72f179c9ffc3117d1ef350d42108095d4d71f354b347755a24f009fdf85ba4de"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": "-Code",
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:e7b32b5d61fe2d06ef1a579209df4e752daf1e6b37c1a2d9e5322435dbd8fdf9",
+        "physical_page": 30,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "3e7076327c990deb48ebfa98aab110251ad6adebe125cbad260e94a21681babb",
+      "repair_id": "gjiefav1:repair:86a5914938fac08ebfca910d088fc43dd7aebd8328dd708a9e67d3301b4bb3d9",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "7d12ee5d77697f8ce5611998c35506e71c39df37bfe63f69b3350cec470a254d"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": "--",
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:e7b32b5d61fe2d06ef1a579209df4e752daf1e6b37c1a2d9e5322435dbd8fdf9",
+        "physical_page": 30,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "3e7076327c990deb48ebfa98aab110251ad6adebe125cbad260e94a21681babb",
+      "repair_id": "gjiefav1:repair:dd32eeb7ed3c2e545a28eb99c3fa4776a5fcd8269e7b1e0a901b9616d01e9cb0",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "7d12ee5d77697f8ce5611998c35506e71c39df37bfe63f69b3350cec470a254d"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:9ce392385fd721933148b876502e708430f6954d36d9e0ec50a41ff9322ece8b",
+        "physical_page": 37,
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "pdf_page_render_sha256": "be1df2ba6743496973b46c8551dd06b6e51bf4365d894f4eaa6d783ae49ff0b1",
+      "repair_id": "gjiefav1:repair:e3fa6f5d78c696a46a6f744fc38eb38cd1836df1a5b1159f17e62b86f585bd50",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "bac53d82ce05ce497222e1a1c20945c31af62e534f7c7385825400662c513ead"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": "29,021",
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:4bd7f382658a64b17d681b4418ff59fb07bdc321376ca088c59b0122011c5d75",
+        "physical_page": 37,
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "pdf_page_render_sha256": "c10b5591ee251cbb3f1c8ab3427b43efab223fcbe3ab61ee6d7ed177bc637822",
+      "repair_id": "gjiefav1:repair:e1fe0b0535d39b398990f0619b08b9df0e185e3d243c6fb83c5177720ca84118",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "d323b33958279f6dfb5452834c5f7a688bb0b055688f5f88267b9f8c2ba4799d"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:f4879c4bfd52b0e6fd04f4abd880b0e632718904a8f641dbe2cb50d7f3e47ee0",
+        "physical_page": 37,
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "pdf_page_render_sha256": "2614ebff3a40eea3af721af5f4daf49ba24ce25e74a896b62ea67a3dac3e815c",
+      "repair_id": "gjiefav1:repair:567a95fa0f6c51b7366c6caf7b9003e7eba6cc2d7fd34ac5861e536815005b11",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 2,
+      "source_sha256": "f63455968c34bb29fdbba20fca99364d25bbdfe9638ff0a3b5f8e0453c35cd2c"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:f4879c4bfd52b0e6fd04f4abd880b0e632718904a8f641dbe2cb50d7f3e47ee0",
+        "physical_page": 37,
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "pdf_page_render_sha256": "2614ebff3a40eea3af721af5f4daf49ba24ce25e74a896b62ea67a3dac3e815c",
+      "repair_id": "gjiefav1:repair:6c86995e19f1a666ce9fb09bf1d6749d75ad87cc920321f9f0f9a5a32b4e263a",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "f63455968c34bb29fdbba20fca99364d25bbdfe9638ff0a3b5f8e0453c35cd2c"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:f4879c4bfd52b0e6fd04f4abd880b0e632718904a8f641dbe2cb50d7f3e47ee0",
+        "physical_page": 37,
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "pdf_page_render_sha256": "2614ebff3a40eea3af721af5f4daf49ba24ce25e74a896b62ea67a3dac3e815c",
+      "repair_id": "gjiefav1:repair:56cd0b415771de125be5cf74f459a9034d8ba790ae729faaa7951a017a0d12b2",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "f63455968c34bb29fdbba20fca99364d25bbdfe9638ff0a3b5f8e0453c35cd2c"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:76d2c5fe2fe11a347447062d9bc5d311ea0deb08bbcbc49759692497a0ec8391",
+        "physical_page": 38,
+        "section_id": "s1",
+        "table_id": "t3"
+      },
+      "pdf_page_render_sha256": "f819e78025a17b42e5b0fd309991dff718213002e7ff5fe53ba5138cd63e2cd9",
+      "repair_id": "gjiefav1:repair:88c4d4a83864af59e65e72d0dd03421a84649def3392be4582fbc817dd4d902f",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 2,
+      "source_sha256": "57bc956a4b2358d4a8f79998e88f00f7c0987c2a3b3e5b03e03d813763ee4ead"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:8d143419b0b8300bc6e778933057745bf91d527fe1c22251dc506a5049bfe8eb",
+        "physical_page": 38,
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "c163b88f49f9c8cb7e8afc8c125da725f40631db674cf9da611081b7cc4b88ee",
+      "repair_id": "gjiefav1:repair:78dae45ed4d42f293a461a681eba9374179a39be830e426d3cc49b7fef690627",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 2,
+      "source_sha256": "cbff3d2bd30c6487a3be7f0942e65a19ec52f0711838eb89cf332cba517f2f3b"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:fde9a5026de305e7ecc55a4e3bf896a058c79494781170815d229b65bbea31a2",
+        "physical_page": 41,
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "efb98566dd75653f426d4283a9dc400f251fc8df48f48d24824e5d864fdb291b",
+      "repair_id": "gjiefav1:repair:37ee812333c351eb618705cafcb54cbcf2bd13357f83552463fb331b1e854fa1",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "8fd2017e2267045fd995479d02a7d3229908dd8e771637e0e26e7327d1991a2a"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:fde9a5026de305e7ecc55a4e3bf896a058c79494781170815d229b65bbea31a2",
+        "physical_page": 41,
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "efb98566dd75653f426d4283a9dc400f251fc8df48f48d24824e5d864fdb291b",
+      "repair_id": "gjiefav1:repair:bdf4058ca93713db4f8fb02b6c85c8515327f4c7ee4e4cd807f357f8a91f73d5",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "8fd2017e2267045fd995479d02a7d3229908dd8e771637e0e26e7327d1991a2a"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:5623c1386983fe848535a5315de4a5e518215dd2b48a7428072436b4a142a1b9",
+        "physical_page": 42,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "a5ad7c7511fdfec129126e21f99244e44e7d1f7b3056f635048081d84b7bb3b8",
+      "repair_id": "gjiefav1:repair:375ac308e5bb7f9dc4053abf5fff0f4fef915e3fe39a984be2b2bf06573a457a",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "4731cf17493c26feb5cdf533ecf942ce149ab4ba3b8aed1f23dd638926fb9353"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:c032defaa8197c4c6e40a320f06f955db4583e76ad0b0405f1d11fb5866e43c7",
+        "physical_page": 42,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "d3dd057da1b50351768c46bd2abc0294f6051a1dcd52d3155837383708cf7b29",
+      "repair_id": "gjiefav1:repair:b7c7dfd967a0808313d8f4579c9925764d2e016edd0e22b9ba0ee547af9e3152",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "54c7a2d052642aa302544214492f6390368f63bbc8a052f2588a461786a5ebbe"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:963ec47624793aa78a40b3de6adb0b7cd3d2b7f7e6d6121fdf77ec42b9bddb00",
+        "physical_page": 39,
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "1156d546210c17642ba227f567cd843199756c11ab75e87f0881510aa295bca7",
+      "repair_id": "gjiefav1:repair:fca2b889f06b37f46dbd984918404b3e5e0139b8139a4eb7819a3dab0d20a36c",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "30768f3095999e9d8ca315fd93a49ea25cfc151897e7cda89929be8fb71c1956"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:aa26dad6c5b9f9b2dc8f0cdadb0f677ff15de0ee520ad975e852e5526a5b983a",
+        "physical_page": 21,
+        "section_id": "s2",
+        "table_id": "t2"
+      },
+      "pdf_page_render_sha256": "bc8fc22831cafd7365c78807d5b6ee668eb558b05ea7c4327fc578247e86b600",
+      "repair_id": "gjiefav1:repair:3b86bd714213dbc8c1236edc7addab3fdd66e7327ce5d7ddff3b537a7c7a7e79",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "c8c9e8f5c5c97f5ef066f15ea96deca177f2de9993b7c51e50dd88219b6fca66"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:aa26dad6c5b9f9b2dc8f0cdadb0f677ff15de0ee520ad975e852e5526a5b983a",
+        "physical_page": 21,
+        "section_id": "s2",
+        "table_id": "t2"
+      },
+      "pdf_page_render_sha256": "bc8fc22831cafd7365c78807d5b6ee668eb558b05ea7c4327fc578247e86b600",
+      "repair_id": "gjiefav1:repair:ac2342d9be6224e12d5089c257f56ffb76aedf497261c7588daa7e1eb4f37433",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "c8c9e8f5c5c97f5ef066f15ea96deca177f2de9993b7c51e50dd88219b6fca66"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:c8e2b47eeaa6f22240f26f62cd08a81083970bdc3bf3fe63c7698f8ea615f6ad",
+        "physical_page": 20,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "b46c3eaadfc4433451c3e3fce12a99078c1d7403b5d3c1e7782f087c91921b97",
+      "repair_id": "gjiefav1:repair:52dc7748354f50d4664b04d22c7f51325aa46b49c0c3de0d63f78c4bf2929972",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "4875c96cfeb92f2e07b6756a52b5810647eff040987ab60b717261e601733c22"
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 2,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:c8e2b47eeaa6f22240f26f62cd08a81083970bdc3bf3fe63c7698f8ea615f6ad",
+        "physical_page": 20,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "b46c3eaadfc4433451c3e3fce12a99078c1d7403b5d3c1e7782f087c91921b97",
+      "repair_id": "gjiefav1:repair:513bcd3e44c200d8f37b886fc9165ac852b85c8b86bd25df08dddd5fad3cfc01",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "row_ordinal": 4,
+      "source_sha256": "4875c96cfeb92f2e07b6756a52b5810647eff040987ab60b717261e601733c22"
+    },
+    {
+      "after_rows_exact": [
+        {
+          "hierarchy_path_exact": [
+            "Chi phí hoạt động tín dụng khác"
+          ],
+          "label_exact": "Chi phí hoạt động tín dụng khác",
+          "row_kind": "ITEM",
+          "values_exact": [
+            "791",
+            "54"
+          ]
+        },
+        {
+          "hierarchy_path_exact": [
+            "Tổng"
+          ],
+          "label_exact": "Tổng",
+          "row_kind": "TOTAL",
+          "values_exact": [
+            "2.249.465",
+            "1.817.343"
+          ]
+        }
+      ],
+      "before_row_count": 4,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:43c7c10503a0b96586138a96efdef3329bd9de45128c18ecddaa5e4764e0c828",
+        "physical_page": 29,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "c08d770c7ff7e91598100c09aac858bdc5e13c1023831a01d3169a337d35b611",
+      "repair_id": "gjiefav1:repair:0846e55341b852eb17f38fc6e2c56f5762857448c98ae5b2384f5f8c8c408ae6",
+      "repair_kind": "APPEND_ROWS_PDF_VISIBLE_EXACT",
+      "source_sha256": "53acf3efe316ea4596f59deace2f1413cdf01d7700a367b9bd2f7432f0e89f0e"
+    },
+    {
+      "after_exact": "12.668.527",
+      "before_exact": "12.668.627",
+      "column_ordinal": 2,
+      "corroboration": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:34eda7efbf9c05b8ec1637f530a02ba184e0723965b87e3ad6aa87d344d49618",
+        "pdf_page_render_sha256": "5243219b82f979daaeb0d745cb4ef958da999d7f8f4b76e647efdfac6ee89529",
+        "physical_page": 33,
+        "row_ordinal": 1,
+        "section_id": "s1",
+        "source_logical_name": "vietstock_bctc/SHB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+        "source_sha256": "f834ed85abdfe3040892065146550def6f1099e13475e966fe82c3c6089df733",
+        "table_id": "t2",
+        "value_exact": "12.668.527"
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:76f684307af241310b206d4284e9b31295e6dd60544fb164738778fa02be7c8a",
+        "physical_page": 39,
+        "section_id": "s1",
+        "table_id": "t3"
+      },
+      "pdf_page_render_sha256": "2766bf2eb5e1a3b196c61b8351c935445cac26da50c73baf986a0386fb5f792c",
+      "repair_id": "gjiefav1:repair:e800928bf8f95b3eab008348e424c06e07cf93b4480b17abb7a3fc8e3d9991b5",
+      "repair_kind": "MONEY_CELL_CROSS_SOURCE_CORROBORATED_EXACT",
+      "row_ordinal": 1,
+      "source_sha256": "7bc8c4f33eb0cdb8b0f82bd3ac059dfc590c9c787ea83e836c58120d06de3233"
+    }
+  ]
+}

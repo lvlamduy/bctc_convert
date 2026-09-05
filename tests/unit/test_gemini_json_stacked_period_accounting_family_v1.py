@@ -352,6 +352,272 @@ def test_horizontal_period_columns_sign_split_only_visible_signed_values() -> No
     assert by_period == {"CURRENT_PERIOD": 662, "COMPARATIVE_PERIOD": 704}
 
 
+def _relative_stacked_page(current_label: str, comparative_label: str) -> dict:
+    current = _period_table("31/12/2025")
+    comparative = _period_table("31/12/2024")
+    columns = [
+        {
+            **column,
+            "header_path_exact": [
+                value
+                for value in column["header_path_exact"]
+                if "2025" not in value and "2024" not in value
+            ],
+        }
+        for column in current["columns"]
+    ]
+
+    def marker(label: str) -> dict:
+        return {
+            "hierarchy_path_exact": [label],
+            "label_exact": label,
+            "row_kind": "HEADER",
+            "values_exact": [None for _column in columns],
+        }
+
+    return {
+        "sections": [
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": [],
+                "statement_type": "NOT_APPLICABLE",
+                "tables": [
+                    {
+                        **current,
+                        "columns": columns,
+                        "rows": [
+                            marker(current_label),
+                            *current["rows"],
+                            marker(comparative_label),
+                            *comparative["rows"],
+                        ],
+                    }
+                ],
+                "title_exact": "CÁC CÔNG CỤ TÀI CHÍNH PHÁI SINH",
+            }
+        ]
+    }
+
+
+@pytest.mark.parametrize(
+    ("current_label", "comparative_label"),
+    [
+        ("Tại ngày cuối kỳ", "Tại ngày đầu kỳ"),
+        ("Số cuối quý", "Số đầu năm"),
+        ("Số cuối năm", "Số đầu năm"),
+        ("Số cuối năm 2025", "Số đầu năm"),
+    ],
+)
+def test_stacked_relative_balance_period_markers_are_bounded_roles(
+    current_label: str, comparative_label: str
+) -> None:
+    candidate = _evaluate(
+        _relative_stacked_page(current_label, comparative_label),
+        [("s1", "t1")],
+    )
+    assert candidate["status"] == READY
+    assert {mapping["period_role"] for mapping in candidate["mappings"]} == {
+        "CURRENT_PERIOD",
+        "COMPARATIVE_PERIOD",
+    }
+
+
+def test_list_number_before_relative_period_is_only_presentation() -> None:
+    candidate = _evaluate(
+        _relative_stacked_page("1 Tại ngày cuối kỳ", "Tại ngày đầu kỳ"),
+        [("s1", "t1")],
+    )
+    assert candidate["status"] == READY
+    assert candidate["reasons"] == []
+
+
+def test_labeled_period_subtotal_may_print_only_a_subset_of_exact_lanes() -> None:
+    page = _relative_stacked_page("Tại ngày cuối kỳ", "Tại ngày đầu kỳ")
+    rows = page["sections"][0]["tables"][0]["rows"]
+    rows.pop(13)
+    rows.pop(6)
+    for marker in (rows[0], rows[6]):
+        marker["row_kind"] = "SUBTOTAL"
+        marker["values_exact"] = [None, "3", "(1)", None]
+    candidate = _evaluate(page, [("s1", "t1")])
+    assert candidate["status"] == READY
+    receipts = [
+        receipt
+        for receipt in candidate["closure_receipt"]["equations"]
+        if receipt.get("equation_kind") == "VISIBLE_PARTIAL_PERIOD_LANE_TOTAL"
+    ]
+    assert len(receipts) == 2
+    assert {tuple(receipt["visible_lane_roles"]) for receipt in receipts} == {
+        ("ASSET_CARRYING_VALUE", "LIABILITY_CARRYING_VALUE")
+    }
+
+
+def test_relative_period_marker_conflict_fails_closed() -> None:
+    one_role = _evaluate(
+        _relative_stacked_page("Tại ngày cuối kỳ", "Số cuối kỳ"),
+        [("s1", "t1")],
+    )
+    assert one_role["status"] == UNRESOLVED
+    assert (
+        "Gemini JSON stacked-period region does not expose exactly two periods"
+        in one_role["reasons"]
+    )
+
+    reversed_dates = _evaluate(
+        _relative_stacked_page(
+            "Tại ngày cuối kỳ 31/12/2024",
+            "Tại ngày đầu kỳ 31/12/2025",
+        ),
+        [("s1", "t1")],
+    )
+    assert reversed_dates["status"] == UNRESOLVED
+    assert "Gemini JSON stacked-period period evidence conflicts" in reversed_dates["reasons"]
+
+
+def _horizontal_date_only_page() -> dict:
+    return {
+        "sections": [
+            {
+                "content_kind": "FINANCIAL_NOTE",
+                "narratives_exact": [],
+                "statement_type": "NOT_APPLICABLE",
+                "tables": [
+                    {
+                        "columns": [
+                            {
+                                "header_path_exact": ["31/12/2025", "Triệu đồng"],
+                                "value_kind": "MONEY",
+                            },
+                            {
+                                "header_path_exact": ["31/12/2024", "Triệu đồng"],
+                                "value_kind": "MONEY",
+                            },
+                        ],
+                        "continuation": "NONE",
+                        "rows": [
+                            {
+                                "hierarchy_path_exact": ["Công cụ tài chính phái sinh tiền tệ"],
+                                "label_exact": "Công cụ tài chính phái sinh tiền tệ",
+                                "row_kind": "GROUP",
+                                "values_exact": [None, None],
+                            },
+                            {
+                                "hierarchy_path_exact": [
+                                    "Công cụ tài chính phái sinh tiền tệ",
+                                    "Hợp đồng kỳ hạn tiền tệ",
+                                ],
+                                "label_exact": "Hợp đồng kỳ hạn tiền tệ",
+                                "row_kind": "ITEM",
+                                "values_exact": ["2", "(3)"],
+                            },
+                            {
+                                "hierarchy_path_exact": [None],
+                                "label_exact": None,
+                                "row_kind": "TOTAL",
+                                "values_exact": ["2", "(3)"],
+                            },
+                        ],
+                        "title_exact": None,
+                        "unit_exact": "Triệu đồng",
+                    }
+                ],
+                "title_exact": "CÁC CÔNG CỤ TÀI CHÍNH PHÁI SINH",
+            }
+        ]
+    }
+
+
+def test_horizontal_date_only_columns_use_the_unique_declared_single_lane() -> None:
+    candidate = _evaluate(_horizontal_date_only_page(), [("s1", "t1")])
+    assert candidate["status"] == READY
+    assert {
+        (mapping["period_role"], mapping["source_lane_role"]) for mapping in candidate["mappings"]
+    } == {
+        ("CURRENT_PERIOD", "SIGNED_CARRYING_VALUE"),
+        ("COMPARATIVE_PERIOD", "SIGNED_CARRYING_VALUE"),
+    }
+
+
+def test_horizontal_date_only_columns_fail_when_single_lane_is_not_unique() -> None:
+    compiled = _compiled()
+    compiled["layout"]["allowed_lane_role_sequences"].append(["CONTRACT_VALUE"])
+    candidate = evaluate_gemini_json_stacked_period_family_region_v1(
+        page_json=_horizontal_date_only_page(),
+        page_json_version_id="gfpstorev1:json:" + "a" * 64,
+        physical_page=7,
+        table_refs=[("s1", "t1")],
+        compiled_specs=compiled,
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert any("column lane is unresolved" in reason for reason in candidate["reasons"])
+
+
+def test_lane_sequence_and_bare_year_are_not_silently_reinterpreted() -> None:
+    page = _separate_period_page()
+    for table in page["sections"][0]["tables"]:
+        table["columns"][0], table["columns"][1] = table["columns"][1], table["columns"][0]
+        for row in table["rows"]:
+            row["values_exact"][0], row["values_exact"][1] = (
+                row["values_exact"][1],
+                row["values_exact"][0],
+            )
+    candidate = _evaluate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert any("lane sequence is not declared" in reason for reason in candidate["reasons"])
+
+    year = _date_token("Năm 2025")
+    assert year is not None
+    assert year.period_end is None
+    assert year.period_year == 2025
+
+
+def _with_row_ordinal_control(page: dict) -> dict:
+    for table in page["sections"][0]["tables"]:
+        table["columns"].insert(
+            0,
+            {
+                "header_path_exact": [None],
+                "value_kind": "TEXT",
+            },
+        )
+        for row in table["rows"]:
+            marker = None
+            if row["label_exact"] == "Công cụ tài chính phái sinh tiền tệ":
+                marker = "1"
+            elif row["label_exact"] == "Công cụ tài chính phái sinh khác":
+                marker = "2"
+            row["values_exact"].insert(0, marker)
+    return page
+
+
+def test_non_money_row_ordinal_column_is_preserved_as_source_only_control() -> None:
+    page = _with_row_ordinal_control(_separate_period_page())
+    for table in page["sections"][0]["tables"]:
+        for row in table["rows"]:
+            if row["values_exact"][0] is not None:
+                row["row_kind"] = "ITEM"
+    candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    controls = [
+        column
+        for column in candidate["closure_receipt"]["column_axis"]
+        if column["lane_role"] == "SOURCE_ONLY_CONTROL"
+    ]
+    assert len(controls) == 2
+    assert {column["column_ordinal"] for column in controls} == {1}
+    assert all(mapping["values"][0]["column_ordinal"] >= 2 for mapping in candidate["mappings"])
+
+
+def test_non_money_content_column_cannot_be_discarded_as_an_ordinal() -> None:
+    page = _with_row_ordinal_control(_separate_period_page())
+    page["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = "narrative"
+    candidate = _evaluate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert any(
+        "non-money lane is not an ordinal control" in reason for reason in candidate["reasons"]
+    )
+
+
 @pytest.mark.parametrize(
     ("mutate", "reason"),
     [
@@ -492,6 +758,21 @@ def test_ordered_declared_owner_recovers_flattened_noisy_hierarchy() -> None:
     }
 
 
+def test_exact_foreign_exchange_and_abbreviated_interest_group_aliases() -> None:
+    page = _separate_period_page()
+    for table in page["sections"][0]["tables"]:
+        currency_swap = table["rows"][2]
+        currency_swap["label_exact"] = "Giao dịch hoán đổi ngoại tệ"
+        currency_swap["hierarchy_path_exact"][-1] = currency_swap["label_exact"]
+        interest_group = table["rows"][3]
+        interest_group["label_exact"] = "Công cụ TC phái sinh lãi suất"
+        interest_group["hierarchy_path_exact"] = [interest_group["label_exact"]]
+        table["rows"][4]["hierarchy_path_exact"][0] = interest_group["label_exact"]
+    candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    assert candidate["reasons"] == []
+
+
 def test_period_labeled_subtotal_is_a_family_total_not_an_unmatched_row() -> None:
     page = _separate_period_page()
     for table, period in zip(
@@ -549,6 +830,26 @@ def test_labeled_total_is_root_while_separate_net_row_is_presentation_only() -> 
     )
 
 
+def test_labeled_subtotal_is_visible_root_before_separate_net_presentation() -> None:
+    page = _separate_period_page()
+    for table in page["sections"][0]["tables"]:
+        total = table["rows"][-1]
+        total["label_exact"] = "Tổng cộng"
+        total["hierarchy_path_exact"] = ["Công cụ tài chính phái sinh", "Tổng cộng"]
+        total["row_kind"] = "SUBTOTAL"
+        table["rows"].append(
+            {
+                "hierarchy_path_exact": ["Công cụ tài chính phái sinh", "Số thuần"],
+                "label_exact": "Số thuần",
+                "row_kind": "SUBTOTAL",
+                "values_exact": [None, None, None, "2"],
+            }
+        )
+    candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    assert candidate["reasons"] == []
+
+
 def test_net_magnitude_may_be_presented_on_its_exact_asset_or_liability_side() -> None:
     page = _separate_period_page()
     for table in page["sections"][0]["tables"]:
@@ -573,6 +874,72 @@ def test_net_magnitude_may_be_presented_on_its_exact_asset_or_liability_side() -
     assert len(receipts) == 2
     assert {receipt["matching_alternative"]["binding_kind"] for receipt in receipts} == {
         "ASSET_LIABILITY_SIDE_PLACED_MAGNITUDE"
+    }
+
+
+def test_zero_component_preserves_all_equivalent_net_presentation_equations() -> None:
+    page = _separate_period_page()
+    for table in page["sections"][0]["tables"]:
+        table["rows"][1]["values_exact"] = ["10", "2", None, "2"]
+        total = table["rows"][-1]
+        total["label_exact"] = "Tổng cộng"
+        total["hierarchy_path_exact"] = ["Tổng cộng"]
+        total["values_exact"] = ["35", "3", None, "3"]
+        table["rows"].append(
+            {
+                "hierarchy_path_exact": ["Số thuần"],
+                "label_exact": "Số thuần",
+                "row_kind": "TOTAL",
+                "values_exact": [None, "3", None, None],
+            }
+        )
+    candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    receipts = [
+        receipt
+        for receipt in candidate["closure_receipt"]["equations"]
+        if receipt.get("equation_kind") == "VISIBLE_NET_PRESENTATION_EQUATION"
+    ]
+    assert len(receipts) == 2
+    assert all(len(receipt["matching_alternatives"]) == 2 for receipt in receipts)
+    assert {
+        alternative["computed_signed_value"]
+        for receipt in receipts
+        for alternative in receipt["matching_alternatives"]
+    } == {3}
+
+
+def test_negative_net_may_retain_its_visible_sign_on_the_liability_side() -> None:
+    page = _separate_period_page()
+    for table in page["sections"][0]["tables"]:
+        first = table["rows"][1]["values_exact"]
+        second = table["rows"][2]["values_exact"]
+        other = table["rows"][4]["values_exact"]
+        total = table["rows"][-1]
+        first[1:] = [None, "(2)", "(2)"]
+        second[1:] = [None, None, None]
+        other[1:] = [None, None, None]
+        total["values_exact"][1:] = [None, "(2)", "(2)"]
+        total["label_exact"] = "Tổng cộng"
+        total["hierarchy_path_exact"] = ["Tổng cộng"]
+        table["rows"].append(
+            {
+                "hierarchy_path_exact": ["Số thuần"],
+                "label_exact": "Số thuần",
+                "row_kind": "TOTAL",
+                "values_exact": [None, None, "(2)", None],
+            }
+        )
+    candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    receipts = [
+        receipt
+        for receipt in candidate["closure_receipt"]["equations"]
+        if receipt.get("equation_kind") == "VISIBLE_NET_PRESENTATION_EQUATION"
+    ]
+    assert len(receipts) == 2
+    assert {receipt["matching_alternative"]["binding_kind"] for receipt in receipts} == {
+        "ASSET_LIABILITY_SIDE_PLACED_SIGNED_VALUE"
     }
 
 

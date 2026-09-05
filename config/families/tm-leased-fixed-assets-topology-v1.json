@@ -19,7 +19,7 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thuê tài chính trong kỳ", "Tăng do thuê tài chính trong kỳ", "Tài sản thuê tài chính tăng trong kỳ"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Thuê tài chính trong kỳ", "Tăng do thuê tài chính trong kỳ", "Tài sản thuê tài chính tăng trong kỳ", "Tăng trong kỳ", "Tăng trong năm"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_LEASED_ADDITION",
       "role_kind": "NONADDITIVE_CHILD"
@@ -31,7 +31,7 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Mua lại TSCĐ thuê tài chính", "Mua lại tài sản cố định thuê tài chính", "Mua lại tài sản thuê tài chính"], "within_role": "COST_BRANCH"}],
+      "matchers": [{"aliases": ["Mua lại TSCĐ thuê tài chính", "Mua lại tài sản cố định thuê tài chính", "Mua lại tài sản thuê tài chính", "Chuyển sang tài sản cố định hữu hình", "Chuyển sang TSCĐ hữu hình"], "within_role": "COST_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "COST_BUYOUT",
       "role_kind": "NONADDITIVE_CHILD"
@@ -73,7 +73,7 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Mua lại TSCĐ thuê tài chính", "Mua lại tài sản cố định thuê tài chính", "Mua lại tài sản thuê tài chính"], "within_role": "DEPRECIATION_BRANCH"}],
+      "matchers": [{"aliases": ["Mua lại TSCĐ thuê tài chính", "Mua lại tài sản cố định thuê tài chính", "Mua lại tài sản thuê tài chính", "Chuyển sang tài sản cố định hữu hình", "Chuyển sang TSCĐ hữu hình"], "within_role": "DEPRECIATION_BRANCH"}],
       "presence": "OPTIONAL",
       "role": "DEP_BUYOUT",
       "role_kind": "NONADDITIVE_CHILD"

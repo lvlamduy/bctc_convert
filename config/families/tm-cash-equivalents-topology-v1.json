@@ -6,6 +6,7 @@
           "aliases": [
             "Tiền mặt và các khoản tương đương tiền tại quỹ",
             "Tiền mặt và vàng",
+            "Tiền mặt",
             "Tiền mặt tại quỹ",
             "Tiền mặt, vàng",
             "Tiền mặt, vàng bạc, đá quý",
@@ -25,8 +26,10 @@
         {
           "aliases": [
             "Tiền gửi tại NHNN",
+            "Tiền gửi tại NHNN Việt Nam",
             "Tiền gửi tại NHNNVN",
             "Tiền gửi tại Ngân hàng Nhà nước",
+            "Tiền gửi Ngân hàng Nhà nước",
             "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
             "Tiền gửi tại Ngân hàng Trung ương",
             "Tiền gửi thanh toán tại Ngân hàng Nhà nước"
@@ -43,12 +46,27 @@
         {
           "aliases": [
             "Tiền gửi tại các TCTD khác",
+            "Tiền gửi tại các TCTD khác (gồm không kỳ hạn và có kỳ hạn dưới 90 ngày)",
+            "Tiền gửi tại các TCTD khác (gồm không kỳ hạn và có kỳ hạn không quá 3 tháng)",
+            "Tiền gửi tại các TCTD khác có kỳ hạn trong vòng 3 tháng",
             "Tiền gửi tại các TCTD khác (gồm tiền gửi không kỳ hạn và tiền gửi có kỳ hạn không quá ba tháng)",
+            "Tiền gửi không kỳ hạn và tiền gửi có kỳ hạn tại các TCTD khác với kỳ hạn gốc không quá 3 tháng",
+            "Tiền gửi thanh toán, tiền gửi và cho vay các TCTD khác có kỳ hạn trong vòng 3 tháng",
+            "Tiền gửi thanh toán, tiền gửi và cho vay các TCTD khác với kỳ hạn gốc không quá 3 tháng",
+            "Tiền gửi và cho vay các TCTD khác có kỳ hạn gốc không quá ba tháng",
+            "Tiền gửi và cho vay các TCTD khác với kỳ hạn gốc không quá 3 tháng",
+            "Tiền gửi tại các TCTD khác và cho vay các TCTD khác (không kỳ hạn và kỳ hạn không quá 3 tháng)",
+            "Tiền gửi tại các TCTD khác và cho vay các TCTD khác (không kỳ hạn và kỳ hạn < 3 tháng)",
+            "Tiền gửi tại và cho vay các TCTD khác",
             "Tiền gửi tại các tổ chức tín dụng khác",
             "Tiền gửi tại các tổ chức tín dụng với thời hạn gốc không quá 3 tháng",
             "Tiền gửi tại và cho vay các TCTD khác với kỳ hạn gốc không quá 3 tháng",
             "Tiền gửi tại và cho vay các tổ chức tín dụng khác với kỳ hạn gốc không quá 3 tháng",
             "Tiền, ngoại hối gửi tại các TCTD khác với kỳ hạn gốc không quá 3 tháng",
+            "Tiền, ngoại hối gửi tại các TCTD khác (gồm không kỳ hạn và có kỳ hạn không quá 3 tháng)",
+            "Tiền, ngoại hối gửi tại các TCTD khác (không kỳ hạn và có kỳ hạn không quá 3 tháng)",
+            "Tiền, ngoại hối gửi tại các TCTD khác (không kỳ hạn và kỳ hạn < 3 tháng)",
+            "Tiền, vàng gửi tại các TCTD khác và cho vay các TCTD khác (không kỳ hạn và kỳ hạn < 3 tháng)",
             "Tiền, vàng gửi tại và cho vay các tổ chức tín dụng khác với kỳ hạn gốc không quá 3 tháng"
           ],
           "within_role": null
@@ -63,8 +81,12 @@
         {
           "aliases": [
             "Không kỳ hạn",
+            "Tiền gửi không kỳ hạn",
             "Tiền gửi không kỳ hạn tại các TCTD",
             "Tiền gửi không kỳ hạn tại các TCTD khác",
+            "Tiền gửi tại TCTD khác không kỳ hạn",
+            "Tiền gửi tại các TCTD khác không kỳ hạn",
+            "Tiền gửi không kỳ hạn tại các tổ chức tín dụng khác",
             "Tiền gửi thanh toán tại các TCTD khác",
             "Tiền, ngoại hối gửi không kỳ hạn tại các TCTD",
             "Tiền, ngoại hối gửi không kỳ hạn tại các TCTD khác"
@@ -73,8 +95,14 @@
         },
         {
           "aliases": [
+            "- Không kỳ hạn",
             "Tiền gửi không kỳ hạn tại các TCTD",
             "Tiền gửi không kỳ hạn tại các TCTD khác",
+            "Tiền gửi không kỳ hạn tại các tổ chức tín dụng khác",
+            "Tiền gửi tại các tổ chức tín dụng khác (gồm không kỳ hạn)",
+            "Tiền, vàng gửi tại các tổ chức tín dụng khác (gồm không kỳ hạn)",
+            "Tiền gửi tại TCTD khác không kỳ hạn",
+            "Tiền gửi tại các TCTD khác không kỳ hạn",
             "Tiền gửi thanh toán tại các TCTD khác",
             "Tiền, ngoại hối gửi không kỳ hạn tại các TCTD",
             "Tiền, ngoại hối gửi không kỳ hạn tại các TCTD khác"
@@ -93,15 +121,21 @@
             "Có kỳ hạn không quá 3 tháng",
             "Có kỳ hạn không quá ba tháng",
             "Tiền gửi có kỳ hạn gốc không quá 3 tháng tại các TCTD khác",
+            "Tiền gửi có kỳ hạn dưới 3 tháng tại các TCTD khác",
             "Tiền gửi có kỳ hạn tại các TCTD khác với kỳ hạn không quá 3 tháng",
             "Tiền gửi có kỳ hạn tại các TCTD khác với kỳ hạn không quá ba tháng",
             "Tiền gửi tại TCTD kỳ hạn gốc không quá 3 tháng",
+            "Tiền gửi tại TCTD khác có kỳ hạn dưới 3 tháng",
+            "Tiền gửi tại các tổ chức tín dụng khác có thời gian đáo hạn dưới 3 tháng",
+            "Tiền gửi tại các tổ chức tín dụng khác có thời gian đáo hạn không quá 3 tháng",
+            "Tiền gửi tại các tổ chức tín dụng khác có kỳ hạn không quá 3 tháng",
             "Tiền gửi tại các tổ chức tín dụng với kỳ hạn gốc không quá 3 tháng",
             "Tiền gửi các TCTD khác có kỳ hạn gốc không quá 3 tháng",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá 3 tháng",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá 03 tháng",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá 3 tháng kể từ ngày gửi",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá ba tháng",
+            "Tiền gửi tại các TCTD khác có kỳ hạn không quá ba (3) tháng",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá ba tháng kể từ ngày gửi",
             "Tiền, ngoại hối gửi có kỳ hạn tại các TCTD khác có thời gian đáo hạn không quá 3 tháng"
           ],
@@ -109,17 +143,32 @@
         },
         {
           "aliases": [
+            "- Có kỳ hạn không quá 3 tháng",
+            "Cho vay các TCTD khác (có kỳ hạn không quá 3 tháng)",
+            "Cho vay các TCTD khác có kỳ hạn dưới 90 ngày",
+            "Cho vay các TCTD khác có kỳ hạn không quá 90 ngày",
+            "Tiền gửi có kỳ hạn và cho vay các TCTD dưới 3 tháng",
             "Tiền gửi có kỳ hạn gốc không quá 3 tháng tại các TCTD khác",
+            "Tiền gửi có kỳ hạn dưới 3 tháng tại các TCTD khác",
+            "Tiền gửi có kỳ hạn tại các TCTD khác với kỳ hạn gốc không quá 3 tháng",
             "Tiền gửi có kỳ hạn tại các TCTD khác với kỳ hạn không quá 3 tháng",
             "Tiền gửi có kỳ hạn tại các TCTD khác với kỳ hạn không quá ba tháng",
             "Tiền gửi tại TCTD kỳ hạn gốc không quá 3 tháng",
+            "Tiền gửi tại TCTD khác có kỳ hạn dưới 3 tháng",
+            "Tiền gửi tại các tổ chức tín dụng khác có thời gian đáo hạn dưới 3 tháng",
+            "Tiền gửi tại các tổ chức tín dụng khác có thời gian đáo hạn không quá 3 tháng",
+            "Tiền gửi tại các tổ chức tín dụng khác có kỳ hạn dưới 3 tháng",
+            "Tiền gửi tại các tổ chức tín dụng khác (có kỳ hạn không quá 92 ngày)",
             "Tiền gửi tại các tổ chức tín dụng với kỳ hạn gốc không quá 3 tháng",
             "Tiền gửi các TCTD khác có kỳ hạn gốc không quá 3 tháng",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá 3 tháng",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá 03 tháng",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá 3 tháng kể từ ngày gửi",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá ba tháng",
+            "Tiền gửi tại các TCTD khác có kỳ hạn không quá ba (3) tháng",
             "Tiền gửi tại các TCTD khác có kỳ hạn không quá ba tháng kể từ ngày gửi",
+            "Tiền gửi tại các TCTD khác với kỳ hạn gốc không quá 3 tháng",
+            "Tiền, vàng gửi tại các tổ chức tín dụng khác (có kỳ hạn không quá 92 ngày)",
             "Tiền, ngoại hối gửi có kỳ hạn tại các TCTD khác có thời gian đáo hạn không quá 3 tháng"
           ],
           "within_role": null
@@ -134,9 +183,14 @@
         {
           "aliases": [
             "Chứng khoán có thời hạn thu hồi hoặc đáo hạn không quá 3 tháng kể từ ngày mua",
+            "Chứng khoán có thời hạn thu hồi dưới 3 tháng kể từ ngày mua",
             "Chứng khoán có thời hạn thu hồi hoặc đáo hạn không quá 03 tháng kể từ ngày mua",
             "Chứng khoán có thời hạn thu hồi hoặc đáo hạn không quá ba tháng kể từ ngày mua",
+            "Chứng khoán có thời hạn thu hồi hoặc đáo hạn không quá 90 ngày kể từ ngày mua",
+            "Chứng khoán có thời hạn đáo hạn không quá 3 tháng kể từ ngày mua",
             "Chứng khoán nợ có thời hạn thu hồi hoặc đáo hạn không quá 3 tháng kể từ ngày mua",
+            "Tín phiếu Ngân hàng Nhà nước",
+            "Tín phiếu NHNNVN với kỳ hạn gốc không quá 3 tháng",
             "Tín phiếu NHNN với kỳ hạn gốc không quá 3 tháng",
             "Chứng khoán đầu tư"
           ],
@@ -152,13 +206,19 @@
   "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
   "hard_negative_aliases": [
     "Tiền và các khoản tương đương tiền cuối kỳ",
-    "Tiền và các khoản tương đương tiền đầu kỳ"
+    "Tiền và các khoản tương đương tiền đầu kỳ",
+    "Tiền và các khoản tương đương tiền tại thời điểm cuối kỳ",
+    "Tiền và các khoản tương đương tiền tại thời điểm đầu kỳ"
   ],
   "limits": {"max_continuation_pages": 2, "max_cluster_span_lines": 4096, "max_label_line_span": 6},
   "parent": {
     "aliases": [
       "Tiền và các khoản tương đương tiền",
-      "Tiền và các khoản tương đương tiền gồm có"
+      "Tiền và các khoản tương đương tiền gồm có",
+      "Tiền và tương đương tiền",
+      "Các khoản tiền tương đương tiền cuối kỳ bao gồm",
+      "Tiền và các khoản tương đương tiền trong báo cáo lưu chuyển tiền tệ hợp nhất",
+      "Tiền và các khoản tương đương tiền trong báo cáo lưu chuyển tiền tệ riêng"
     ],
     "resolution_mode": "EXPLICIT_ONLY",
     "role": "CASH_EQUIVALENTS_DISCLOSURE"
@@ -169,6 +229,8 @@
   ],
   "structural_reset_aliases": [
     "Tiền và các khoản tương đương tiền cuối kỳ",
-    "Tiền và các khoản tương đương tiền đầu kỳ"
+    "Tiền và các khoản tương đương tiền đầu kỳ",
+    "Tiền và các khoản tương đương tiền tại thời điểm cuối kỳ",
+    "Tiền và các khoản tương đương tiền tại thời điểm đầu kỳ"
   ]
 }

@@ -10,9 +10,12 @@ routing behavior.
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Mapping, Sequence
 from datetime import date
+from hashlib import sha256
+from pathlib import Path
 from typing import Any
 
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
@@ -26,6 +29,9 @@ from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _matches,
     _money,
 )
+from bctc_ai.evaluation.source_observation_lane_math_v1 import (
+    observed_source_coefficient_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -36,14 +42,19 @@ ENGINE_FORMAT_VERSION = "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1"
 EVALUATION_FORMAT_VERSION = "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1"
 SCHEMA_FORMAT_VERSION = "ACCOUNTING_EQUITY_MATRIX_SCHEMA_BINDING_SPEC_V1"
 INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = "GEMINI_JSON_INDEXED_EQUITY_MATRIX_QUERY_EVIDENCE_V1"
+SOURCE_REPAIR_ARTIFACT_FORMAT_VERSION = (
+    "GEMINI_JSON_EQUITY_MATRIX_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1"
+)
 READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 NOT_OBSERVED = "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_BIDIRECTIONAL_COMPONENT_MOVEMENT_MATRIX_"
     "EXPLICIT_OWNER_RESET_FENCE_ONE_PAGE_CONTINUATION_EXACT_COMPONENT_INVENTORY_"
-    "VISIBLE_HIERARCHICAL_TOTALS_VERTICAL_ROLLFORWARD_CONDITIONAL_BLANK_ZERO_"
-    "DOCUMENT_UNIT_CONSENSUS_STRUCTURAL_ROOT_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_"
+    "VISIBLE_HIERARCHICAL_TOTALS_OBSERVED_LANE_ROLLFORWARD_BLANK_SOURCE_NULL_"
+    "DOCUMENT_UNIT_CONSENSUS_CONTENT_ADDRESSED_PDF_VISIBLE_SOURCE_REPAIR_"
+    "TABLE_ROW_CELL_UNIT_TRANSCRIPTION_ONLY_STRUCTURAL_ROOT_SCHEMA_MAPPING_"
+    "PROPOSAL_ONLY_NO_"
     "OCR_GEOMETRY_BANK_FILE_PAGE_NOTE_VALUE_ROUTING_BACKSOLVE_CANONICAL_OR_"
     "EXPORT_AUTHORITY"
 )
@@ -63,6 +74,13 @@ _SECTION_ID = re.compile(r"s[1-9][0-9]*\Z")
 _TABLE_ID = re.compile(r"t[1-9][0-9]*\Z")
 _ROW_ID = re.compile(r"r[1-9][0-9]*\Z")
 _COLUMN_ID = re.compile(r"c[1-9][0-9]*\Z")
+_EXTRACTION_RUN_ID = re.compile(r"gfpstorev1:run:[0-9a-f]{64}\Z")
+_PAGE_ID = re.compile(r"gfpstorev1:page:[0-9a-f]{64}\Z")
+_SOURCE_REPAIR_ID = re.compile(r"gjeqmsrv1:repair:[0-9a-f]{64}\Z")
+_SOURCE_REPAIR_OVERLAY_ID = re.compile(r"gjeqmsrv1:overlay:[0-9a-f]{64}\Z")
+_VISIBLE_ACCOUNTING_MONEY = re.compile(
+    r"(?:[-_–—−]|\d+(?:[., ]\d+)*|\(\d+(?:[., ]\d+)*\))\Z"
+)
 _MAPPED_MOVEMENT_ROLES = ("OPENING", "INCREASE", "DECREASE", "CLOSING")
 _MAPPED_TOTAL_ROLES = {
     "OPENING": "OPENING_TOTAL",
@@ -164,9 +182,442 @@ def _compile_units(value: Any) -> tuple[list[dict[str, Any]], dict[str, dict[str
         for alias in normalized_aliases:
             by_alias[alias] = binding
         result.append(binding)
-    if sum(item["accepted"] for item in result) != 1:
-        raise _error("equity-matrix requires exactly one accepted money unit")
+    if not any(item["accepted"] for item in result):
+        raise _error("equity-matrix requires at least one accepted money unit")
     return result, by_alias
+
+
+def _source_repair_bbox_v1(
+    value: Any, *, pixel_width: int, pixel_height: int
+) -> list[int]:
+    if (
+        type(value) is not list
+        or len(value) != 4
+        or any(type(item) is not int for item in value)
+        or not (0 <= value[0] < value[2] <= pixel_width)
+        or not (0 <= value[1] < value[3] <= pixel_height)
+    ):
+        raise _error("equity-matrix authenticated source-repair crop is invalid")
+    return list(value)
+
+
+def _validate_authenticated_source_repair_artifact_v1(
+    value: Any, *, family_id: str
+) -> dict[str, Any]:
+    """Validate a closed axis of direct PDF table/row/cell transcriptions.
+
+    The artifact is intentionally data-only and content addressed.  It may
+    move or restore only row/cell literals and table-unit literals that a
+    reviewer read from the authenticated rendered PDF page; arithmetic can
+    reject a transcription later but never supplies a replacement value here.
+    """
+
+    artifact_fields = {
+        "family_id",
+        "format_version",
+        "overlay_id",
+        "policy",
+        "repair_axis_sha256",
+        "repair_count",
+        "repairs",
+    }
+    policy = (
+        "TRANSCRIBE_ONLY_DIRECTLY_PDF_VISIBLE_TABLE_ROW_CELL_UNIT_TOKENS_NO_"
+        "EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO_NO_PROVIDER"
+    )
+    if (
+        type(value) is not dict
+        or set(value) != artifact_fields
+        or value.get("family_id") != family_id
+        or value.get("format_version") != SOURCE_REPAIR_ARTIFACT_FORMAT_VERSION
+        or value.get("policy") != policy
+        or type(value.get("repairs")) is not list
+        or not value["repairs"]
+        or type(value.get("repair_count")) is not int
+        or value["repair_count"] != len(value["repairs"])
+        or _SHA256.fullmatch(value.get("repair_axis_sha256", "")) is None
+        or _SOURCE_REPAIR_OVERLAY_ID.fullmatch(value.get("overlay_id", "")) is None
+    ):
+        raise _error("equity-matrix authenticated source-repair artifact is invalid")
+    repair_fields = {
+        "base_page_json_sha256",
+        "base_page_json_version_id",
+        "column_axis_exact",
+        "effective_page_json_sha256",
+        "extraction_run_id",
+        "repair_id",
+        "repair_reason",
+        "row_repairs",
+        "source_binding",
+        "stored_canonical_json_sha256",
+        "table_unit_repair",
+        "table_ref",
+        "visual_evidence",
+    }
+    source_fields = {
+        "document_id",
+        "image_sha256",
+        "image_size_bytes",
+        "media_type",
+        "page_id",
+        "physical_page",
+        "pixel_height",
+        "pixel_width",
+        "render_dpi",
+        "source_logical_name",
+        "source_sha256",
+        "source_size_bytes",
+    }
+    table_fields = {
+        "base_table_sha256",
+        "effective_table_sha256",
+        "section_id",
+        "table_id",
+    }
+    visual_fields = {
+        "evidence_kind",
+        "render_mode",
+        "reviewed_utc_date",
+        "table_crop_bbox_pixels_xyxy",
+        "table_crop_rgb_sha256",
+    }
+    row_fields = {
+        "after_values_exact",
+        "before_values_exact",
+        "cell_repairs",
+        "row_hierarchy_path_exact",
+        "row_id",
+        "row_kind",
+        "row_label_exact",
+    }
+    cell_fields = {
+        "after_exact",
+        "before_exact",
+        "cell_id",
+        "column_header_path_exact",
+        "column_ordinal",
+        "visual_state",
+    }
+    table_unit_fields = {
+        "after_exact",
+        "before_exact",
+        "source_surface_axis_exact",
+        "visual_state",
+    }
+    checked_repairs = []
+    seen_versions: set[str] = set()
+    for raw_repair in value["repairs"]:
+        if type(raw_repair) is not dict or set(raw_repair) != repair_fields:
+            raise _error("equity-matrix authenticated source-repair fields drifted")
+        repair = canonical_clone_v1(raw_repair)
+        source = repair["source_binding"]
+        if type(source) is not dict or set(source) != source_fields:
+            raise _error("equity-matrix authenticated source-repair source fields drifted")
+        if (
+            type(source.get("source_logical_name")) is not str
+            or not source["source_logical_name"].strip()
+            or _SHA256.fullmatch(source.get("source_sha256", "")) is None
+            or type(source.get("source_size_bytes")) is not int
+            or source["source_size_bytes"] <= 0
+            or _DOCUMENT_ID.fullmatch(source.get("document_id", "")) is None
+            or _PAGE_ID.fullmatch(source.get("page_id", "")) is None
+            or type(source.get("physical_page")) is not int
+            or source["physical_page"] <= 0
+            or _SHA256.fullmatch(source.get("image_sha256", "")) is None
+            or type(source.get("image_size_bytes")) is not int
+            or source["image_size_bytes"] <= 0
+            or type(source.get("pixel_width")) is not int
+            or source["pixel_width"] <= 0
+            or type(source.get("pixel_height")) is not int
+            or source["pixel_height"] <= 0
+            or source.get("render_dpi") not in {200, 300}
+            or source.get("media_type") != "image/png"
+        ):
+            raise _error("equity-matrix authenticated source-repair source is invalid")
+        expected_document_id = "gfpstorev1:document:" + canonical_json_sha256_v1(
+            {
+                "source_logical_name": source["source_logical_name"],
+                "source_sha256": source["source_sha256"],
+                "source_size_bytes": source["source_size_bytes"],
+            }
+        )
+        expected_page_id = "gfpstorev1:page:" + canonical_json_sha256_v1(
+            {
+                "document_id": expected_document_id,
+                "image_sha256": source["image_sha256"],
+                "image_size_bytes": source["image_size_bytes"],
+                "media_type": source["media_type"],
+                "physical_page": source["physical_page"],
+                "pixel_height": source["pixel_height"],
+                "pixel_width": source["pixel_width"],
+                "render_dpi": source["render_dpi"],
+            }
+        )
+        if source["document_id"] != expected_document_id or source["page_id"] != expected_page_id:
+            raise _error("equity-matrix authenticated source-repair source identity drifted")
+        if (
+            _PAGE_VERSION.fullmatch(repair.get("base_page_json_version_id", "")) is None
+            or repair["base_page_json_version_id"] in seen_versions
+            or _EXTRACTION_RUN_ID.fullmatch(repair.get("extraction_run_id", "")) is None
+            or any(
+                _SHA256.fullmatch(repair.get(field, "")) is None
+                for field in (
+                    "base_page_json_sha256",
+                    "effective_page_json_sha256",
+                    "stored_canonical_json_sha256",
+                )
+            )
+        ):
+            raise _error("equity-matrix authenticated source-repair page binding is invalid")
+        seen_versions.add(repair["base_page_json_version_id"])
+        expected_version_id = "gfpstorev1:json:" + canonical_json_sha256_v1(
+            {
+                "canonical_json_sha256": repair["stored_canonical_json_sha256"],
+                "extraction_run_id": repair["extraction_run_id"],
+                "page_id": source["page_id"],
+            }
+        )
+        if repair["base_page_json_version_id"] != expected_version_id:
+            raise _error("equity-matrix authenticated source-repair page identity drifted")
+        table_ref = repair["table_ref"]
+        if (
+            type(table_ref) is not dict
+            or set(table_ref) != table_fields
+            or _SECTION_ID.fullmatch(table_ref.get("section_id", "")) is None
+            or _TABLE_ID.fullmatch(table_ref.get("table_id", "")) is None
+            or _SHA256.fullmatch(table_ref.get("base_table_sha256", "")) is None
+            or _SHA256.fullmatch(table_ref.get("effective_table_sha256", "")) is None
+        ):
+            raise _error("equity-matrix authenticated source-repair table binding is invalid")
+        columns = repair["column_axis_exact"]
+        if (
+            type(columns) is not list
+            or not columns
+            or any(
+                type(column) is not dict
+                or set(column) != {"header_path_exact", "value_kind"}
+                or type(column.get("header_path_exact")) is not list
+                or not column["header_path_exact"]
+                or any(type(item) is not str or not item for item in column["header_path_exact"])
+                or column.get("value_kind") not in {"MONEY", "TEXT"}
+                for column in columns
+            )
+        ):
+            raise _error("equity-matrix authenticated source-repair column axis is invalid")
+        table_unit_repair = repair["table_unit_repair"]
+        if table_unit_repair is not None:
+            if (
+                type(table_unit_repair) is not dict
+                or set(table_unit_repair) != table_unit_fields
+                or (
+                    table_unit_repair.get("before_exact") is not None
+                    and (
+                        type(table_unit_repair["before_exact"]) is not str
+                        or not table_unit_repair["before_exact"].strip()
+                    )
+                )
+                or type(table_unit_repair.get("after_exact")) is not str
+                or not table_unit_repair["after_exact"].strip()
+                or same_typed_json_v1(
+                    table_unit_repair.get("before_exact"),
+                    table_unit_repair["after_exact"],
+                )
+                or table_unit_repair.get("visual_state") != "PRINTED_UNIT"
+            ):
+                raise _error("equity-matrix authenticated source-repair table unit is invalid")
+            surface_axis = table_unit_repair.get("source_surface_axis_exact")
+            expected_column_ids = [
+                f"c{ordinal}"
+                for ordinal, column in enumerate(columns, start=1)
+                if column["value_kind"] == "MONEY"
+            ]
+            if (
+                type(surface_axis) is not list
+                or not surface_axis
+                or any(
+                    type(surface) is not dict
+                    or set(surface) != {"column_id", "source_exact"}
+                    or _COLUMN_ID.fullmatch(surface.get("column_id", "")) is None
+                    or surface.get("source_exact") != table_unit_repair["after_exact"]
+                    for surface in surface_axis
+                )
+                or [surface["column_id"] for surface in surface_axis]
+                != expected_column_ids
+            ):
+                raise _error(
+                    "equity-matrix authenticated source-repair table unit surface axis is invalid"
+                )
+        visual = repair["visual_evidence"]
+        if (
+            type(visual) is not dict
+            or set(visual) != visual_fields
+            or visual.get("evidence_kind")
+            != "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION"
+            or visual.get("render_mode") != "PDF_PAGE_GET_PIXMAP_DPI_EXACT"
+            or re.fullmatch(r"20\d{2}-[01]\d-[0-3]\d", visual.get("reviewed_utc_date", ""))
+            is None
+            or _SHA256.fullmatch(visual.get("table_crop_rgb_sha256", "")) is None
+        ):
+            raise _error("equity-matrix authenticated source-repair visual evidence is invalid")
+        _source_repair_bbox_v1(
+            visual["table_crop_bbox_pixels_xyxy"],
+            pixel_width=source["pixel_width"],
+            pixel_height=source["pixel_height"],
+        )
+        rows = repair["row_repairs"]
+        if type(rows) is not list or (not rows and table_unit_repair is None):
+            raise _error("equity-matrix authenticated source-repair change axis is empty")
+        checked_rows = []
+        seen_rows: set[str] = set()
+        seen_cells: set[str] = set()
+        for raw_row in rows:
+            if type(raw_row) is not dict or set(raw_row) != row_fields:
+                raise _error("equity-matrix authenticated source-repair row fields drifted")
+            row = canonical_clone_v1(raw_row)
+            row_match = _ROW_ID.fullmatch(row.get("row_id", ""))
+            before = row.get("before_values_exact")
+            after = row.get("after_values_exact")
+            if (
+                row_match is None
+                or row["row_id"] in seen_rows
+                or type(row.get("row_label_exact")) is not str
+                or not row["row_label_exact"].strip()
+                or row.get("row_kind") not in {"ITEM", "SUBTOTAL", "TOTAL"}
+                or type(row.get("row_hierarchy_path_exact")) is not list
+                or not row["row_hierarchy_path_exact"]
+                or any(
+                    type(item) is not str or not item
+                    for item in row["row_hierarchy_path_exact"]
+                )
+                or type(before) is not list
+                or type(after) is not list
+                or len(before) != len(columns)
+                or len(after) != len(columns)
+            ):
+                raise _error("equity-matrix authenticated source-repair row is invalid")
+            seen_rows.add(row["row_id"])
+            cells = row["cell_repairs"]
+            if type(cells) is not list or not cells:
+                raise _error("equity-matrix authenticated source-repair cell axis is empty")
+            changed_ordinals = [
+                ordinal
+                for ordinal, (old, new) in enumerate(zip(before, after, strict=True), start=1)
+                if not same_typed_json_v1(old, new)
+            ]
+            checked_cells = []
+            for raw_cell in cells:
+                if type(raw_cell) is not dict or set(raw_cell) != cell_fields:
+                    raise _error("equity-matrix authenticated source-repair cell fields drifted")
+                cell = canonical_clone_v1(raw_cell)
+                match = re.fullmatch(rf"{re.escape(row['row_id'])}:c([1-9][0-9]*)", cell.get("cell_id", ""))
+                ordinal = cell.get("column_ordinal")
+                if (
+                    match is None
+                    or cell["cell_id"] in seen_cells
+                    or type(ordinal) is not int
+                    or ordinal != int(match.group(1))
+                    or not 1 <= ordinal <= len(columns)
+                    or columns[ordinal - 1]["value_kind"] != "MONEY"
+                    or not same_typed_json_v1(cell.get("column_header_path_exact"), columns[ordinal - 1]["header_path_exact"])
+                    or not same_typed_json_v1(cell.get("before_exact"), before[ordinal - 1])
+                    or not same_typed_json_v1(cell.get("after_exact"), after[ordinal - 1])
+                    or type(cell.get("after_exact")) is not str
+                    or _VISIBLE_ACCOUNTING_MONEY.fullmatch(cell["after_exact"].strip()) is None
+                    or (
+                        cell.get("before_exact") is None
+                        and cell["after_exact"].strip()
+                        not in {"-", "_", "–", "—", "−"}
+                        and _money(cell["after_exact"])["coefficient"] == 0
+                    )
+                    or cell.get("visual_state")
+                    != ("DASH" if cell["after_exact"].strip() in {"-", "_", "–", "—", "−"} else "PRINTED_MONEY")
+                ):
+                    raise _error("equity-matrix authenticated source-repair cell is invalid")
+                seen_cells.add(cell["cell_id"])
+                checked_cells.append(cell)
+            checked_cells.sort(key=lambda item: item["column_ordinal"])
+            if cells != checked_cells or [item["column_ordinal"] for item in cells] != changed_ordinals:
+                raise _error("equity-matrix authenticated source-repair changed-cell axis drifted")
+            checked_rows.append(row)
+        checked_rows.sort(key=lambda item: int(item["row_id"][1:]))
+        if rows != checked_rows:
+            raise _error("equity-matrix authenticated source-repair row axis is unordered")
+        if repair["repair_reason"] not in {
+            "VISIBLE_PDF_TABLE_UNIT_MISSING_IN_SELECTED_JSON",
+            "VISIBLE_PDF_MONEY_TOKEN_MISTRANSCRIBED_IN_SELECTED_JSON",
+            "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+        }:
+            raise _error("equity-matrix authenticated source-repair reason is invalid")
+        if (
+            repair["repair_reason"]
+            == "VISIBLE_PDF_TABLE_UNIT_MISSING_IN_SELECTED_JSON"
+        ) != (table_unit_repair is not None and not rows):
+            raise _error("equity-matrix authenticated source-repair reason drifts change kind")
+        expected_repair_id = "gjeqmsrv1:repair:" + canonical_json_sha256_v1(
+            {key: repair[key] for key in repair if key != "repair_id"}
+        )
+        if repair.get("repair_id") != expected_repair_id:
+            raise _error("equity-matrix authenticated source-repair identity drifted")
+        checked_repairs.append(repair)
+    checked_repairs.sort(
+        key=lambda item: (
+            item["source_binding"]["source_logical_name"],
+            item["source_binding"]["physical_page"],
+            int(item["table_ref"]["section_id"][1:]),
+            int(item["table_ref"]["table_id"][1:]),
+        )
+    )
+    if value["repairs"] != checked_repairs:
+        raise _error("equity-matrix authenticated source-repair axis is unordered")
+    if value["repair_axis_sha256"] != canonical_json_sha256_v1(checked_repairs):
+        raise _error("equity-matrix authenticated source-repair axis identity drifted")
+    material = {
+        "family_id": family_id,
+        "format_version": SOURCE_REPAIR_ARTIFACT_FORMAT_VERSION,
+        "policy": policy,
+        "repair_axis_sha256": value["repair_axis_sha256"],
+        "repair_count": len(checked_repairs),
+        "repairs": checked_repairs,
+    }
+    expected_overlay_id = "gjeqmsrv1:overlay:" + canonical_json_sha256_v1(material)
+    if value["overlay_id"] != expected_overlay_id:
+        raise _error("equity-matrix authenticated source-repair overlay identity drifted")
+    return {**material, "overlay_id": expected_overlay_id}
+
+
+def _compile_authenticated_source_repair_artifact_v1(
+    value: Any, *, family_id: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    fields = {"artifact_format_version", "overlay_id", "path", "sha256", "size_bytes"}
+    if (
+        type(value) is not dict
+        or set(value) != fields
+        or value.get("artifact_format_version") != SOURCE_REPAIR_ARTIFACT_FORMAT_VERSION
+        or type(value.get("path")) is not str
+        or not value["path"]
+        or value["path"].startswith("/")
+        or ".." in value["path"].split("/")
+        or _SHA256.fullmatch(value.get("sha256", "")) is None
+        or type(value.get("size_bytes")) is not int
+        or value["size_bytes"] <= 0
+        or _SOURCE_REPAIR_OVERLAY_ID.fullmatch(value.get("overlay_id", "")) is None
+    ):
+        raise _error("equity-matrix authenticated source-repair artifact ref is invalid")
+    path = Path(__file__).resolve().parents[3] / value["path"]
+    try:
+        payload = path.read_bytes()
+    except OSError as exc:
+        raise _error("equity-matrix authenticated source-repair artifact is absent") from exc
+    if len(payload) != value["size_bytes"] or sha256(payload).hexdigest() != value["sha256"]:
+        raise _error("equity-matrix authenticated source-repair artifact bytes drifted")
+    try:
+        raw = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error("equity-matrix authenticated source-repair artifact JSON is invalid") from exc
+    compiled = _validate_authenticated_source_repair_artifact_v1(raw, family_id=family_id)
+    if compiled["overlay_id"] != value["overlay_id"]:
+        raise _error("equity-matrix authenticated source-repair artifact ref drifted")
+    return compiled, canonical_clone_v1(value)
 
 
 def _compile_valuation_matrix_specs_v1(
@@ -446,21 +897,36 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
             evaluation_spec=evaluation_spec,
             schema_binding_spec=schema_binding_spec,
         )
+    evaluation_fields = {
+        "blank_zero_policy",
+        "closure_policy",
+        "family_id",
+        "format_version",
+        "matrix_policy",
+    }
     if (
         type(evaluation_spec) is not dict
-        or set(evaluation_spec)
-        != {
-            "blank_zero_policy",
-            "closure_policy",
-            "family_id",
-            "format_version",
-            "matrix_policy",
-        }
+        or not evaluation_fields <= set(evaluation_spec)
+        or not set(evaluation_spec)
+        <= evaluation_fields | {"authenticated_source_repair_artifact_ref"}
         or evaluation_spec.get("format_version") != EVALUATION_FORMAT_VERSION
         or evaluation_spec.get("family_id") != topology["family_id"]
-        or evaluation_spec.get("blank_zero_policy") != "ZERO_ONLY_AFTER_COMPLETE_MATRIX_GRAPH_EXACT"
-        or evaluation_spec.get("closure_policy")
-        != "EXACT_HORIZONTAL_TOTALS_AND_VERTICAL_ROLLFORWARD_ALL_SELECTED_CELLS"
+        or (
+            evaluation_spec.get("blank_zero_policy"),
+            evaluation_spec.get("closure_policy"),
+        )
+        not in {
+            (
+                "PRESERVE_BLANK_SOURCE_LANES_AS_NULL_NEVER_INFER_ZERO",
+                "EXACT_WHERE_FULLY_OBSERVED_INCOMPLETE_BLANK_LANES_NON_BLOCKING",
+            ),
+            # Legacy declarations remain loadable while all consumers migrate.
+            # Runtime semantics are nevertheless source-safe: a blank is null.
+            (
+                "ZERO_ONLY_AFTER_COMPLETE_MATRIX_GRAPH_EXACT",
+                "EXACT_HORIZONTAL_TOTALS_AND_VERTICAL_ROLLFORWARD_ALL_SELECTED_CELLS",
+            ),
+        }
     ):
         raise _error("equity-matrix evaluation spec is invalid")
     policy = evaluation_spec["matrix_policy"]
@@ -478,7 +944,16 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
         or not policy_fields
         <= set(policy)
         <= policy_fields
-        | {"hierarchy_policy", "signed_branch_policy", "supplemental_movement_policy"}
+        | {
+            "component_row_continuation_policy",
+            "directional_duplicate_control_policy",
+            "hierarchy_policy",
+            "implicit_owner_policy",
+            "primary_statement_root_unit_policy",
+            "signed_branch_policy",
+            "supplemental_component_group_policy",
+            "supplemental_movement_policy",
+        }
         or type(policy.get("accepted_orientations")) is not list
         or not policy["accepted_orientations"]
         or any(
@@ -497,6 +972,102 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
     movement_aliases = _compile_alias_map(policy["movement_role_aliases"], label="movement")
     if set(movement_aliases) != set(_MAPPED_MOVEMENT_ROLES):
         raise _error("equity-matrix movement roles are incomplete")
+    component_row_continuation_policy = policy.get(
+        "component_row_continuation_policy",
+        {
+            "allow_blank_leading_label_tail": False,
+            "mode": "DISABLED",
+        },
+    )
+    if (
+        type(component_row_continuation_policy) is not dict
+        or set(component_row_continuation_policy)
+        != {"allow_blank_leading_label_tail", "mode"}
+        or type(component_row_continuation_policy.get("allow_blank_leading_label_tail"))
+        is not bool
+        or component_row_continuation_policy.get("mode")
+        not in {
+            "DISABLED",
+            "EXPLICIT_RECIPROCAL_ADJACENT_COMPLEMENTARY_COMPONENT_AXIS",
+        }
+        or (
+            component_row_continuation_policy["mode"] == "DISABLED"
+            and component_row_continuation_policy["allow_blank_leading_label_tail"]
+        )
+    ):
+        raise _error("equity-matrix component-row continuation policy is invalid")
+    directional_duplicate_control_policy = policy.get(
+        "directional_duplicate_control_policy",
+        {"mode": "DISABLED", "subordinate_aliases_by_role": {}},
+    )
+    if (
+        type(directional_duplicate_control_policy) is not dict
+        or set(directional_duplicate_control_policy)
+        != {"mode", "subordinate_aliases_by_role"}
+        or directional_duplicate_control_policy.get("mode")
+        not in {"DISABLED", "EXACT_ADJACENT_DIRECTIONAL_CHILD_CONTROL"}
+        or type(
+            directional_duplicate_control_policy.get("subordinate_aliases_by_role")
+        )
+        is not dict
+    ):
+        raise _error("equity-matrix directional duplicate-control policy is invalid")
+    directional_duplicate_aliases = (
+        _compile_alias_map(
+            directional_duplicate_control_policy["subordinate_aliases_by_role"],
+            label="directional duplicate control",
+        )
+        if directional_duplicate_control_policy["subordinate_aliases_by_role"]
+        else {}
+    )
+    if (
+        not set(directional_duplicate_aliases) <= {"INCREASE", "DECREASE"}
+        or (
+            directional_duplicate_control_policy["mode"] == "DISABLED"
+            and directional_duplicate_aliases
+        )
+        or (
+            directional_duplicate_control_policy["mode"]
+            == "EXACT_ADJACENT_DIRECTIONAL_CHILD_CONTROL"
+            and not directional_duplicate_aliases
+        )
+    ):
+        raise _error("equity-matrix directional duplicate-control aliases are invalid")
+    implicit_owner_policy = policy.get(
+        "implicit_owner_policy",
+        {"minimum_mapped_component_roles": 0, "mode": "DISABLED"},
+    )
+    if (
+        type(implicit_owner_policy) is not dict
+        or set(implicit_owner_policy) != {"minimum_mapped_component_roles", "mode"}
+        or implicit_owner_policy.get("mode")
+        not in {
+            "DISABLED",
+            "UNIQUE_COMPLETE_MATRIX_PLUS_SUPPLEMENTAL_COMPONENT_GROUP",
+        }
+        or type(implicit_owner_policy.get("minimum_mapped_component_roles")) is not int
+        or implicit_owner_policy["minimum_mapped_component_roles"] < 0
+        or (
+            implicit_owner_policy["mode"] == "DISABLED"
+            and implicit_owner_policy["minimum_mapped_component_roles"] != 0
+        )
+        or (
+            implicit_owner_policy["mode"]
+            == "UNIQUE_COMPLETE_MATRIX_PLUS_SUPPLEMENTAL_COMPONENT_GROUP"
+            and implicit_owner_policy["minimum_mapped_component_roles"] < 4
+        )
+    ):
+        raise _error("equity-matrix implicit-owner policy is invalid")
+    primary_statement_root_unit_policy = policy.get(
+        "primary_statement_root_unit_policy", {"mode": "DISABLED"}
+    )
+    if (
+        type(primary_statement_root_unit_policy) is not dict
+        or set(primary_statement_root_unit_policy) != {"mode"}
+        or primary_statement_root_unit_policy.get("mode")
+        not in {"DISABLED", "EXACT_FAMILY_ROOT_BOUNDARY_VECTOR_CORROBORATION"}
+    ):
+        raise _error("equity-matrix primary-statement root-unit policy is invalid")
     supplemental_policy = policy.get(
         "supplemental_movement_policy",
         {
@@ -595,6 +1166,63 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
         policy["source_only_component_aliases"], label="source-only component"
     )
     mapped_aliases = _aliases_by_role(topology)
+    supplemental_component_group_policy = policy.get(
+        "supplemental_component_group_policy",
+        {
+            "group_source_only_role": None,
+            "mapped_child_roles": [],
+            "mode": "DISABLED",
+            "owner_aliases": [],
+        },
+    )
+    if (
+        type(supplemental_component_group_policy) is not dict
+        or set(supplemental_component_group_policy)
+        != {
+            "group_source_only_role",
+            "mapped_child_roles",
+            "mode",
+            "owner_aliases",
+        }
+        or supplemental_component_group_policy.get("mode")
+        not in {"DISABLED", "EXACT_SUPPLEMENTAL_COMPONENT_GROUP_MATRIX"}
+        or type(supplemental_component_group_policy.get("mapped_child_roles")) is not list
+        or len(supplemental_component_group_policy["mapped_child_roles"])
+        != len(set(supplemental_component_group_policy["mapped_child_roles"]))
+        or not set(supplemental_component_group_policy["mapped_child_roles"])
+        <= set(mapped_aliases)
+        or type(supplemental_component_group_policy.get("owner_aliases")) is not list
+        or any(
+            type(alias) is not str or not alias.strip()
+            for alias in supplemental_component_group_policy["owner_aliases"]
+        )
+        or len(
+            {
+                _normalized(alias)
+                for alias in supplemental_component_group_policy["owner_aliases"]
+            }
+        )
+        != len(supplemental_component_group_policy["owner_aliases"])
+        or (
+            supplemental_component_group_policy["mode"] == "DISABLED"
+            and (
+                supplemental_component_group_policy["group_source_only_role"] is not None
+                or supplemental_component_group_policy["mapped_child_roles"]
+                or supplemental_component_group_policy["owner_aliases"]
+            )
+        )
+        or (
+            supplemental_component_group_policy["mode"]
+            == "EXACT_SUPPLEMENTAL_COMPONENT_GROUP_MATRIX"
+            and (
+                supplemental_component_group_policy["group_source_only_role"]
+                not in source_only_aliases
+                or len(supplemental_component_group_policy["mapped_child_roles"]) < 2
+                or not supplemental_component_group_policy["owner_aliases"]
+            )
+        )
+    ):
+        raise _error("equity-matrix supplemental component-group policy is invalid")
     hierarchy_policy = policy.get(
         "hierarchy_policy",
         {
@@ -637,6 +1265,15 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
     if mapped_normalized & source_only_normalized:
         raise _error("mapped and source-only component aliases collide")
     units, unit_by_alias = _compile_units(policy["unit_bindings"])
+    source_repair_overlay = None
+    source_repair_artifact_ref = None
+    if "authenticated_source_repair_artifact_ref" in evaluation_spec:
+        source_repair_overlay, source_repair_artifact_ref = (
+            _compile_authenticated_source_repair_artifact_v1(
+                evaluation_spec["authenticated_source_repair_artifact_ref"],
+                family_id=topology["family_id"],
+            )
+        )
     schema_fields = {
         "component_role_bindings",
         "family_id",
@@ -708,9 +1345,23 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
         "owner_aliases": canonical_clone_v1(topology["parent"]["aliases"]),
         "reset_aliases": canonical_clone_v1(topology["structural_reset_aliases"]),
     }
+    if source_repair_artifact_ref is not None:
+        query_policy["authenticated_source_repair_artifact_ref"] = canonical_clone_v1(
+            source_repair_artifact_ref
+        )
     return {
         "aliases_by_role": mapped_aliases,
         "claim_boundary": CLAIM_BOUNDARY,
+        "component_row_continuation_policy": canonical_clone_v1(
+            component_row_continuation_policy
+        ),
+        "directional_duplicate_control_aliases_by_role": canonical_clone_v1(
+            directional_duplicate_aliases
+        ),
+        "directional_duplicate_control_mode": directional_duplicate_control_policy[
+            "mode"
+        ],
+        "implicit_owner_policy": canonical_clone_v1(implicit_owner_policy),
         "component_report_norm_id_by_role": component_bindings,
         "engine_format_version": ENGINE_FORMAT_VERSION,
         "evaluation": canonical_clone_v1(evaluation_spec),
@@ -724,12 +1375,20 @@ def compile_gemini_json_equity_matrix_family_specs_v1(
         "movement_decomposition_equations": canonical_clone_v1(equations),
         "movement_roles": [*_MAPPED_MOVEMENT_ROLES, *supplemental_aliases],
         "movement_total_report_norm_id_by_role": movement_bindings,
+        "primary_statement_root_unit_policy": canonical_clone_v1(
+            primary_statement_root_unit_policy
+        ),
         "query_policy": query_policy,
         "root_mapping_policy": root_mapping_policy,
         "schema": canonical_clone_v1(schema_binding_spec),
         "signed_branch_aliases_by_role": signed_branch_aliases,
         "signed_branch_multipliers": canonical_clone_v1(signed_branch_policy["branch_multipliers"]),
         "source_only_aliases_by_role": source_only_aliases,
+        "source_repair_artifact_ref": source_repair_artifact_ref,
+        "source_repair_overlay": source_repair_overlay,
+        "supplemental_component_group_policy": canonical_clone_v1(
+            supplemental_component_group_policy
+        ),
         "supplemental_rollforward_additive_roles": canonical_clone_v1(
             supplemental_policy["primary_rollforward_additive_roles"]
         ),
@@ -766,6 +1425,172 @@ def _source_table(
     return section, table
 
 
+def _authenticated_source_repair_receipt_v1(
+    *, compiled_specs: Mapping[str, Any], repair: Mapping[str, Any]
+) -> dict[str, Any]:
+    material = {
+        "artifact_ref": canonical_clone_v1(compiled_specs["source_repair_artifact_ref"]),
+        "base_page_json_sha256": repair["base_page_json_sha256"],
+        "base_table_sha256": repair["table_ref"]["base_table_sha256"],
+        "changed_cell_axis": [
+            canonical_clone_v1(cell)
+            for row in repair["row_repairs"]
+            for cell in row["cell_repairs"]
+        ],
+        "effective_page_json_sha256": repair["effective_page_json_sha256"],
+        "effective_table_sha256": repair["table_ref"]["effective_table_sha256"],
+        "overlay_id": compiled_specs["source_repair_overlay"]["overlay_id"],
+        "page_json_version_id": repair["base_page_json_version_id"],
+        "repair_id": repair["repair_id"],
+        "row_axis": [
+            {
+                "after_values_exact": canonical_clone_v1(row["after_values_exact"]),
+                "before_values_exact": canonical_clone_v1(row["before_values_exact"]),
+                "row_hierarchy_path_exact": canonical_clone_v1(
+                    row["row_hierarchy_path_exact"]
+                ),
+                "row_id": row["row_id"],
+                "row_kind": row["row_kind"],
+                "row_label_exact": row["row_label_exact"],
+            }
+            for row in repair["row_repairs"]
+        ],
+        "rule": (
+            "EXACT_AUTHENTICATED_PDF_RENDER_SELECTED_JSON_TABLE_ROW_CELL_UNIT_"
+            "DIRECT_LITERAL_TRANSCRIPTION_ONLY_EQUATION_VETO_NO_BACKSOLVE"
+        ),
+        "source_binding": canonical_clone_v1(repair["source_binding"]),
+        "status": "AUTHENTICATED_PDF_VISIBLE_TABLE_SOURCE_AXIS_TRANSCRIBED",
+        "table_ref": {
+            "section_id": repair["table_ref"]["section_id"],
+            "table_id": repair["table_ref"]["table_id"],
+        },
+        "table_unit_repair": canonical_clone_v1(repair["table_unit_repair"]),
+        "visual_evidence": canonical_clone_v1(repair["visual_evidence"]),
+    }
+    return {
+        **material,
+        "receipt_id": "gjeqmsrv1:receipt:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _apply_authenticated_source_repair_artifact_v1(
+    *,
+    page_json_by_version: Mapping[str, Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+    regions: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    """Apply a registered repair to page clones after every binding replays."""
+
+    overlay = compiled_specs.get("source_repair_overlay")
+    artifact_ref = compiled_specs.get("source_repair_artifact_ref")
+    if overlay is None and artifact_ref is None:
+        return (
+            {key: canonical_clone_v1(value) for key, value in page_json_by_version.items()},
+            [],
+        )
+    if type(overlay) is not dict or type(artifact_ref) is not dict:
+        raise _error("equity-matrix compiled source-repair overlay is invalid")
+    region_by_version: dict[str, list[Mapping[str, Any]]] = {}
+    for region in regions:
+        version_id = region.get("page_json_version_id")
+        if type(version_id) is not str:
+            raise _error("equity-matrix source-repair region identity is invalid")
+        region_by_version.setdefault(version_id, []).append(region)
+    effective_pages = {
+        key: canonical_clone_v1(value) for key, value in page_json_by_version.items()
+    }
+    receipts = []
+    for repair in overlay["repairs"]:
+        version_id = repair["base_page_json_version_id"]
+        matching_regions = region_by_version.get(version_id, [])
+        if not matching_regions:
+            continue
+        source = repair["source_binding"]
+        table_ref = repair["table_ref"]
+        if any(
+            region.get("document_id") != source["document_id"]
+            or region.get("source_logical_name") != source["source_logical_name"]
+            or region.get("source_sha256") != source["source_sha256"]
+            or region.get("physical_page") != source["physical_page"]
+            for region in matching_regions
+        ):
+            raise _error("equity-matrix source-repair source binding drifted")
+        if not any(
+            region.get("section_id") == table_ref["section_id"]
+            and region.get("table_id") == table_ref["table_id"]
+            for region in matching_regions
+        ):
+            raise _error("equity-matrix source-repair target table is outside selected regions")
+        base_page = page_json_by_version.get(version_id)
+        if (
+            type(base_page) is not dict
+            or canonical_json_sha256_v1(base_page) != repair["base_page_json_sha256"]
+        ):
+            raise _error("equity-matrix source-repair base page drifted")
+        _section, base_table = _source_table(
+            base_page,
+            section_id=table_ref["section_id"],
+            table_id=table_ref["table_id"],
+        )
+        if (
+            canonical_json_sha256_v1(base_table) != table_ref["base_table_sha256"]
+            or not same_typed_json_v1(base_table.get("columns"), repair["column_axis_exact"])
+            or (
+                repair["table_unit_repair"] is not None
+                and not same_typed_json_v1(
+                    base_table.get("unit_exact"),
+                    repair["table_unit_repair"]["before_exact"],
+                )
+            )
+        ):
+            raise _error("equity-matrix source-repair base table drifted")
+        effective_page = canonical_clone_v1(base_page)
+        _effective_section, effective_table = _source_table(
+            effective_page,
+            section_id=table_ref["section_id"],
+            table_id=table_ref["table_id"],
+        )
+        rows = effective_table.get("rows")
+        if type(rows) is not list:
+            raise _error("equity-matrix source-repair row axis is invalid")
+        for repair_row in repair["row_repairs"]:
+            row_index = int(repair_row["row_id"][1:]) - 1
+            row = rows[row_index] if 0 <= row_index < len(rows) else None
+            if (
+                type(row) is not dict
+                or row.get("label_exact") != repair_row["row_label_exact"]
+                or row.get("row_kind") != repair_row["row_kind"]
+                or not same_typed_json_v1(
+                    row.get("hierarchy_path_exact"),
+                    repair_row["row_hierarchy_path_exact"],
+                )
+                or not same_typed_json_v1(
+                    row.get("values_exact"), repair_row["before_values_exact"]
+                )
+            ):
+                raise _error("equity-matrix source-repair row before-image drifted")
+            row["values_exact"] = canonical_clone_v1(repair_row["after_values_exact"])
+        if repair["table_unit_repair"] is not None:
+            effective_table["unit_exact"] = repair["table_unit_repair"]["after_exact"]
+        if (
+            canonical_json_sha256_v1(effective_table)
+            != table_ref["effective_table_sha256"]
+            or canonical_json_sha256_v1(effective_page)
+            != repair["effective_page_json_sha256"]
+        ):
+            raise _error("equity-matrix source-repair effective image drifted")
+        effective_pages[version_id] = effective_page
+        receipts.append(
+            _authenticated_source_repair_receipt_v1(
+                compiled_specs=compiled_specs,
+                repair=repair,
+            )
+        )
+    receipts.sort(key=lambda item: item["repair_id"])
+    return effective_pages, receipts
+
+
 def _header_members(column: Any) -> list[str]:
     members = column.get("header_path_exact") if type(column) is dict else None
     return (
@@ -800,10 +1625,29 @@ def _unit_occurrences(surface: Any, *, compiled_specs: Mapping[str, Any]) -> lis
         for alias in compiled_specs["unit_binding_by_alias"]
         for match in re.finditer(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", folded)
     ]
+    # ``Triệu đồng Việt Nam`` is one compound magnitude/currency
+    # declaration.  Its two registered aliases (``triệu đồng`` and
+    # ``đồng Việt Nam``) overlap on the word ``đồng``; the latter
+    # must not be interpreted as a second, unit-magnitude VND declaration.
+    # Keep genuinely separate declarations such as ``Triệu đồng; VND``
+    # conflicting by requiring the source spans to overlap.
+    def shadowed_currency_tail(item: tuple[int, int, str]) -> bool:
+        start, end, alias = item
+        binding = compiled_specs["unit_binding_by_alias"][alias]
+        if binding["magnitude_power10"] != 0:
+            return False
+        return any(
+            other_start < end
+            and start < other_end
+            and compiled_specs["unit_binding_by_alias"][other_alias]["magnitude_power10"] > 0
+            for other_start, other_end, other_alias in occurrences
+        )
+
     maximal = sorted(
         [
             item
             for item in occurrences
+            if not shadowed_currency_tail(item)
             if not any(
                 other[0] <= item[0]
                 and item[1] <= other[1]
@@ -840,6 +1684,9 @@ def _semantic_component_members(
         for aliases in aliases_by_role.values()
         for alias in aliases
     }
+    semantic_axis_aliases = component_aliases | {
+        _normalized(alias) for alias in compiled_specs["total_aliases"]
+    }
     inferred_parent_aliases = {
         _normalized(alias)
         for role in compiled_specs["hierarchy_policy"]["mapped_group_total_roles"]
@@ -854,6 +1701,15 @@ def _semantic_component_members(
             folded = re.sub(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", " ", folded)
         folded = " ".join(folded.split())
         if folded:
+            # Some statements print the balance-sheet disclosure reference as
+            # a final integer on each equity-component header (for example
+            # ``Financial reserve / 7`` and ``Total / 13``).  Remove only one
+            # trailing integer when the remaining full surface is an exact
+            # declared component or total alias; the literal header remains
+            # preserved in the component-axis receipt.
+            without_reference = re.sub(r"\s+[1-9][0-9]*$", "", folded).strip()
+            if without_reference in semantic_axis_aliases:
+                folded = without_reference
             # Some page transcriptions flatten ``parent - child`` into one
             # hierarchy member.  Recover only an explicitly declared group
             # parent followed by an exact declared child alias.  An exact
@@ -924,6 +1780,61 @@ def _promote_inferred_mapped_group_totals_v1(
         item["hierarchy_resolution"] = {
             "child_axis_ids": [child["axis_id"] for child in children],
             "rule": rule,
+        }
+
+
+def _recover_flat_group_total_children_v1(component_axis: list[dict[str, Any]]) -> None:
+    """Recover contiguous children of one declared flat group subtotal.
+
+    A source can flatten ``Các quỹ / Tổng cộng các quỹ`` into a
+    single column header while printing the fund columns immediately before
+    it.  The group name itself remains the authority: recovery requires at
+    least two contiguous preceding leaves that contain a substantive token
+    from that exact declared group prefix.  It therefore cannot absorb an
+    intervening non-group component or invent a group from arithmetic.
+    """
+
+    generic_group_tokens = {"cac", "nhom", "loai"}
+    leaf_kinds = {"MAPPED_COMPONENT", "SOURCE_ONLY_COMPONENT"}
+    for total_index, total in enumerate(component_axis):
+        prefix = total["group_prefix"]
+        if (
+            total["kind"] != "GROUP_TOTAL"
+            or not prefix
+            or len(total["semantic_path"]) != 1
+        ):
+            continue
+        keywords = {
+            token
+            for member in prefix
+            for token in member.split()
+            if token not in generic_group_tokens
+        }
+        if not keywords:
+            continue
+        children = []
+        for child in reversed(component_axis[:total_index]):
+            if child["kind"] not in leaf_kinds:
+                break
+            child_tokens = {
+                token for member in child["semantic_path"] for token in member.split()
+            }
+            if not keywords & child_tokens:
+                break
+            children.append(child)
+        children.reverse()
+        if len(children) < 2:
+            continue
+        for child in children:
+            child["semantic_path"] = [*canonical_clone_v1(prefix), *child["semantic_path"]]
+            child["group_prefix"] = canonical_clone_v1(prefix)
+            child["hierarchy_resolution"] = {
+                "group_total_axis_id": total["axis_id"],
+                "rule": "CONTIGUOUS_PRECEDING_DECLARED_GROUP_TOKEN_CHILD",
+            }
+        total["hierarchy_resolution"] = {
+            "child_axis_ids": [child["axis_id"] for child in children],
+            "rule": "FLAT_DECLARED_GROUP_TOTAL_OWNS_CONTIGUOUS_TOKEN_MATCHING_CHILDREN",
         }
 
 
@@ -1004,8 +1915,37 @@ def _component_record(
         for member in semantic_members
         if any(_matches(member, alias) for alias in compiled_specs["total_aliases"])
     ]
+    # A hierarchical subtotal can repeat its exact group name after a generic
+    # total prefix (``Quỹ của TCTD / Tổng cộng Quỹ của TCTD``).
+    # Recognize that source grammar even though the whole leaf is not itself
+    # an exact generic-total alias.  Only explicitly declared disclosure
+    # groups are eligible, so an arbitrary ``Tổng ...`` label cannot create
+    # hierarchy.
+    declared_groups = {
+        _normalized(alias)
+        for alias in compiled_specs["hierarchy_policy"]["disclosure_group_aliases"]
+    } | {
+        _normalized(alias)
+        for aliases in compiled_specs["source_only_aliases_by_role"].values()
+        for alias in aliases
+    }
+    declared_group_total_prefix: list[str] = []
+    for member in semantic_members:
+        for total_prefix in ("tong cong ", "tong ", "cong "):
+            suffix = member.removeprefix(total_prefix).strip()
+            if member.startswith(total_prefix) and suffix in declared_groups:
+                declared_group_total_prefix = [suffix]
+                total_members = [member]
+                break
+        if declared_group_total_prefix:
+            break
     reasons = []
     group_prefix: list[str] = []
+    if declared_group_total_prefix:
+        # The repeated group label describes the subtotal, not a second
+        # additive source-only leaf with the same name.
+        mapped = []
+        source_only = []
     if len(mapped) + len(source_only) > 1:
         reasons.append("COMPONENT_AXIS_MEMBER_MATCHES_MULTIPLE_DECLARED_ROLES")
     if len(branch_matches) > 1:
@@ -1040,6 +1980,27 @@ def _component_record(
         prefix = (
             semantic_members[:-1] if total_members and semantic_members[-1] in total_members else []
         )
+        if declared_group_total_prefix:
+            prefix = declared_group_total_prefix
+        if not prefix and total_members:
+            # Some matrices print a group subtotal as one flat surface
+            # (``Tổng cộng các quỹ``) rather than the equivalent hierarchy
+            # path ``Các quỹ / Tổng cộng các quỹ``.  Recover only a declared
+            # disclosure-group suffix after an exact generic-total prefix.
+            # The original surface stays in ``members_exact`` and an
+            # undeclared suffix can never create an inferred group.
+            for member in total_members:
+                folded_total = _normalized(member)
+                for total_prefix in ("tong cong ", "tong ", "cong "):
+                    if (
+                        folded_total.startswith(total_prefix)
+                        and folded_total.removeprefix(total_prefix).strip()
+                        in declared_groups
+                    ):
+                        prefix = [folded_total.removeprefix(total_prefix).strip()]
+                        break
+                if prefix:
+                    break
         if (
             row_kind in {"SUBTOTAL", "TOTAL"}
             and semantic_members
@@ -1344,6 +2305,7 @@ def classify_gemini_json_equity_matrix_table_v1(
         for ordinal, row in enumerate(rows, start=1)
     ]
     _promote_inferred_mapped_group_totals_v1(row_components, compiled_specs=compiled_specs)
+    _recover_flat_group_total_children_v1(row_components)
     _promote_full_scope_group_total_v1(row_components)
     column_components = [
         _component_record(
@@ -1355,6 +2317,7 @@ def classify_gemini_json_equity_matrix_table_v1(
         )
         for ordinal, column in enumerate(columns, start=1)
     ]
+    _recover_flat_group_total_children_v1(column_components)
     mapped_kinds = {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
     row_mapped = {item["role"] for item in row_components if item["kind"] in mapped_kinds}
     column_mapped = {item["role"] for item in column_components if item["kind"] in mapped_kinds}
@@ -1473,6 +2436,315 @@ def classify_gemini_json_equity_matrix_table_v1(
     return result
 
 
+def _component_row_continuation_plan_v1(
+    *,
+    tables: Sequence[Mapping[str, Any]],
+    classifications: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Recognize one reciprocal, complementary row-axis page continuation.
+
+    The plan is deliberately narrower than ordinary multi-table coalescing.
+    Both structured continuation directions, the MONEY-column layout, the
+    declared component inventory and the single grand total must agree.  One
+    label split at the page boundary is accepted only when the second label
+    fragment has no source values and the concatenated literal uniquely maps
+    to a declared component role.
+    """
+
+    policy = compiled_specs["component_row_continuation_policy"]
+    if (
+        policy["mode"]
+        != "EXPLICIT_RECIPROCAL_ADJACENT_COMPLEMENTARY_COMPONENT_AXIS"
+        or len(tables) != 2
+        or len(classifications) != 2
+        or tables[0].get("continuation") != "CONTINUES_ON_NEXT_PAGE"
+        or tables[1].get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE"
+        or any(item.get("orientation") != "COMPONENT_ROWS" for item in classifications)
+        or any(item.get("matrix_mode") is not None for item in classifications)
+    ):
+        return None
+    permitted_fragment_reasons = {
+        "EXACTLY_ONE_COMPONENT_GRAND_TOTAL_REQUIRED",
+        "UNCLASSIFIED_COMPONENT_AXIS_PRESENT",
+    }
+    if any(
+        not set(item.get("reasons", [])) <= permitted_fragment_reasons
+        for item in classifications
+    ):
+        return None
+    columns = [table.get("columns") for table in tables]
+    if (
+        any(type(axis) is not list or not axis for axis in columns)
+        or len(columns[0]) != len(columns[1])
+        or [item.get("value_kind") for item in columns[0]]
+        != [item.get("value_kind") for item in columns[1]]
+    ):
+        return None
+    money_ordinals = [
+        ordinal
+        for ordinal, column in enumerate(columns[0], start=1)
+        if column.get("value_kind") == "MONEY"
+    ]
+    if len(money_ordinals) < 4:
+        return None
+    first_headers = [
+        _normalized(" ".join(_header_members(columns[0][ordinal - 1])))
+        for ordinal in money_ordinals
+    ]
+    second_headers = [
+        _normalized(" ".join(_header_members(columns[1][ordinal - 1])))
+        for ordinal in money_ordinals
+    ]
+    if any(not header for header in first_headers):
+        return None
+    if all(not header for header in second_headers):
+        header_rule = "SECOND_FRAGMENT_INHERITS_IDENTICAL_POSITIONAL_MONEY_AXIS"
+    elif same_typed_json_v1(first_headers, second_headers):
+        header_rule = "SECOND_FRAGMENT_REPEATS_EXACT_NORMALIZED_MONEY_AXIS"
+    else:
+        return None
+
+    fragment_axes: list[list[dict[str, Any]]] = []
+    for fragment_ordinal, (table, classification) in enumerate(
+        zip(tables, classifications, strict=True), start=1
+    ):
+        axis = []
+        if len(classification["component_axis"]) != len(table["rows"]):
+            return None
+        for row_ordinal, item in enumerate(classification["component_axis"], start=1):
+            axis.append(
+                {
+                    **canonical_clone_v1(item),
+                    "axis_id": f"f{fragment_ordinal}:r{row_ordinal}",
+                    "source_axis_id": f"r{row_ordinal}",
+                    "source_fragment_ordinal": fragment_ordinal,
+                    "source_row_ordinal": row_ordinal,
+                }
+            )
+        fragment_axes.append(axis)
+
+    split_label_receipt = None
+    unclassified = [
+        (fragment_ordinal, row_ordinal, item)
+        for fragment_ordinal, axis in enumerate(fragment_axes, start=1)
+        for row_ordinal, item in enumerate(axis, start=1)
+        if item["kind"] == "UNCLASSIFIED_COMPONENT_AXIS"
+    ]
+    skipped_second_row = None
+    if unclassified:
+        if (
+            not policy["allow_blank_leading_label_tail"]
+            or len(unclassified) != 2
+            or unclassified[0][:2] != (1, len(fragment_axes[0]))
+            or unclassified[1][:2] != (2, 1)
+        ):
+            return None
+        first_row = tables[0]["rows"][-1]
+        second_row = tables[1]["rows"][0]
+        first_label = first_row.get("label_exact")
+        second_label = second_row.get("label_exact")
+        if (
+            type(first_label) is not str
+            or not first_label.strip()
+            or type(second_label) is not str
+            or not second_label.strip()
+            or any(
+                value is not None and (type(value) is not str or value.strip())
+                for value in second_row["values_exact"]
+            )
+        ):
+            return None
+        combined_label = f"{first_label.strip()} {second_label.strip()}"
+        recovered = _component_record(
+            members=[combined_label],
+            row_kind=first_row.get("row_kind"),
+            axis_id=fragment_axes[0][-1]["axis_id"],
+            axis_ordinal=fragment_axes[0][-1]["axis_ordinal"],
+            compiled_specs=compiled_specs,
+        )
+        if recovered["kind"] == "UNCLASSIFIED_COMPONENT_AXIS" or recovered["reasons"]:
+            return None
+        recovered.update(
+            {
+                "source_axis_id": fragment_axes[0][-1]["source_axis_id"],
+                "source_fragment_ordinal": 1,
+                "source_label_fragments_exact": [first_label, second_label],
+                "source_row_ordinal": len(fragment_axes[0]),
+            }
+        )
+        fragment_axes[0][-1] = recovered
+        skipped_second_row = fragment_axes[1].pop(0)
+        split_label_receipt = {
+            "combined_label_exact": combined_label,
+            "first_source_axis_id": recovered["source_axis_id"],
+            "first_source_label_exact": first_label,
+            "recovered_role": recovered.get("role"),
+            "rule": (
+                "RECIPROCAL_PAGE_BOUNDARY_LABEL_FRAGMENTS_JOINED_ONLY_WHEN_"
+                "LEADING_TAIL_ROW_ALL_SOURCE_CELLS_BLANK"
+            ),
+            "second_source_axis_id": skipped_second_row["source_axis_id"],
+            "second_source_label_exact": second_label,
+        }
+
+    component_axis = [item for axis in fragment_axes for item in axis]
+    for ordinal, item in enumerate(component_axis, start=1):
+        item["axis_ordinal"] = ordinal
+    mapped_kinds = {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+    mapped_roles = [item["role"] for item in component_axis if item["kind"] in mapped_kinds]
+    duplicate_roles = {role for role in mapped_roles if mapped_roles.count(role) > 1}
+    if (
+        any(item["kind"] == "UNCLASSIFIED_COMPONENT_AXIS" for item in component_axis)
+        or sum(item["kind"] == "GRAND_TOTAL" for item in component_axis) != 1
+        or duplicate_roles - set(compiled_specs["hierarchy_policy"]["aggregate_duplicate_roles"])
+        or len(set(mapped_roles)) < compiled_specs["query_policy"]["minimum_mapped_component_roles"]
+    ):
+        return None
+    receipt = {
+        "combined_component_axis_sha256": canonical_json_sha256_v1(component_axis),
+        "fragment_component_axis_sha256": [
+            item["component_axis_sha256"] for item in classifications
+        ],
+        "money_column_ordinals": money_ordinals,
+        "money_header_rule": header_rule,
+        "rule": (
+            "EXPLICIT_RECIPROCAL_ADJACENT_COMPONENT_ROW_FRAGMENTS_FORM_ONE_"
+            "COMPLEMENTARY_COMPONENT_AXIS"
+        ),
+        "split_label_receipt": split_label_receipt,
+    }
+    return {
+        "component_axis": component_axis,
+        "movement_fragment_ordinal": 1,
+        "receipt": receipt,
+    }
+
+
+def _supplemental_component_group_plan_v1(
+    *,
+    tables: Sequence[Mapping[str, Any]],
+    classifications: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Recognize a primary equity matrix plus one exact subgroup matrix."""
+
+    policy = compiled_specs["supplemental_component_group_policy"]
+    if (
+        policy["mode"] != "EXACT_SUPPLEMENTAL_COMPONENT_GROUP_MATRIX"
+        or len(tables) != 2
+        or len(classifications) != 2
+        or any(item.get("orientation") != "COMPONENT_COLUMNS" for item in classifications)
+        or any(item.get("matrix_mode") is not None for item in classifications)
+        or classifications[0].get("status") != "MATRIX_FRAGMENT"
+    ):
+        return None
+    supplemental_mode = "COMPLETE_ROLLFORWARD_MATRIX"
+    supplemental_period_date = None
+    if classifications[1].get("status") != "MATRIX_FRAGMENT":
+        supplemental_axis = classifications[1].get("component_axis", [])
+        supplemental_rows = tables[1].get("rows")
+        total_axes = [item for item in supplemental_axis if item["kind"] == "GROUP_TOTAL"]
+        movement = (
+            _movement_surface_record(
+                members=[supplemental_rows[0].get("label_exact")]
+                if type(supplemental_rows) is list
+                and len(supplemental_rows) == 1
+                and type(supplemental_rows[0].get("label_exact")) is str
+                else [],
+                axis_id="r1",
+                axis_ordinal=1,
+                source_ref={},
+                compiled_specs=compiled_specs,
+            )
+            if type(supplemental_rows) is list and len(supplemental_rows) == 1
+            else None
+        )
+        combined_boundary_surface = (
+            _normalized(supplemental_rows[0].get("label_exact"))
+            if type(supplemental_rows) is list
+            and len(supplemental_rows) == 1
+            and type(supplemental_rows[0].get("label_exact")) is str
+            else ""
+        )
+        explicitly_both_boundaries = bool(
+            movement is not None
+            and movement["balance_marker"]
+            and re.search(r"\bso du dau (?:ky|nam)\b", combined_boundary_surface)
+            and re.search(r"\b(?:va|&) cuoi (?:ky|nam)\b", combined_boundary_surface)
+        )
+        column_dates = [
+            sorted(
+                item.isoformat()
+                for item in _header_dates(" ".join(_header_members(column)))
+            )
+            for column in tables[1].get("columns", [])
+            if column.get("value_kind") == "MONEY"
+        ]
+        distinct_column_dates = {
+            dates[0] for dates in column_dates if len(dates) == 1
+        }
+        if (
+            classifications[1].get("reasons")
+            != ["EXACTLY_ONE_COMPONENT_GRAND_TOTAL_REQUIRED"]
+            or len(total_axes) != 1
+            or movement is None
+            or not (
+                set(movement["explicit_roles"]) == {"OPENING", "CLOSING"}
+                or explicitly_both_boundaries
+            )
+            or not column_dates
+            or any(len(dates) != 1 for dates in column_dates)
+            or len(distinct_column_dates) != 1
+        ):
+            return None
+        supplemental_mode = "EXPLICIT_OPENING_AND_CLOSING_PERIOD_SNAPSHOT"
+        supplemental_period_date = next(iter(distinct_column_dates))
+    primary_axis, supplemental_axis = [item["component_axis"] for item in classifications]
+    mapped_kinds = {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+    primary_mapped = {
+        item["role"] for item in primary_axis if item["kind"] in mapped_kinds
+    }
+    supplemental_mapped = {
+        item["role"] for item in supplemental_axis if item["kind"] in mapped_kinds
+    }
+    allowed_children = set(policy["mapped_child_roles"])
+    group_axes = [
+        item
+        for item in primary_axis
+        if item["kind"] == "SOURCE_ONLY_COMPONENT"
+        and item.get("role") == policy["group_source_only_role"]
+    ]
+    if (
+        len(supplemental_mapped) < 2
+        or not supplemental_mapped <= allowed_children
+        or len(group_axes) > 1
+        or (not group_axes and len(primary_mapped & supplemental_mapped) < 2)
+        or (not group_axes and not (primary_mapped - allowed_children))
+    ):
+        return None
+    return {
+        "group_axis_id": group_axes[0]["axis_id"] if group_axes else None,
+        "mapped_child_roles": sorted(supplemental_mapped),
+        "mode": supplemental_mode,
+        "overlapping_primary_roles": sorted(primary_mapped & supplemental_mapped),
+        "supplemental_period_date": supplemental_period_date,
+        "receipt": {
+            "group_source_only_role": policy["group_source_only_role"],
+            "mapped_child_roles": sorted(supplemental_mapped),
+            "mode": supplemental_mode,
+            "primary_component_axis_sha256": classifications[0]["component_axis_sha256"],
+            "rule": (
+                "PRIMARY_EQUITY_MATRIX_PLUS_EXPLICIT_SUPPLEMENTAL_COMPONENT_GROUP_"
+                "MATRIX_RECONCILE_BEFORE_CHILD_PROJECTION"
+            ),
+            "supplemental_component_axis_sha256": classifications[1][
+                "component_axis_sha256"
+            ],
+        },
+    }
+
+
 def _checked_region_axis(regions: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     fields = {
         "document_id",
@@ -1532,16 +2804,18 @@ def _checked_region_axis(regions: Sequence[Mapping[str, Any]]) -> list[dict[str,
         prior_key = key
         result.append(canonical_clone_v1(region))
     if len(result) == 2:
-        same_page_siblings = (
+        # A source can place an unrelated control table between the primary
+        # matrix and an explicitly titled supplemental subgroup matrix on the
+        # same page.  Source order is already checked above; semantic pairing
+        # remains gated later by the family-specific exact subgroup plan.
+        same_page_ordered = (
             result[1]["page_json_version_id"] == result[0]["page_json_version_id"]
-            and result[1]["section_id"] == result[0]["section_id"]
-            and int(result[1]["table_id"][1:]) == int(result[0]["table_id"][1:]) + 1
         )
         adjacent_pages = (
             result[1]["physical_page"] - result[0]["physical_page"] == 1
             and result[1]["selected_page_ordinal"] - result[0]["selected_page_ordinal"] == 1
         )
-        if not (same_page_siblings or adjacent_pages):
+        if not (same_page_ordered or adjacent_pages):
             raise _error("equity-matrix fragments are not adjacent source siblings")
     return result
 
@@ -1642,6 +2916,34 @@ def _movement_matches(members: Sequence[str], *, compiled_specs: Mapping[str, An
     primary_roles = set(_MAPPED_MOVEMENT_ROLES)
     primary: list[str] = []
     supplemental: list[str] = []
+    duration_roles = {
+        "INCREASE" if match.group(1) == "tang" else "DECREASE"
+        for surface in [*members, " ".join(members)]
+        if (
+            match := re.fullmatch(
+                r"(tang|giam) trong (?:0?[1-9]|1[0-2]) thang",
+                surface,
+            )
+        )
+        is not None
+    }
+    english_balance_roles = {
+        "OPENING"
+        if match.group(1) in {"1", "01"}
+        else "CLOSING"
+        for surface in [*members, " ".join(members)]
+        if (
+            match := re.fullmatch(
+                r"balance (?:as )?at (1|01|31) (january|december) \d{4}",
+                surface,
+            )
+        )
+        is not None
+        and (
+            (match.group(1) in {"1", "01"} and match.group(2) == "january")
+            or (match.group(1) == "31" and match.group(2) == "december")
+        )
+    }
     for member in members:
         match_surfaces = {
             member,
@@ -1667,6 +2969,12 @@ def _movement_matches(members: Sequence[str], *, compiled_specs: Mapping[str, An
         supplemental_matches = [
             (role, alias) for role, alias in matches if role not in primary_roles
         ]
+        # Interim and quarterly disclosures sometimes spell the same declared
+        # movement columns as ``Tăng/Giảm trong 03/06/09 tháng``.  The number
+        # is a duration, not a reporting endpoint, so recognize only the
+        # complete normalized surface and preserve the literal header in the
+        # movement receipt.  A longer narrative or a bare year deliberately
+        # does not match this grammar.
         if primary_matches:
             longest = max(len(_normalized(alias)) for _role, alias in primary_matches)
             primary = sorted(
@@ -1677,6 +2985,10 @@ def _movement_matches(members: Sequence[str], *, compiled_specs: Mapping[str, An
             supplemental = sorted(
                 {role for role, alias in supplemental_matches if len(_normalized(alias)) == longest}
             )
+    if duration_roles:
+        primary = sorted(duration_roles)
+    if english_balance_roles:
+        primary = sorted(english_balance_roles)
     if not primary:
         return supplemental
     if not supplemental:
@@ -1721,9 +3033,29 @@ def _movement_surface_record(
     explicit_roles = _movement_matches(semantic_members, compiled_specs=compiled_specs)
     dates = sorted(item.isoformat() for item in _header_dates(source_exact))
     folded = _normalized(source_exact)
-    balance_marker = bool(re.search(r"\b(?:so du|du dau|du cuoi|tai ngay)\b", folded))
+    standalone_date_marker = bool(
+        len(dates) == 1
+        and (
+            re.fullmatch(r"(?:ngay )?\d{1,2} \d{1,2} \d{4}", folded)
+            or re.fullmatch(
+                r"(?:ngay )?\d{1,2} thang \d{1,2} nam \d{4}",
+                folded,
+            )
+        )
+    )
+    balance_marker = bool(
+        re.search(r"\b(?:so du|so dau|so cuoi|du dau|du cuoi|tai ngay)\b", folded)
+        or standalone_date_marker
+        or set(explicit_roles) & {"OPENING", "CLOSING"}
+    )
     reasons = []
-    if len(dates) > 1:
+    # A movement description may legitimately state the covered interval,
+    # for example ``lợi nhuận từ ngày ... đến ngày ...``.  Multiple dates are
+    # conflicting period evidence only on a declared balance boundary; they
+    # do not make an otherwise ordinary movement row ambiguous.
+    if len(dates) > 1 and (
+        balance_marker or set(explicit_roles) & {"OPENING", "CLOSING"}
+    ):
         reasons.append("MOVEMENT_AXIS_SURFACE_HAS_MULTIPLE_DATES")
     return {
         "axis_id": axis_id,
@@ -1735,6 +3067,103 @@ def _movement_surface_record(
         "reasons": reasons,
         "source_ref": canonical_clone_v1(source_ref),
     }
+
+
+def _collapse_exact_parent_movement_rows_v1(
+    rows: Sequence[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Retain an exact visible movement parent and demote its detail rows.
+
+    Some equity statements print both an additive ``Tăng/Giảm`` subtotal and
+    its immediately following hierarchy children.  Both are source evidence,
+    but adding both would double-count the movement.  A parent replaces its
+    children in the arithmetic frontier only when every source cell is
+    observed and the parent vector equals the exact sum of those children.
+    """
+
+    collapsed_indexes: set[int] = set()
+    receipts = []
+
+    def normalized_path(item: Mapping[str, Any]) -> list[str]:
+        path = item["row"].get("hierarchy_path_exact")
+        return [
+            folded
+            for member in path
+            if (folded := _normalized(member))
+        ] if type(path) is list else []
+
+    def is_descendant(parent: Mapping[str, Any], child: Mapping[str, Any]) -> bool:
+        parent_label = _normalized(parent["row"].get("label_exact"))
+        child_label = _normalized(child["row"].get("label_exact"))
+        child_path = normalized_path(child)
+        if not parent_label or child_label == parent_label or not child_path:
+            return False
+        return child_path[0] == parent_label or child_path[0].startswith(parent_label + " ")
+
+    def observed_vector(item: Mapping[str, Any]) -> list[int] | None:
+        values = item["row"].get("values_exact")
+        if type(values) is not list:
+            return None
+        result = []
+        for value in values:
+            try:
+                cell = _money(value)
+            except ValueError:
+                return None
+            coefficient = observed_source_coefficient_v1(cell)
+            if coefficient is None:
+                return None
+            result.append(coefficient)
+        return result
+
+    for index, parent in enumerate(rows):
+        if index in collapsed_indexes or parent.get("explicit_roles") not in (
+            ["INCREASE"],
+            ["DECREASE"],
+        ):
+            continue
+        children = []
+        for child_index in range(index + 1, len(rows)):
+            child = rows[child_index]
+            if not is_descendant(parent, child):
+                break
+            children.append((child_index, child))
+        if not children:
+            continue
+        parent_vector = observed_vector(parent)
+        child_vectors = [observed_vector(child) for _child_index, child in children]
+        if (
+            parent_vector is None
+            or any(vector is None for vector in child_vectors)
+            or any(len(vector) != len(parent_vector) for vector in child_vectors if vector)
+        ):
+            continue
+        computed = [
+            sum(vector[column_index] for vector in child_vectors if vector is not None)
+            for column_index in range(len(parent_vector))
+        ]
+        if computed != parent_vector:
+            continue
+        collapsed_indexes.update(child_index for child_index, _child in children)
+        receipts.append(
+            {
+                "axis_role": parent["explicit_roles"][0],
+                "child_source_refs": [
+                    canonical_clone_v1(child["source_ref"]) for _child_index, child in children
+                ],
+                "computed_vector": computed,
+                "parent_source_ref": canonical_clone_v1(parent["source_ref"]),
+                "parent_vector": parent_vector,
+                "rule": (
+                    "EXACT_FULLY_OBSERVED_PARENT_MOVEMENT_VECTOR_EQUALS_"
+                    "CONTIGUOUS_DECLARED_HIERARCHY_CHILD_SUM"
+                ),
+            }
+        )
+    return (
+        [item for index, item in enumerate(rows) if index not in collapsed_indexes],
+        receipts,
+    )
 
 
 def _component_projection(axis: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -1888,6 +3317,7 @@ def _resolve_cluster_unit(
     tables: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
     document_unit_context_evidence: Mapping[str, Any] | None,
+    family_root_boundary_vector: Mapping[str, int] | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     local = [_local_unit_axis(table, compiled_specs=compiled_specs) for table in tables]
     reasons = [
@@ -1916,7 +3346,32 @@ def _resolve_cluster_unit(
             canonical_unit = context["canonical_unit"]
             source = "INDEXED_DOCUMENT_MONEY_UNIT_CONSENSUS"
         else:
-            reasons.append("AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS_UNAVAILABLE")
+            root_evidence = (
+                context.get("primary_statement_root_unit_evidence", [])
+                if type(context) is dict
+                else []
+            )
+            matches = [
+                item
+                for item in root_evidence
+                if type(item) is dict
+                and type(family_root_boundary_vector) is dict
+                and item.get("root_values_source_order")
+                == [
+                    family_root_boundary_vector.get("closing"),
+                    family_root_boundary_vector.get("opening"),
+                ]
+            ]
+            if (
+                compiled_specs.get("primary_statement_root_unit_policy", {}).get("mode")
+                == "EXACT_FAMILY_ROOT_BOUNDARY_VECTOR_CORROBORATION"
+                and len(matches) == 1
+                and type(matches[0].get("canonical_unit")) is str
+            ):
+                canonical_unit = matches[0]["canonical_unit"]
+                source = "EXACT_PRIMARY_STATEMENT_FAMILY_ROOT_BOUNDARY_VECTOR_UNIT"
+            else:
+                reasons.append("AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS_UNAVAILABLE")
     return (
         {
             "canonical_unit": canonical_unit,
@@ -1945,6 +3400,32 @@ def _parsed_cell(
     try:
         parsed = _money(value)
     except ValueError:
+        parsed = None
+    if parsed is None and type(value) is str:
+        # Some otherwise complete matrix cells retain a source footnote/OCR
+        # suffix (for example ``19.279.848(*)`` or ``25带有-``).  Recover a
+        # value only when one and only one numeric token starts the cell.  A
+        # leading dash before a parenthesized amount (``-(5.000)``) is rejected:
+        # in compacted matrices that surface can represent two adjacent source
+        # cells and must be resolved by layout evidence, not scalar parsing.
+        stripped = value.strip()
+        numeric_tokens = list(
+            re.finditer(r"\(?-?\d{1,3}(?:[.,]\d{3})+\)?|\(?-?\d+\)?", stripped)
+        )
+        if len(numeric_tokens) == 1 and numeric_tokens[0].start() == 0:
+            token = numeric_tokens[0].group(0)
+            suffix = stripped[numeric_tokens[0].end() :]
+            if suffix and not any(character.isdigit() for character in suffix):
+                try:
+                    normalized = _money(token)
+                except ValueError:
+                    normalized = None
+                if normalized is not None and normalized["state"] == "RAW_SIGNED_INTEGER":
+                    parsed = {
+                        **normalized,
+                        "state": "NORMALIZED_SINGLE_NUMERIC_TOKEN_PENDING_GRAPH",
+                    }
+    if parsed is None:
         return None, f"MONEY_CELL_INVALID:{region['page_json_version_id']}:{row_id}:{column_id}"
     parsed["source_text"] = source_value
     return (
@@ -2387,35 +3868,282 @@ def _build_matrix_graph(
             classifications=classifications,
             compiled_specs=compiled_specs,
         )
+    supplemental_plan = _supplemental_component_group_plan_v1(
+        tables=tables,
+        classifications=classifications,
+        compiled_specs=compiled_specs,
+    )
+    if supplemental_plan is not None:
+        primary_graph, primary_reasons = _build_matrix_graph(
+            regions=regions[:1],
+            tables=tables[:1],
+            classifications=classifications[:1],
+            compiled_specs=compiled_specs,
+        )
+        if supplemental_plan["mode"] == "COMPLETE_ROLLFORWARD_MATRIX":
+            supplemental_graph, supplemental_reasons = _build_matrix_graph(
+                regions=regions[1:],
+                tables=tables[1:],
+                classifications=classifications[1:],
+                compiled_specs=compiled_specs,
+            )
+        else:
+            source_axis = classifications[1]["component_axis"]
+            snapshot_axis = []
+            snapshot_cells = {}
+            supplemental_reasons = []
+            for item in source_axis:
+                projected = canonical_clone_v1(item)
+                if projected["kind"] == "GROUP_TOTAL":
+                    projected["kind"] = "GRAND_TOTAL"
+                    projected["group_prefix"] = []
+                snapshot_axis.append(projected)
+                value = tables[1]["rows"][0]["values_exact"][item["axis_ordinal"] - 1]
+                cell, reason = _parsed_cell(
+                    value=value,
+                    region=regions[1],
+                    row_id="r1",
+                    column_id=item["axis_id"],
+                )
+                if reason:
+                    supplemental_reasons.append(reason)
+                    continue
+                assert cell is not None
+                snapshot_cells[item["axis_id"]] = {
+                    "OPENING": canonical_clone_v1(cell),
+                    "CLOSING": canonical_clone_v1(cell),
+                }
+            movement_source = _movement_surface_record(
+                members=[tables[1]["rows"][0]["label_exact"]],
+                axis_id="r1",
+                axis_ordinal=1,
+                source_ref={**canonical_clone_v1(regions[1]), "row_id": "r1"},
+                compiled_specs=compiled_specs,
+            )
+            supplemental_graph = {
+                "alignment_receipts": [],
+                "component_axis": snapshot_axis,
+                "component_cells": snapshot_cells,
+                "movement_axis": [
+                    {
+                        **canonical_clone_v1(movement_source),
+                        "axis_id": f"snapshot:{axis_role}",
+                        "axis_role": axis_role,
+                    }
+                    for axis_role in ("OPENING", "CLOSING")
+                ],
+                "movement_decomposition_equations": [],
+                "orientation": "COMPONENT_COLUMNS",
+                "period_block_receipt": {
+                    "period_date": supplemental_plan["supplemental_period_date"],
+                    "rule": (
+                        "EXPLICIT_SOURCE_ROW_DECLARING_BOTH_OPENING_AND_CLOSING_"
+                        "WITH_ONE_COLUMN_PERIOD"
+                    ),
+                },
+                "supplemental_rollforward_additive_roles": [],
+            }
+        reasons = [
+            *[f"PRIMARY_COMPONENT_GROUP:{reason}" for reason in primary_reasons],
+            *[
+                f"SUPPLEMENTAL_COMPONENT_GROUP:{reason}"
+                for reason in supplemental_reasons
+            ],
+        ]
+        primary_equations = []
+        supplemental_equations = []
+        if primary_graph and not primary_reasons:
+            primary_equations, equation_reasons, _primary_sign = _build_equations(
+                primary_graph
+            )
+            reasons.extend(
+                f"PRIMARY_COMPONENT_GROUP:{reason}" for reason in equation_reasons
+            )
+        if supplemental_graph and not supplemental_reasons:
+            supplemental_equations, equation_reasons, _supplemental_sign = _build_equations(
+                supplemental_graph
+            )
+            reasons.extend(
+                f"SUPPLEMENTAL_COMPONENT_GROUP:{reason}" for reason in equation_reasons
+            )
+        if reasons or not primary_graph or not supplemental_graph:
+            return primary_graph, sorted(set(reasons))
+
+        primary_axis_by_role = {
+            item["role"]: item
+            for item in primary_graph["component_axis"]
+            if item["kind"] in {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+        }
+        supplemental_axis_by_role = {
+            item["role"]: item
+            for item in supplemental_graph["component_axis"]
+            if item["kind"] in {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+        }
+        primary_movement_roles = {
+            item["axis_role"] for item in primary_graph["movement_axis"]
+        }
+        supplemental_movement_roles = {
+            item["axis_role"] for item in supplemental_graph["movement_axis"]
+        }
+        boundary_roles = [
+            role
+            for role in ("OPENING", "CLOSING")
+            if role in primary_movement_roles and role in supplemental_movement_roles
+        ]
+        if boundary_roles != ["OPENING", "CLOSING"]:
+            return primary_graph, ["SUPPLEMENTAL_COMPONENT_GROUP_BOUNDARY_AXIS_INCOMPLETE"]
+
+        reconciliation = []
+
+        def compare_cells(
+            *,
+            comparison_role: str,
+            primary_cell: Mapping[str, Any],
+            supplemental_cell: Mapping[str, Any],
+            axis_role: str,
+        ) -> None:
+            primary_value = observed_source_coefficient_v1(primary_cell)
+            supplemental_value = observed_source_coefficient_v1(supplemental_cell)
+            status = (
+                "INCOMPLETE_BLANK_SOURCE_CELL"
+                if primary_value is None or supplemental_value is None
+                else "EXACT"
+                if primary_value == supplemental_value
+                else "MISMATCH"
+            )
+            reconciliation.append(
+                {
+                    "axis_role": axis_role,
+                    "comparison_role": comparison_role,
+                    "primary_cell": canonical_clone_v1(primary_cell),
+                    "status": status,
+                    "supplemental_cell": canonical_clone_v1(supplemental_cell),
+                }
+            )
+            if status != "EXACT":
+                reasons.append(
+                    "SUPPLEMENTAL_COMPONENT_GROUP_SOURCE_CONFLICT_OR_BLANK_BOUNDARY"
+                )
+
+        group_axis_id = supplemental_plan["group_axis_id"]
+        supplemental_grand = next(
+            item
+            for item in supplemental_graph["component_axis"]
+            if item["kind"] == "GRAND_TOTAL"
+        )
+        if group_axis_id is not None:
+            for axis_role in boundary_roles:
+                compare_cells(
+                    comparison_role=supplemental_plan["receipt"][
+                        "group_source_only_role"
+                    ],
+                    primary_cell=primary_graph["component_cells"][group_axis_id][
+                        axis_role
+                    ],
+                    supplemental_cell=supplemental_graph["component_cells"][
+                        supplemental_grand["axis_id"]
+                    ][axis_role],
+                    axis_role=axis_role,
+                )
+        else:
+            for role in supplemental_plan["overlapping_primary_roles"]:
+                for axis_role in boundary_roles:
+                    compare_cells(
+                        comparison_role=role,
+                        primary_cell=primary_graph["component_cells"][
+                            primary_axis_by_role[role]["axis_id"]
+                        ][axis_role],
+                        supplemental_cell=supplemental_graph["component_cells"][
+                            supplemental_axis_by_role[role]["axis_id"]
+                        ][axis_role],
+                        axis_role=axis_role,
+                    )
+        if reasons:
+            return primary_graph, sorted(set(reasons))
+
+        combined = canonical_clone_v1(primary_graph)
+        for role in supplemental_plan["mapped_child_roles"]:
+            if role in primary_axis_by_role:
+                continue
+            source_axis = supplemental_axis_by_role[role]
+            axis = {
+                **canonical_clone_v1(source_axis),
+                "axis_id": f"supplemental:{source_axis['axis_id']}",
+                "kind": "MAPPED_SUPPLEMENTAL_COMPONENT",
+                "supplemental_source_axis_id": source_axis["axis_id"],
+            }
+            combined["component_axis"].append(axis)
+            combined["component_cells"][axis["axis_id"]] = canonical_clone_v1(
+                supplemental_graph["component_cells"][source_axis["axis_id"]]
+            )
+        combined["alignment_receipts"].append(
+            {
+                **canonical_clone_v1(supplemental_plan["receipt"]),
+                "primary_equations": primary_equations,
+                "reconciliation": reconciliation,
+                "supplemental_equations": supplemental_equations,
+            }
+        )
+        return combined, []
     reasons = []
     orientations = {item["orientation"] for item in classifications}
     if len(orientations) != 1 or None in orientations:
         return {}, ["MATRIX_FRAGMENT_ORIENTATIONS_DIFFER"]
     orientation = next(iter(orientations))
+    continuation_plan = _component_row_continuation_plan_v1(
+        tables=tables,
+        classifications=classifications,
+        compiled_specs=compiled_specs,
+    )
     projections = [_component_projection(item["component_axis"]) for item in classifications]
-    if any(not same_typed_json_v1(projections[0], item) for item in projections[1:]):
+    if continuation_plan is None and any(
+        not same_typed_json_v1(projections[0], item) for item in projections[1:]
+    ):
         return {}, ["CONTINUATION_COMPONENT_AXES_DIFFER"]
-    component_axis = canonical_clone_v1(classifications[0]["component_axis"])
+    component_axis = canonical_clone_v1(
+        continuation_plan["component_axis"]
+        if continuation_plan is not None
+        else classifications[0]["component_axis"]
+    )
     movement_axis = []
     component_cells: dict[str, dict[str, dict[str, Any]]] = {
         item["axis_id"]: {} for item in component_axis
     }
-    alignment_receipts = []
+    alignment_receipts = (
+        [canonical_clone_v1(continuation_plan["receipt"])]
+        if continuation_plan is not None
+        else []
+    )
     period_block_receipt = None
     if orientation == "COMPONENT_ROWS":
-        if len(tables) != 1:
+        if len(tables) != 1 and continuation_plan is None:
             return {}, ["COMPONENT_ROW_ORIENTATION_CANNOT_SPAN_MULTIPLE_FRAGMENTS"]
-        table = tables[0]
+        movement_fragment_ordinal = (
+            continuation_plan["movement_fragment_ordinal"]
+            if continuation_plan is not None
+            else 1
+        )
+        table = tables[movement_fragment_ordinal - 1]
         columns = table["columns"]
         raw_movement = [
             _movement_surface_record(
                 members=_header_members(column),
                 axis_id=f"c{ordinal}",
                 axis_ordinal=ordinal,
-                source_ref={**canonical_clone_v1(regions[0]), "column_id": f"c{ordinal}"},
+                source_ref={
+                    **canonical_clone_v1(regions[movement_fragment_ordinal - 1]),
+                    "column_id": f"c{ordinal}",
+                },
                 compiled_specs=compiled_specs,
             )
             for ordinal, column in enumerate(columns, start=1)
+            # A component-row table may retain a visible enumeration/stub
+            # column (for example ``A`` with row numbers 1..13).  It is not a
+            # movement lane and must not make the four MONEY columns look
+            # unclassified.  The original column remains source-visible in
+            # the sealed table; only the arithmetic movement projection is
+            # restricted to declared MONEY columns.
+            if column.get("value_kind") == "MONEY"
         ]
         for declaration in compiled_specs["movement_decomposition_equations"]:
             result_role = declaration["result_role"]
@@ -2504,13 +4232,18 @@ def _build_matrix_graph(
             for item in movement_axis:
                 role = role_by_identity[id(item)]
                 item["axis_role"] = role
-        for component, row in zip(component_axis, table["rows"], strict=True):
+        for component in component_axis:
+            source_fragment_ordinal = component.get("source_fragment_ordinal", 1)
+            source_row_ordinal = component.get("source_row_ordinal", component["axis_ordinal"])
+            source_table = tables[source_fragment_ordinal - 1]
+            row = source_table["rows"][source_row_ordinal - 1]
+            source_region = regions[source_fragment_ordinal - 1]
             for movement in movement_axis:
                 column_index = movement["axis_ordinal"] - 1
                 cell, reason = _parsed_cell(
                     value=row["values_exact"][column_index],
-                    region=regions[0],
-                    row_id=component["axis_id"],
+                    region=source_region,
+                    row_id=f"r{source_row_ordinal}",
                     column_id=movement["axis_id"],
                 )
                 if reason:
@@ -2560,7 +4293,12 @@ def _build_matrix_graph(
                     "OPENING" in opening["explicit_roles"]
                     and "CLOSING" in closing["explicit_roles"]
                 )
-                if detail_count < 0 or (detail_count == 0 and not explicit_pair):
+                if (
+                    detail_count < 0
+                    or (detail_count == 0 and not explicit_pair)
+                    or "CLOSING" in opening["explicit_roles"]
+                    or "OPENING" in closing["explicit_roles"]
+                ):
                     continue
                 start = date.fromisoformat(opening["dates"][0]) if opening["dates"] else None
                 end = date.fromisoformat(closing["dates"][0]) if closing["dates"] else None
@@ -2587,6 +4325,27 @@ def _build_matrix_graph(
                 if len(latest_blocks) == 1:
                     selected_block = latest_blocks[0]
                     selection_rule = "UNIQUE_LATEST_SOURCE_DATED_COMPLETE_BALANCE_BLOCK"
+            elif len(blocks) > 1:
+                # Comparative annual disclosures can print two complete but
+                # undated relative blocks.  ``năm nay``/``kỳ này`` is explicit
+                # current-period source semantics; it can select one block
+                # without manufacturing an endpoint date.  A tie or a block
+                # with the marker on only one boundary remains unresolved.
+                def is_current_relative_boundary(item: Mapping[str, Any]) -> bool:
+                    folded = " ".join(
+                        _normalized(member) for member in item["members_exact"]
+                    )
+                    return bool(re.search(r"\b(?:nam nay|ky nay)\b", folded))
+
+                current_blocks = [
+                    item
+                    for item in blocks
+                    if is_current_relative_boundary(item["opening"])
+                    and is_current_relative_boundary(item["closing"])
+                ]
+                if len(current_blocks) == 1:
+                    selected_block = current_blocks[0]
+                    selection_rule = "UNIQUE_EXPLICIT_CURRENT_RELATIVE_BALANCE_BLOCK"
             if selected_block is None:
                 reasons.append("CURRENT_MOVEMENT_BLOCK_PERIOD_NOT_UNIQUE")
             else:
@@ -2610,6 +4369,134 @@ def _build_matrix_graph(
                 }
             if selected_block is None:
                 selected = []
+            selected, parent_child_receipts = _collapse_exact_parent_movement_rows_v1(selected)
+            alignment_receipts.extend(parent_child_receipts)
+            deduplicated = []
+            for item in selected:
+                same_label_duplicate = next(
+                    (
+                        prior
+                        for prior in deduplicated[1:]
+                        if item is not selected[-1]
+                        and len(item["explicit_roles"]) == 1
+                        and item["explicit_roles"] in (["INCREASE"], ["DECREASE"])
+                        and item["explicit_roles"] == prior["explicit_roles"]
+                        and _normalized(item["row"].get("label_exact"))
+                        == _normalized(prior["row"].get("label_exact"))
+                        and same_typed_json_v1(
+                            item["row"].get("values_exact"),
+                            prior["row"].get("values_exact"),
+                        )
+                    ),
+                    None,
+                )
+                same_label_observed_subset_duplicate = None
+                if (
+                    same_label_duplicate is None
+                    and compiled_specs["directional_duplicate_control_mode"]
+                    == "EXACT_ADJACENT_DIRECTIONAL_CHILD_CONTROL"
+                    and len(deduplicated) > 1
+                    and item is not selected[-1]
+                ):
+                    prior = deduplicated[-1]
+                    prior_values = prior["row"].get("values_exact")
+                    current_values = item["row"].get("values_exact")
+
+                    def observed_axis(values: Any) -> dict[int, int] | None:
+                        if type(values) is not list:
+                            return None
+                        result = {}
+                        for value_ordinal, value in enumerate(values):
+                            try:
+                                parsed = _money(value)
+                            except ValueError:
+                                return None
+                            if parsed is None:
+                                continue
+                            coefficient = parsed.get("coefficient")
+                            if coefficient is None and parsed.get("state") == "BLANK_SOURCE_CELL":
+                                continue
+                            if type(coefficient) is not int:
+                                return None
+                            result[value_ordinal] = coefficient
+                        return result
+
+                    prior_observed = observed_axis(prior_values)
+                    current_observed = observed_axis(current_values)
+                    if (
+                        item["axis_ordinal"] == prior["axis_ordinal"] + 1
+                        and len(item["explicit_roles"]) == 1
+                        and item["explicit_roles"] == prior["explicit_roles"]
+                        and _normalized(item["row"].get("label_exact"))
+                        == _normalized(prior["row"].get("label_exact"))
+                        and prior_observed is not None
+                        and current_observed is not None
+                        and len(current_observed) >= 2
+                        and len(current_values) - 1 in current_observed
+                        and set(current_observed) < set(prior_observed)
+                        and all(
+                            prior_observed[ordinal] == coefficient
+                            for ordinal, coefficient in current_observed.items()
+                        )
+                    ):
+                        same_label_observed_subset_duplicate = prior
+                directional_child_duplicate = None
+                if (
+                    same_label_duplicate is None
+                    and compiled_specs["directional_duplicate_control_mode"]
+                    == "EXACT_ADJACENT_DIRECTIONAL_CHILD_CONTROL"
+                    and len(deduplicated) > 1
+                    and item is not selected[-1]
+                ):
+                    prior = deduplicated[-1]
+                    prior_role = (
+                        prior["explicit_roles"][0]
+                        if len(prior["explicit_roles"]) == 1
+                        and prior["explicit_roles"][0] in {"INCREASE", "DECREASE"}
+                        else None
+                    )
+                    subordinate_aliases = compiled_specs[
+                        "directional_duplicate_control_aliases_by_role"
+                    ].get(prior_role, [])
+                    if (
+                        prior_role is not None
+                        and item["axis_ordinal"] == prior["axis_ordinal"] + 1
+                        and any(
+                            _matches(item["row"].get("label_exact"), alias)
+                            for alias in subordinate_aliases
+                        )
+                        and same_typed_json_v1(
+                            item["row"].get("values_exact"),
+                            prior["row"].get("values_exact"),
+                        )
+                    ):
+                        directional_child_duplicate = prior
+                duplicate = (
+                    same_label_duplicate
+                    or same_label_observed_subset_duplicate
+                    or directional_child_duplicate
+                )
+                if duplicate is None:
+                    deduplicated.append(item)
+                    continue
+                alignment_receipts.append(
+                    {
+                        "axis_role": duplicate["explicit_roles"][0],
+                        "corroborating_source_ref": canonical_clone_v1(item["source_ref"]),
+                        "retained_source_ref": canonical_clone_v1(duplicate["source_ref"]),
+                        "rule": (
+                            "EXACT_ADJACENT_DECLARED_DIRECTIONAL_CHILD_ROW_IS_"
+                            "CORROBORATING_CONTROL_NOT_SECOND_ADDITIVE_TERM"
+                            if directional_child_duplicate is not None
+                            else "EXACT_OBSERVED_SUBSET_SAME_LABEL_ADJACENT_ROW_IS_"
+                            "CORROBORATING_CONTROL_BLANKS_REMAIN_UNOBSERVED"
+                            if same_label_observed_subset_duplicate is not None
+                            else "EXACT_DUPLICATE_DECLARED_MOVEMENT_ROW_IS_"
+                            "CORROBORATING_CONTROL_NOT_SECOND_ADDITIVE_TERM"
+                        ),
+                    }
+                )
+            selected = deduplicated
             explicit_middle_roles: set[str] = set()
             for ordinal, item in enumerate(selected):
                 if ordinal == 0:
@@ -2729,15 +4616,37 @@ def _cell_term(cell: Mapping[str, Any], *, multiplier: int = 1) -> dict[str, Any
     }
 
 
+def _additive_equation_outcome_v1(
+    *,
+    result: Mapping[str, Any],
+    terms: Sequence[tuple[Mapping[str, Any], int]],
+) -> tuple[int | None, str]:
+    """Evaluate only source-observed lanes; a blank is unknown, never zero."""
+
+    result_coefficient = observed_source_coefficient_v1(result)
+    term_coefficients = [observed_source_coefficient_v1(cell) for cell, _ in terms]
+    if result_coefficient is None or any(value is None for value in term_coefficients):
+        return None, "INCOMPLETE_BLANK_SOURCE_CELL"
+    computed = sum(
+        coefficient * multiplier
+        for coefficient, (_cell, multiplier) in zip(term_coefficients, terms, strict=True)
+        if coefficient is not None
+    )
+    return computed, "EXACT" if computed == result_coefficient else "MISMATCH"
+
+
 def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], list[str], int]:
     if graph.get("signed_branch_mode") is True:
         return canonical_clone_v1(graph["equations"]), [], 1
     axis = graph["component_axis"]
+    arithmetic_axis = [
+        item for item in axis if item["kind"] != "MAPPED_SUPPLEMENTAL_COMPONENT"
+    ]
     cells = graph["component_cells"]
     movement = graph["movement_axis"]
     totals = [
         item
-        for item in axis
+        for item in arithmetic_axis
         if item["kind"] in {"GROUP_TOTAL", "GRAND_TOTAL", "MAPPED_COMPONENT_GROUP_TOTAL"}
     ]
     reasons = []
@@ -2745,14 +4654,16 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
     for move in movement:
         move_role = move["axis_role"]
         for total in totals:
-            terms = _equation_terms_for_total(total=total, component_axis=axis)
+            terms = _equation_terms_for_total(total=total, component_axis=arithmetic_axis)
             result = cells[total["axis_id"]].get(move_role)
             term_cells = [cells[item["axis_id"]].get(move_role) for item in terms]
             if result is None or not terms or any(item is None for item in term_cells):
                 reasons.append("HORIZONTAL_TOTAL_EQUATION_CELL_AXIS_INCOMPLETE")
                 continue
-            computed = sum(item["coefficient"] for item in term_cells if item is not None)
-            status = "EXACT" if computed == result["coefficient"] else "MISMATCH"
+            computed, status = _additive_equation_outcome_v1(
+                result=result,
+                terms=[(item, 1) for item in term_cells if item is not None],
+            )
             equation = {
                 "axis_role": move_role,
                 "computed_value": computed,
@@ -2767,19 +4678,21 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                 "total_axis_id": total["axis_id"],
             }
             equations.append(equation)
-            if status != "EXACT":
+            if status == "MISMATCH":
                 reasons.append("HORIZONTAL_VISIBLE_TOTAL_MISMATCH")
-    disclosure_headers = [item for item in axis if item["kind"] == "DISCLOSURE_GROUP_HEADER"]
+    disclosure_headers = [
+        item for item in arithmetic_axis if item["kind"] == "DISCLOSURE_GROUP_HEADER"
+    ]
     for header in disclosure_headers:
         prior = [
             item
-            for item in axis
+            for item in arithmetic_axis
             if item["axis_ordinal"] < header["axis_ordinal"]
             and item["kind"] in {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
         ]
         terms = [
             item
-            for item in axis
+            for item in arithmetic_axis
             if item["kind"] == "DISCLOSURE_COMPONENT"
             and _starts_with(item["semantic_path"], header["group_prefix"])
         ]
@@ -2794,8 +4707,10 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
             if result is None or any(item is None for item in term_cells):
                 reasons.append("DISCLOSURE_GROUP_CELL_AXIS_INCOMPLETE")
                 continue
-            computed = sum(item["coefficient"] for item in term_cells if item is not None)
-            status = "EXACT" if computed == result["coefficient"] else "MISMATCH"
+            computed, status = _additive_equation_outcome_v1(
+                result=result,
+                terms=[(item, 1) for item in term_cells if item is not None],
+            )
             equations.append(
                 {
                     "axis_role": role,
@@ -2808,7 +4723,7 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                     "total_axis_id": result_axis["axis_id"],
                 }
             )
-            if status != "EXACT":
+            if status == "MISMATCH":
                 reasons.append("DISCLOSURE_GROUP_VISIBLE_TOTAL_MISMATCH")
     present_movement_roles = {item["axis_role"] for item in movement}
     for declaration in graph.get("movement_decomposition_equations", []):
@@ -2829,7 +4744,7 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
         if present_declared != declared_roles:
             reasons.append("SUPPLEMENTAL_MOVEMENT_DECOMPOSITION_AXIS_INCOMPLETE")
             continue
-        for item in axis:
+        for item in arithmetic_axis:
             result = cells[item["axis_id"]][declaration["result_role"]]
             term_cells = [
                 (
@@ -2838,8 +4753,10 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                 )
                 for role, multiplier in declaration["term_multipliers"].items()
             ]
-            computed = sum(cell["coefficient"] * multiplier for cell, multiplier in term_cells)
-            status = "EXACT" if computed == result["coefficient"] else "MISMATCH"
+            computed, status = _additive_equation_outcome_v1(
+                result=result,
+                terms=term_cells,
+            )
             equations.append(
                 {
                     "component_axis_id": item["axis_id"],
@@ -2852,7 +4769,7 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                     ],
                 }
             )
-            if status != "EXACT":
+            if status == "MISMATCH":
                 reasons.append("SUPPLEMENTAL_MOVEMENT_DECOMPOSITION_MISMATCH")
     sign_multiplier = 1
     if graph["orientation"] == "COMPONENT_ROWS":
@@ -2861,22 +4778,42 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
             for role in graph.get("supplemental_rollforward_additive_roles", [])
             if role in present_movement_roles
         ]
+        complete_axes = []
+        for item in arithmetic_axis:
+            component = cells[item["axis_id"]]
+            required_roles = ["OPENING", "INCREASE", *additive_roles, "DECREASE", "CLOSING"]
+            if all(
+                role in component
+                and observed_source_coefficient_v1(component[role]) is not None
+                for role in required_roles
+            ):
+                complete_axes.append(item)
         exact_modes = []
         for candidate in (1, -1):
-            if all(
-                cells[item["axis_id"]]["OPENING"]["coefficient"]
-                + cells[item["axis_id"]]["INCREASE"]["coefficient"]
-                + sum(cells[item["axis_id"]][role]["coefficient"] for role in additive_roles)
-                + candidate * cells[item["axis_id"]]["DECREASE"]["coefficient"]
-                == cells[item["axis_id"]]["CLOSING"]["coefficient"]
-                for item in axis
+            if complete_axes and all(
+                observed_source_coefficient_v1(cells[item["axis_id"]]["OPENING"])
+                + observed_source_coefficient_v1(cells[item["axis_id"]]["INCREASE"])
+                + sum(
+                    observed_source_coefficient_v1(cells[item["axis_id"]][role])
+                    for role in additive_roles
+                )
+                + candidate
+                * observed_source_coefficient_v1(cells[item["axis_id"]]["DECREASE"])
+                == observed_source_coefficient_v1(cells[item["axis_id"]]["CLOSING"])
+                for item in complete_axes
             ):
                 exact_modes.append(candidate)
-        if not exact_modes:
-            reasons.append("VERTICAL_EXPLICIT_MOVEMENT_SIGN_MODE_UNRESOLVED")
+        if complete_axes:
+            if not exact_modes:
+                reasons.append("VERTICAL_EXPLICIT_MOVEMENT_SIGN_MODE_UNRESOLVED")
+            else:
+                sign_multiplier = exact_modes[0] if len(exact_modes) == 1 else -1
         else:
-            sign_multiplier = exact_modes[0] if len(exact_modes) == 1 else -1
-        for item in axis:
+            # The source label itself declares a decrease.  With no complete
+            # arithmetic lane available it remains a negative presentation
+            # multiplier, while every equation is explicitly incomplete.
+            sign_multiplier = -1
+        for item in arithmetic_axis:
             required = ["OPENING", "INCREASE", "DECREASE", "CLOSING"]
             if any(role not in cells[item["axis_id"]] for role in required):
                 reasons.append("VERTICAL_EXPLICIT_MOVEMENT_CELL_AXIS_INCOMPLETE")
@@ -2885,13 +4822,15 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
             increase = cells[item["axis_id"]]["INCREASE"]
             decrease = cells[item["axis_id"]]["DECREASE"]
             closing = cells[item["axis_id"]]["CLOSING"]
-            computed = (
-                opening["coefficient"]
-                + increase["coefficient"]
-                + sum(cells[item["axis_id"]][role]["coefficient"] for role in additive_roles)
-                + sign_multiplier * decrease["coefficient"]
+            computed, status = _additive_equation_outcome_v1(
+                result=closing,
+                terms=[
+                    (opening, 1),
+                    (increase, 1),
+                    *[(cells[item["axis_id"]][role], 1) for role in additive_roles],
+                    (decrease, sign_multiplier),
+                ],
             )
-            status = "EXACT" if computed == closing["coefficient"] else "MISMATCH"
             equations.append(
                 {
                     "component_axis_id": item["axis_id"],
@@ -2908,14 +4847,14 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                     ],
                 }
             )
-            if status != "EXACT":
+            if status == "MISMATCH":
                 reasons.append("VERTICAL_COMPONENT_ROLLFORWARD_MISMATCH")
     else:
         roles = [item["axis_role"] for item in movement]
         if len(roles) < 2 or roles[0] != "OPENING" or roles[-1] != "CLOSING":
             reasons.append("VERTICAL_DETAILED_MOVEMENT_AXIS_INVALID")
         else:
-            for item in axis:
+            for item in arithmetic_axis:
                 component = cells[item["axis_id"]]
                 if any(role not in component for role in roles):
                     reasons.append("VERTICAL_DETAILED_MOVEMENT_CELL_AXIS_INCOMPLETE")
@@ -2923,8 +4862,10 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                 opening = component["OPENING"]
                 closing = component["CLOSING"]
                 detail = [component[role] for role in roles[1:-1]]
-                computed = opening["coefficient"] + sum(cell["coefficient"] for cell in detail)
-                status = "EXACT" if computed == closing["coefficient"] else "MISMATCH"
+                computed, status = _additive_equation_outcome_v1(
+                    result=closing,
+                    terms=[(opening, 1), *[(cell, 1) for cell in detail]],
+                )
                 equations.append(
                     {
                         "component_axis_id": item["axis_id"],
@@ -2935,7 +4876,7 @@ def _build_equations(graph: Mapping[str, Any]) -> tuple[list[dict[str, Any]], li
                         "terms": [_cell_term(opening), *[_cell_term(cell) for cell in detail]],
                     }
                 )
-                if status != "EXACT":
+                if status == "MISMATCH":
                     reasons.append("VERTICAL_COMPONENT_ROLLFORWARD_MISMATCH")
     return equations, sorted(set(reasons)), sign_multiplier
 
@@ -2947,8 +4888,14 @@ def _component_column_row_alignment_candidates(
 ) -> list[dict[str, Any]]:
     axis = graph["component_axis"]
     source_cells = [graph["component_cells"][item["axis_id"]][axis_role] for item in axis]
+    # A blank source slot is an unknown observation.  It cannot be used as a
+    # zero placeholder by the digit-placement solver.
+    if any(observed_source_coefficient_v1(cell) is None for cell in source_cells):
+        return []
     tokens = [
-        (ordinal, cell) for ordinal, cell in enumerate(source_cells) if cell["coefficient"] != 0
+        (ordinal, cell)
+        for ordinal, cell in enumerate(source_cells)
+        if observed_source_coefficient_v1(cell) != 0
     ]
     totals = [
         item
@@ -3050,6 +4997,15 @@ def _resolve_component_column_row_alignment_v1(
     opening_role = movement[0]["axis_role"]
     closing_role = movement[-1]["axis_role"]
     detail_roles = [item["axis_role"] for item in movement[1:-1]]
+    if any(
+        observed_source_coefficient_v1(
+            graph["component_cells"][item["axis_id"]][axis_role]
+        )
+        is None
+        for item in axis
+        for axis_role in (opening_role, closing_role)
+    ):
+        return None, ["ROW_ALIGNMENT_REQUIRES_OBSERVED_BOUNDARY_AXIS"]
     domains = [
         _component_column_row_alignment_candidates(graph=graph, axis_role=axis_role)
         for axis_role in detail_roles
@@ -3135,20 +5091,128 @@ def _resolve_component_column_row_alignment_v1(
     return rebuilt, []
 
 
+def _resolve_directional_cumulative_movement_control_v1(
+    graph: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]], int]:
+    """Select an exact cumulative directional row over its adjacent detail.
+
+    Some statements print a direction subtotal immediately followed by a more
+    complete directional row.  The latter may repeat the subtotal values and
+    add one further component.  It replaces, rather than adds to, the former
+    only when the complete matrix becomes uniquely exact.  Blank cells remain
+    unobserved throughout.
+    """
+
+    if (
+        graph.get("orientation") != "COMPONENT_COLUMNS"
+        or compiled_specs.get("directional_duplicate_control_mode")
+        != "EXACT_ADJACENT_DIRECTIONAL_CHILD_CONTROL"
+    ):
+        return None, [], 1
+    movement = graph.get("movement_axis", [])
+    candidates = []
+    for movement_ordinal, (prior, current) in enumerate(
+        zip(movement, movement[1:], strict=False), start=1
+    ):
+        prior_role = prior.get("axis_role")
+        current_role = current.get("axis_role")
+        aliases = compiled_specs["directional_duplicate_control_aliases_by_role"].get(
+            prior_role, []
+        )
+        if (
+            prior_role not in {"INCREASE", "DECREASE"}
+            or not aliases
+            or current_role in _MAPPED_MOVEMENT_ROLES
+            or current.get("axis_ordinal") != prior.get("axis_ordinal", 0) + 1
+            or not any(
+                _matches(member, alias)
+                for member in current.get("members_exact", [])
+                for alias in aliases
+            )
+        ):
+            continue
+        overlap_equal_nonzero = 0
+        incompatible_overlap = False
+        for component in graph.get("component_axis", []):
+            cells = graph.get("component_cells", {}).get(component.get("axis_id"), {})
+            prior_cell = cells.get(prior_role)
+            current_cell = cells.get(current_role)
+            if not isinstance(prior_cell, Mapping) or not isinstance(current_cell, Mapping):
+                incompatible_overlap = True
+                break
+            prior_value = observed_source_coefficient_v1(prior_cell)
+            current_value = observed_source_coefficient_v1(current_cell)
+            if prior_value is None or current_value is None:
+                continue
+            if component.get("kind") == "GRAND_TOTAL":
+                continue
+            if prior_value != current_value and prior_value != 0 and current_value != 0:
+                incompatible_overlap = True
+                break
+            if prior_value == current_value and prior_value != 0:
+                overlap_equal_nonzero += 1
+        if incompatible_overlap or overlap_equal_nonzero == 0:
+            continue
+        rebuilt = canonical_clone_v1(graph)
+        rebuilt_movement = rebuilt["movement_axis"]
+        discarded = rebuilt_movement.pop(movement_ordinal - 1)
+        retained = rebuilt_movement[movement_ordinal - 1]
+        retained_source_role = retained["axis_role"]
+        retained["axis_role"] = prior_role
+        for component in rebuilt["component_axis"]:
+            cells = rebuilt["component_cells"][component["axis_id"]]
+            cells.pop(prior_role)
+            cells[prior_role] = cells.pop(retained_source_role)
+        receipt = {
+            "axis_role": prior_role,
+            "discarded_source_ref": canonical_clone_v1(discarded["source_ref"]),
+            "retained_source_ref": canonical_clone_v1(retained["source_ref"]),
+            "rule": (
+                "UNIQUE_EXACT_ADJACENT_DIRECTIONAL_CUMULATIVE_ROW_REPLACES_"
+                "ITS_INCLUDED_DETAIL_WITHOUT_BLANK_ZERO_INFERENCE"
+            ),
+        }
+        rebuilt["alignment_receipts"].append(receipt)
+        equations, reasons, sign_multiplier = _build_equations(rebuilt)
+        grand_total = next(
+            (
+                item
+                for item in rebuilt["component_axis"]
+                if item.get("kind") == "GRAND_TOTAL"
+            ),
+            None,
+        )
+        exact_vertical = [
+            equation
+            for equation in equations
+            if equation.get("equation_kind") == "VERTICAL_DETAILED_MOVEMENT_ROLLFORWARD"
+            and equation.get("status") == "EXACT"
+        ]
+        grand_is_exact = bool(
+            grand_total
+            and any(
+                equation.get("component_axis_id") == grand_total["axis_id"]
+                for equation in exact_vertical
+            )
+        )
+        if not reasons and grand_is_exact and len(exact_vertical) >= 2:
+            candidates.append((rebuilt, equations, sign_multiplier))
+    if len(candidates) != 1:
+        return None, [], 1
+    return candidates[0]
+
+
 def _mapping_value(
     cell: Mapping[str, Any], *, axis_role: str, equation_multiplier: int = 1
 ) -> dict[str, Any]:
-    state = (
-        "INFERRED_BLANK_ZERO_EQUATION_EXACT"
-        if cell["state"] == "BLANK_ZERO_IF_EQUATION_EXACT"
-        else cell["state"]
-    )
+    coefficient = observed_source_coefficient_v1(cell)
+    state = "BLANK_SOURCE_CELL" if coefficient is None else cell["state"]
     result = {
         "axis_role": axis_role,
         "cell_ref": canonical_clone_v1(cell["cell_ref"]),
-        "coefficient": cell["coefficient"],
+        "coefficient": coefficient,
         "equation_multiplier": equation_multiplier,
-        "source_text": cell["source_text"],
+        "source_text": None if coefficient is None else cell["source_text"],
         "state": state,
     }
     if cell.get("state") == "SIGNED_BRANCH_NET_SOURCE_CELLS_GRAPH_EXACT":
@@ -3180,21 +5244,42 @@ def _aggregate_mapping_value_v1(
         )
         for cell in cells
     ]
+    coefficients = [item["coefficient"] for item in components]
+    incomplete = any(coefficient is None for coefficient in coefficients)
     return {
         "aggregate_components": components,
         "axis_role": axis_role,
         "cell_ref": None,
-        "coefficient": sum(item["coefficient"] for item in components),
+        "coefficient": (
+            None
+            if incomplete
+            else sum(coefficient for coefficient in coefficients if coefficient is not None)
+        ),
         "equation_multiplier": equation_multiplier,
         "source_text": None,
-        "state": "AGGREGATED_SOURCE_CELLS_GRAPH_EXACT",
+        "state": (
+            "DERIVED_INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"
+            if incomplete
+            else "AGGREGATED_SOURCE_CELLS_GRAPH_EXACT"
+        ),
     }
 
 
 def _build_mappings(
     *, graph: Mapping[str, Any], compiled_specs: Mapping[str, Any], unit: str, sign_multiplier: int
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[str]]:
     result = []
+    omitted_all_blank_roles = []
+
+    def append_if_observed(payload: dict[str, Any]) -> None:
+        if any(value["coefficient"] is not None for value in payload["values"]):
+            payload["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
+                {key: value for key, value in payload.items() if key != "item_mapping_id"}
+            )
+            result.append(payload)
+        else:
+            omitted_all_blank_roles.append(payload["role"])
+
     movement_roles = [item["axis_role"] for item in graph["movement_axis"]]
     selected_child_roles = (
         [
@@ -3232,10 +5317,7 @@ def _build_mappings(
                 if axis_role in graph["component_cells"][grand_total["axis_id"]]
             ],
         }
-        payload["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
-            {key: value for key, value in payload.items() if key != "item_mapping_id"}
-        )
-        result.append(payload)
+        append_if_observed(payload)
     else:
         for axis_role in selected_child_roles:
             if axis_role not in movement_roles:
@@ -3258,13 +5340,14 @@ def _build_mappings(
                     )
                 ],
             }
-            payload["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
-                {key: value for key, value in payload.items() if key != "item_mapping_id"}
-            )
-            result.append(payload)
+            append_if_observed(payload)
     mapped_by_role: dict[str, list[Mapping[str, Any]]] = {}
     for item in graph["component_axis"]:
-        if item["kind"] in {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}:
+        if item["kind"] in {
+            "MAPPED_COMPONENT",
+            "MAPPED_COMPONENT_GROUP_TOTAL",
+            "MAPPED_SUPPLEMENTAL_COMPONENT",
+        }:
             mapped_by_role.setdefault(item["role"], []).append(item)
     for role, items in mapped_by_role.items():
         if len(items) == 1:
@@ -3299,11 +5382,8 @@ def _build_mappings(
             "unit": unit,
             "values": values,
         }
-        payload["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
-            {key: value for key, value in payload.items() if key != "item_mapping_id"}
-        )
-        result.append(payload)
-    return result
+        append_if_observed(payload)
+    return result, sorted(omitted_all_blank_roles)
 
 
 def _valuation_cell_v1(
@@ -3968,11 +6048,18 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
         or compiled_specs.get("engine_format_version") != ENGINE_FORMAT_VERSION
     ):
         raise _error("equity-matrix compiled specs are invalid")
+    effective_page_json_by_version, source_repair_receipts = (
+        _apply_authenticated_source_repair_artifact_v1(
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+            regions=checked_regions,
+        )
+    )
     tables = []
     classifications = []
     reasons = []
     for region in checked_regions:
-        page = page_json_by_version.get(region["page_json_version_id"])
+        page = effective_page_json_by_version.get(region["page_json_version_id"])
         if type(page) is not dict:
             raise _error("equity-matrix selected canonical page is absent")
         _section, table = _source_table(
@@ -3983,15 +6070,21 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
         )
         tables.append(table)
         classifications.append(classification)
-        reasons.extend(classification["reasons"])
-        if classification["status"] != "MATRIX_FRAGMENT":
-            reasons.append("SELECTED_FRAGMENT_IS_NOT_ONE_COMPLETE_MATRIX_AXIS")
-    unit_receipt, unit_reasons = _resolve_cluster_unit(
+    continuation_plan = _component_row_continuation_plan_v1(
         tables=tables,
+        classifications=classifications,
         compiled_specs=compiled_specs,
-        document_unit_context_evidence=document_unit_context_evidence,
     )
-    reasons.extend(unit_reasons)
+    supplemental_component_group_plan = _supplemental_component_group_plan_v1(
+        tables=tables,
+        classifications=classifications,
+        compiled_specs=compiled_specs,
+    )
+    if continuation_plan is None and supplemental_component_group_plan is None:
+        for classification in classifications:
+            reasons.extend(classification["reasons"])
+            if classification["status"] != "MATRIX_FRAGMENT":
+                reasons.append("SELECTED_FRAGMENT_IS_NOT_ONE_COMPLETE_MATRIX_AXIS")
     graph, graph_reasons = _build_matrix_graph(
         regions=checked_regions,
         tables=tables,
@@ -4024,9 +6117,42 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
                     equation_reasons = []
             else:
                 equation_reasons = sorted(set(equation_reasons) | set(alignment_reasons))
+        if graph["orientation"] == "COMPONENT_COLUMNS":
+            cumulative_graph, cumulative_equations, cumulative_multiplier = (
+                _resolve_directional_cumulative_movement_control_v1(
+                    graph, compiled_specs=compiled_specs
+                )
+            )
+            if cumulative_graph is not None:
+                graph = cumulative_graph
+                equations = cumulative_equations
+                sign_multiplier = cumulative_multiplier
+                equation_reasons = []
         reasons.extend(equation_reasons)
+    family_root_boundary_vector = None
+    grand_totals = [
+        item for item in graph.get("component_axis", []) if item.get("kind") == "GRAND_TOTAL"
+    ]
+    if len(grand_totals) == 1:
+        boundary_cells = graph.get("component_cells", {}).get(
+            grand_totals[0].get("axis_id"), {}
+        )
+        opening_cell = boundary_cells.get("OPENING")
+        closing_cell = boundary_cells.get("CLOSING")
+        if isinstance(opening_cell, Mapping) and isinstance(closing_cell, Mapping):
+            opening = observed_source_coefficient_v1(opening_cell)
+            closing = observed_source_coefficient_v1(closing_cell)
+            if type(opening) is int and type(closing) is int:
+                family_root_boundary_vector = {"closing": closing, "opening": opening}
+    unit_receipt, unit_reasons = _resolve_cluster_unit(
+        tables=tables,
+        compiled_specs=compiled_specs,
+        document_unit_context_evidence=document_unit_context_evidence,
+        family_root_boundary_vector=family_root_boundary_vector,
+    )
+    reasons.extend(unit_reasons)
     reasons = sorted(set(reasons))
-    mappings = (
+    mappings, omitted_all_blank_mapping_roles = (
         _build_mappings(
             graph=graph,
             compiled_specs=compiled_specs,
@@ -4034,8 +6160,10 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
             sign_multiplier=sign_multiplier,
         )
         if not reasons and graph and unit_receipt["canonical_unit"] is not None
-        else []
+        else ([], [])
     )
+    if not mappings and omitted_all_blank_mapping_roles and not reasons:
+        reasons = ["ALL_SCHEMA_MAPPING_ROLES_HAVE_BLANK_SOURCE_LANES"]
     first = checked_regions[0]
     status = READY if mappings and not reasons else UNRESOLVED
     closure_receipt = {
@@ -4043,6 +6171,7 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
         "component_axis": canonical_clone_v1(graph.get("component_axis", [])),
         "equations": equations,
         "movement_axis": canonical_clone_v1(graph.get("movement_axis", [])),
+        "omitted_all_blank_mapping_roles": omitted_all_blank_mapping_roles,
         "orientation": graph.get("orientation"),
         "period_block_receipt": canonical_clone_v1(graph.get("period_block_receipt")),
         "query_receipt": canonical_clone_v1(query_receipt),
@@ -4055,6 +6184,7 @@ def evaluate_gemini_json_equity_matrix_family_cluster_v1(
             for item in graph.get("component_axis", [])
             if item["kind"] in {"SOURCE_ONLY_COMPONENT", "DISCLOSURE_COMPONENT"}
         ],
+        "source_repair_receipts": source_repair_receipts,
         "unit_receipt": unit_receipt,
     }
     if graph.get("signed_branch_mode") is True:
@@ -4186,8 +6316,169 @@ def _contained_declared_alias(value: Any, aliases: Sequence[str]) -> str | None:
     return winners[0]
 
 
-def _document_unit_context_v1(
+def _declared_reset_alias_v1(value: Any, aliases: Sequence[str]) -> str | None:
+    """Match broad reset headings exactly, while retaining specific phrase anchors."""
+
+    exact_heading_aliases = {"co phieu", "co tuc"}
+    exact_matches = [
+        alias
+        for alias in aliases
+        if _normalized(alias) in exact_heading_aliases and _matches(value, alias)
+    ]
+    contained = _contained_declared_alias(
+        value,
+        [alias for alias in aliases if _normalized(alias) not in exact_heading_aliases],
+    )
+    matches = [*exact_matches, *([contained] if contained is not None else [])]
+    if not matches:
+        return None
+    maximum = max(len(_normalized(alias)) for alias in matches)
+    return sorted(alias for alias in matches if len(_normalized(alias)) == maximum)[0]
+
+
+def _primary_statement_root_unit_evidence_v1(
     pages: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Return typed statement-root vectors carrying an explicit money unit.
+
+    A unitless continuation page may inherit only from the reciprocal table on
+    the immediately preceding physical page.  Proximity alone is deliberately
+    insufficient: the downstream resolver must also exact-match the statement
+    root vector to the selected equity matrix boundary vector.
+    """
+
+    table_records = []
+    for record in pages:
+        page = record["page_json"]
+        if page.get("status") != "PRIMARY_FINANCIAL_STATEMENT":
+            continue
+        for section_ordinal, section in enumerate(page.get("sections", []), start=1):
+            if type(section) is not dict or type(section.get("tables")) is not list:
+                continue
+            for table_ordinal, table in enumerate(section["tables"], start=1):
+                if type(table) is not dict:
+                    continue
+                table_records.append(
+                    {
+                        "local_unit_axis": _local_unit_axis(
+                            table, compiled_specs=compiled_specs
+                        ),
+                        "page_json_version_id": record["page_json_version_id"],
+                        "physical_page": record["physical_page"],
+                        "section_id": f"s{section_ordinal}",
+                        "table": table,
+                        "table_id": f"t{table_ordinal}",
+                    }
+                )
+
+    evidence = []
+    owner_aliases = compiled_specs["query_policy"]["owner_aliases"]
+    for current in table_records:
+        table = current["table"]
+        unit_axis = current["local_unit_axis"]
+        unit_governor = None
+        if unit_axis["complete"]:
+            unit_governor = {
+                "local_unit_axis": canonical_clone_v1(unit_axis),
+                "page_json_version_id": current["page_json_version_id"],
+                "physical_page": current["physical_page"],
+                "rule": "SAME_PRIMARY_STATEMENT_TABLE_EXPLICIT_UNIT",
+                "section_id": current["section_id"],
+                "table_id": current["table_id"],
+            }
+        elif table.get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE":
+            current_kinds = [
+                column.get("value_kind")
+                for column in table.get("columns", [])
+                if type(column) is dict
+            ]
+            prior = [
+                item
+                for item in table_records
+                if item["physical_page"] + 1 == current["physical_page"]
+                and item["section_id"] == current["section_id"]
+                and item["table_id"] == current["table_id"]
+                and item["table"].get("continuation") == "CONTINUES_ON_NEXT_PAGE"
+                and item["local_unit_axis"]["complete"]
+                and [
+                    column.get("value_kind")
+                    for column in item["table"].get("columns", [])
+                    if type(column) is dict
+                ]
+                == current_kinds
+            ]
+            if len(prior) == 1:
+                governor = prior[0]
+                unit_axis = governor["local_unit_axis"]
+                unit_governor = {
+                    "continuation_exact": table["continuation"],
+                    "governor_continuation_exact": governor["table"]["continuation"],
+                    "local_unit_axis": canonical_clone_v1(unit_axis),
+                    "page_json_version_id": governor["page_json_version_id"],
+                    "physical_page": governor["physical_page"],
+                    "rule": "EXPLICIT_RECIPROCAL_ADJACENT_PRIMARY_STATEMENT_CONTINUATION_UNIT",
+                    "section_id": governor["section_id"],
+                    "table_id": governor["table_id"],
+                }
+        if unit_governor is None:
+            continue
+        columns = table.get("columns", [])
+        money_ordinals = [
+            ordinal
+            for ordinal, column in enumerate(columns)
+            if type(column) is dict and column.get("value_kind") == "MONEY"
+        ]
+        if len(money_ordinals) != 2:
+            continue
+        for row_ordinal, row in enumerate(table.get("rows", []), start=1):
+            if type(row) is not dict or type(row.get("values_exact")) is not list:
+                continue
+            members = [row.get("label_exact"), *(row.get("hierarchy_path_exact") or [])]
+            if not any(
+                _matches(member, alias)
+                for member in members
+                if type(member) is str
+                for alias in owner_aliases
+            ):
+                continue
+            if len(row["values_exact"]) != len(columns):
+                continue
+            source_values = [row["values_exact"][ordinal] for ordinal in money_ordinals]
+            parsed = []
+            for source_value in source_values:
+                try:
+                    cell = _money(source_value)
+                except ValueError:
+                    cell = None
+                if cell is None or type(cell.get("coefficient")) is not int:
+                    parsed = []
+                    break
+                parsed.append(cell["coefficient"])
+            if len(parsed) != 2:
+                continue
+            evidence.append(
+                {
+                    "canonical_unit": unit_axis["canonical_unit"],
+                    "page_json_version_id": current["page_json_version_id"],
+                    "physical_page": current["physical_page"],
+                    "root_label_exact": row.get("label_exact"),
+                    "root_values_source_order": parsed,
+                    "root_values_source_text": canonical_clone_v1(source_values),
+                    "row_id": f"r{row_ordinal}",
+                    "rule": "PRIMARY_STATEMENT_DECLARED_FAMILY_ROOT_TWO_MONEY_LANE_VECTOR",
+                    "section_id": current["section_id"],
+                    "table_id": current["table_id"],
+                    "unit_governor": unit_governor,
+                }
+            )
+    return evidence
+
+
+def _document_unit_context_v1(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any],
+    target_tables: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     evidence = []
     for record in pages:
@@ -4230,13 +6521,30 @@ def _document_unit_context_v1(
         if len(identities) > 1
         else "INSUFFICIENT_DOCUMENT_MONEY_UNIT_CONTEXT"
     )
-    material = {
+    material: dict[str, Any] = {
         "canonical_unit": canonical_unit,
         "distinct_page_count": len(distinct_pages),
         "evidence": evidence,
         "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
         "status": status,
     }
+    target_unit_axes = [
+        _local_unit_axis(table, compiled_specs=compiled_specs) for table in target_tables
+    ]
+    fallback_enabled = (
+        compiled_specs.get("primary_statement_root_unit_policy", {}).get("mode")
+        == "EXACT_FAMILY_ROOT_BOUNDARY_VECTOR_CORROBORATION"
+    )
+    target_has_no_unit_surface = bool(target_unit_axes) and all(
+        not axis["evidence"] and not axis["undeclared_evidence"]
+        for axis in target_unit_axes
+    )
+    if fallback_enabled and status != "UNIQUE_AUTHENTICATED_DOCUMENT_MONEY_UNIT_CONSENSUS" and target_has_no_unit_surface:
+        root_evidence = _primary_statement_root_unit_evidence_v1(
+            pages, compiled_specs=compiled_specs
+        )
+        if root_evidence:
+            material["primary_statement_root_unit_evidence"] = root_evidence
     return {
         **material,
         "document_unit_context_sha256": canonical_json_sha256_v1(material),
@@ -4426,6 +6734,7 @@ def _coalesce_valuation_matrix_document_v1(
                             "period_reasons": period_reasons,
                             "position": position,
                             "record": record,
+                            "section_title_exact": section.get("title_exact"),
                             "section_id": section_id,
                             "table_id": f"t{table_ordinal}",
                         }
@@ -4662,15 +6971,25 @@ def coalesce_gemini_json_equity_matrix_document_v1(
             if type(section) is not dict:
                 continue
             section_id = f"s{section_ordinal}"
-            section_values = [section.get("title_exact")]
+            section_values = [(section.get("title_exact"), 0)]
             if type(section.get("narratives_exact")) is list:
-                section_values.extend(section["narratives_exact"])
-            for source_exact in section_values:
-                position = [record["selected_page_ordinal"], section_ordinal, 0]
+                section_values.extend(
+                    (source_exact, ordinal)
+                    for ordinal, source_exact in enumerate(
+                        section["narratives_exact"], start=1
+                    )
+                )
+            for source_exact, source_ordinal in section_values:
+                position = [
+                    record["selected_page_ordinal"],
+                    section_ordinal,
+                    0,
+                    source_ordinal,
+                ]
                 owner = _contained_declared_alias(
                     source_exact, compiled_specs["query_policy"]["owner_aliases"]
                 )
-                reset = _contained_declared_alias(
+                reset = _declared_reset_alias_v1(
                     source_exact,
                     [
                         *compiled_specs["query_policy"]["reset_aliases"],
@@ -4696,12 +7015,13 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                     record["selected_page_ordinal"],
                     section_ordinal,
                     table_ordinal,
+                    0,
                 ]
                 for source_exact in [table.get("title_exact")]:
                     owner = _contained_declared_alias(
                         source_exact, compiled_specs["query_policy"]["owner_aliases"]
                     )
-                    reset = _contained_declared_alias(
+                    reset = _declared_reset_alias_v1(
                         source_exact,
                         [
                             *compiled_specs["query_policy"]["reset_aliases"],
@@ -4727,6 +7047,29 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                 classification = classify_gemini_json_equity_matrix_table_v1(
                     table, compiled_specs=compiled_specs
                 )
+                supplemental_owner = next(
+                    (
+                        {
+                            "alias": alias,
+                            "position": position,
+                            "source_exact": source_exact,
+                        }
+                        for source_exact in (
+                            table.get("title_exact"),
+                            section.get("title_exact"),
+                        )
+                        if (
+                            alias := _contained_declared_alias(
+                                source_exact,
+                                compiled_specs["supplemental_component_group_policy"][
+                                    "owner_aliases"
+                                ],
+                            )
+                        )
+                        is not None
+                    ),
+                    None,
+                )
                 if (
                     classification["row_declared_component_roles"]
                     or classification["column_declared_component_roles"]
@@ -4734,19 +7077,309 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                     inventory.append(
                         {
                             "classification": classification,
+                            "continuation": table.get("continuation"),
                             "position": position,
                             "record": record,
+                            "section_title_exact": section.get("title_exact"),
                             "section_id": section_id,
+                            "supplemental_owner": supplemental_owner,
+                            "table": table,
                             "table_title_exact": table.get("title_exact"),
                             "table_id": table_id,
                         }
                     )
+    # A role word on an unrelated statement/detail table is not evidence that
+    # this family was observed.  Retain every complete matrix (so a missing
+    # owner still fails closed), but retain an incomplete declared-role table
+    # only when a bounded, reset-free explicit family owner governs it.
+    def governed_incomplete_table(item: Mapping[str, Any]) -> bool:
+        owners = [
+            marker
+            for marker in owner_markers
+            if marker["position"] <= item["position"]
+            and item["position"][0] - marker["position"][0]
+            <= compiled_specs["query_policy"]["max_continuation_pages"]
+        ]
+        if not owners:
+            return False
+        owner = max(owners, key=lambda marker: marker["position"])
+        return not any(
+            owner["position"] < marker["position"] <= item["position"]
+            for marker in reset_markers
+        )
+
+    inventory = [
+        item
+        for item in inventory
+        if not (
+            item["classification"].get("orientation") is None
+            and len(
+                {
+                    *item["classification"].get(
+                        "row_declared_component_roles", []
+                    ),
+                    *item["classification"].get(
+                        "column_declared_component_roles", []
+                    ),
+                }
+            )
+            <= 1
+            and any(
+                column.get("value_kind") != "MONEY"
+                for column in item["table"].get("columns", [])
+            )
+        )
+        and (
+            item["classification"]["status"] == "MATRIX_FRAGMENT"
+            or governed_incomplete_table(item)
+        )
+    ]
     selected = [item for item in inventory if item["classification"]["status"] == "MATRIX_FRAGMENT"]
     authenticated_comparative_keys: set[tuple[str, str, str]] = set()
     period_selection_receipt = None
     reasons = []
+    continuation_pair_receipt = None
+    supplemental_pair_receipt = None
+    continuation_pairs = []
+    ordered_inventory = sorted(inventory, key=lambda item: item["position"])
+    for first_item, second_item in zip(ordered_inventory, ordered_inventory[1:], strict=False):
+        if (
+            second_item["position"][0] - first_item["position"][0] != 1
+            or second_item["record"]["physical_page"]
+            - first_item["record"]["physical_page"]
+            != 1
+        ):
+            continue
+        plan = _component_row_continuation_plan_v1(
+            tables=[first_item["table"], second_item["table"]],
+            classifications=[
+                first_item["classification"],
+                second_item["classification"],
+            ],
+            compiled_specs=compiled_specs,
+        )
+        if plan is not None:
+            continuation_pairs.append((first_item, second_item, plan))
+    if len(continuation_pairs) == 1:
+        first_item, second_item, plan = continuation_pairs[0]
+        selected = [first_item, second_item]
+        continuation_pair_receipt = {
+            **canonical_clone_v1(plan["receipt"]),
+            "fragment_positions": [
+                canonical_clone_v1(first_item["position"]),
+                canonical_clone_v1(second_item["position"]),
+            ],
+        }
+    elif len(continuation_pairs) > 1:
+        reasons.append("MULTIPLE_RECIPROCAL_COMPONENT_ROW_CONTINUATION_PAIRS")
+    supplemental_pairs = []
+
+    def supplemental_owner_for_pair(
+        primary_item: Mapping[str, Any], supplemental_item: Mapping[str, Any]
+    ) -> dict[str, Any] | None:
+        direct = supplemental_item["supplemental_owner"]
+        if direct is not None:
+            return canonical_clone_v1(direct)
+        if (
+            supplemental_item["position"][0] - primary_item["position"][0] != 1
+            or supplemental_item["record"]["physical_page"]
+            - primary_item["record"]["physical_page"]
+            != 1
+        ):
+            return None
+        section_title = supplemental_item.get("section_title_exact")
+        family_owner = _contained_declared_alias(
+            section_title, compiled_specs["query_policy"]["owner_aliases"]
+        )
+        if (
+            family_owner is not None
+            and "tiep theo" in _normalized(section_title)
+        ):
+            return {
+                "alias": family_owner,
+                "position": canonical_clone_v1(supplemental_item["position"]),
+                "rule": (
+                    "ADJACENT_FAMILY_OWNER_CONTINUATION_PLUS_PRIMARY_DECLARED_"
+                    "GROUP_RECONCILIATION"
+                ),
+                "source_exact": section_title,
+            }
+        if supplemental_item["continuation"] != "CONTINUES_FROM_PREVIOUS_PAGE":
+            return None
+        prior_group_owners = [
+            item
+            for item in ordered_inventory
+            if item["position"] < supplemental_item["position"]
+            and supplemental_item["position"][0] - item["position"][0] == 1
+            and item["supplemental_owner"] is not None
+            and same_typed_json_v1(
+                _component_projection(item["classification"]["component_axis"]),
+                _component_projection(
+                    supplemental_item["classification"]["component_axis"]
+                ),
+            )
+        ]
+        if len(prior_group_owners) != 1:
+            return None
+        prior = prior_group_owners[0]
+        return {
+            **canonical_clone_v1(prior["supplemental_owner"]),
+            "position": canonical_clone_v1(supplemental_item["position"]),
+            "rule": (
+                "STRUCTURED_FROM_PREVIOUS_PAGE_INHERITS_UNIQUE_ADJACENT_"
+                "SUPPLEMENTAL_GROUP_OWNER_WITH_IDENTICAL_COMPONENT_AXIS"
+            ),
+        }
+
+    for primary_item in ordered_inventory:
+        for supplemental_item in ordered_inventory:
+            if (
+                supplemental_item["position"] <= primary_item["position"]
+                or supplemental_item["position"][0] - primary_item["position"][0]
+                > compiled_specs["query_policy"]["max_continuation_pages"]
+            ):
+                continue
+            plan = _supplemental_component_group_plan_v1(
+                tables=[primary_item["table"], supplemental_item["table"]],
+                classifications=[
+                    primary_item["classification"],
+                    supplemental_item["classification"],
+                ],
+                compiled_specs=compiled_specs,
+            )
+            supplemental_owner = supplemental_owner_for_pair(
+                primary_item, supplemental_item
+            )
+            if plan is not None and supplemental_owner is not None:
+                supplemental_pairs.append(
+                    (
+                        primary_item,
+                        {**supplemental_item, "supplemental_owner": supplemental_owner},
+                        plan,
+                    )
+                )
+    complete_supplemental_pairs = [
+        item for item in supplemental_pairs if item[2]["mode"] == "COMPLETE_ROLLFORWARD_MATRIX"
+    ]
+    snapshot_supplemental_pairs = [
+        item
+        for item in supplemental_pairs
+        if item[2]["mode"] == "EXPLICIT_OPENING_AND_CLOSING_PERIOD_SNAPSHOT"
+    ]
+    selected_supplemental_pair = None
+    authenticated_snapshot_comparatives = []
+    if len(complete_supplemental_pairs) == 1 and not snapshot_supplemental_pairs:
+        selected_supplemental_pair = complete_supplemental_pairs[0]
+    elif len(complete_supplemental_pairs) > 1 and not snapshot_supplemental_pairs:
+        primary_positions = {
+            tuple(primary_item["position"])
+            for primary_item, _supplemental_item, _plan in complete_supplemental_pairs
+        }
+
+        def relative_balance_role(item: Mapping[str, Any]) -> str | None:
+            role_surfaces: dict[str, list[str]] = {"OPENING": [], "CLOSING": []}
+            for row_ordinal, row in enumerate(item["table"].get("rows", []), start=1):
+                movement = _movement_surface_record(
+                    members=[row.get("label_exact")]
+                    if type(row.get("label_exact")) is str
+                    else [],
+                    axis_id=f"r{row_ordinal}",
+                    axis_ordinal=row_ordinal,
+                    source_ref={},
+                    compiled_specs=compiled_specs,
+                )
+                for role in ("OPENING", "CLOSING"):
+                    if role in movement["explicit_roles"]:
+                        role_surfaces[role].append(
+                            _normalized(row.get("label_exact"))
+                        )
+            if any(len(role_surfaces[role]) != 1 for role in role_surfaces):
+                return None
+            surfaces = [*role_surfaces["OPENING"], *role_surfaces["CLOSING"]]
+            if all(re.search(r"\b(?:nam nay|ky nay)\b", value) for value in surfaces):
+                return "CURRENT_RELATIVE_PERIOD"
+            if all(re.search(r"\b(?:nam truoc|ky truoc)\b", value) for value in surfaces):
+                return "COMPARATIVE_RELATIVE_PERIOD"
+            return None
+
+        current_pairs = [
+            item
+            for item in complete_supplemental_pairs
+            if relative_balance_role(item[1]) == "CURRENT_RELATIVE_PERIOD"
+        ]
+        if len(primary_positions) == 1 and len(current_pairs) == 1:
+            selected_supplemental_pair = current_pairs[0]
+            authenticated_snapshot_comparatives = [
+                item for item in complete_supplemental_pairs if item is not current_pairs[0]
+            ]
+            for _primary_item, comparative_item, _plan in authenticated_snapshot_comparatives:
+                authenticated_comparative_keys.add(
+                    (
+                        comparative_item["record"]["page_json_version_id"],
+                        comparative_item["section_id"],
+                        comparative_item["table_id"],
+                    )
+                )
+    elif snapshot_supplemental_pairs and not complete_supplemental_pairs:
+        primary_positions = {
+            tuple(primary_item["position"])
+            for primary_item, _supplemental_item, _plan in snapshot_supplemental_pairs
+        }
+        child_role_axes = {
+            tuple(plan["mapped_child_roles"])
+            for _primary_item, _supplemental_item, plan in snapshot_supplemental_pairs
+        }
+        latest_period = max(
+            plan["supplemental_period_date"]
+            for _primary_item, _supplemental_item, plan in snapshot_supplemental_pairs
+        )
+        latest = [
+            item
+            for item in snapshot_supplemental_pairs
+            if item[2]["supplemental_period_date"] == latest_period
+        ]
+        if len(primary_positions) == 1 and len(child_role_axes) == 1 and len(latest) == 1:
+            selected_supplemental_pair = latest[0]
+            authenticated_snapshot_comparatives = [
+                item for item in snapshot_supplemental_pairs if item is not latest[0]
+            ]
+            for _primary_item, comparative_item, _plan in authenticated_snapshot_comparatives:
+                authenticated_comparative_keys.add(
+                    (
+                        comparative_item["record"]["page_json_version_id"],
+                        comparative_item["section_id"],
+                        comparative_item["table_id"],
+                    )
+                )
+    if selected_supplemental_pair is not None:
+        primary_item, supplemental_item, plan = selected_supplemental_pair
+        selected = [primary_item, supplemental_item]
+        supplemental_pair_receipt = {
+            **canonical_clone_v1(plan["receipt"]),
+            "authenticated_comparative_snapshots": [
+                {
+                    "page_json_version_id": item[1]["record"]["page_json_version_id"],
+                    "period_date": item[2]["supplemental_period_date"],
+                    "position": canonical_clone_v1(item[1]["position"]),
+                    "section_id": item[1]["section_id"],
+                    "table_id": item[1]["table_id"],
+                }
+                for item in authenticated_snapshot_comparatives
+            ],
+            "fragment_positions": [
+                canonical_clone_v1(primary_item["position"]),
+                canonical_clone_v1(supplemental_item["position"]),
+            ],
+            "supplemental_owner": canonical_clone_v1(
+                supplemental_item["supplemental_owner"]
+            ),
+        }
+    elif supplemental_pairs:
+        reasons.append("MULTIPLE_SUPPLEMENTAL_COMPONENT_GROUP_MATRIX_PAIRS")
     if (
-        len(selected) == 2
+        continuation_pair_receipt is None
+        and supplemental_pair_receipt is None
+        and len(selected) == 2
         and selected[0]["position"][:2] == selected[1]["position"][:2]
         and all(item["classification"]["orientation"] == "COMPONENT_ROWS" for item in selected)
         and same_typed_json_v1(
@@ -4782,6 +7415,73 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                 "page_json_version_id": current["record"]["page_json_version_id"],
                 "rule": "UNIQUE_LATEST_SOURCE_DATED_SAME_PAGE_COMPONENT_ROW_MATRIX",
             }
+    elif (
+        continuation_pair_receipt is None
+        and supplemental_pair_receipt is None
+        and len(selected) == 2
+        and not (
+            selected[0]["continuation"] == "CONTINUES_ON_NEXT_PAGE"
+            and selected[1]["continuation"] == "CONTINUES_FROM_PREVIOUS_PAGE"
+            and selected[1]["position"][0] - selected[0]["position"][0] == 1
+            and selected[1]["record"]["physical_page"]
+            - selected[0]["record"]["physical_page"]
+            == 1
+        )
+        and all(
+            item["classification"]["orientation"] == "COMPONENT_COLUMNS"
+            for item in selected
+        )
+    ):
+        dated = []
+        for item in selected:
+            _section, table = _source_table(
+                item["record"]["page_json"],
+                section_id=item["section_id"],
+                table_id=item["table_id"],
+            )
+            boundary_dates = sorted(
+                {
+                    date_exact
+                    for row_ordinal, row in enumerate(table["rows"], start=1)
+                    for surface in [
+                        _movement_surface_record(
+                            members=[row.get("label_exact")]
+                            if type(row.get("label_exact")) is str
+                            else [],
+                            axis_id=f"r{row_ordinal}",
+                            axis_ordinal=row_ordinal,
+                            source_ref={},
+                            compiled_specs=compiled_specs,
+                        )
+                    ]
+                    if surface["balance_marker"]
+                    for date_exact in surface["dates"]
+                }
+            )
+            if len(boundary_dates) >= 2:
+                dated.append((boundary_dates[-1], item))
+        if len(dated) == 2 and dated[0][0] != dated[1][0]:
+            dated.sort(key=lambda pair: pair[0])
+            comparative = dated[0][1]
+            current = dated[1][1]
+            selected = [current]
+            authenticated_comparative_keys.add(
+                (
+                    comparative["record"]["page_json_version_id"],
+                    comparative["section_id"],
+                    comparative["table_id"],
+                )
+            )
+            period_selection_receipt = {
+                "comparative_date": dated[0][0],
+                "comparative_table_id": comparative["table_id"],
+                "current_date": dated[1][0],
+                "current_table_id": current["table_id"],
+                "page_json_version_id": current["record"]["page_json_version_id"],
+                "rule": "UNIQUE_LATEST_SOURCE_DATED_COMPONENT_COLUMN_MATRIX",
+            }
+        else:
+            reasons.append("MULTIPLE_UNAUTHENTICATED_COMPONENT_COLUMN_MATRICES_UNDER_OWNER")
     signed_fragments = [
         item
         for item in selected
@@ -4800,8 +7500,13 @@ def coalesce_gemini_json_equity_matrix_document_v1(
             count != 1 for count in occurrence_count.values()
         ):
             reasons.append("SIGNED_BRANCH_EXACT_DECLARED_DOCUMENT_FRONTIER_REQUIRED")
-    elif len(selected) > 1 and all(
+    elif (
+        continuation_pair_receipt is None
+        and supplemental_pair_receipt is None
+        and len(selected) > 1
+        and all(
         item["classification"]["orientation"] == "COMPONENT_ROWS" for item in selected
+        )
     ):
         # Two row-oriented tables are either an explicitly dated current /
         # comparative pair (reduced above) or an unresolved duplicate period
@@ -4833,6 +7538,32 @@ def coalesce_gemini_json_equity_matrix_document_v1(
             and first_position[0] - marker["position"][0]
             <= compiled_specs["query_policy"]["max_continuation_pages"]
         ]
+        implicit_policy = compiled_specs["implicit_owner_policy"]
+        if (
+            not prior_owners
+            and implicit_policy["mode"]
+            == "UNIQUE_COMPLETE_MATRIX_PLUS_SUPPLEMENTAL_COMPONENT_GROUP"
+            and supplemental_pair_receipt is not None
+            and len(selected) == 2
+            and len(
+                selected[0]["classification"].get(
+                    "mapped_component_roles", []
+                )
+            )
+            >= implicit_policy["minimum_mapped_component_roles"]
+        ):
+            prior_owners = [
+                {
+                    "alias": "STRUCTURAL_EQUITY_MATRIX",
+                    "position": canonical_clone_v1(first_position),
+                    "rule": (
+                        "UNIQUE_COMPLETE_HIGH_DIMENSION_EQUITY_MATRIX_PLUS_"
+                        "SUPPLEMENTAL_COMPONENT_GROUP_RECONCILIATION"
+                    ),
+                    "source_exact": selected[0].get("section_title_exact")
+                    or selected[0].get("table_title_exact"),
+                }
+            ]
         if not prior_owners:
             reasons.append("EXPLICIT_BOUNDED_MATRIX_OWNER_NOT_VISIBLE")
         else:
@@ -4841,7 +7572,30 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                 marker
                 for marker in reset_markers
                 if owner["position"] < marker["position"] <= last_position
+                and not (
+                    marker["position"][2:] != [0, 0]
+                    and marker["position"][2] == 0
+                    and any(
+                        item["position"][:2] == marker["position"][:2]
+                        for item in selected
+                    )
+                )
             ]
+            authorized_supplemental_resets = []
+            if supplemental_pair_receipt is not None:
+                supplemental_owner_position = supplemental_pair_receipt[
+                    "supplemental_owner"
+                ]["position"]
+                authorized_supplemental_resets = [
+                    marker
+                    for marker in fenced_resets
+                    if marker["position"] < supplemental_owner_position
+                ]
+                fenced_resets = [
+                    marker
+                    for marker in fenced_resets
+                    if marker not in authorized_supplemental_resets
+                ]
             if fenced_resets:
                 reasons.append("OWNER_TO_MATRIX_INTERVAL_CONTAINS_RESET_OR_HARD_NEGATIVE")
             owner_receipt = {
@@ -4849,10 +7603,24 @@ def coalesce_gemini_json_equity_matrix_document_v1(
                 "owner_position": owner["position"],
                 "owner_source_exact": owner["source_exact"],
                 "reset_fence_axis": fenced_resets,
-                "rule": "LATEST_EXPLICIT_OWNER_WITHIN_ONE_PAGE_RESET_FREE_INTERVAL",
+                "rule": owner.get(
+                    "rule", "LATEST_EXPLICIT_OWNER_WITHIN_ONE_PAGE_RESET_FREE_INTERVAL"
+                ),
             }
+            if authorized_supplemental_resets:
+                owner_receipt["authorized_supplemental_reset_axis"] = canonical_clone_v1(
+                    authorized_supplemental_resets
+                )
             if period_selection_receipt is not None:
                 owner_receipt["period_selection_receipt"] = period_selection_receipt
+            if continuation_pair_receipt is not None:
+                owner_receipt["component_row_continuation_receipt"] = (
+                    continuation_pair_receipt
+                )
+            if supplemental_pair_receipt is not None:
+                owner_receipt["supplemental_component_group_receipt"] = (
+                    supplemental_pair_receipt
+                )
             selected_keys = {
                 (
                     item["record"]["page_json_version_id"],
@@ -4909,6 +7677,7 @@ def coalesce_gemini_json_equity_matrix_document_v1(
     inventory_receipt = [
         {
             "classification": canonical_clone_v1(item["classification"]),
+            "continuation": item["continuation"],
             "disposition": (
                 "SELECTED_MATRIX_FRAGMENT"
                 if item in selected
@@ -4929,7 +7698,11 @@ def coalesce_gemini_json_equity_matrix_document_v1(
         }
         for item in inventory
     ]
-    unit_context = _document_unit_context_v1(pages, compiled_specs=compiled_specs)
+    unit_context = _document_unit_context_v1(
+        pages,
+        compiled_specs=compiled_specs,
+        target_tables=[item["table"] for item in selected],
+    )
     first = pages[0]
     status = (
         NOT_OBSERVED
@@ -5574,11 +8347,13 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
         "component_axis",
         "equations",
         "movement_axis",
+        "omitted_all_blank_mapping_roles",
         "orientation",
         "period_block_receipt",
         "query_receipt",
         "rule",
         "source_only_component_axes",
+        "source_repair_receipts",
         "unit_receipt",
     }
     mapping_fields = {
@@ -5637,6 +8412,7 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
         expected_closure_fields = closure_fields | (
             {"signed_branch_receipt"} if signed_closure else set()
         )
+        candidate_status = candidate.get("status") if type(candidate) is dict else None
         if (
             type(candidate) is not dict
             or set(candidate) != candidate_fields
@@ -5650,7 +8426,7 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
             or candidate.get("source_logical_name") != document["source_logical_name"]
             or candidate.get("source_sha256") != document["source_sha256"]
             or not same_typed_json_v1(candidate.get("component_regions"), regions)
-            or candidate.get("status") not in {READY, UNRESOLVED}
+            or candidate_status not in {READY, UNRESOLVED}
             or type(candidate.get("reasons")) is not list
             or candidate["reasons"] != sorted(set(candidate["reasons"]))
             or type(candidate.get("mappings")) is not list
@@ -5660,21 +8436,36 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
             and signed_closure
             or signed_closure
             and type(closure.get("signed_branch_receipt")) is not dict
-            or closure.get("orientation") not in {"COMPONENT_COLUMNS", "COMPONENT_ROWS"}
+            or closure.get("orientation")
+            not in {None, "COMPONENT_COLUMNS", "COMPONENT_ROWS"}
             or type(closure.get("component_axis")) is not list
             or type(closure.get("movement_axis")) is not list
             or type(closure.get("equations")) is not list
             or type(closure.get("alignment_receipts")) is not list
             or type(closure.get("source_only_component_axes")) is not list
+            or type(closure.get("source_repair_receipts")) is not list
+            or type(closure.get("omitted_all_blank_mapping_roles")) is not list
+            or closure.get("omitted_all_blank_mapping_roles")
+            != sorted(set(closure.get("omitted_all_blank_mapping_roles", [])))
+            or any(
+                type(role) is not str or not role
+                for role in closure.get("omitted_all_blank_mapping_roles", [])
+            )
             or type(closure.get("unit_receipt")) is not dict
             or (
-                closure["orientation"] == "COMPONENT_COLUMNS"
+                candidate_status == READY
+                and closure["orientation"] == "COMPONENT_COLUMNS"
                 and type(closure.get("period_block_receipt")) is not dict
             )
             or (
                 closure["orientation"] == "COMPONENT_ROWS"
                 and closure.get("period_block_receipt") is not None
             )
+            or (
+                closure["orientation"] is None
+                and closure.get("period_block_receipt") is not None
+            )
+            or (candidate_status == READY and closure["orientation"] is None)
         ):
             raise _error("equity-matrix candidate structure drifted")
         expected_query = build_gemini_json_equity_matrix_region_query_receipt_v1(
@@ -5685,8 +8476,16 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
         material = {key: value for key, value in candidate.items() if key != "candidate_id"}
         if candidate["candidate_id"] != "gjeqmfv1:candidate:" + canonical_json_sha256_v1(material):
             raise _error("equity-matrix candidate identity drifted")
+        if candidate_status == UNRESOLVED:
+            if candidate["mappings"] or not candidate["reasons"]:
+                raise _error("equity-matrix unresolved candidate semantics drifted")
+            return candidate
         component_axis = closure["component_axis"]
-        mapped_component_kinds = {"MAPPED_COMPONENT", "MAPPED_COMPONENT_GROUP_TOTAL"}
+        mapped_component_kinds = {
+            "MAPPED_COMPONENT",
+            "MAPPED_COMPONENT_GROUP_TOTAL",
+            "MAPPED_SUPPLEMENTAL_COMPONENT",
+        }
         mapped_source_by_role: dict[str, list[dict[str, Any]]] = {}
         for item in component_axis:
             if type(item) is dict and item.get("kind") in mapped_component_kinds:
@@ -5740,6 +8539,57 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
         )
         expected_root_roles = {"FAMILY_TOTAL"} if vector_root_mode else set()
         expected_roles = set(mapped_components) | expected_total_roles | expected_root_roles
+        omitted_roles = set(closure["omitted_all_blank_mapping_roles"])
+        if not omitted_roles <= expected_roles:
+            raise _error("equity-matrix omitted mapping role axis drifted")
+        supplemental_components = [
+            item
+            for item in component_axis
+            if type(item) is dict and item.get("kind") == "MAPPED_SUPPLEMENTAL_COMPONENT"
+        ]
+        supplemental_mapping_axis: list[str] | None = None
+        if supplemental_components:
+            supplemental_receipts = [
+                item
+                for item in closure["alignment_receipts"]
+                if type(item) is dict
+                and item.get("rule")
+                == (
+                    "PRIMARY_EQUITY_MATRIX_PLUS_EXPLICIT_SUPPLEMENTAL_COMPONENT_"
+                    "GROUP_MATRIX_RECONCILE_BEFORE_CHILD_PROJECTION"
+                )
+            ]
+            if len(supplemental_receipts) != 1:
+                raise _error("equity-matrix supplemental mapping receipt axis drifted")
+            supplemental_receipt = supplemental_receipts[0]
+            supplemental_equations = supplemental_receipt.get("supplemental_equations")
+            mapped_child_roles = supplemental_receipt.get("mapped_child_roles")
+            if (
+                type(supplemental_equations) is not list
+                or type(mapped_child_roles) is not list
+                or any(type(role) is not str or not role for role in mapped_child_roles)
+                or len(set(mapped_child_roles)) != len(mapped_child_roles)
+                or {item.get("role") for item in supplemental_components}
+                - set(mapped_child_roles)
+            ):
+                raise _error("equity-matrix supplemental mapping receipt axis drifted")
+            supplemental_mapping_axis = []
+            for equation in supplemental_equations:
+                if (
+                    type(equation) is not dict
+                    or equation.get("equation_kind") != "VISIBLE_GRAND_HORIZONTAL_TOTAL"
+                ):
+                    continue
+                axis_role = equation.get("axis_role")
+                if (
+                    type(axis_role) is not str
+                    or not axis_role
+                    or axis_role in supplemental_mapping_axis
+                ):
+                    raise _error("equity-matrix supplemental movement axis drifted")
+                supplemental_mapping_axis.append(axis_role)
+            if not supplemental_mapping_axis:
+                raise _error("equity-matrix supplemental movement axis drifted")
         grand_total = next(
             item
             for item in component_axis
@@ -5803,6 +8653,8 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
             ):
                 raise _error("equity-matrix mapping identity drifted")
             for value in values:
+                if type(value) is not dict:
+                    raise _error("equity-matrix mapping value provenance drifted")
                 cell_ref = value.get("cell_ref") if type(value) is dict else None
                 aggregate_components = (
                     value.get("aggregate_components") if type(value) is dict else None
@@ -5813,13 +8665,13 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
                     and value.get("state") == "SIGNED_BRANCH_NET_SOURCE_CELLS_GRAPH_EXACT"
                 )
                 if (
-                    type(value) is not dict
-                    or set(value)
+                    set(value)
                     != (
                         value_fields | {"aggregate_components"} if aggregate_value else value_fields
                     )
                     or value.get("axis_role") not in compiled_specs["movement_roles"]
-                    or type(value.get("coefficient")) is not int
+                    or value.get("coefficient") is not None
+                    and type(value.get("coefficient")) is not int
                     or type(value.get("equation_multiplier")) is not int
                     or type(value.get("state")) is not str
                     or not value["state"]
@@ -5834,6 +8686,13 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
                             or _ROW_ID.fullmatch(cell_ref.get("row_id", "")) is None
                             or type(cell_ref.get("locator")) is not dict
                             or canonical_json_sha256_v1(cell_ref["locator"]) not in region_hashes
+                            or (
+                                value.get("coefficient") is None
+                                and (
+                                    value.get("source_text") is not None
+                                    or value.get("state") != "BLANK_SOURCE_CELL"
+                                )
+                            )
                         )
                     )
                     or (
@@ -5844,6 +8703,7 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
                             or value.get("state")
                             not in {
                                 "AGGREGATED_SOURCE_CELLS_GRAPH_EXACT",
+                                "DERIVED_INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL",
                                 "SIGNED_BRANCH_NET_SOURCE_CELLS_GRAPH_EXACT",
                             }
                             or type(aggregate_components) is not list
@@ -5852,6 +8712,8 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
                                 type(component) is not dict
                                 or set(component) != value_fields
                                 or component.get("axis_role") != value.get("axis_role")
+                                or component.get("coefficient") is not None
+                                and type(component.get("coefficient")) is not int
                                 or (
                                     not signed_aggregate
                                     and component.get("equation_multiplier")
@@ -5862,27 +8724,75 @@ def validate_gemini_json_equity_matrix_sweep_query_bindings_v1(
                                 not in region_hashes
                                 for component in aggregate_components
                             )
-                            or sum(
-                                component["coefficient"]
-                                * (component["equation_multiplier"] if signed_aggregate else 1)
-                                for component in aggregate_components
+                            or (
+                                value.get("state")
+                                == "DERIVED_INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"
+                                and (
+                                    value.get("coefficient") is not None
+                                    or signed_aggregate
+                                    or not any(
+                                        component.get("coefficient") is None
+                                        for component in aggregate_components
+                                    )
+                                )
                             )
-                            != value.get("coefficient")
+                            or (
+                                value.get("state")
+                                != "DERIVED_INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"
+                                and (
+                                    any(
+                                        component.get("coefficient") is None
+                                        for component in aggregate_components
+                                    )
+                                    or sum(
+                                        component["coefficient"]
+                                        * (
+                                            component["equation_multiplier"]
+                                            if signed_aggregate
+                                            else 1
+                                        )
+                                        for component in aggregate_components
+                                    )
+                                    != value.get("coefficient")
+                                )
+                            )
                             or signed_aggregate
                             and value.get("equation_multiplier") != 1
                         )
                     )
                 ):
                     raise _error("equity-matrix mapping value provenance drifted")
-            expected_mapping_axis = (
-                [next(key for key, value in _MAPPED_TOTAL_ROLES.items() if value == role)]
-                if role in expected_total_roles
-                else expected_axis_roles
-            )
+            if role in expected_total_roles:
+                expected_mapping_axis = [
+                    next(
+                        key
+                        for key, value in _MAPPED_TOTAL_ROLES.items()
+                        if value == role
+                    )
+                ]
+            elif (
+                component_vector_role
+                and mapping["component_axis"].get("kind")
+                == "MAPPED_SUPPLEMENTAL_COMPONENT"
+            ):
+                if supplemental_mapping_axis is None:
+                    raise _error("equity-matrix supplemental movement axis drifted")
+                expected_mapping_axis = [
+                    axis_role
+                    for axis_role in expected_axis_roles
+                    if axis_role in supplemental_mapping_axis
+                ]
+            else:
+                expected_mapping_axis = expected_axis_roles
             if [value["axis_role"] for value in values] != expected_mapping_axis:
                 raise _error("equity-matrix mapping movement axis drifted")
         if candidate["status"] == READY:
-            if candidate["reasons"] or seen_roles != expected_roles or canonical_unit is None:
+            if (
+                candidate["reasons"]
+                or seen_roles & omitted_roles
+                or seen_roles | omitted_roles != expected_roles
+                or canonical_unit is None
+            ):
                 raise _error("equity-matrix READY candidate semantics drifted")
         elif candidate["mappings"] or not candidate["reasons"]:
             raise _error("equity-matrix unresolved candidate semantics drifted")

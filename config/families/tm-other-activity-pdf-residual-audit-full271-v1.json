@@ -1,0 +1,45 @@
+{
+  "corpus_manifest_index_id": "gjfccmiv1:index:8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a",
+  "family_id": "OTHER_ACTIVITY",
+  "format_version": "OTHER_ACTIVITY_PDF_RESIDUAL_AUDIT_SPEC_V1",
+  "residuals": [
+    {
+      "disposition": "GENUINE_SOURCE_CONFLICT_DIRECT_PRIMARY_ROOT_27479_VERSUS_DIRECT_NOTE_ROOT_27478_MILLION_VND",
+      "document_ordinal": 111,
+      "reasons": [
+        "NOTE_AND_PRIMARY_OTHER_ACTIVITY_SOURCE_RESULT_CONFLICT"
+      ],
+      "residual_audit_id": "gjoapdfv1:residual:186b3f6d5274a1d8fe4d14e7823c521d58c65ef40897c6c4469f5808a13df587",
+      "source_logical_name": "vietstock_bctc/NVB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+      "source_page_axis": [
+        {
+          "page_json_version_id": "gfpstorev1:json:c2e77a5c7ca5fd5b7cbecf75e03c3c86b17fd6eb94258bc87c1d9bd025a1f861",
+          "pdf_page_render_sha256": "e440d6f65c4da4088ee2f79e11de4da6fafb84e1f24eb88d1cc780e5777f6e0a",
+          "physical_page": 6
+        },
+        {
+          "page_json_version_id": "gfpstorev1:json:e24ad68d18f6edd2de2b31ae6b79b8ceebd64198c02d14a5fdfca483718633fa",
+          "pdf_page_render_sha256": "3a900e5b7470ecd406e26d7efee2c70b8aa1805cf5e48927d8d36bf5eb75042e",
+          "physical_page": 44
+        }
+      ],
+      "source_sha256": "68e44345848aa1b92cf7d6220de13f7d4257886a67d1efc00751e6f8d46b3301",
+      "source_size_bytes": 4647986,
+      "status": "UNRESOLVED_GEMINI_JSON_FAMILY"
+    }
+  ],
+  "review_contract": {
+    "render_contract": {
+      "alpha": false,
+      "colorspace": "RGB",
+      "format": "PNG",
+      "matrix": [
+        1,
+        1
+      ],
+      "renderer": "PyMuPDF"
+    },
+    "scope": "EVERY_SELECTED_SOURCE_REGION_PAGE_FOR_EVERY_NOT_OBSERVED_OR_UNRESOLVED_DOCUMENT",
+    "visual_disposition_rule": "DIRECT_SOURCE_PRESENTATION_ONLY_VISIBLE_PRIMARY_AND_NOTE_ROOT_CONFLICT_REMAINS_UNRESOLVED"
+  }
+}

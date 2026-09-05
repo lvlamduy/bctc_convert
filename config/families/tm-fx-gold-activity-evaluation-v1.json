@@ -1,8 +1,10 @@
 {
-  "aggregate_duplicate_roles": ["INCOME_PARENT", "INCOME_SPOT_FX_AND_GOLD", "INCOME_SPOT_FX", "INCOME_GOLD", "INCOME_CURRENCY_DERIVATIVES", "INCOME_FX_DIFFERENCE", "INCOME_OTHER", "EXPENSE_PARENT", "EXPENSE_SPOT_FX_AND_GOLD", "EXPENSE_SPOT_FX", "EXPENSE_GOLD", "EXPENSE_CURRENCY_DERIVATIVES", "EXPENSE_FX_DIFFERENCE", "EXPENSE_OTHER"],
+  "aggregate_duplicate_roles": ["INCOME_PARENT", "INCOME_SPOT_FX_AND_GOLD", "INCOME_SPOT_FX", "INCOME_GOLD", "INCOME_CURRENCY_DERIVATIVES", "INCOME_FX_DIFFERENCE", "INCOME_OTHER", "INCOME_SPOT_FX_AND_REVALUATION_SOURCE_ONLY", "INCOME_FX_GOLD_AND_FINANCIAL_INSTRUMENT_REVALUATION_SOURCE_ONLY", "EXPENSE_PARENT", "EXPENSE_SPOT_FX_AND_GOLD", "EXPENSE_SPOT_FX", "EXPENSE_GOLD", "EXPENSE_CURRENCY_DERIVATIVES", "EXPENSE_FX_DIFFERENCE", "EXPENSE_OTHER", "EXPENSE_SPOT_FX_AND_REVALUATION_SOURCE_ONLY", "EXPENSE_FX_GOLD_AND_FINANCIAL_INSTRUMENT_REVALUATION_SOURCE_ONLY"],
   "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
   "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
+  "source_total_blank_lane_control_policy": "OBSERVED_LANES_EXACT_REMAINDER_BLANK",
   "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "continuation_period_axis_policy": "ADJACENT_PAGE_EXPLICIT_CONTINUATION_INHERITS_COMPLETE_BLANK_HEADER_AXIS",
   "corroboration_pairs": [],
   "context_total_mapping_roles": ["INCOME_PARENT", "EXPENSE_PARENT"],
   "derived_role_equations": [],
@@ -11,6 +13,7 @@
   "document_source_result_signal_policy": "AUTHENTICATED_ROOT_OWNER_OR_PRIMARY",
   "document_cluster_policy": "DOCUMENT_EXACT_DECLARED_ROOT_COMPONENTS_PLUS_SOURCE_RESULT",
   "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "duration_header_path_scope_policy": "DISTINCT_SUFFIX_AFTER_EXACT_COMMON_PREFIX",
   "family_id": "FX_GOLD_ACTIVITY",
   "family_root_population_policy": "WHOLE_TABLE",
   "family_root_requirement": "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT",
@@ -22,20 +25,30 @@
     {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
     {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
     {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
-    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+    {"accepted": true, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
   ],
   "minimum_declared_detail_role_count": 1,
   "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
   "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
   "period_semantics": "CURRENT_AND_COMPARATIVE_DURATION",
-  "query_owner_aliases": ["Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối", "Lãi thuần từ hoạt động kinh doanh ngoại hối", "Lãi/lỗ thuần từ hoạt động kinh doanh ngoại hối", "Lỗ/lãi thuần từ hoạt động kinh doanh ngoại hối", "Thu nhập từ hoạt động kinh doanh vàng và ngoại hối", "Thu nhập từ hoạt động kinh doanh ngoại hối", "Lãi từ hoạt động kinh doanh ngoại hối", "Chi phí từ hoạt động kinh doanh vàng và ngoại hối", "Chi phí từ hoạt động kinh doanh ngoại hối", "Chi phí hoạt động kinh doanh ngoại hối", "Lỗ từ hoạt động kinh doanh ngoại hối"],
+  "query_owner_aliases": ["Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối", "Lãi thuần từ hoạt động kinh doanh ngoại hối", "Lãi thuần từ hoạt động KD ngoại hối", "Lãi thuần từ dịch vụ kinh doanh ngoại hối", "Lãi/lỗ thuần từ hoạt động kinh doanh ngoại hối", "Lãi/lỗ thuần từ kinh doanh ngoại hối", "Lãi/(lỗ) thuần từ hoạt động kinh doanh và ngoại hối", "Lãi/lỗ từ hoạt động kinh doanh ngoại hối", "Lỗ/lãi thuần từ hoạt động kinh doanh ngoại hối", "Thu nhập từ hoạt động kinh doanh vàng và ngoại hối", "Thu nhập từ hoạt động kinh doanh ngoại hối", "Lãi từ hoạt động kinh doanh ngoại hối", "Lãi từ kinh doanh ngoại hối", "Chi phí từ hoạt động kinh doanh vàng và ngoại hối", "Chi phí từ hoạt động kinh doanh ngoại hối", "Chi phí hoạt động kinh doanh ngoại hối", "Chi phí cho hoạt động kinh doanh ngoại hối", "Lỗ từ hoạt động kinh doanh ngoại hối", "Lỗ từ kinh doanh ngoại hối"],
   "root_component_roles": ["INCOME_PARENT", "EXPENSE_PARENT"],
   "root_component_equation_policy": "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE",
   "row_population_context_policy": "AT_LEAST_TWO_DECLARED_CHILD_ROLES",
   "role_unit_overrides": [],
   "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
-  "supplemental_owner_aliases": ["Thu nhập từ hoạt động kinh doanh vàng và ngoại hối", "Thu nhập từ hoạt động kinh doanh ngoại hối", "Lãi từ hoạt động kinh doanh ngoại hối", "Chi phí từ hoạt động kinh doanh vàng và ngoại hối", "Chi phí từ hoạt động kinh doanh ngoại hối", "Chi phí hoạt động kinh doanh ngoại hối", "Lỗ từ hoạt động kinh doanh ngoại hối"],
+  "supplemental_owner_aliases": ["Thu nhập từ hoạt động kinh doanh vàng và ngoại hối", "Thu nhập từ hoạt động kinh doanh ngoại hối", "Lãi từ hoạt động kinh doanh ngoại hối", "Lãi từ kinh doanh ngoại hối", "Chi phí từ hoạt động kinh doanh vàng và ngoại hối", "Chi phí từ hoạt động kinh doanh ngoại hối", "Chi phí hoạt động kinh doanh ngoại hối", "Chi phí cho hoạt động kinh doanh ngoại hối", "Lỗ từ hoạt động kinh doanh ngoại hối", "Lỗ từ kinh doanh ngoại hối"],
   "table_context_roles": ["INCOME_PARENT", "EXPENSE_PARENT"],
-  "typed_control_exclusions": [],
-  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
+  "typed_control_exclusions": [
+    {"aliases": ["Giao dịch với các bên liên quan", "Giao dịch chủ yếu với các bên liên quan", "Thông tin về các bên liên quan"], "disposition": "RELATED_PARTY_TRANSACTION_VIEW", "match_mode": "CONTAINS_NORMALIZED", "surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"]},
+    {"aliases": ["Thuyết minh báo cáo tài chính"], "disposition": "RELATED_PARTY_ROW_POPULATION_VIEW", "match_mode": "CONTAINS_NORMALIZED", "required_row_label_alias_groups": [["Các cổ đông lớn khác", "Các công ty con", "Các Thành viên của Ban lãnh đạo Ngân hàng", "Các Thành viên của Ban lãnh đạo Tập đoàn", "Các thành viên của Ban lãnh đạo Tập đoàn", "SHB AMC", "Thành viên HĐQT/BKS/Ban TGĐ và các bên liên quan"]], "surface_kinds": ["SECTION_TITLE"]},
+    {"aliases": ["Lãi thuần từ hoạt động dịch vụ", "Lãi/lỗ thuần từ hoạt động dịch vụ", "Lãi/ lỗ thuần từ hoạt động dịch vụ"], "disposition": "SERVICE_ACTIVITY_VIEW", "match_mode": "CONTAINS_NORMALIZED", "surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"]},
+    {"aliases": ["Lãi thuần từ hoạt động khác", "Lãi/lỗ thuần từ hoạt động khác", "Lãi/ lỗ thuần từ hoạt động khác"], "disposition": "OTHER_ACTIVITY_VIEW", "match_mode": "CONTAINS_NORMALIZED", "surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"]},
+    {"aliases": ["Chi phí hoạt động"], "disposition": "OPERATING_EXPENSE_VIEW", "match_mode": "EXACT_NORMALIZED", "surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"]},
+    {"aliases": ["Thuyết minh báo cáo tài chính"], "disposition": "SEGMENT_ROW_POPULATION_VIEW", "match_mode": "CONTAINS_NORMALIZED", "required_row_label_alias_groups": [["Kết quả kinh doanh bộ phận"]], "surface_kinds": ["SECTION_TITLE"]},
+    {"aliases": ["Báo cáo bộ phận"], "disposition": "SEGMENT_REPORTING_VIEW", "match_mode": "CONTAINS_NORMALIZED", "surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"]},
+    {"aliases": ["Các khoản mục xử lý theo phương án cơ cấu lại"], "disposition": "RESTRUCTURING_PLAN_CONTROL", "match_mode": "CONTAINS_NORMALIZED", "surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"]}
+  ],
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD",
+  "validation_only_roles": ["INCOME_SPOT_FX_AND_REVALUATION_SOURCE_ONLY", "INCOME_FX_GOLD_AND_FINANCIAL_INSTRUMENT_REVALUATION_SOURCE_ONLY", "EXPENSE_SPOT_FX_AND_REVALUATION_SOURCE_ONLY", "EXPENSE_FX_GOLD_AND_FINANCIAL_INSTRUMENT_REVALUATION_SOURCE_ONLY"]
 }

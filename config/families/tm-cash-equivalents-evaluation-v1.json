@@ -42,7 +42,12 @@
   "primary_statement_family_root_subtree_policy": "EXACT_PARENT_GROUP_UNDER_VISIBLE_TOTAL_WITH_COMPLETE_DECLARED_CHILD_FRONTIER",
   "query_owner_aliases": [
     "Tiền và các khoản tương đương tiền",
-    "Tiền và các khoản tương đương tiền gồm có"
+    "Tiền và các khoản tương đương tiền gồm có",
+    "Tiền và tương đương tiền",
+    "Các khoản tiền tương đương tiền cuối kỳ bao gồm",
+    "Thuyết minh tiền và các khoản tương đương tiền tại thời điểm đầu kỳ và cuối kỳ trong báo cáo lưu chuyển tiền tệ.",
+    "VII. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRÊN BÁO CÁO LƯU CHUYỂN TIỀN TỆ RIÊNG\nTiền và các khoản tương đương tiền",
+    "VII. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRÊN BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT GIỮA NIÊN ĐỘ\nTiền và các khoản tương đương tiền"
   ],
   "root_component_equation_policy": "DECLARED_DIRECT_SUM",
   "root_component_roles": [
@@ -62,5 +67,5 @@
   "supplemental_owner_aliases": [],
   "table_context_roles": [],
   "typed_control_exclusions": [],
-  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_ANY_UNMAPPED_MONEY_ROW"
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_ACTIVE_FAMILY_POPULATION_HAS_UNMAPPED_DIRECT_MONEY_ROW"
 }

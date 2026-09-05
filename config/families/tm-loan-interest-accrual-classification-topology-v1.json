@@ -1,0 +1,163 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Các khoản lãi, phí phải thu",
+            "Các khoản lãi và phí phải thu",
+            "Lãi và phí phải thu"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTEREST_FEE_RECEIVABLES",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Từ cho vay khách hàng",
+            "Lãi, phí phải thu từ cho vay",
+            "Lãi phải thu từ hoạt động cho vay khách hàng",
+            "Lãi phải thu từ hoạt động tín dụng",
+            "Lãi phải thu hoạt động tín dụng và phí phải thu",
+            "Lãi phải thu từ cho vay",
+            "Lãi phải thu từ cho vay bằng VND",
+            "Lãi phải thu từ cho vay bằng ngoại tệ",
+            "Lãi dự thu từ cho vay khách hàng"
+          ],
+          "within_role": "INTEREST_FEE_RECEIVABLES"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CREDIT_INTEREST",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Từ tiền gửi và cho vay các tổ chức tín dụng khác",
+            "Từ tiền gửi và cho vay các TCTD khác",
+            "Lãi, phí phải thu tiền gửi tại các TCTD khác",
+            "Lãi phải thu từ tiền gửi",
+            "Lãi phải thu từ tiền gửi và cho vay các TCTD khác",
+            "Lãi phải thu từ tiền gửi tại các TCTD khác",
+            "Lãi phải thu từ tiền gửi bằng VND",
+            "Lãi phải thu từ tiền gửi bằng ngoại tệ",
+            "Lãi tiền gửi bằng ngoại tệ",
+            "Lãi dự thu từ tiền gửi tại và cho vay các TCTD khác"
+          ],
+          "within_role": "INTEREST_FEE_RECEIVABLES"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEPOSIT_INTEREST",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Từ giao dịch phái sinh",
+            "Lãi, phí phải thu từ giao dịch hoán đổi",
+            "Lãi, phí phải thu từ giao dịch kỳ hạn",
+            "Lãi và phí phải thu từ giao dịch hoán đổi",
+            "Lãi phải thu công cụ tài chính phái sinh",
+            "Lãi phải thu từ công cụ tài chính phái sinh",
+            "Từ các giao dịch phái sinh",
+            "Lãi phải thu từ các công cụ tài chính phái sinh",
+            "Lãi phải thu từ giao dịch phái sinh tiền tệ",
+            "Lãi phải thu từ giao dịch hoán đổi",
+            "Lãi phải thu từ giao dịch kỳ hạn",
+            "Phí, lãi phải thu từ giao dịch kỳ hạn",
+            "Phí, lãi phải thu từ giao dịch hoán đổi"
+          ],
+          "within_role": "INTEREST_FEE_RECEIVABLES"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DERIVATIVE_INTEREST",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Từ các nguồn khác",
+            "Lãi, phí phải thu hoạt động đầu tư",
+            "Lãi dự thu từ chứng khoán đầu tư sẵn sàng để bán",
+            "Lãi dự thu từ cho thuê tài chính",
+            "Lãi phải thu từ đầu tư chứng khoán",
+            "Lãi phải thu từ chứng khoán đầu tư",
+            "Từ các khoản chứng khoán đầu tư",
+            "Lãi và phí phải thu khác",
+            "Phí phải thu",
+            "Phí phải thu khác",
+            "Phí phải thu từ nghiệp vụ L/C",
+            "Lãi phải thu từ hoạt động mua nợ",
+            "Lãi phải thu từ hợp đồng góp vốn đầu tư hợp tác kinh doanh",
+            "Lãi phải thu từ mua nợ",
+            "Lãi phải thu từ mua nợ bằng VND",
+            "Lãi phải thu từ mua nợ bằng ngoại tệ",
+            "Lãi phải thu từ nghiệp vụ mua nợ",
+            "Lãi phải thu từ hoạt động mua nợ bằng VND",
+            "Phí phải thu từ nghiệp vụ mua hẳn miễn truy đòi bộ chứng từ",
+            "Lãi phải thu từ chứng khoán đầu tư sẵn sàng để bán",
+            "Lãi phải thu từ chứng khoán đầu tư giữ đến ngày đáo hạn",
+            "Lãi dự thu từ chứng khoán đầu tư"
+          ],
+          "within_role": "INTEREST_FEE_RECEIVABLES"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_INTEREST",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "LOAN_INTEREST_ACCRUAL_CLASSIFICATION",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Tài sản cố định hữu hình",
+    "Tài sản cố định vô hình",
+    "Bất động sản đầu tư",
+    "Tiền gửi của khách hàng",
+    "Các khoản nợ Chính phủ và Ngân hàng Nhà nước",
+    "Các khoản nợ Chính phủ và Ngân hàng Trung ương",
+    "Các khoản nợ Chính phủ và NHNN",
+    "Tài sản Nợ khác",
+    "Nợ phải trả khác"
+  ],
+  "limits": {
+    "max_continuation_pages": 2,
+    "max_cluster_span_lines": 1024,
+    "max_label_line_span": 6
+  },
+  "parent": {
+    "aliases": ["Tài sản Có khác"],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "OTHER_ASSETS_CONTEXT_ROOT"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    ["CREDIT_INTEREST", "DEPOSIT_INTEREST"],
+    ["CREDIT_INTEREST", "DERIVATIVE_INTEREST"],
+    ["CREDIT_INTEREST", "OTHER_INTEREST"],
+    ["DEPOSIT_INTEREST", "DERIVATIVE_INTEREST"],
+    ["DEPOSIT_INTEREST", "OTHER_INTEREST"],
+    ["DERIVATIVE_INTEREST", "OTHER_INTEREST"]
+  ],
+  "structural_reset_aliases": [
+    "Các khoản nợ Chính phủ và Ngân hàng Nhà nước",
+    "Tiền gửi và vay các tổ chức tín dụng khác",
+    "Tiền gửi và vay các TCTD khác",
+    "Tiền gửi của khách hàng",
+    "Phát hành giấy tờ có giá",
+    "Các khoản nợ khác",
+    "Tài sản Nợ khác",
+    "Vốn chủ sở hữu"
+  ]
+}

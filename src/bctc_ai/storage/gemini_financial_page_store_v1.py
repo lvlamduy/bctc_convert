@@ -76,6 +76,17 @@ _SELECTABLE_PROMPT_VARIANTS = frozenset(
         "simple",
     }
 )
+_SPECIALIZED_EXTRACTION_AUTHORIZATION_REGISTRY_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "data/registered/gemini_financial_page_specialized_extraction_authorizations_v1.json"
+)
+_SPECIALIZED_EXTRACTION_AUTHORIZATION_REGISTRY_SHA256 = (
+    "f4e7d1ae36104dea06095e07c0af2eefedb5048b4a88c5b85fbe76951b969c75"
+)
+_SPECIALIZED_PROMPT_VARIANTS = frozenset({"schema_alignment"})
+_SPECIALIZED_EXTRACTION_AUTHORIZED_PAGE_JSON_VERSION_IDS = frozenset(
+    {"gfpstorev1:json:3616fa50e0c315fd8be626d678ec3a9d707ae9dd0bf0da95e99645b28046d7e5"}
+)
 
 
 class GeminiFinancialPageStoreV1Error(RuntimeError):
@@ -84,6 +95,214 @@ class GeminiFinancialPageStoreV1Error(RuntimeError):
 
 def _error(message: str) -> GeminiFinancialPageStoreV1Error:
     return GeminiFinancialPageStoreV1Error(message)
+
+
+def _is_sha256_v1(value: Any) -> bool:
+    return bool(type(value) is str and re.fullmatch(r"[0-9a-f]{64}", value) is not None)
+
+
+def _specialized_extraction_authorizations_v1() -> dict[str, dict[str, Any]]:
+    """Load the reviewed, exact-receipt allowlist for nonstandard prompts.
+
+    A prompt-variant string is not sufficient authorization.  Every entry is
+    content-bound to the selected JSON version, source/page/image, prompt and
+    response schema, provider attempt, and the recovery claim provenance that
+    produced it.  The registry bytes themselves are pinned here so an edited
+    allowlist fails closed until code review deliberately updates the pin.
+    """
+
+    try:
+        raw = _SPECIALIZED_EXTRACTION_AUTHORIZATION_REGISTRY_PATH.read_bytes()
+    except OSError as exc:
+        raise _error("specialized extraction authorization registry is unavailable") from exc
+    if sha256(raw).hexdigest() != _SPECIALIZED_EXTRACTION_AUTHORIZATION_REGISTRY_SHA256:
+        raise _error("specialized extraction authorization registry content drifted")
+    try:
+        registry = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error("specialized extraction authorization registry is invalid") from exc
+    if (
+        type(registry) is not dict
+        or set(registry) != {"authorizations", "format_version", "policy"}
+        or registry.get("format_version")
+        != "GEMINI_FINANCIAL_PAGE_SPECIALIZED_EXTRACTION_AUTHORIZATION_REGISTRY_V1"
+        or registry.get("policy")
+        != {
+            "exact_page_json_version_only": True,
+            "implicit_prompt_variants": False,
+            "recovery_provenance_required": True,
+        }
+        or type(registry.get("authorizations")) is not list
+        or not registry["authorizations"]
+    ):
+        raise _error("specialized extraction authorization registry is invalid")
+
+    required_provenance = {
+        "claim_format_version",
+        "claim_receipt_sha256",
+        "completion_format_version",
+        "completion_receipt_sha256",
+        "document_manifest_id",
+        "provider_job_ref",
+        "repair_instruction_sha256",
+        "repair_registry_entry_sha256",
+        "task_id",
+    }
+    result: dict[str, dict[str, Any]] = {}
+    for raw_entry in registry["authorizations"]:
+        if (
+            type(raw_entry) is not dict
+            or set(raw_entry) != {"authorization_id", "provenance", "store_receipt"}
+            or type(raw_entry.get("provenance")) is not dict
+            or set(raw_entry["provenance"]) != required_provenance
+            or type(raw_entry.get("store_receipt")) is not dict
+        ):
+            raise _error("specialized extraction authorization entry is invalid")
+        provenance = raw_entry["provenance"]
+        store_receipt = raw_entry["store_receipt"]
+        page_json_version_id = store_receipt.get("page_json_version_id")
+        provider_attempts = store_receipt.get("provider_attempts")
+        material = {"provenance": provenance, "store_receipt": store_receipt}
+        expected_id = "gfpseav1:authorization:" + canonical_json_sha256_v1(material)
+        if (
+            raw_entry.get("authorization_id") != expected_id
+            or type(page_json_version_id) is not str
+            or re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", page_json_version_id) is None
+            or store_receipt.get("prompt_variant") not in _SPECIALIZED_PROMPT_VARIANTS
+            or store_receipt.get("output_contract_mode") != "JSON_SCHEMA"
+            or store_receipt.get("response_schema_sha256") != _STANDARD_PAGE_RESPONSE_SCHEMA_SHA256
+            or store_receipt.get("requested_model") != "gemini-3.7-flash"
+            or store_receipt.get("requested_service_tier") != "agy-low"
+            or store_receipt.get("thinking_level") != "low"
+            or store_receipt.get("selected_provider") != "Agy"
+            or store_receipt.get("selected_model") != "gemini-3.7-flash-low"
+            or store_receipt.get("selected_service_tier") != "agy-low"
+            or type(provider_attempts) is not list
+            or len(provider_attempts) != 1
+            or provider_attempts[0].get("attempt_ordinal") != 1
+            or provider_attempts[0].get("provider") != "AGY_CLI"
+            or provider_attempts[0].get("credential_slot") != "AGY_AUTHENTICATED_LOCAL_SESSION"
+            or provider_attempts[0].get("outcome") != "COMPLETED"
+            or provenance.get("claim_format_version")
+            != "GEMINI_JSON_FIRST_AGY_SCHEMA_ALIGNMENT_RECOVERY_CLAIM_V1"
+            or provenance.get("completion_format_version")
+            != "GEMINI_JSON_FIRST_AGY_TASK_SUCCESS_V1"
+            or type(provenance.get("task_id")) is not str
+            or not provenance["task_id"].startswith("gjfptaskv1:")
+            or type(provenance.get("provider_job_ref")) is not str
+            or re.fullmatch(r"agyjobv1:[0-9a-f]{64}", provenance["provider_job_ref"]) is None
+            or type(provenance.get("document_manifest_id")) is not str
+            or re.fullmatch(r"gfdmv1:manifest:[0-9a-f]{64}", provenance["document_manifest_id"])
+            is None
+            or any(
+                not _is_sha256_v1(provenance.get(field))
+                for field in (
+                    "claim_receipt_sha256",
+                    "completion_receipt_sha256",
+                    "repair_instruction_sha256",
+                    "repair_registry_entry_sha256",
+                )
+            )
+            or page_json_version_id in result
+        ):
+            raise _error("specialized extraction authorization entry is invalid")
+        result[page_json_version_id] = canonical_clone_v1(raw_entry)
+    if set(result) != set(_SPECIALIZED_EXTRACTION_AUTHORIZED_PAGE_JSON_VERSION_IDS):
+        raise _error("specialized extraction authorization registry frontier drifted")
+    return result
+
+
+def _specialized_extraction_store_receipt_v1(
+    path: Path, *, page_json_version_id: str
+) -> dict[str, Any]:
+    """Replay every immutable store field used by a specialized authorization."""
+
+    with _connect(path, readonly=True) as connection:
+        row = connection.execute(
+            """
+            SELECT v.page_json_version_id,v.raw_response_sha256,
+                   v.canonical_json_sha256,
+                   e.extraction_run_id,e.cache_key,e.prompt_variant,
+                   e.output_contract_mode,e.prompt_sha256,
+                   e.response_schema_sha256,e.requested_model,
+                   e.requested_service_tier,e.thinking_level,
+                   e.selected_provider,e.selected_model,e.selected_service_tier,
+                   e.response_id_sha256,e.input_tokens,e.output_tokens,
+                   e.thought_tokens,e.cached_input_tokens,e.total_tokens,
+                   e.cost_usd,e.cost_disposition,e.status,
+                   p.page_id,p.physical_page,p.image_sha256,p.image_size_bytes,
+                   p.pixel_width,p.pixel_height,p.render_dpi,p.media_type,
+                   d.source_sha256,d.source_size_bytes,d.source_logical_name
+            FROM page_json_version AS v
+            JOIN extraction_run AS e USING(extraction_run_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            WHERE v.page_json_version_id=?
+            """,
+            (page_json_version_id,),
+        ).fetchall()
+        attempts = connection.execute(
+            """
+            SELECT attempt_ordinal,provider,credential_slot,elapsed_seconds,
+                   http_status,outcome,usage_json
+            FROM provider_attempt
+            WHERE extraction_run_id=(
+                SELECT extraction_run_id FROM page_json_version
+                WHERE page_json_version_id=?
+            )
+            ORDER BY attempt_ordinal
+            """,
+            (page_json_version_id,),
+        ).fetchall()
+    if (
+        len(row) != 1
+        or not attempts
+        or [item["attempt_ordinal"] for item in attempts] != list(range(1, len(attempts) + 1))
+    ):
+        raise _error("specialized extraction store receipt is absent or ambiguous")
+    receipt = dict(row[0])
+    receipt["provider_attempts"] = [
+        {
+            "attempt_ordinal": item["attempt_ordinal"],
+            "credential_slot": item["credential_slot"],
+            "elapsed_seconds": item["elapsed_seconds"],
+            "http_status": item["http_status"],
+            "outcome": item["outcome"],
+            "provider": item["provider"],
+            "usage_sha256": (
+                sha256(bytes(item["usage_json"])).hexdigest()
+                if item["usage_json"] is not None
+                else None
+            ),
+        }
+        for item in attempts
+    ]
+    return receipt
+
+
+def _is_selectable_extraction_receipt_v1(
+    path: Path, *, page_json_version_id: str, prompt_variant: str
+) -> bool:
+    """Authorize ordinary prompts or one exact reviewed specialized receipt."""
+
+    if page_json_version_id in _SPECIALIZED_EXTRACTION_AUTHORIZED_PAGE_JSON_VERSION_IDS:
+        if prompt_variant not in _SPECIALIZED_PROMPT_VARIANTS:
+            raise _error("specialized extraction receipt prompt variant drifted")
+        authorizations = _specialized_extraction_authorizations_v1()
+        authorization = authorizations.get(page_json_version_id)
+        if authorization is None:
+            raise _error("specialized extraction receipt is not registered")
+        actual = _specialized_extraction_store_receipt_v1(
+            path, page_json_version_id=page_json_version_id
+        )
+        if not same_typed_json_v1(actual, authorization["store_receipt"]):
+            raise _error("specialized extraction store receipt does not match authorization")
+        return True
+    if prompt_variant in _SELECTABLE_PROMPT_VARIANTS:
+        return True
+    if prompt_variant not in _SPECIALIZED_PROMPT_VARIANTS:
+        return False
+    raise _error("specialized extraction receipt is not registered")
 
 
 _SCHEMA = """
@@ -1766,10 +1985,12 @@ def document_page_extraction_frontier_v1(
         rows = connection.execute(
             """
             SELECT DISTINCT p.physical_page, p.image_sha256,
-                            e.prompt_variant, e.prompt_sha256
+                            e.prompt_variant, e.prompt_sha256,
+                            v.page_json_version_id
             FROM document AS d
             JOIN page AS p USING(document_id)
             JOIN extraction_run AS e USING(page_id)
+            JOIN page_json_version AS v USING(extraction_run_id)
             WHERE d.source_sha256=? AND d.source_logical_name=? AND p.render_dpi=?
             ORDER BY p.physical_page, p.image_sha256, e.prompt_variant
             """,
@@ -1777,7 +1998,11 @@ def document_page_extraction_frontier_v1(
         ).fetchall()
     grouped: dict[int, list[dict[str, str]]] = {}
     for row in rows:
-        if row["prompt_variant"] not in _SELECTABLE_PROMPT_VARIANTS:
+        if not _is_selectable_extraction_receipt_v1(
+            path,
+            page_json_version_id=row["page_json_version_id"],
+            prompt_variant=row["prompt_variant"],
+        ):
             raise _error("stored document extraction prompt variant is invalid")
         grouped.setdefault(row["physical_page"], []).append(
             {
@@ -1844,7 +2069,12 @@ def selected_page_extraction_receipts_v1(
         if (
             row["selection_ordinal"] != ordinal
             or row["page_json_version_id"] != version_ids[ordinal - 1]
-            or row["prompt_variant"] not in _SELECTABLE_PROMPT_VARIANTS
+        ):
+            raise _error("selected page extraction receipt order or prompt is invalid")
+        if not _is_selectable_extraction_receipt_v1(
+            path,
+            page_json_version_id=row["page_json_version_id"],
+            prompt_variant=row["prompt_variant"],
         ):
             raise _error("selected page extraction receipt order or prompt is invalid")
         result.append(dict(row))
@@ -1916,11 +2146,14 @@ def selected_page_json_provenance_receipts_v1(
         return result
 
     root_receipts = receipts_for(version_ids)
-    pending = [
-        record["page_json_version_id"]
-        for record in root_receipts
-        if record["prompt_variant"] not in _SELECTABLE_PROMPT_VARIANTS
-    ]
+    pending = []
+    for record in root_receipts:
+        if not _is_selectable_extraction_receipt_v1(
+            path,
+            page_json_version_id=record["page_json_version_id"],
+            prompt_variant=record["prompt_variant"],
+        ):
+            pending.append(record["page_json_version_id"])
     visited: set[str] = set()
     while pending:
         if len(pending) != len(set(pending)) or any(
@@ -1945,11 +2178,14 @@ def selected_page_json_provenance_receipts_v1(
             raise _error("selected page JSON repair lineage does not bind its selected version")
         base_ids = [lineage["base_page_json_version_id"] for lineage in lineages]
         base_receipts = receipts_for(base_ids)
-        pending = [
-            record["page_json_version_id"]
-            for record in base_receipts
-            if record["prompt_variant"] not in _SELECTABLE_PROMPT_VARIANTS
-        ]
+        pending = []
+        for record in base_receipts:
+            if not _is_selectable_extraction_receipt_v1(
+                path,
+                page_json_version_id=record["page_json_version_id"],
+                prompt_variant=record["prompt_variant"],
+            ):
+                pending.append(record["page_json_version_id"])
     return root_receipts
 
 
@@ -2143,7 +2379,7 @@ def query_selected_dual_component_family_regions_v1(
     selected_page_json_version_ids: Sequence[str],
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Coalesce exact same-page seed siblings under one owner/reset fence.
+    """Coalesce exact seed siblings under one bounded owner/reset frontier.
 
     The bounded SQLite probe inventories every declared role alias while the
     two seed roles remain the only admission anchors.  Every hit page is then
@@ -2153,6 +2389,7 @@ def query_selected_dual_component_family_regions_v1(
 
     from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
         ENGINE_FORMAT_VERSION,
+        _apply_authenticated_source_repairs_v1,
         build_gemini_json_indexed_dual_component_query_evidence_v1,
         coalesce_gemini_json_dual_component_page_v1,
         validate_gemini_json_indexed_dual_component_query_evidence_v1,
@@ -2347,8 +2584,32 @@ def query_selected_dual_component_family_regions_v1(
                 "source_sha256",
             )
         }
+        page_json = canonical_page_by_version[version_id]
+        repair = next(
+            (
+                item
+                for item in compiled_specs.get("source_repairs", [])
+                if item["base_page_json_version_id"] == version_id
+                and item["source"]["source_sha256"] == metadata["source_sha256"]
+            ),
+            None,
+        )
+        if repair is not None:
+            repair_regions = [
+                {
+                    **base_locator,
+                    "section_id": item["section_id"],
+                    "table_id": item["table_id"],
+                }
+                for item in repair["table_refs"]
+            ]
+            page_json = _apply_authenticated_source_repairs_v1(
+                regions=repair_regions,
+                page_json_by_version={version_id: page_json},
+                compiled_specs=compiled_specs,
+            )[0][version_id]
         coalesced = coalesce_gemini_json_dual_component_page_v1(
-            page_json=canonical_page_by_version[version_id],
+            page_json=page_json,
             locator=base_locator,
             compiled_specs=compiled_specs,
         )
@@ -2363,25 +2624,144 @@ def query_selected_dual_component_family_regions_v1(
     for document in selected_document_axis:
         ordinal = document["document_ordinal"]
         hits = hits_by_document.get(ordinal, [])
+        document_pages = coalesced_by_document.get(ordinal, [])
         pages = [
             page
-            for page in coalesced_by_document.get(ordinal, [])
+            for page in document_pages
             if page["fragments"]
             or any(
-                item["owner"] is not None
-                and item["population_disposition"]
+                item["population_disposition"]
                 in {
                     "DECLARED_ROLE_ONLY_POPULATION",
                     "DECLARED_ROLE_MIXED_WITH_FOREIGN_POPULATION",
                 }
+                and item["owner"] is not None
                 for item in page["role_bearing_fragments"]
             )
         ]
         reason_codes = sorted({reason for page in pages for reason in page["reasons"]})
         accepted = [page for page in pages if page["status"] == "ACCEPTED"]
+        document_level_cluster_accepted = False
+        if compiled_specs["query_policy"].get("max_page_span") == 1:
+            seed_fragments = [
+                fragment
+                for page in pages
+                for fragment in page["fragments"]
+                if fragment.get("component_role") in {"BALANCE", "DETAIL"}
+            ]
+            seed_by_component = {
+                component_role: [
+                    fragment
+                    for fragment in seed_fragments
+                    if fragment["component_role"] == component_role
+                ]
+                for component_role in ("BALANCE", "DETAIL")
+            }
+            if all(len(seed_by_component[role]) == 1 for role in ("BALANCE", "DETAIL")):
+                balance_seed = seed_by_component["BALANCE"][0]
+                detail_seed = seed_by_component["DETAIL"][0]
+                selected_fragments = [balance_seed, detail_seed]
+                selected_locations = {
+                    (
+                        item["locator"]["page_json_version_id"],
+                        item["locator"]["section_id"],
+                        item["locator"]["table_id"],
+                    )
+                    for item in selected_fragments
+                }
+                for page in document_pages:
+                    for fragment in page["role_bearing_fragments"]:
+                        location = (
+                            fragment["locator"]["page_json_version_id"],
+                            fragment["locator"]["section_id"],
+                            fragment["locator"]["table_id"],
+                        )
+                        if (
+                            location not in selected_locations
+                            and fragment.get("component_role") in {"BALANCE", "DETAIL"}
+                            and fragment.get("continuation")
+                            == "CONTINUES_FROM_PREVIOUS_PAGE"
+                        ):
+                            prior = [
+                                item
+                                for item in selected_fragments
+                                if item["component_role"] == fragment["component_role"]
+                                and item["locator"]["physical_page"] + 1
+                                == fragment["locator"]["physical_page"]
+                                and item.get("continuation") == "CONTINUES_ON_NEXT_PAGE"
+                            ]
+                            if len(prior) == 1:
+                                selected_fragments.append(fragment)
+                                selected_locations.add(location)
+                selected_fragments.sort(
+                    key=lambda item: (
+                        item["locator"]["physical_page"],
+                        item["locator"]["selected_page_ordinal"],
+                        int(item["locator"]["section_id"][1:]),
+                        int(item["locator"]["table_id"][1:]),
+                    )
+                )
+                physical_pages = {
+                    item["locator"]["physical_page"] for item in selected_fragments
+                }
+                seed_order = [
+                    (
+                        item["locator"]["physical_page"],
+                        int(item["locator"]["section_id"][1:]),
+                        int(item["locator"]["table_id"][1:]),
+                    )
+                    for item in (balance_seed, detail_seed)
+                ]
+                balance_owner = balance_seed.get("owner")
+                detail_owner = detail_seed.get("owner")
+                explicit_boundary = any(
+                    item.get("continuation")
+                    in {"CONTINUES_ON_NEXT_PAGE", "CONTINUES_FROM_PREVIOUS_PAGE"}
+                    for item in selected_fragments
+                )
+                detail_starts_next_page = (
+                    len(selected_fragments) == 2
+                    and detail_seed["locator"]["physical_page"]
+                    == balance_seed["locator"]["physical_page"] + 1
+                    and detail_seed["locator"]["section_id"] == "s1"
+                    and detail_seed["locator"]["table_id"] == "t1"
+                )
+                if (
+                    balance_owner is not None
+                    and (detail_owner is None or detail_owner == balance_owner)
+                    and seed_order[0] < seed_order[1]
+                    and len(physical_pages) == 2
+                    and max(physical_pages) - min(physical_pages) <= 1
+                    and (explicit_boundary or detail_starts_next_page)
+                    and all(
+                        1
+                        <= sum(
+                            item["component_role"] == component_role
+                            for item in selected_fragments
+                        )
+                        <= 2
+                        for component_role in ("BALANCE", "DETAIL")
+                    )
+                ):
+                    accepted = [
+                        {
+                            "component_regions": [
+                                canonical_clone_v1(item["locator"])
+                                for item in selected_fragments
+                            ],
+                            "owner": canonical_clone_v1(balance_owner),
+                            "status": "ACCEPTED",
+                        }
+                    ]
+                    reason_codes = []
+                    document_level_cluster_accepted = True
         if not pages:
             disposition = "NOT_OBSERVED"
-        elif len(pages) == 1 and len(accepted) == 1 and not reason_codes:
+        elif (
+            len(accepted) == 1
+            and not reason_codes
+            and (len(pages) == 1 or document_level_cluster_accepted)
+        ):
             disposition = "ACCEPTED_CLUSTER"
             accepted_clusters.append(
                 {
@@ -2392,7 +2772,7 @@ def query_selected_dual_component_family_regions_v1(
             )
         else:
             disposition = "UNRESOLVED_CLUSTER"
-            if len(pages) != 1:
+            if len(pages) != 1 and not document_level_cluster_accepted:
                 reason_codes.append("EXACTLY_ONE_CANDIDATE_PAGE_PER_DOCUMENT_REQUIRED")
             if len(accepted) > 1:
                 reason_codes.append("MULTIPLE_ACCEPTED_COMPONENT_CLUSTERS")
@@ -2438,6 +2818,7 @@ def query_selected_dual_component_family_regions_v1(
             )
             if location in consumed_locations:
                 hit["query_disposition"] = "CONSUMED_ACCEPTED_COMPONENT_FRAGMENT"
+                hit_is_active = True
             elif hit_is_active:
                 hit["query_disposition"] = "UNCONSUMED_FAMILY_INTERVAL_ROLE_HIT"
             else:
@@ -4045,6 +4426,9 @@ def query_selected_rollforward_family_regions_v1(
         _date_tokens,
         _normalized,
         _role_for_row,
+        build_gemini_json_rollforward_complementary_continuation_v1,
+        build_gemini_json_rollforward_following_owner_backbinding_v1,
+        classify_gemini_json_rollforward_cluster_layout_v1,
         classify_gemini_json_rollforward_table_v1,
     )
 
@@ -4484,10 +4868,199 @@ def query_selected_rollforward_family_regions_v1(
         "PERIOD_TABLES_LANE_COLUMNS": 0,
     }
     for source in sorted(dispositions_by_source):
-        source_dispositions = dispositions_by_source[source]
+        source_dispositions = sorted(
+            dispositions_by_source[source],
+            key=lambda item: (
+                item["selected_page_ordinal"],
+                int(item["section_id"][1:]),
+                int(item["table_id"][1:]),
+            ),
+        )
         components = [
             item for item in source_dispositions if item["disposition"] == "ACCEPTED_COMPONENT"
         ]
+        complementary_pairs = []
+        following_owner_backbinding_pairs = []
+        for owner in source_dispositions:
+            for continuation in source_dispositions:
+                if (
+                    continuation["selected_page_ordinal"]
+                    != owner["selected_page_ordinal"] + 1
+                    or continuation["physical_page"] != owner["physical_page"] + 1
+                ):
+                    continue
+                owner_page = canonical_page_by_version[owner["page_json_version_id"]]
+                continuation_page = canonical_page_by_version[
+                    continuation["page_json_version_id"]
+                ]
+                try:
+                    owner_section = owner_page["sections"][int(owner["section_id"][1:]) - 1]
+                    owner_table = owner_section["tables"][int(owner["table_id"][1:]) - 1]
+                    continuation_section = continuation_page["sections"][
+                        int(continuation["section_id"][1:]) - 1
+                    ]
+                    continuation_table = continuation_section["tables"][
+                        int(continuation["table_id"][1:]) - 1
+                    ]
+                except (IndexError, KeyError, TypeError) as exc:
+                    raise _error(
+                        "selected roll-forward continuation locator is invalid"
+                    ) from exc
+                logical = build_gemini_json_rollforward_complementary_continuation_v1(
+                    owner_locator={
+                        field: owner[field]
+                        for field in (
+                            "document_id",
+                            "page_json_version_id",
+                            "physical_page",
+                            "section_id",
+                            "source_logical_name",
+                            "source_sha256",
+                            "table_id",
+                        )
+                    },
+                    owner_section=owner_section,
+                    owner_table=owner_table,
+                    continuation_locator={
+                        field: continuation[field]
+                        for field in (
+                            "document_id",
+                            "page_json_version_id",
+                            "physical_page",
+                            "section_id",
+                            "source_logical_name",
+                            "source_sha256",
+                            "table_id",
+                        )
+                    },
+                    continuation_section=continuation_section,
+                    continuation_table=continuation_table,
+                    compiled_specs=compiled_specs,
+                )
+                if logical is not None:
+                    complementary_pairs.append((owner, continuation, logical))
+                backbinding = build_gemini_json_rollforward_following_owner_backbinding_v1(
+                    preceding_locator={
+                        field: owner[field]
+                        for field in (
+                            "document_id",
+                            "page_json_version_id",
+                            "physical_page",
+                            "section_id",
+                            "source_logical_name",
+                            "source_sha256",
+                            "table_id",
+                        )
+                    },
+                    preceding_section=owner_section,
+                    preceding_table=owner_table,
+                    following_locator={
+                        field: continuation[field]
+                        for field in (
+                            "document_id",
+                            "page_json_version_id",
+                            "physical_page",
+                            "section_id",
+                            "source_logical_name",
+                            "source_sha256",
+                            "table_id",
+                        )
+                    },
+                    following_section=continuation_section,
+                    following_table=continuation_table,
+                    compiled_specs=compiled_specs,
+                )
+                if backbinding is not None:
+                    following_owner_backbinding_pairs.append(
+                        (owner, continuation, backbinding)
+                    )
+        admitted_complementary = None
+        if len(complementary_pairs) == 1:
+            owner, continuation, logical = complementary_pairs[0]
+            continuation_regions = [
+                {
+                    field: component[field]
+                    for field in (
+                        "document_id",
+                        "page_json_version_id",
+                        "physical_page",
+                        "section_id",
+                        "source_logical_name",
+                        "source_sha256",
+                        "table_id",
+                    )
+                }
+                for component in (owner, continuation)
+            ]
+            reset_fence = _bounded_population_reset_fence_v1(
+                continuation_regions,
+                page_json_by_version=canonical_page_by_version,
+                compiled_specs=compiled_specs,
+                include_intervening_surfaces=True,
+            )
+            continuation["continuation_cluster_admission"] = {
+                "logical_continuation_receipt": logical["receipt"],
+                "owner_candidate_evidence_sha256": owner["candidate_evidence_sha256"],
+                "reset_fence_receipt": reset_fence,
+                "rule": (
+                    "UNIQUE_IMMEDIATELY_ADJACENT_AUTHENTICATED_INCOMING_"
+                    "COMPLEMENTARY_ROW_CONTINUATION_RESET_FENCED"
+                ),
+                "status": (
+                    "RESET_FENCE_VETO"
+                    if reset_fence["reset_hits"]
+                    else "ADMITTED_COMPLEMENTARY_RESET_FENCE_CLEAR"
+                ),
+            }
+            if not reset_fence["reset_hits"]:
+                admitted_complementary = (owner, continuation, logical)
+                for component in (owner, continuation):
+                    if component not in components:
+                        components.append(component)
+        if len(following_owner_backbinding_pairs) == 1:
+            preceding, following, backbinding = following_owner_backbinding_pairs[0]
+            backbinding_regions = [
+                {
+                    field: component[field]
+                    for field in (
+                        "document_id",
+                        "page_json_version_id",
+                        "physical_page",
+                        "section_id",
+                        "source_logical_name",
+                        "source_sha256",
+                        "table_id",
+                    )
+                }
+                for component in (preceding, following)
+            ]
+            reset_fence = _bounded_population_reset_fence_v1(
+                backbinding_regions,
+                page_json_by_version=canonical_page_by_version,
+                compiled_specs=compiled_specs,
+                include_intervening_surfaces=True,
+            )
+            preceding["continuation_cluster_admission"] = {
+                "following_owner_backbinding_receipt": backbinding,
+                "following_owner_candidate_evidence_sha256": following[
+                    "candidate_evidence_sha256"
+                ],
+                "reset_fence_receipt": reset_fence,
+                "rule": (
+                    "UNIQUE_IMMEDIATELY_FOLLOWING_LOCAL_OWNER_EXPLICIT_INCOMING_"
+                    "BACKBINDS_PRECEDING_COMPLETE_SAME_TOPOLOGY_COMPONENT_RESET_"
+                    "FENCED"
+                ),
+                "status": (
+                    "RESET_FENCE_VETO"
+                    if reset_fence["reset_hits"]
+                    else "ADMITTED_FOLLOWING_OWNER_BACKBIND_RESET_FENCE_CLEAR"
+                ),
+            }
+            if not reset_fence["reset_hits"]:
+                for component in (preceding, following):
+                    if component not in components:
+                        components.append(component)
         for ordinal, continuation in enumerate(source_dispositions):
             classification = continuation["classification"]
             if (
@@ -4556,24 +5129,28 @@ def query_selected_rollforward_family_regions_v1(
         )
         if not components:
             continue
-        orientations = {
-            item["classification"]["orientation"]
-            for item in components
-            if item["classification"] is not None
-        }
         pages = {item["physical_page"] for item in components}
-        if len(components) == 1 and orientations == {"LANE_COLUMNS"}:
-            layout_kind = "STACKED_PERIOD_BLOCKS"
-        elif len(components) == 2 and orientations == {"LANE_COLUMNS"}:
-            layout_kind = "PERIOD_TABLES_LANE_COLUMNS"
-        elif len(components) == 2 and orientations == {"PERIOD_COLUMNS"}:
-            layout_kind = "LANE_TABLES_PERIOD_COLUMNS"
+        if admitted_complementary is not None:
+            owner, continuation, logical = admitted_complementary
+            logical_classifications = [
+                logical["receipt"]["logical_classification"],
+                *(
+                    item["classification"]
+                    for item in components
+                    if item is not owner and item is not continuation
+                ),
+            ]
+            logical_component_count = len(components) - 1
         else:
-            layout_kind = None
+            logical_classifications = [item["classification"] for item in components]
+            logical_component_count = len(components)
+        layout_kind = classify_gemini_json_rollforward_cluster_layout_v1(
+            logical_classifications
+        )
         if (
             layout_kind is None
             or max(pages) - min(pages) > layout["max_page_span"]
-            or len(components) > layout["max_component_tables"]
+            or logical_component_count > layout["max_component_tables"]
         ):
             for component in components:
                 component["disposition"] = "DOCUMENT_CLUSTER_AMBIGUOUS"
@@ -4583,7 +5160,10 @@ def query_selected_rollforward_family_regions_v1(
                 ]
             continue
         layout_counts[layout_kind] += 1
-        if len(components) == 2:
+        # Count logical period/lane components, not the physical table halves
+        # retained for source replay.  One row-split table is one stacked
+        # component even though its provenance spans two physical regions.
+        if logical_component_count == 2:
             page_kind_counts = (
                 same_page_layout_counts if len(pages) == 1 else adjacent_page_layout_counts
             )
@@ -4608,7 +5188,12 @@ def query_selected_rollforward_family_regions_v1(
                     "context_axis_sha256": component["context_axis_sha256"],
                     "document_ordinal": component["document_ordinal"],
                     "layout_kind": layout_kind,
-                    "orientation": component["classification"]["orientation"],
+                    "orientation": (
+                        "LANE_COLUMNS"
+                        if admitted_complementary is not None
+                        and component in admitted_complementary[:2]
+                        else component["classification"]["orientation"]
+                    ),
                     "row_axis_sha256": component["row_axis_sha256"],
                     "selected_page_ordinal": component["selected_page_ordinal"],
                 }
@@ -5087,6 +5672,8 @@ def query_selected_hierarchical_title_axis_family_regions_v1(
     owner_reset_aliases: Sequence[str],
     adjacent_page_radius: int = 2,
     query_group_receipt: Mapping[str, Any] | None = None,
+    structural_branch_fallback_group_aliases: Sequence[str] = (),
+    unresolved_near_source_policy: str = "ANY_UNVETOED_STRUCTURAL_AXIS",
 ) -> dict[str, Any]:
     """Return row-qualified tables under one bounded title/narrative owner axis.
 
@@ -5124,7 +5711,17 @@ def query_selected_hierarchical_title_axis_family_regions_v1(
         or not 2 <= minimum_distinct_child_roles <= len(required)
         or type(structural_branch_aliases) not in {list, tuple}
         or not structural_branch_aliases
-        or tuple(structural_surface_kinds) not in {("TITLE",), ("TITLE", "SECTION_NARRATIVE")}
+        or type(structural_branch_fallback_group_aliases) not in {list, tuple}
+        or any(
+            type(alias) is not str or not alias.strip()
+            for alias in structural_branch_fallback_group_aliases
+        )
+        or tuple(structural_surface_kinds)
+        not in {
+            ("TITLE",),
+            ("TITLE", "SECTION_NARRATIVE"),
+            ("TITLE", "SECTION_NARRATIVE", "GROUP_ROW"),
+        }
         or type(explicit_parent_role) is not str
         or not explicit_parent_role
         or type(explicit_parent_aliases) not in {list, tuple}
@@ -5134,6 +5731,11 @@ def query_selected_hierarchical_title_axis_family_regions_v1(
         or type(adjacent_page_radius) is not int
         or not 0 <= adjacent_page_radius <= 2
         or (query_group_receipt is not None and type(query_group_receipt) is not dict)
+        or unresolved_near_source_policy
+        not in {
+            "ANY_UNVETOED_STRUCTURAL_AXIS",
+            "REQUIRE_UNVETOED_BRANCH_OWNER_AND_MINIMUM_CHILD_ROLES",
+        }
     ):
         raise _error("selected hierarchical title-axis query is invalid")
 
@@ -5284,6 +5886,7 @@ def query_selected_hierarchical_title_axis_family_regions_v1(
     regions = []
     candidate_dispositions = []
     near_parent_sources: set[str] = set()
+    unresolved_near_parent_sources: set[str] = set()
     for key in sorted(
         candidate_keys,
         key=lambda item: (
@@ -5317,6 +5920,9 @@ def query_selected_hierarchical_title_axis_family_regions_v1(
             context_page_records=context_records,
             structural_branch_role=structural_branch_role,
             structural_branch_aliases=structural_branch_aliases,
+            structural_branch_fallback_group_aliases=(
+                structural_branch_fallback_group_aliases
+            ),
             structural_surface_kinds=structural_surface_kinds,
             explicit_parent_role=explicit_parent_role,
             explicit_parent_aliases=explicit_parent_aliases,
@@ -5360,6 +5966,15 @@ def query_selected_hierarchical_title_axis_family_regions_v1(
             resolution["branch_evidence"] is not None or resolution["owner_evidence"] is not None
         ):
             near_parent_sources.add(representative["source_logical_name"])
+            if (
+                unresolved_near_source_policy == "ANY_UNVETOED_STRUCTURAL_AXIS"
+                or (
+                    resolution["branch_evidence"] is not None
+                    and resolution["owner_evidence"] is not None
+                    and len(child_assignment) >= minimum_distinct_child_roles
+                )
+            ):
+                unresolved_near_parent_sources.add(representative["source_logical_name"])
         if disposition_kind != "ACCEPTED":
             continue
         context_pages = [
@@ -5443,6 +6058,7 @@ def query_selected_hierarchical_title_axis_family_regions_v1(
     return {
         "candidate_dispositions": candidate_dispositions,
         "near_parent_sources": sorted(near_parent_sources),
+        "unresolved_near_parent_sources": sorted(unresolved_near_parent_sources),
         "query_receipt": query_receipt_value,
         "regions": regions,
     }
@@ -5496,6 +6112,14 @@ def validate_selected_hierarchical_title_axis_query_evidence_v1(
         minimum_distinct_child_roles=policy["minimum_distinct_child_roles"],
         structural_branch_role=branch_role,
         structural_branch_aliases=compiled_specs["query_presence_aliases_by_role"][branch_role],
+        structural_branch_fallback_group_aliases=[
+            alias
+            for role in policy.get("structural_branch_fallback_group_roles", [])
+            for alias in compiled_specs["query_presence_aliases_by_role"][role]
+        ],
+        unresolved_near_source_policy=policy.get(
+            "unresolved_near_source_policy", "ANY_UNVETOED_STRUCTURAL_AXIS"
+        ),
         structural_surface_kinds=policy["structural_surface_kinds"],
         explicit_parent_role=topology["parent"]["role"],
         explicit_parent_aliases=compiled_specs["query_parent_aliases"],
@@ -5605,6 +6229,21 @@ def query_selected_family_anchor_regions_v1(
         raise _error("selected family query anchors or page radius are invalid")
     folded_sets = [_family_anchor_lookup_forms_v1(aliases) for aliases in anchor_aliases]
     folded_title_aliases = set(_family_anchor_lookup_forms_v1(title_anchor_aliases))
+    direct_folded_title_aliases = {
+        normalize_search_text_v1(alias)["text_ascii_folded"]
+        for alias in title_anchor_aliases
+        if type(alias) is str and alias
+    }
+    narrative_anchor_aliases = sorted(
+        {
+            (anchor_ordinal, folded)
+            for anchor_ordinal, aliases in enumerate(anchor_aliases, start=1)
+            for alias in aliases
+            if type(alias) is str
+            and (folded := normalize_search_text_v1(alias)["text_ascii_folded"])
+            in direct_folded_title_aliases
+        }
+    )
     if any(not aliases or any(not alias for alias in aliases) for aliases in folded_sets):
         raise _error("selected family query normalized anchor set is empty")
 
@@ -5662,6 +6301,25 @@ def query_selected_family_anchor_regions_v1(
                 if alias in folded_title_aliases
             ),
         )
+        connection.execute(
+            "CREATE TEMP TABLE narrative_anchor_alias("
+            "anchor_ordinal INTEGER NOT NULL, label_ascii_folded TEXT NOT NULL, "
+            "PRIMARY KEY(anchor_ordinal,label_ascii_folded))"
+        )
+        connection.executemany(
+            "INSERT INTO narrative_anchor_alias VALUES (?,?)",
+            narrative_anchor_aliases,
+        )
+        connection.create_function(
+            "normalize_family_narrative_v1",
+            1,
+            lambda value: (
+                normalize_search_text_v1(value)["text_ascii_folded"]
+                if type(value) is str
+                else ""
+            ),
+            deterministic=True,
+        )
         candidates = connection.execute(
             """
             WITH anchor_hit AS (
@@ -5683,6 +6341,22 @@ def query_selected_family_anchor_regions_v1(
               JOIN title_anchor_alias AS a
                 ON instr(COALESCE(sn.title_ascii_folded,''),a.label_ascii_folded)>0
                 OR instr(COALESCE(t.title_ascii_folded,''),a.label_ascii_folded)>0
+              UNION ALL
+              SELECT t.page_json_version_id, t.section_id, t.table_id,
+                     a.anchor_ordinal,
+                     '__SECTION_NARRATIVE_ANCHOR__:' || a.anchor_ordinal,
+                     0
+              FROM table_node AS t
+              JOIN selected_page_version AS s USING(page_json_version_id)
+              JOIN section_node AS sn
+                ON sn.page_json_version_id=t.page_json_version_id
+               AND sn.section_id=t.section_id
+              JOIN json_each(sn.narratives_json) AS narrative
+              JOIN narrative_anchor_alias AS a
+                ON instr(
+                     normalize_family_narrative_v1(narrative.value),
+                     a.label_ascii_folded
+                   )>0
             )
             SELECT h.page_json_version_id, h.section_id, h.table_id,
                    s.selection_ordinal, d.document_id, d.source_logical_name,
@@ -5730,6 +6404,22 @@ def query_selected_family_anchor_regions_v1(
               JOIN title_anchor_alias AS a
                 ON instr(COALESCE(sn.title_ascii_folded,''),a.label_ascii_folded)>0
                 OR instr(COALESCE(t.title_ascii_folded,''),a.label_ascii_folded)>0
+              UNION ALL
+              SELECT t.page_json_version_id, t.section_id, t.table_id,
+                     a.anchor_ordinal,
+                     '__SECTION_NARRATIVE_ANCHOR__:' || a.anchor_ordinal,
+                     0, s.selection_ordinal
+              FROM table_node AS t
+              JOIN selected_page_version AS s USING(page_json_version_id)
+              JOIN section_node AS sn
+                ON sn.page_json_version_id=t.page_json_version_id
+               AND sn.section_id=t.section_id
+              JOIN json_each(sn.narratives_json) AS narrative
+              JOIN narrative_anchor_alias AS a
+                ON instr(
+                     normalize_family_narrative_v1(narrative.value),
+                     a.label_ascii_folded
+                   )>0
             )
             ORDER BY selection_ordinal, section_id, table_id,
                      anchor_ordinal, source_order, row_id
@@ -5798,6 +6488,11 @@ _DUAL_AXIS_YEAR = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
 def _dual_axis_folded_label_v1(value: Any) -> str:
     if type(value) is not str:
         return ""
+    # Some otherwise faithful Gemini pages retain the JSON escape spelling in
+    # a header cell (for example ``"Cho vay\\nkhách hàng"``).  A literal
+    # escaped line/tab separator carries no accounting semantics, exactly like
+    # the decoded whitespace spelling on neighbouring pages.
+    value = re.sub(r"\\[nrt]+", " ", value)
     folded = normalize_search_text_v1(value)["text_ascii_folded"]
     return " ".join(re.sub(r"[^a-z0-9%]+", " ", folded).split())
 
@@ -5837,15 +6532,18 @@ def query_selected_dual_axis_family_regions_v1(
     metric_aliases: Sequence[str],
     role_aliases: Mapping[str, Sequence[str]],
     unit_aliases: Sequence[str],
+    external_population_control: Mapping[str, Any] | None = None,
     adjacent_page_radius: int = 1,
 ) -> dict[str, Any]:
     """Query exact row/column-transposed accounting regions and bounded context.
 
     An indexed row hit narrows every lookup before column headers are decoded.
     A region is returned only when one orientation contains the two declared
-    role anchors and one exact opposite-axis metric qualifier.  Header matching
-    removes only a trailing money unit; it never uses a substring, bank, file,
-    page number, note number, OCR geometry, or broad-population narrowing.
+    role anchors and one exact opposite-axis metric qualifier.  Row-oriented
+    roles may occur twice only when they form two exact shared hierarchy-path
+    groups with distinct local dates.  Header matching removes only a trailing
+    money unit; it never uses a substring, bank, file, page number, note number,
+    OCR geometry, or broad-population narrowing.
     """
 
     if (
@@ -5872,6 +6570,8 @@ def query_selected_dual_axis_family_regions_v1(
         )
         or type(unit_aliases) not in {list, tuple}
         or not unit_aliases
+        or external_population_control is not None
+        and not isinstance(external_population_control, Mapping)
         or type(adjacent_page_radius) is not int
         or not 0 <= adjacent_page_radius <= 2
     ):
@@ -5886,6 +6586,120 @@ def query_selected_dual_axis_family_regions_v1(
     folded_metrics = set(folded_aliases(metric_aliases))
     folded_roles = {role: set(folded_aliases(aliases)) for role, aliases in role_aliases.items()}
     folded_units = set(folded_aliases(unit_aliases))
+    external_control_policy = (
+        None
+        if external_population_control is None
+        else canonical_clone_v1(external_population_control)
+    )
+    if external_control_policy is not None:
+        expected_control_fields = {
+            "candidate_context",
+            "control_report_norm_id",
+            "control_source",
+            "controlled_metric_aliases",
+            "format_version",
+            "match_rule",
+            "query_gate_metric_aliases",
+            "unit_decimal_magnitude_by_alias",
+        }
+        if (
+            set(external_control_policy) != expected_control_fields
+            or external_control_policy.get("format_version")
+            != "GEMINI_JSON_DUAL_AXIS_EXTERNAL_POPULATION_CONTROL_V1"
+            or external_control_policy.get("match_rule")
+            != "EXACT_PERIOD_UNIT_MAGNITUDE_AND_INTEGER_EQUALITY"
+            or type(external_control_policy.get("control_report_norm_id")) is not int
+            or external_control_policy["control_report_norm_id"] <= 0
+            or type(external_control_policy.get("control_source")) is not dict
+            or type(external_control_policy.get("candidate_context")) is not dict
+            or type(external_control_policy.get("controlled_metric_aliases")) is not list
+            or type(external_control_policy.get("query_gate_metric_aliases")) is not list
+            or not set(external_control_policy["query_gate_metric_aliases"])
+            <= set(external_control_policy["controlled_metric_aliases"])
+            <= folded_metrics
+            or type(external_control_policy.get("unit_decimal_magnitude_by_alias"))
+            is not dict
+            or set(external_control_policy["unit_decimal_magnitude_by_alias"])
+            != folded_units
+        ):
+            raise _error("selected dual-axis external population control is invalid")
+    control_source_policy = (
+        None if external_control_policy is None else external_control_policy["control_source"]
+    )
+    candidate_context_policy = (
+        None
+        if external_control_policy is None
+        else external_control_policy["candidate_context"]
+    )
+
+    from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+        _header_dates,
+        _money,
+    )
+
+    def decoded_row_hit(raw: Mapping[str, Any]) -> dict[str, Any]:
+        record = dict(raw)
+        try:
+            path = json.loads(record.pop("hierarchy_path_exact_json"))
+        except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise _error("selected dual-axis row hierarchy path is invalid") from exc
+        if type(path) is not list or any(
+            value is not None and type(value) is not str for value in path
+        ):
+            raise _error("selected dual-axis row hierarchy path is invalid")
+        record["hierarchy_path_exact"] = path
+        return record
+
+    def stacked_period_role_groups(
+        row_roles: Mapping[str, Sequence[Mapping[str, Any]]],
+    ) -> list[dict[str, Any]] | None:
+        if not all(len(matches) == 2 for matches in row_roles.values()):
+            return None
+        grouped: dict[tuple[Any, ...], dict[str, Any]] = {}
+        for role, matches in row_roles.items():
+            for hit in matches:
+                path = canonical_clone_v1(hit["hierarchy_path_exact"])
+                label = hit["label_exact"]
+                if path and (
+                    path[-1] is None
+                    or (
+                        type(label) is str
+                        and _dual_axis_folded_label_v1(path[-1])
+                        == _dual_axis_folded_label_v1(label)
+                    )
+                ):
+                    path.pop()
+                if not path:
+                    return None
+                key = tuple(path)
+                group = grouped.setdefault(key, {"hierarchy_path_exact": path, "roles": {}})
+                if role in group["roles"]:
+                    return None
+                group["roles"][role] = {
+                    field: hit[field] for field in ("label_exact", "row_id", "source_order")
+                }
+        if len(grouped) != 2 or any(
+            set(group["roles"]) != set(folded_roles) for group in grouped.values()
+        ):
+            return None
+        result = []
+        for group in grouped.values():
+            dates = {
+                parsed
+                for surface in group["hierarchy_path_exact"]
+                if type(surface) is str
+                for parsed in _header_dates(surface)
+            }
+            if len(dates) != 1:
+                return None
+            result.append({**group, "period_end": next(iter(dates)).isoformat()})
+        if len({group["period_end"] for group in result}) != 2:
+            return None
+        return sorted(
+            result,
+            key=lambda group: min(hit["source_order"] for hit in group["roles"].values()),
+        )
+
     selected_page_json_provenance_receipts_v1(
         path,
         page_json_version_ids=selected_page_json_version_ids,
@@ -5935,11 +6749,12 @@ def query_selected_dual_axis_family_regions_v1(
             ],
         )
         row_hits = [
-            dict(row)
+            decoded_row_hit(row)
             for row in connection.execute(
                 """
             SELECT r.page_json_version_id, r.section_id, r.table_id,
                    r.row_id, r.source_order, r.label_exact,
+                   r.hierarchy_path_exact_json,
                    a.axis_kind, a.role
             FROM row_node AS r
             JOIN selected_dual_page AS s USING(page_json_version_id)
@@ -5956,7 +6771,8 @@ def query_selected_dual_axis_family_regions_v1(
         punctuation_rows = connection.execute(
             """
             SELECT r.page_json_version_id, r.section_id, r.table_id,
-                   r.row_id, r.source_order, r.label_exact
+                   r.row_id, r.source_order, r.label_exact,
+                   r.hierarchy_path_exact_json
             FROM row_node AS r
             JOIN selected_dual_page AS s USING(page_json_version_id)
             WHERE r.label_ascii_folded GLOB '*[^a-z0-9 %]*'
@@ -5976,7 +6792,7 @@ def query_selected_dual_axis_family_regions_v1(
             for row in row_hits
         }
         for raw in punctuation_rows:
-            row = dict(raw)
+            row = decoded_row_hit(raw)
             folded = _dual_axis_folded_label_v1(row["label_exact"])
             matches = []
             if folded in folded_metrics:
@@ -6015,7 +6831,7 @@ def query_selected_dual_axis_family_regions_v1(
         candidate_keys = sorted(
             key
             for key, hits in hits_by_table.items()
-            if {hit["role"] for hit in hits if hit["axis_kind"] == "ROLE"} == set(folded_roles)
+            if any(hit["axis_kind"] == "ROLE" for hit in hits)
             or any(hit["axis_kind"] == "METRIC" for hit in hits)
         )
         connection.execute(
@@ -6039,6 +6855,43 @@ def query_selected_dual_axis_family_regions_v1(
                      c.column_ordinal, c.column_id
             """
         ).fetchall()
+        candidate_context_rows = connection.execute(
+            """
+            SELECT k.page_json_version_id, k.section_id, k.table_id,
+                   sn.title_exact AS section_title_exact,
+                   sn.narratives_json, t.title_exact AS table_title_exact,
+                   t.unit_exact
+            FROM dual_candidate_table AS k
+            JOIN section_node AS sn
+              USING(page_json_version_id,section_id)
+            JOIN table_node AS t
+              USING(page_json_version_id,section_id,table_id)
+            ORDER BY k.page_json_version_id, k.section_id, k.table_id
+            """
+        ).fetchall()
+        candidate_context_by_key = {
+            (row["page_json_version_id"], row["section_id"], row["table_id"]): row
+            for row in candidate_context_rows
+        }
+        candidate_section_table_title_rows = connection.execute(
+            """
+            SELECT DISTINCT k.page_json_version_id, k.section_id,
+                   t.title_exact AS table_title_exact
+            FROM dual_candidate_table AS k
+            JOIN table_node AS t
+              ON t.page_json_version_id=k.page_json_version_id
+             AND t.section_id=k.section_id
+            WHERE t.title_exact IS NOT NULL
+            ORDER BY k.page_json_version_id, k.section_id, t.source_order, t.table_id
+            """
+        ).fetchall()
+        candidate_section_table_titles: dict[tuple[str, str], list[str]] = {}
+        for row in candidate_section_table_title_rows:
+            titles = candidate_section_table_titles.setdefault(
+                (row["page_json_version_id"], row["section_id"]), []
+            )
+            if row["table_title_exact"] not in titles:
+                titles.append(row["table_title_exact"])
         columns_by_table: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
         for row in column_rows:
             record = dict(row)
@@ -6085,18 +6938,58 @@ def query_selected_dual_axis_family_regions_v1(
                 ]
                 for role, aliases in folded_roles.items()
             }
+            stacked_row_groups = stacked_period_role_groups(row_roles)
             orientations = []
             if (
-                all(len(matches) == 1 for matches in row_roles.values())
-                and len(metric_columns) == 1
-            ):
+                (
+                    all(len(matches) <= 1 for matches in row_roles.values())
+                    and any(len(matches) == 1 for matches in row_roles.values())
+                )
+                or stacked_row_groups is not None
+            ) and len(metric_columns) == 1:
                 orientations.append("ROW_ROLES_METRIC_COLUMN")
-            if len(metric_rows) == 1 and all(
-                len(matches) == 1 for matches in role_columns.values()
+            if (
+                len(metric_rows) == 1
+                and all(len(matches) <= 1 for matches in role_columns.values())
+                and any(len(matches) == 1 for matches in role_columns.values())
             ):
                 orientations.append("METRIC_ROW_ROLE_COLUMNS")
             if len(orientations) != 1:
                 continue
+            if candidate_context_policy is not None:
+                context_row = candidate_context_by_key[key]
+                context_surfaces = [
+                    context_row["section_title_exact"],
+                    context_row["table_title_exact"],
+                    *candidate_section_table_titles.get((key[0], key[1]), []),
+                ]
+                try:
+                    narratives = json.loads(context_row["narratives_json"])
+                except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise _error("selected dual-axis section narratives are invalid") from exc
+                if type(narratives) is not list or any(type(item) is not str for item in narratives):
+                    raise _error("selected dual-axis section narratives are invalid")
+                context_surfaces.extend(narratives)
+                folded_context = " ".join(
+                    _dual_axis_folded_label_v1(surface)
+                    for surface in context_surfaces
+                    if type(surface) is str and surface
+                )
+                if any(
+                    alias in folded_context
+                    for alias in candidate_context_policy["hard_negative_aliases"]
+                ):
+                    continue
+                partial_role_axis = (
+                    any(not matches for matches in row_roles.values())
+                    if orientations[0] == "ROW_ROLES_METRIC_COLUMN"
+                    else any(not matches for matches in role_columns.values())
+                )
+                if partial_role_axis and not any(
+                    alias in folded_context
+                    for alias in candidate_context_policy["partial_axis_owner_aliases"]
+                ):
+                    continue
             page = page_by_version[key[0]]
             context_pages = [
                 context
@@ -6106,37 +6999,44 @@ def query_selected_dual_axis_family_regions_v1(
                 <= page["physical_page"] + adjacent_page_radius
             ]
             orientation = orientations[0]
+            axis_evidence = {
+                "metric": (
+                    {k: v for k, v in metric_columns[0].items() if k != "value_kind"}
+                    if orientation == "ROW_ROLES_METRIC_COLUMN"
+                    else {
+                        item_key: metric_rows[0][item_key]
+                        for item_key in ("label_exact", "row_id", "source_order")
+                    }
+                ),
+                "roles": {
+                    role: (
+                        {
+                            item_key: row_roles[role][0][item_key]
+                            for item_key in ("label_exact", "row_id", "source_order")
+                        }
+                        if orientation == "ROW_ROLES_METRIC_COLUMN"
+                        and row_roles[role]
+                        else {
+                            item_key: role_columns[role][0][item_key]
+                            for item_key in (
+                                "column_id",
+                                "column_ordinal",
+                                "header_leaf_ascii_folded",
+                                "header_path_exact",
+                            )
+                        }
+                        if orientation == "METRIC_ROW_ROLE_COLUMNS"
+                        and role_columns[role]
+                        else {"presence": "ABSENT_SOURCE_AXIS_ROLE"}
+                    )
+                    for role in folded_roles
+                },
+            }
+            if orientation == "ROW_ROLES_METRIC_COLUMN" and stacked_row_groups is not None:
+                axis_evidence["stacked_period_role_groups"] = stacked_row_groups
             regions.append(
                 {
-                    "axis_evidence": {
-                        "metric": (
-                            {k: v for k, v in metric_columns[0].items() if k != "value_kind"}
-                            if orientation == "ROW_ROLES_METRIC_COLUMN"
-                            else {
-                                key: metric_rows[0][key]
-                                for key in ("label_exact", "row_id", "source_order")
-                            }
-                        ),
-                        "roles": {
-                            role: (
-                                {
-                                    key: row_roles[role][0][key]
-                                    for key in ("label_exact", "row_id", "source_order")
-                                }
-                                if orientation == "ROW_ROLES_METRIC_COLUMN"
-                                else {
-                                    key: role_columns[role][0][key]
-                                    for key in (
-                                        "column_id",
-                                        "column_ordinal",
-                                        "header_leaf_ascii_folded",
-                                        "header_path_exact",
-                                    )
-                                }
-                            )
-                            for role in folded_roles
-                        },
-                    },
+                    "axis_evidence": axis_evidence,
                     "context_pages": context_pages,
                     "document_id": page["document_id"],
                     "orientation": orientation,
@@ -6148,6 +7048,486 @@ def query_selected_dual_axis_family_regions_v1(
                 }
             )
 
+        control_cell_rows = []
+        region_cell_rows = []
+        if external_control_policy is not None:
+            precontrol_documents = sorted({region["document_id"] for region in regions})
+            connection.execute(
+                "CREATE TEMP TABLE dual_control_document(document_id TEXT PRIMARY KEY)"
+            )
+            connection.executemany(
+                "INSERT INTO dual_control_document VALUES (?)",
+                ((document_id,) for document_id in precontrol_documents),
+            )
+            control_cell_rows = connection.execute(
+                """
+            SELECT s.selection_ordinal, d.document_id, d.source_logical_name,
+                   p.physical_page, r.page_json_version_id,
+                   r.section_id, r.table_id, r.row_id, r.label_exact,
+                   r.row_kind, r.hierarchy_path_exact_json,
+                   sn.title_exact AS section_title_exact,
+                   t.title_exact AS table_title_exact, t.unit_exact,
+                   c.column_id, c.column_ordinal, c.header_path_exact_json,
+                   c.value_kind, vc.source_text, vc.visual_state
+            FROM row_node AS r
+            JOIN selected_dual_page AS s USING(page_json_version_id)
+            JOIN section_node AS sn USING(page_json_version_id,section_id)
+            JOIN table_node AS t USING(page_json_version_id,section_id,table_id)
+            JOIN column_node AS c USING(page_json_version_id,section_id,table_id)
+            JOIN value_cell AS vc
+              USING(page_json_version_id,section_id,table_id,row_id,column_id)
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            JOIN dual_control_document AS cd USING(document_id)
+            WHERE sn.content_kind=?
+              AND sn.statement_type=?
+              AND r.row_kind=?
+              AND c.value_kind='MONEY'
+            ORDER BY s.selection_ordinal, r.section_id, r.table_id,
+                     r.source_order, c.column_ordinal, c.column_id
+            """,
+                (
+                    control_source_policy["content_kind"],
+                    control_source_policy["statement_type"],
+                    control_source_policy["row_kind"],
+                ),
+            ).fetchall()
+            connection.execute(
+                "CREATE TEMP TABLE dual_region_table("
+                "page_json_version_id TEXT NOT NULL, section_id TEXT NOT NULL, "
+                "table_id TEXT NOT NULL, "
+                "PRIMARY KEY(page_json_version_id,section_id,table_id))"
+            )
+            connection.executemany(
+                "INSERT INTO dual_region_table VALUES (?,?,?)",
+                (
+                    (
+                        region["page_json_version_id"],
+                        region["section_id"],
+                        region["table_id"],
+                    )
+                    for region in regions
+                ),
+            )
+            region_cell_rows = connection.execute(
+                """
+            SELECT vc.page_json_version_id, vc.section_id, vc.table_id,
+                   vc.row_id, vc.column_id, vc.source_text, vc.visual_state,
+                   r.label_exact, r.row_kind, c.column_ordinal,
+                   c.header_path_exact_json, c.value_kind
+            FROM value_cell AS vc
+            JOIN dual_region_table AS k
+              USING(page_json_version_id,section_id,table_id)
+            JOIN row_node AS r
+              USING(page_json_version_id,section_id,table_id,row_id)
+            JOIN column_node AS c
+              USING(page_json_version_id,section_id,table_id,column_id)
+            ORDER BY vc.page_json_version_id, vc.section_id, vc.table_id,
+                     r.source_order, c.column_ordinal, vc.row_id, vc.column_id
+            """
+            ).fetchall()
+
+        def exact_reporting_dates(*surfaces: Any) -> set[date]:
+            return {
+                parsed
+                for surface in surfaces
+                if type(surface) is str and surface
+                for parsed in _header_dates(surface)
+                if (parsed.month, parsed.day) in {(3, 31), (6, 30), (9, 30), (12, 31)}
+            }
+
+        def decoded_header_path(raw: Any) -> list[str]:
+            try:
+                path_value = json.loads(raw)
+            except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise _error("selected dual-axis control column header is invalid") from exc
+            if type(path_value) is not list or any(
+                value is not None and type(value) is not str for value in path_value
+            ):
+                raise _error("selected dual-axis control column header is invalid")
+            return [value for value in path_value if type(value) is str and value]
+
+        def declared_unit_alias(surface: Any) -> str | None:
+            folded = _dual_axis_folded_label_v1(surface)
+            matches = [
+                alias
+                for alias in folded_units
+                if folded == alias or folded.endswith(" " + alias)
+            ]
+            longest = max((len(alias) for alias in matches), default=0)
+            selected = sorted(alias for alias in matches if len(alias) == longest)
+            return selected[0] if len(selected) == 1 else None
+
+        external_controls_by_source: dict[str, list[dict[str, Any]]] = {}
+        external_control_current_periods_by_source: dict[str, set[date]] = {}
+        control_label_aliases = (
+            set() if control_source_policy is None else set(control_source_policy["label_aliases"])
+        )
+        unit_magnitudes = (
+            {}
+            if external_control_policy is None
+            else external_control_policy["unit_decimal_magnitude_by_alias"]
+        )
+        for row in control_cell_rows:
+            label_tokens = _dual_axis_folded_label_v1(row["label_exact"]).split()
+            numbered_control_leaf = label_tokens[:1] == ["1"]
+            if numbered_control_leaf:
+                label_tokens = label_tokens[1:]
+            matched_control_label = " ".join(label_tokens)
+            if matched_control_label not in control_label_aliases:
+                continue
+            try:
+                hierarchy_path = json.loads(row["hierarchy_path_exact_json"])
+            except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise _error("selected dual-axis control row hierarchy is invalid") from exc
+            if type(hierarchy_path) is not list or any(
+                value is not None and type(value) is not str for value in hierarchy_path
+            ):
+                raise _error("selected dual-axis control row hierarchy is invalid")
+            if not numbered_control_leaf and sum(
+                _dual_axis_folded_label_v1(value) == matched_control_label
+                for value in hierarchy_path
+                if type(value) is str
+            ) < 2:
+                continue
+            header_path = decoded_header_path(row["header_path_exact_json"])
+            section_dates = exact_reporting_dates(row["section_title_exact"])
+            table_dates = exact_reporting_dates(row["table_title_exact"])
+            local_current_dates = section_dates or table_dates
+            current = max(local_current_dates) if len(local_current_dates) == 1 else None
+            if current is not None:
+                external_control_current_periods_by_source.setdefault(
+                    row["source_logical_name"], set()
+                ).add(current)
+            header_dates = exact_reporting_dates(*header_path)
+            period = next(iter(header_dates)) if len(header_dates) == 1 else None
+            header_folded = " ".join(
+                _dual_axis_folded_label_v1(surface) for surface in header_path
+            )
+            if period is None and current is not None:
+                if "so cuoi nam" in header_folded or "so cuoi ky" in header_folded:
+                    period = current
+                elif "so dau nam" in header_folded or "so dau ky" in header_folded:
+                    period = date(current.year - 1, 12, 31)
+            if period is None:
+                continue
+            try:
+                coefficient = _money(row["source_text"])["coefficient"]
+            except ValueError:
+                continue
+            unit_candidates = [
+                (surface, alias, unit_magnitudes[alias])
+                for surface in [*header_path, row["unit_exact"]]
+                if (alias := declared_unit_alias(surface)) is not None
+            ]
+            candidate_magnitudes = {
+                magnitude for _surface, _alias, magnitude in unit_candidates
+            }
+            unit_exact = (
+                next(
+                    surface
+                    for surface, _alias, magnitude in unit_candidates
+                    if magnitude == next(iter(candidate_magnitudes))
+                )
+                if len(candidate_magnitudes) == 1
+                else None
+            )
+            record = {
+                "coefficient": coefficient,
+                "control_report_norm_id": external_control_policy[
+                    "control_report_norm_id"
+                ],
+                "period": period.isoformat(),
+                "source_ref": {
+                    "column_id": row["column_id"],
+                    "page_json_version_id": row["page_json_version_id"],
+                    "physical_page": row["physical_page"],
+                    "row_id": row["row_id"],
+                    "section_id": row["section_id"],
+                    "table_id": row["table_id"],
+                },
+                "source_text": row["source_text"],
+                "unit_exact": unit_exact,
+            }
+            controls = external_controls_by_source.setdefault(
+                row["source_logical_name"], []
+            )
+            if record not in controls:
+                controls.append(record)
+        for controls in external_controls_by_source.values():
+            controls.sort(
+                key=lambda record: (
+                    record["period"],
+                    record["source_ref"]["physical_page"],
+                    record["source_ref"]["section_id"],
+                    record["source_ref"]["table_id"],
+                    record["source_ref"]["row_id"],
+                    record["source_ref"]["column_id"],
+                )
+            )
+
+        region_cells_by_key: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+        for raw in region_cell_rows:
+            record = dict(raw)
+            record["header_path_exact"] = decoded_header_path(
+                record.pop("header_path_exact_json")
+            )
+            region_cells_by_key.setdefault(
+                (record["page_json_version_id"], record["section_id"], record["table_id"]),
+                [],
+            ).append(record)
+
+        def metric_leaf(region: Mapping[str, Any]) -> str:
+            evidence = region["axis_evidence"]["metric"]
+            if region["orientation"] == "ROW_ROLES_METRIC_COLUMN":
+                return evidence["header_leaf_ascii_folded"]
+            return _dual_axis_folded_label_v1(evidence["label_exact"])
+
+        def cell_coefficient(record: Mapping[str, Any]) -> int | None:
+            try:
+                return _money(record["source_text"])["coefficient"]
+            except ValueError:
+                return None
+
+        def region_population_coefficient(region: Mapping[str, Any]) -> int | None:
+            key = (
+                region["page_json_version_id"],
+                region["section_id"],
+                region["table_id"],
+            )
+            cells = region_cells_by_key.get(key, [])
+            if region["orientation"] == "ROW_ROLES_METRIC_COLUMN":
+                metric_column_id = region["axis_evidence"]["metric"]["column_id"]
+                metric_cells = [cell for cell in cells if cell["column_id"] == metric_column_id]
+                totals = [
+                    coefficient
+                    for cell in metric_cells
+                    if (
+                        cell["row_kind"] == "TOTAL"
+                        or _dual_axis_folded_label_v1(cell["label_exact"])
+                        in {"tong", "tong cong"}
+                    )
+                    and (coefficient := cell_coefficient(cell)) is not None
+                ]
+                if len(totals) == 1:
+                    return totals[0]
+                role_values = []
+                for evidence in region["axis_evidence"]["roles"].values():
+                    if "row_id" not in evidence:
+                        continue
+                    matches = [
+                        cell_coefficient(cell)
+                        for cell in metric_cells
+                        if cell["row_id"] == evidence["row_id"]
+                    ]
+                    if len(matches) != 1 or matches[0] is None:
+                        return None
+                    role_values.append(matches[0])
+            else:
+                metric_row_id = region["axis_evidence"]["metric"]["row_id"]
+                metric_cells = [cell for cell in cells if cell["row_id"] == metric_row_id]
+                totals = [
+                    coefficient
+                    for cell in metric_cells
+                    if _dual_axis_header_leaf_v1(
+                        json.dumps(cell["header_path_exact"], ensure_ascii=False),
+                        declared_unit_suffixes=folded_units,
+                    )[0]
+                    in {"tong", "tong cong"}
+                    and (coefficient := cell_coefficient(cell)) is not None
+                ]
+                if len(totals) == 1:
+                    return totals[0]
+                role_values = []
+                for evidence in region["axis_evidence"]["roles"].values():
+                    if "column_id" not in evidence:
+                        continue
+                    matches = [
+                        cell_coefficient(cell)
+                        for cell in metric_cells
+                        if cell["column_id"] == evidence["column_id"]
+                    ]
+                    if len(matches) != 1 or matches[0] is None:
+                        return None
+                    role_values.append(matches[0])
+            return sum(role_values) if role_values else None
+
+        def region_period(
+            region: Mapping[str, Any], *, allow_document_current: bool
+        ) -> date | None:
+            key = (
+                region["page_json_version_id"],
+                region["section_id"],
+                region["table_id"],
+            )
+            context_row = candidate_context_by_key[key]
+            narratives = json.loads(context_row["narratives_json"])
+            table_dates = exact_reporting_dates(context_row["table_title_exact"])
+            section_dates = exact_reporting_dates(
+                context_row["section_title_exact"], *narratives
+            )
+            dates = table_dates or section_dates
+            if len(dates) == 1:
+                return next(iter(dates))
+            document_current_periods = external_control_current_periods_by_source.get(
+                region["source_logical_name"], set()
+            )
+            return (
+                next(iter(document_current_periods))
+                if allow_document_current and len(document_current_periods) == 1
+                else None
+            )
+
+        def region_unit_magnitude(region: Mapping[str, Any]) -> int | None:
+            key = (
+                region["page_json_version_id"],
+                region["section_id"],
+                region["table_id"],
+            )
+            context_row = candidate_context_by_key[key]
+            surfaces = [context_row["unit_exact"]]
+            surfaces.extend(
+                surface
+                for cell in region_cells_by_key.get(key, [])
+                for surface in cell["header_path_exact"]
+            )
+            aliases = {
+                alias
+                for surface in surfaces
+                if (alias := declared_unit_alias(surface)) is not None
+            }
+            magnitudes = {unit_magnitudes[alias] for alias in aliases}
+            return next(iter(magnitudes)) if len(magnitudes) == 1 else None
+
+        external_control_dispositions: list[dict[str, Any]] = []
+        region_count_before_population_control = len(regions)
+        if external_control_policy is not None:
+            query_gate_metrics = set(
+                external_control_policy["query_gate_metric_aliases"]
+            )
+            controlled_region_counts_by_source: dict[str, int] = {}
+            for region in regions:
+                if metric_leaf(region) in query_gate_metrics:
+                    controlled_region_counts_by_source[region["source_logical_name"]] = (
+                        controlled_region_counts_by_source.get(
+                            region["source_logical_name"], 0
+                        )
+                        + 1
+                    )
+            controlled_regions = []
+            for region in regions:
+                metric = metric_leaf(region)
+                if metric not in query_gate_metrics:
+                    controlled_regions.append(region)
+                    continue
+                population = region_population_coefficient(region)
+                period = region_period(
+                    region,
+                    allow_document_current=(
+                        controlled_region_counts_by_source[region["source_logical_name"]]
+                        == 1
+                        and "stacked_period_role_groups"
+                        not in region["axis_evidence"]
+                    ),
+                )
+                magnitude = region_unit_magnitude(region)
+                controls = external_controls_by_source.get(
+                    region["source_logical_name"], []
+                )
+                matching_controls = [
+                    control
+                    for control in controls
+                    if period is not None
+                    and control["period"] == period.isoformat()
+                    and magnitude is not None
+                    and (
+                        alias := declared_unit_alias(control["unit_exact"])
+                    )
+                    is not None
+                    and unit_magnitudes[alias] == magnitude
+                ]
+                control_values = {control["coefficient"] for control in matching_controls}
+                accepted = (
+                    population is not None
+                    and len(control_values) == 1
+                    and population == next(iter(control_values))
+                )
+                disposition = {
+                    "control_report_norm_id": external_control_policy[
+                        "control_report_norm_id"
+                    ],
+                    "control_value": next(iter(control_values)) if len(control_values) == 1 else None,
+                    "match_rule": external_control_policy["match_rule"],
+                    "metric": metric,
+                    "period": None if period is None else period.isoformat(),
+                    "population_value": population,
+                    "region_ref": {
+                        key: region[key]
+                        for key in (
+                            "page_json_version_id",
+                            "physical_page",
+                            "section_id",
+                            "table_id",
+                        )
+                    },
+                    "status": (
+                        "ACCEPTED_EXACT_EXTERNAL_POPULATION_CONTROL"
+                        if accepted
+                        else "DEFERRED_TO_EVALUATOR_EXACT_PERIOD_AXIS"
+                        if period is None
+                        else "REJECTED_EXTERNAL_POPULATION_CONTROL_CONFLICT"
+                        if len(control_values) == 1 and population is not None
+                        else "REJECTED_EXTERNAL_POPULATION_CONTROL_ABSENT_OR_AMBIGUOUS"
+                    ),
+                    "unit_decimal_magnitude": magnitude,
+                }
+                external_control_dispositions.append(disposition)
+                region["external_population_control"] = {
+                    **canonical_clone_v1(disposition),
+                    "control_sources": canonical_clone_v1(matching_controls),
+                }
+                if accepted:
+                    controlled_regions.append(region)
+            gated_regions = [
+                item for item in regions if metric_leaf(item) in query_gate_metrics
+            ]
+            rejected_query_gate_sources = {
+                region["source_logical_name"]
+                for region, disposition in zip(
+                    gated_regions,
+                    external_control_dispositions,
+                    strict=True,
+                )
+                if disposition["status"]
+                != "ACCEPTED_EXACT_EXTERNAL_POPULATION_CONTROL"
+            }
+            if rejected_query_gate_sources:
+                for disposition, gated_region in zip(
+                    external_control_dispositions,
+                    gated_regions,
+                    strict=True,
+                ):
+                    if gated_region["source_logical_name"] not in rejected_query_gate_sources:
+                        continue
+                    disposition["status"] = (
+                        "REJECTED_DOCUMENT_HAS_UNMATCHED_CONTROLLED_PERIOD_LANE"
+                        if disposition["status"]
+                        == "ACCEPTED_EXACT_EXTERNAL_POPULATION_CONTROL"
+                        else "REJECTED_DOCUMENT_CONTROLLED_PERIOD_AXIS_IS_NOT_EXACT"
+                        if disposition["status"]
+                        == "DEFERRED_TO_EVALUATOR_EXACT_PERIOD_AXIS"
+                        else disposition["status"]
+                    )
+                controlled_regions = [
+                    region
+                    for region in controlled_regions
+                    if metric_leaf(region) not in query_gate_metrics
+                    or region["source_logical_name"]
+                    not in rejected_query_gate_sources
+                ]
+            regions = controlled_regions
+
         target_documents = sorted({region["document_id"] for region in regions})
         connection.execute("CREATE TEMP TABLE dual_target_document(document_id TEXT PRIMARY KEY)")
         connection.executemany(
@@ -6158,7 +7538,8 @@ def query_selected_dual_axis_family_regions_v1(
             """
             SELECT s.selection_ordinal, d.document_id, d.source_logical_name,
                    p.physical_page, sn.section_id, NULL AS table_id,
-                   'SECTION_TITLE' AS source_kind, sn.title_exact AS text_exact
+                   'SECTION_TITLE' AS source_kind, sn.title_exact AS text_exact,
+                   NULL AS narrative_ordinal
             FROM section_node AS sn
             JOIN selected_dual_page AS s USING(page_json_version_id)
             JOIN page_json_version AS v USING(page_json_version_id)
@@ -6169,7 +7550,8 @@ def query_selected_dual_axis_family_regions_v1(
             UNION ALL
             SELECT s.selection_ordinal, d.document_id, d.source_logical_name,
                    p.physical_page, t.section_id, t.table_id,
-                   'TABLE_TITLE' AS source_kind, t.title_exact AS text_exact
+                   'TABLE_TITLE' AS source_kind, t.title_exact AS text_exact,
+                   NULL AS narrative_ordinal
             FROM table_node AS t
             JOIN selected_dual_page AS s USING(page_json_version_id)
             JOIN page_json_version AS v USING(page_json_version_id)
@@ -6178,6 +7560,24 @@ def query_selected_dual_axis_family_regions_v1(
             JOIN dual_target_document AS td USING(document_id)
             WHERE t.title_exact IS NOT NULL
             ORDER BY selection_ordinal, section_id, table_id, source_kind
+            """
+        ).fetchall()
+        narrative_rows = connection.execute(
+            """
+            SELECT s.selection_ordinal, d.document_id, d.source_logical_name,
+                   p.physical_page, sn.section_id, NULL AS table_id,
+                   'SECTION_NARRATIVE' AS source_kind,
+                   narrative.value AS text_exact,
+                   CAST(narrative.key AS INTEGER) + 1 AS narrative_ordinal
+            FROM section_node AS sn
+            JOIN selected_dual_page AS s USING(page_json_version_id)
+            JOIN page_json_version AS v USING(page_json_version_id)
+            JOIN page AS p USING(page_id)
+            JOIN document AS d USING(document_id)
+            JOIN dual_target_document AS td USING(document_id)
+            JOIN json_each(sn.narratives_json) AS narrative
+            WHERE narrative.type='text'
+            ORDER BY selection_ordinal, sn.section_id, narrative_ordinal
             """
         ).fetchall()
         unit_rows = connection.execute(
@@ -6212,9 +7612,17 @@ def query_selected_dual_axis_family_regions_v1(
         ).fetchall()
 
     context_by_source = {
-        region["source_logical_name"]: {"period_evidence": [], "unit_evidence": []}
+        region["source_logical_name"]: {
+            "period_evidence": [],
+            "unit_evidence": [],
+        }
         for region in regions
     }
+    if external_control_policy is not None:
+        for source, context in context_by_source.items():
+            context["external_population_controls"] = canonical_clone_v1(
+                external_controls_by_source.get(source, [])
+            )
 
     def append_context(target: list[dict[str, Any]], row: Mapping[str, Any], text: str) -> None:
         record = {
@@ -6224,9 +7632,18 @@ def query_selected_dual_axis_family_regions_v1(
             "table_id": row["table_id"],
             "text_exact": text,
         }
+        if "narrative_ordinal" in row.keys() and type(row["narrative_ordinal"]) is int:
+            record["narrative_ordinal"] = row["narrative_ordinal"]
         if record not in target:
             target.append(record)
 
+    for row in narrative_rows:
+        if _DUAL_AXIS_YEAR.search(row["text_exact"]):
+            append_context(
+                context_by_source[row["source_logical_name"]]["period_evidence"],
+                row,
+                row["text_exact"],
+            )
     for row in title_rows:
         if _DUAL_AXIS_YEAR.search(row["text_exact"]):
             append_context(
@@ -6294,10 +7711,8 @@ def query_selected_dual_axis_family_regions_v1(
             ),
         )
     ]
-    return {
-        "document_context_by_source": context_by_source,
-        "query_receipt": {
-            "candidate_table_count_before_column_decode": len(candidate_keys),
+    query_receipt = {
+        "candidate_table_count_before_column_decode": len(candidate_keys),
             "decoded_column_header_count": len(column_rows),
             "document_context_period_record_count": sum(
                 len(context["period_evidence"]) for context in context_by_source.values()
@@ -6315,6 +7730,11 @@ def query_selected_dual_axis_family_regions_v1(
                     "ROW_ROLES_METRIC_COLUMN",
                 )
             },
+            "stacked_period_row_region_count": sum(
+                region["orientation"] == "ROW_ROLES_METRIC_COLUMN"
+                and "stacked_period_role_groups" in region["axis_evidence"]
+                for region in regions
+            ),
             "selected_page_json_frontier_sha256": canonical_json_sha256_v1(
                 list(selected_page_json_version_ids)
             ),
@@ -6322,7 +7742,39 @@ def query_selected_dual_axis_family_regions_v1(
             "target_document_count": len(target_documents),
             "target_document_header_record_count": len(header_rows),
             "target_document_title_record_count": len(title_rows),
-        },
+    }
+    if external_control_policy is not None:
+        query_receipt["external_population_control"] = {
+            "accepted_query_gate_count": sum(
+                disposition["status"]
+                == "ACCEPTED_EXACT_EXTERNAL_POPULATION_CONTROL"
+                for disposition in external_control_dispositions
+            ),
+            "control_record_count": sum(
+                len(records) for records in external_controls_by_source.values()
+            ),
+            "control_report_norm_id": external_control_policy[
+                "control_report_norm_id"
+            ],
+            "deferred_query_gate_count": sum(
+                disposition["status"] == "DEFERRED_TO_EVALUATOR_EXACT_PERIOD_AXIS"
+                for disposition in external_control_dispositions
+            ),
+            "disposition_axis_sha256": canonical_json_sha256_v1(
+                external_control_dispositions
+            ),
+            "match_rule": external_control_policy["match_rule"],
+            "region_count_after_query_gate": len(regions),
+            "region_count_before_query_gate": region_count_before_population_control,
+            "rejected_query_gate_count": sum(
+                disposition["status"].startswith("REJECTED_")
+                for disposition in external_control_dispositions
+            ),
+        }
+    query_receipt["target_document_narrative_record_count"] = len(narrative_rows)
+    return {
+        "document_context_by_source": context_by_source,
+        "query_receipt": query_receipt,
         "regions": regions,
     }
 
@@ -6382,6 +7834,7 @@ def validate_selected_dual_axis_family_candidate_replays_v1(
             for role in policy["projected_role_order"]
         },
         unit_aliases=policy["unit_aliases"],
+        external_population_control=policy.get("external_population_control"),
         adjacent_page_radius=1,
     )
     regions_by_source: dict[str, list[dict[str, Any]]] = {}
@@ -6416,8 +7869,22 @@ def validate_selected_dual_axis_family_candidate_replays_v1(
                     query_receipt=queried["query_receipt"],
                 )
             )
-        ready = [candidate for candidate in candidates if candidate["status"] == READY]
-        unresolved = [candidate for candidate in candidates if candidate["status"] == UNRESOLVED]
+        # The public runner retains an authenticated hard-negative candidate
+        # in the trial receipt but excludes it from status arbitration.  Replay
+        # the same distinction so a one-role dual-axis shortlist cannot turn a
+        # report-segment table into an active F11 conflict.
+        active_candidates = [
+            candidate
+            for candidate in candidates
+            if not (
+                candidate["status"] == UNRESOLVED
+                and "HARD_NEGATIVE_FAMILY_TITLE_PRESENT" in candidate.get("reasons", [])
+            )
+        ]
+        ready = [candidate for candidate in active_candidates if candidate["status"] == READY]
+        unresolved = [
+            candidate for candidate in active_candidates if candidate["status"] == UNRESOLVED
+        ]
         if len(ready) == 1:
             status = READY
             selected_candidate_id = ready[0]["candidate_id"]

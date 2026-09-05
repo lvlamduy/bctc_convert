@@ -1,0 +1,1457 @@
+{
+  "format_version": "GEMINI_JSON_INTEREST_INCOME_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "overlay_id": "gjiifav1:overlay:21656d44f523f1271654aa18e59cede64babef968928529d6e4221b710a274bd",
+  "policy": "ONLY_EXACT_PDF_RENDER_VISIBLE_DASH_TRANSCRIPTION_REPAIR_NO_EQUATION_DERIVATION",
+  "repair_axis_sha256": "234bf78fa8363961b73d8889878e4daf71e66dc6ee1357aff1a052132a706ea0",
+  "repair_count": 30,
+  "repairs": [
+    {
+      "base_page_json_sha256": "379f6196d47023f2b693cc835df16823d13aa38b8e120112cd851fc3a655d149",
+      "base_table_sha256": "cbc527168ca53d89400205cf249c5fed409f472516fdf564b8d1a90e4de4622b",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ: plastic- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3528,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "931ae08efed435f1d1a13312a98fee8f7b4b5556422a24970e1e253753dc3296",
+        "size_bytes": 2132874,
+        "width": 2472
+      },
+      "page_json_version_id": "gfpstorev1:json:e67c73a6e23b47e46641974ffb005be9f66d1df4a8e9109acc5b40dbb7c8a2e5",
+      "physical_page": 23,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/ABB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "5add9ca004f9aa0c0c3bc5ab679d9b3b63d42fcfb97259b698b1e61d11815b16",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:11dd9174b86c31669d53bfa7c597abda09d3db9cbb7df7fd4ccd9cef7c32fa62"
+    },
+    {
+      "base_page_json_sha256": "0297ca00f07760c97738aba21e742aa0a2aa3d74564183a7ea89f91ae0630028",
+      "base_table_sha256": "17b2137ba8e05334410776c09d845286ac544225962a6181fd5400ab634e8ed9",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:鐘- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3528,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "6f3045301f91f8a051683d0246c3655fcac081d523eb99e85866ab58696c497f",
+        "size_bytes": 2360962,
+        "width": 2460
+      },
+      "page_json_version_id": "gfpstorev1:json:1ddd45628fd99b51fd6dc8cd7a9bf364bc81ad8ee90267849226ede2e2290fbd",
+      "physical_page": 23,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/ABB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "58bd3fe4b64b1b569631d335c31b6616771c54fa059b016eceaba68029060810",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:92fd6f84b75bd3e67c2f9f41701bdfcd445b1721d8f0aced4f7d9233c5e30d5c"
+    },
+    {
+      "base_page_json_sha256": "83047d0e10a1e8cd85e6b85d5f2286d34b8e8cb5ad53a2a93cef502536f1838f",
+      "base_table_sha256": "f384d7658d73df11f96aa95eeaa50e57819281b65ac31af86dab605ce709055b",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3540,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a6ac56b76995223b4dd66af10c09e665edc100eee2e99c95ff76e5320102c091",
+        "size_bytes": 2053714,
+        "width": 2454
+      },
+      "page_json_version_id": "gfpstorev1:json:cdb40e830c8ae850cd0b87f837c97800f2a76a3ec5ae7e58076d2e819b469dae",
+      "physical_page": 23,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/ABB/2025/BCTC Hợp nhất quý 4 năm 2025__592d2993__3_abb_2026_2_4_91abe48_bctc_hn_q4_2025.pdf",
+      "source_sha256": "836a7a4c5f0f73bf145af4bfe6c8394215bb69881cbae702ac591966db88259a",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:0612a193fadb85452c8aed37c1a52be35a2a6064eab3e18c1f30dd5cb62737e5"
+    },
+    {
+      "base_page_json_sha256": "a8649265a41b0f7b6ea1c1e0df426df22f37b14ef5a8e88681f287e1361dea7f",
+      "base_table_sha256": "93f6687881e5943daa767c52643f28481acd22ae8a85cd4c3b6933e8281c7def",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:鐘- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3525,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "948ac65197ff38abeed6bce778f0532d54958bd62c0693fa5500832ae2482010",
+        "size_bytes": 2359450,
+        "width": 2460
+      },
+      "page_json_version_id": "gfpstorev1:json:0d9b0c8d6fd03921a6aa7b06e311a4d4852256fbfcf4644120e8dbc85fecad4a",
+      "physical_page": 23,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/ABB/2025/phplpiamp-bctc-q2-2025-rl-6889fde02c284.pdf",
+      "source_sha256": "e89f13e3b4d6e9bc1654d052e24511633e418dd37bd5631b77b4dfe6b607ce59",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:d1db8f570fff769abe1d3582a38e85c3b91da5c1981ef987fc943642753d5b69"
+    },
+    {
+      "base_page_json_sha256": "9c0124cdc25d4a0b17ec29ab560c23ed396af8b497d630aac36fe0620ff1a857",
+      "base_table_sha256": "306014abe666c4286b2b9c47420f101ed05914c551c444583fbdd997804b2a0b",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:軟- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3540,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "04593341ea81ed705e8847d14fe15a3386b531ae47cc79463a3ae0923da88523",
+        "size_bytes": 2300291,
+        "width": 2454
+      },
+      "page_json_version_id": "gfpstorev1:json:7c86987e4fbcc70d1e7f7028b49001cdeadf92ecb60f13e33ff30437cbd2b601",
+      "physical_page": 23,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/ABB/2025/phppidjcp-bctc-rl-q3-2025-68fb4c6b97d59.pdf",
+      "source_sha256": "6662efe86bace42fa9214c71040374c07880660d510da59774202d8a196d8ec0",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:e8a9308a06963f2f282ae59462e1d52f174b977a153fec3dd1707ce10dbaba07"
+    },
+    {
+      "base_page_json_sha256": "5efa39b856b7d1dcdbfc8fedd068887fbb2cf116e41c8d0df2419876b81bbeba",
+      "base_table_sha256": "78750cfed3088e27be47d95f4e9e357609805c071f20613012864acaaeca91bf",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3540,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "cbe2756be48a765580e64c02930406383c6e79cd7a1db5ccd3ba931233e83a91",
+        "size_bytes": 2546464,
+        "width": 2448
+      },
+      "page_json_version_id": "gfpstorev1:json:01f46ad01f27e4e3b77fbffddf90a9989f69ba4baa0da3369a7aab6ff2f25b0a",
+      "physical_page": 22,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/ABB/2026/phpbbdkfl-bctc-rl-q1-2026-69e18d88eace3.pdf",
+      "source_sha256": "81a2d60256aaac5f949209dcd60e3658e6806c28a51a0754429353cf39510c45",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:897e4a69f3443f78a07b9b7a488a676efd98e66b4e49eb9514a1a007c6f6caa4"
+    },
+    {
+      "base_page_json_sha256": "c1b49f89d68cb202286d6dc46bbac6e681364c0ff525ec386e93dab16304629e",
+      "base_table_sha256": "e12b58af01e4681f2a33fdd23a98ca2866a88ca4a4d288934abc1614c59b71d9",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:盖- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3540,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "81df7b007534a8d4f5ffb494c1c5420a341bd40103337078805ac7a324baf0d3",
+        "size_bytes": 2600608,
+        "width": 2454
+      },
+      "page_json_version_id": "gfpstorev1:json:1d7aabc0f0b42a042623ca55541838fb89b6a42667fb3e6337c944dcd54ec816",
+      "physical_page": 22,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/ABB/2026/phpnchaip-bao-cao-tai-chinh-rieng-le-quy-ii-nam-2026-6a5df290b2d0a.pdf",
+      "source_sha256": "9b2b1c3b4bf6f90c941508189c4498e812e5197785ad8cc9884637c141edee8e",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:08315081c584d0d30e7751fc5c1aac24dba0ebb0ff54e4c9da3441b7dc01d597"
+    },
+    {
+      "base_page_json_sha256": "187b97924f62bce3e7163fee78a3c952c29458553a070c54064b7073ec4697e2",
+      "base_table_sha256": "1f826c7a69c89cf2fee52b29ecbb99b5eefc9cbcb414f398836d856844e52b88",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "05ad6ff10eec7ae628278c1f241c814b28e4ea2fa955d1d45bff5cc962b4ef4e",
+        "size_bytes": 969340,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:f5581c44aeb1b05766b4a00438fa81fb5feb06e9bb7ed86635aacb7f538d7de9",
+      "physical_page": 34,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "28a0d17b780fdddee6faa8c211f09eb4b3b9870a6720ba677ff1eebb667af747",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:3be6ee7b8c4405a3875e151ee1cf5eaba42cd48af150f5ce80d0be371e1b5992"
+    },
+    {
+      "base_page_json_sha256": "e35739f8473f67b0e947c9e6d6262a5f46e6f11cae5086a6d3ee5aec255dc4f9",
+      "base_table_sha256": "12df300d30b1007d4ef95158b78f621e2490de49ff1c11043876998d6a50443d",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "2315631a54d8d3d08cb74df17add2b7a678cb008cdf7e23eef7aa77df615bcd0",
+        "size_bytes": 990259,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:4e1dd46b87b729247e0c535eb5b34081a4515b043b1ff97ef5a6af4989f79da7",
+      "physical_page": 34,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Q2_2025-1.pdf",
+      "source_sha256": "831abe75cfbd1987c8e63ecec9e3cc1f9a0ee49db1ffc7c930c0851847cc98a3",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:b23e260164d62155e89bc2d833e64b265054eb5a1fc5079c7652772acec2721d"
+    },
+    {
+      "base_page_json_sha256": "701e83a9866a0bb7260a3d39b810a81119925433b3668321db6275cf4a2609db",
+      "base_table_sha256": "234dadb1f0a0aeb4f18a16124853d301c7d7d61af8cb32153e20b22d98e8d9ff",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "68a72d6ea318c5071dc047257ae50aba979288ef0d60333eb14551257c0f78a3",
+        "size_bytes": 1800944,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:d1f742487ae11b0e4e4edbf8de37bc7c36b2045c2b272dbf2f82900199ad7470",
+      "physical_page": 56,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Kiemtoan_2025.pdf",
+      "source_sha256": "28143226be9db63d79b7d2019e5a4230169a65bf6fac061d3bdb451f5b7b611e",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:2eead4fd2b8359d32712a91596ee00a8df5d7841e05235c78772db4aa45887b8"
+    },
+    {
+      "base_page_json_sha256": "0def800a61957786ec31ff337cb66f09d5f4ed268937b23a54167adecd17d446",
+      "base_table_sha256": "493258a12364f984ac842a644febc10d5ef7b82e9e9fa1ccaeef008fb89d92d6",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "b25198cfa61f7773d0f1c39a8fe2c0516e607fa2c3101806d3e0b6b42d6b40fd",
+        "size_bytes": 3215814,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:e227212eb3a13d5d499f3e5c7e605954e9f9bba1f56e441d444fc569934e361e",
+      "physical_page": 28,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "8ee2777d76997035f7dc33dfd8d0466bef2671b34ca9575df3bfef25f4d3678a",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:1d9d796ab8f240320cd38241eaed88fef11bb4bafb9b1ef5e5f128cb13e75eff"
+    },
+    {
+      "base_page_json_sha256": "251e1cc68aa6e66c7825168377b74a73e8a0b92aedca6a45117794ad5e07e777",
+      "base_table_sha256": "e1f857cef21260f9bed4bbff08b58201cabd520b855a43ecf8146690446dcb39",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "781d832f39a7a411101b8f5275803e882e938241e75a9efe48e9cfa867377c43",
+        "size_bytes": 1577233,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:da38abfbe12b170b2534a92c77acad80d6d07c25d6ab150842f7656684ae0b23",
+      "physical_page": 28,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+      "source_sha256": "5550147825ec23b9cd225a84536e1706e9422273a237827d6f1b508b95fec3ce",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:3d3b3f41c7b0e75f478bf6b440312d3b2eb6c3f88e9c3acbcc05600d8e4bebdf"
+    },
+    {
+      "base_page_json_sha256": "a030628e199977ec1c827b65a04e5612eba78f909874e0da7a6b983044c1aeab",
+      "base_table_sha256": "2122b039701b66391976889cfe9390390da791ee437646e118b5b052ab5d6d2c",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            " - Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a535153f3ed97512cb7690ef58c966321d75758f3e359a9b0364ff50f2a02dc4",
+        "size_bytes": 3136775,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:9491b131efd85a6767b9e3896f9851bc9fbff3be52d431ce2385c64c31b54728",
+      "physical_page": 28,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+      "source_sha256": "62e2dec398acee5199e696c12a4e9af7f47a5efe4aed332285778aff2801488c",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:2f65e7e3ff0c967f8b769352e26081983da17953266b1d36ba98c8d279f980d6"
+    },
+    {
+      "base_page_json_sha256": "75547dd03cf4aa6c70a4d159c63b0455170bdfae0bb50d923edd3ae0bd00a300",
+      "base_table_sha256": "b6c2dfbe57bca7d28634cf1e8ba801446a484d9235a113d27c636ee3ce4ba458",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ nghiệp vụ mua nợ"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu lãi từ nghiệp vụ mua nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "af611436290ee0232af9052acf9852e192f8539eb7af82d772552fb6a2228abe",
+        "size_bytes": 2340922,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:d78f33916f046d7ebc24bbaa283335834d8851ec577cb76021bb353529d5a161",
+      "physical_page": 39,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "09997d5b5b35abfb81ba05d940adc7aae35b0afe82efcaf9332a457b0d632c1a",
+      "table_id": "t3",
+      "repair_id": "gjiifav1:repair:df6a647bcdcd18f5d0abc69d5906325368b72fc372d22e9de95ff16101c814a1"
+    },
+    {
+      "base_page_json_sha256": "6fa84622626680e400bd78983cacf1f60343f5a619a585675c03c6af91a6ad8f",
+      "base_table_sha256": "7a9a063f0ad33b83ad718ef9234bea842d72696f0a83d901c706365b5628dee7",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            " - Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "289f35df962f9741763eaa113317118aaf2f3f2db49c1355792cfe2218e371a7",
+        "size_bytes": 3322636,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:9c4c6d2d2a1d5579a89364587c1d8b5b8d602bf2c417c292312d4fe3d51424e9",
+      "physical_page": 28,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "53acf3efe316ea4596f59deace2f1413cdf01d7700a367b9bd2f7432f0e89f0e",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:8bef68e0bc8e033b9430604a6d195a9053c0447e2a5db1492dd555f87ff18708"
+    },
+    {
+      "base_page_json_sha256": "874c8d67cfb3cf80f983771225f43fa7469111143e002f944f70fd2851961df4",
+      "base_table_sha256": "6556129a4f8769633e287988fbcea40c9e112d239955332fd198d16649f54040",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": "-发出-",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "09354b382cc1dac13cfd7df8ec283efeae784b482e69135f031c5b59216a21ee",
+        "size_bytes": 1542549,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:5b1b67f48dcbacc2104bcee2a34edb0b046328f91f16c3d988cb6938ff486c2c",
+      "physical_page": 28,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+      "source_sha256": "ba97a5cd0137ff365b5f51aa591377e975d574b1a94ca2fc66284edda47492f9",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:2ab7541fb123ea6e90be9d5949b06a93c1dd95af7cbae740e9c3ef28dddbd7c4"
+    },
+    {
+      "base_page_json_sha256": "d5fa0f7f6bc957f14e131a05b5c13a982aa17d3928bd470d847ea98ff5a61251",
+      "base_table_sha256": "a346218d4b8d130b2c9fee2b76dc9e684cddec6efd131133d2f6d98cc96b8474",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:带有- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "01e70c552c9336d7cf5afb92724961ebbae47e2ffdbe0333e8111f331570ad19",
+        "size_bytes": 3225340,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:29eff308c731425b10324a0da482396ff15706c3f16545ed1dd95a9e8c130434",
+      "physical_page": 28,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "source_sha256": "aa3b65b6450cc40354783122a7fa3ff0fb842017c8d72ca78c27a670524c4558",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:db8373fdda9e9801e990ee3c59f027b3ece507297bbe0ff0b074363c4d232ab7"
+    },
+    {
+      "base_page_json_sha256": "48232d58a915ccd3ca3d50cf6cda3a1cdcc6192c6fc135c2cb22e44e563c59e1",
+      "base_table_sha256": "c7c958a4a12b4883cdd88736962ce06d01b8e5b7456a0e257c35b23c7cd61086",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3510,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "d2aad1bf938ecf0017605c8309ca5d78c9bd709d5cb0b6c949bfbf996b7c9053",
+        "size_bytes": 356397,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:921c23efd45de0d59824ab238e2b270ec04e6ab4b27aa097a09c0963eb8a29ab",
+      "physical_page": 50,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/LPB/2025/BCTC Soát xét 6 tháng đầu năm 2025.pdf",
+      "source_sha256": "dacb86416df60868817168f474d3a69581cfe3c9cd714fa3fa904b4aecf2da82",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:a1bf6432786ad8c36d3315260cc74d3feb34fc0fcd476d39e0158a7904597534"
+    },
+    {
+      "base_page_json_sha256": "3abdbaa801d24f8fe2c2d4ab75d609061f83ae92ea22366b12df56d5a77b1ec5",
+      "base_table_sha256": "145d3f158658daa461e3f1ce46a463b3c510f098bcf6968c4768ac5e166a7d55",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi và các khoản thu nhập tương tự",
+            "Thu nhập lãi từ nghiệp vụ mua bán nợ"
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi từ nghiệp vụ mua bán nợ",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3492,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "4dd1ea23606cf3d08695a6102b9ac2b5f57f54b1b474052a81df4a0ebf33c2b8",
+        "size_bytes": 612597,
+        "width": 2471
+      },
+      "page_json_version_id": "gfpstorev1:json:5c80e637c8081834e2b2b2d2cd77c1001ec8dd9d57415edaa1b9c0de30bab6a7",
+      "physical_page": 59,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/LPB/2026/BCTC quý 2 năm 2026.pdf",
+      "source_sha256": "47d3b2d6b5a4ab6855ad1568127928204e7097f490748c07274e2ed9704f5fe3",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:cb4989717bc748aebeee53daff536ea5e493f8415f4db087a54fcb02e6957e20"
+    },
+    {
+      "base_page_json_sha256": "390d2a91c9d45603bf22253209765d06e3f941cc5dd1cd3e413c8232ca625643",
+      "base_table_sha256": "ba8c414a5b206ca4c59b2ab58004c5214f5e5fcf367f3d1f84ff36754e3c7947",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán- Thu lãi từ chứng khoán đầu tư"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "c009e408a965d1021800d7be0a5e6ff7d5e7f44c74c379d1668be4c2a7671fc1",
+        "size_bytes": 1462391,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:9ce392385fd721933148b876502e708430f6954d36d9e0ec50a41ff9322ece8b",
+      "physical_page": 37,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/PGB/2025/3_pgb_2025_10_22_8eac562_vi_baocaotaichinh_q3_2025.pdf",
+      "source_sha256": "bac53d82ce05ce497222e1a1c20945c31af62e534f7c7385825400662c513ead",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:884c8bac13d6705557a2782d617af102704fa41e03b83105d61bd703fb5dbcf7"
+    },
+    {
+      "base_page_json_sha256": "3eec8b17367f94631c80c5ac0dbb398f2ae91d8e9cee6c2a4098b2bcf7394bc7",
+      "base_table_sha256": "ed9d9970ea4bc93a2807ccbef55c9f37e81f38f144e2133a6bd2382ae2b2042f",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": "41,282",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": "485",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán",
+            "- Thu lãi từ chứng khoán đầu tư"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": "86,216",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "109f4157eda4b16c60502ab17277aea3eccd5ee61263e0e3e7c41529b115286d",
+        "size_bytes": 1239386,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:4bd7f382658a64b17d681b4418ff59fb07bdc321376ca088c59b0122011c5d75",
+      "physical_page": 37,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/PGB/2025/4_pgb_2026_1_22_d793078_vi_baocaotaichinh_q4_2025.pdf",
+      "source_sha256": "d323b33958279f6dfb5452834c5f7a688bb0b055688f5f88267b9f8c2ba4799d",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:f5c7808c5e51fe9a08f62c2a1229789aa832284aba4964c08efb0d6153f173d5"
+    },
+    {
+      "base_page_json_sha256": "01e0d6c54c113f93c23a1dffc6f6758790b4851b2f3b5bff93963abd79798e35",
+      "base_table_sha256": "0503497891f6ec7dcbeb51f2f20d2b5ce45cfbc402008c7cad1afe5258e09f2e",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán trip- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán trip- Thu lãi từ chứng khoán đầu tư"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán đầu tư",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3510,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a55d033e752537811f02309e8562c131ffd8399f5fc7fdc0d9dcd4774d4c1cc7",
+        "size_bytes": 320175,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:f4879c4bfd52b0e6fd04f4abd880b0e632718904a8f641dbe2cb50d7f3e47ee0",
+      "physical_page": 37,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/PGB/2025/BCTC quý 1 năm 2025.pdf",
+      "source_sha256": "f63455968c34bb29fdbba20fca99364d25bbdfe9638ff0a3b5f8e0453c35cd2c",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:27acf3003f44c67157d9faef39dfd4750f9b618ea9edcbff9e5c40e6488d03f3"
+    },
+    {
+      "base_page_json_sha256": "73e8afb74eb66bfdce503bdc6b6c29d8215243525a1bc92822da0c017a160ca4",
+      "base_table_sha256": "6649c6f84200dabfc53e74c5bb375573f658ec3859f4699c8010df4082ff6661",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3393,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "cf52d6a327d2f802684883eda50b711d7bc22847bb58ed4a2e10297804a77a5d",
+        "size_bytes": 724788,
+        "width": 2427
+      },
+      "page_json_version_id": "gfpstorev1:json:9e8ea1d3738b01f624990468e5cc1f82a0d6a2dc98f9f4c9b4bad86f4ce855aa",
+      "physical_page": 34,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/STB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+      "source_sha256": "8fa34b31f5bbf231f73f147c67498283c5c3f161cc8537972d8248b6bb9e88c5",
+      "table_id": "t2",
+      "repair_id": "gjiifav1:repair:7badebc69654cd2da2b857c5feec14ad457868256d5f7794029a20ddf4f38eaa"
+    },
+    {
+      "base_page_json_sha256": "8e8a9f3e5af6d48e5e1c8ee26bdbd8c5bc69dccafbd65e9a3aefb9878bbbd538",
+      "base_table_sha256": "da8f77c8dbfaa5bb84c44eebf32dbea8d025efb45eb68d52843623287981bcb2",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3300,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "cd3a7a13b7c54b3af3233466bc05f6737b074fc164e083915f95c6ebb1d3787c",
+        "size_bytes": 3128526,
+        "width": 2550
+      },
+      "page_json_version_id": "gfpstorev1:json:5e54a64740ee34b46b91ca3a9a462250f03b65c78823df7795622ba02d7e5d28",
+      "physical_page": 40,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/VAB/2025/2_vab_2025_4_15_527ed46_vi_baocaotaichinh_q1_2025.pdf",
+      "source_sha256": "067ddd883bf49ab6706bd19d1d5b2004829d1463fd1a5ea4b079df80382db53e",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:bd42a3ae54723b843c778b61d0ac6a7d990c51292cefb26bd7ed3110d87d1f6a"
+    },
+    {
+      "base_page_json_sha256": "a45e9f94261b733094ebd753ce595aa78153a3a1a7d7b6c9edb601d507095317",
+      "base_table_sha256": "b0d79fe349a6cf5dc7d6f2d8e77632d17beeeacbf762a4f3791559aee8d22ba4",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ:毀 - Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3542,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a312bbee3c69106236c3ca2c65b8473ae80642b0fb8c0e2b0bf9fa1f78a75a14",
+        "size_bytes": 792441,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:fde9a5026de305e7ecc55a4e3bf896a058c79494781170815d229b65bbea31a2",
+      "physical_page": 41,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+      "source_sha256": "8fd2017e2267045fd995479d02a7d3229908dd8e771637e0e26e7327d1991a2a",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:9e7280a6a3c63598a331cabc2a2ae8179dba0afa386fabdfcf6631f971af2847"
+    },
+    {
+      "base_page_json_sha256": "00584fec7a1ac0f3bf7b81aeb681aff4a870766f318a4830cd5bd88af1b50be1",
+      "base_table_sha256": "1dfc351841451310e329475104374292b6d7e38e51faaa9e74e44625466c6e2a",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ: जहरीला? No, keep it verbatim:",
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ:",
+            " - Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3550,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "f6e6593ca09b662bb20b65d2ae7862127e40a1a38359d475a5553183fc4e145f",
+        "size_bytes": 2895370,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:5623c1386983fe848535a5315de4a5e518215dd2b48a7428072436b4a142a1b9",
+      "physical_page": 42,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "source_sha256": "4731cf17493c26feb5cdf533ecf942ce149ab4ba3b8aed1f23dd638926fb9353",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:ccbd73468b7671b90d159fe6c4b8346b414279b82d16a6308d33a78dd2a41c2d"
+    },
+    {
+      "base_page_json_sha256": "21dced1acbadc1b0a400395bd13da03dec19c91ce3a8537683a1b8a4ad13d357",
+      "base_table_sha256": "a56cebfaf93997eccdc4843d94da3450cb988c35d967a06afae8b2ea4ef4e299",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3542,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "4ec94679e159e2eb35e826075e5e75a9ef7736fd44b3bfc14c486c70f474cdc4",
+        "size_bytes": 769979,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:c032defaa8197c4c6e40a320f06f955db4583e76ad0b0405f1d11fb5866e43c7",
+      "physical_page": 42,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+      "source_sha256": "54c7a2d052642aa302544214492f6390368f63bbc8a052f2588a461786a5ebbe",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:e450714f74d15949af58161116e600625325c4ace45ff8bbb0a683afbee71781"
+    },
+    {
+      "base_page_json_sha256": "e5bd519611e3be61f8d12a822fd36bfcac8af67ca12efafd01fe1dde37d658f2",
+      "base_table_sha256": "cfef6eeea59352828a684070d7b9cb76b6dfdb5837e5d86c6cc9ec0a89b96d65",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán nợ:",
+            "- Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "- Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3496,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "79c2186de5e4d7ef814aa9274b190d4087c572cd40ee1bbf3393f3a9c8f2fd59",
+        "size_bytes": 1228091,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:963ec47624793aa78a40b3de6adb0b7cd3d2b7f7e6d6121fdf77ec42b9bddb00",
+      "physical_page": 39,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC RIENG LE QUY 2.2025-TV_0001-da nen.pdf",
+      "source_sha256": "30768f3095999e9d8ca315fd93a49ea25cfc151897e7cda89929be8fb71c1956",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:4ff0d148bb9e0ff982fbb4e920165b37e78fc2c68edc6a10bb3a03e91ef0ffd8"
+    },
+    {
+      "base_page_json_sha256": "d8bc92dfafa62d5e800ae81772e9170aa92a60af7b7b350b083fe32c0cad30ac",
+      "base_table_sha256": "aed41db2f22d37b4adbcc0e5e4e7ad17b305e48bc658f8fb14270ea98eb7db5b",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "-Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "-Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu lãi từ kinh doanh, đầu tư chứng khoán Nợ:",
+            "-Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "-Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "f144d64bad3a28fc808a6d5bebefff1a5bfd40d281d6c04aec75833bc3378120",
+        "size_bytes": 3063919,
+        "width": 2484
+      },
+      "page_json_version_id": "gfpstorev1:json:aa26dad6c5b9f9b2dc8f0cdadb0f677ff15de0ee520ad975e852e5526a5b983a",
+      "physical_page": 21,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/VBB/2025/000000014895177_VI_BaoCaoTaiChinh_RiengLe_Q1_2025.pdf",
+      "source_sha256": "c8c9e8f5c5c97f5ef066f15ea96deca177f2de9993b7c51e50dd88219b6fca66",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:defdc085e5d15d773c3fb8b41c0d8c696b58844ee9e4dbd8f2f2d3643ddcd0d4"
+    },
+    {
+      "base_page_json_sha256": "bde219b853a649ce69513189eab3beab513d32cfa389a0fb8a8c4e27c63c4c15",
+      "base_table_sha256": "eaa29301193fd2e003f00ef638932f0a2409097dc4e0c8c11d4f75982115ce20",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "-Thu lãi từ chứng khoán kinh doanh"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "-Thu lãi từ chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 1,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập lãi cho thuê tài chính"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập lãi cho thuê tài chính",
+          "visual_observation": "PDF_RENDER_VISIBLE_DASH"
+        }
+      ],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "5b188ae27fdd358015d74f341586bd7d95e725e15535cdae627b97344ad940d2",
+        "size_bytes": 3095551,
+        "width": 2484
+      },
+      "page_json_version_id": "gfpstorev1:json:c8e2b47eeaa6f22240f26f62cd08a81083970bdc3bf3fe63c7698f8ea615f6ad",
+      "physical_page": 20,
+      "reason": "PDF_RENDER_VISIBLE_DASH_SELECTED_JSON_TRANSCRIPTION_MISMATCH",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/VBB/2025/2_vbb_2025_8_1_afc1d54_vi_baocaotaichinh_hopnhat_q2_2025.pdf",
+      "source_sha256": "4875c96cfeb92f2e07b6756a52b5810647eff040987ab60b717261e601733c22",
+      "table_id": "t1",
+      "repair_id": "gjiifav1:repair:3fabd305909aead1974b0d25d5fd47aaa86e6b309fd7f9590f185c56789352b4"
+    }
+  ]
+}

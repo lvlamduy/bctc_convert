@@ -1,0 +1,2086 @@
+{
+  "family_id": "PURCHASED_DEBT_ACTIVITY",
+  "format_version": "GEMINI_JSON_DUAL_COMPONENT_AUTHENTICATED_SOURCE_REPAIR_V1",
+  "policy": "ONLY_PDF_VISIBLE_SOURCE_CELL_OR_EXACT_DUPLICATE_ROW_CORRECTION_NO_NUMERIC_INFERENCE",
+  "repair_axis_sha256": "dde0e3d60634e16f01ed904a700874c9a64958b6d1a3e0e02d92616b5d579b99",
+  "repairs": [
+    {
+      "base_page_json_sha256": "4ef738b9aa70864908152ae1c695839615a5685bff4c2d4decf6d889d3b8c01b",
+      "base_page_json_version_id": "gfpstorev1:json:611ddd951f89b0176ca0c50f1332b38cfa54a5d7dfaf08c0758d618a34ea7f4b",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro mua nợ"
+          ],
+          "row_label_exact": "Dự phòng rủi ro mua nợ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 25,
+      "render": {
+        "full_page_rgb_sha256": "da25371fccaac1f1491f0b0cb01366573c12559ea90b17f0b9d8d4dcaf1b9739",
+        "image_sha256": "adaa8550c721a16621952f95304725965cdaa834090d6fe8127890ff11872977",
+        "image_size_bytes": 454882,
+        "media_type": "image/png",
+        "physical_page": 25,
+        "pixel_height": 3509,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "render_receipt_sha256": "657f35b6a0240f2e77f2a4455237a3d38255c4884ef777f6d1cdcc6e89c18e43"
+      },
+      "repair_id": "gjfdcsrv1:repair:e8baba319051de4adb530d5c0f7d06c55775bfc4fa6ca0395a477bacc22b7904",
+      "source": {
+        "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+        "source_sha256": "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+        "source_size_bytes": 11320313
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "d3e2520a55e07e399a2ef3896aa2531ac3824f21c3e8ecef17bd059065bb590b",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "fc9156391b3a1f00c1261a5dff0d464c45c276352ce37ae728ada6657007eb5d",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "143303f7ac403c199ef3b99dcb5dc74b758545b0dcb824cee6db910b9d830f58",
+      "base_page_json_version_id": "gfpstorev1:json:5cfcbc4f3ed04997426d46e166c75a4cea61595ad36e7286f37092d4199a75d5",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro mua nợ"
+          ],
+          "row_label_exact": "Dự phòng rủi ro mua nợ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 25,
+      "render": {
+        "full_page_rgb_sha256": "ed0b2d34f6ffd69a7ebb2eb5053a770c7c040ecae9d01e55413de3dc6245de9b",
+        "image_sha256": "f2099cab65bfcc29552c19e09f4f3ecfd7cc4e928edcab881f402658316fabd6",
+        "image_size_bytes": 435764,
+        "media_type": "image/png",
+        "physical_page": 25,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "render_receipt_sha256": "9ee98d4a3291d3d042ec5cc0d6687c788869a94c10e5400a6fccecd6fd18c99c"
+      },
+      "repair_id": "gjfdcsrv1:repair:103ba0f1808f605fe435eaf33fdabf2c7322417c70556cc80e313f22a698831a",
+      "source": {
+        "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+        "source_sha256": "55452f947d44bc11de79d9180c118acea4d45a674159364ad763ad5a8f712f29",
+        "source_size_bytes": 9523186
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "369cc88c8cfe0da769f25a7d301223f2b8fb1622e08101845d868021925333f1",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "427d3c6da03d37d379a01c0732832fa2253f2bfaacfc57abdfd209bac795cb91",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "109663c659728a457c3c6eda62eec742e6eb719cfd993ab4b9a96d4e0a3a8b79",
+      "base_page_json_version_id": "gfpstorev1:json:13a31d7280a841c084b33a84f3b307c22918c3fb93d58178fbfa3232b1804f7d",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 25,
+      "render": {
+        "full_page_rgb_sha256": "765027e64fac2afdcdc3c14e8c66b7f96d25affafeaec0548af0f7ffefcb055d",
+        "image_sha256": "add07d21820a3c8a2fa82ac210fd23a36bb171de564b182e61ff4d6e834d2d61",
+        "image_size_bytes": 433557,
+        "media_type": "image/png",
+        "physical_page": 25,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "render_receipt_sha256": "da4c957a62d927a33d49b0736fe97f9c916494d121353cf9586c5a00dedca256"
+      },
+      "repair_id": "gjfdcsrv1:repair:afd38aa484e2eb7daffa7e4bb8e1d2ff8ff926da7cfcc1bcdd87b54c71ff35be",
+      "source": {
+        "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "28a0d17b780fdddee6faa8c211f09eb4b3b9870a6720ba677ff1eebb667af747",
+        "source_size_bytes": 9571545
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "7366eb9d40c127175e6064eba9792ce4175e367277b7737c20e06a4e2c7baf98",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "b3b4705220d6f4d444e05fabb557af99b5eba4a5639d5bdedd6f99e443dd28dd",
+          "section_id": "s2",
+          "table_id": "t1"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "edfe1c94a430789bf90e2491e4834dcfb810395e3633c630ceb5e5e66383af69",
+      "base_page_json_version_id": "gfpstorev1:json:2c21c08a2e7e370cfe8eb4f836df820fd7f24b41d8dba00b96d90fc34fe83d18",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro mua nợ"
+          ],
+          "row_label_exact": "Dự phòng rủi ro mua nợ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 25,
+      "render": {
+        "full_page_rgb_sha256": "d85c8a036a8eb445d644e16a3928dede900cc754b7a23a80ddaf88e5f9cf003c",
+        "image_sha256": "cf58e0370200b5f71f968645a23b906ebcafaf260ddba793dd095614b48eeee6",
+        "image_size_bytes": 426520,
+        "media_type": "image/png",
+        "physical_page": 25,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "render_receipt_sha256": "b3d0db8c78e74dd5d4f2b10240ef2a4ad2eff3ef0503b494ca9273e0c478ec74"
+      },
+      "repair_id": "gjfdcsrv1:repair:f149d87b81ef20489ef6db67195ff7ffddd0f4115a5465aad5c2ab0a24e1893b",
+      "source": {
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Q2_2025-1.pdf",
+        "source_sha256": "831abe75cfbd1987c8e63ecec9e3cc1f9a0ee49db1ffc7c930c0851847cc98a3",
+        "source_size_bytes": 9731305
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "78d94b754a754deb8791dcfe9269bd865d02850ae509ad99db82479a91106bc7",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "4f3412556230189cf23ca627ff7842d9c5eeea3c6b639111cb0b05011106def8",
+          "section_id": "s2",
+          "table_id": "t1"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "7124ca52f047111613268ee5166b7856ae4bf5cbd87701a3285ffa9bd32246fd",
+      "base_page_json_version_id": "gfpstorev1:json:deb809561e508af2638540e4af3a3368c23c1984c93ca07ab9f01e605ecf3216",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro mua nợ"
+          ],
+          "row_label_exact": "Dự phòng rủi ro mua nợ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 25,
+      "render": {
+        "full_page_rgb_sha256": "4da1d990f74b05ddd38c8288b993e5b002555c6dab684ceba3a6dc9710fcfd0f",
+        "image_sha256": "bba0634a6c0571b91d228e360f2fde0c0cccf4f61705b278efdd0daab4980b47",
+        "image_size_bytes": 550361,
+        "media_type": "image/png",
+        "physical_page": 25,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8c3ecf6392a6ba5e8b5f042400d56efad2991b294ab02f31a85f4a1fccb7ebb4"
+      },
+      "repair_id": "gjfdcsrv1:repair:3394e6a664395ccc9db3ee4a78e5eb89069e7ed9f9df7979d8eed7d01d663281",
+      "source": {
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Q3_2025.pdf",
+        "source_sha256": "0f4379366c3f774a6ece78ac708437719a835f6d657fc3b3e529ee9d71c8a613",
+        "source_size_bytes": 9658454
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "390ff4b143be78ebbe1958e44b84369330b60291e9aee0d2fb5bb2cbc3558d21",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "fc42db47253e3ab493ef4322eddd508e720da8a44585f6a91ee4dcde40f82e24",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "a6920850791e72a7086696a46951cd7bc458f60e6c5eb7c3b3245e53c305be86",
+      "base_page_json_version_id": "gfpstorev1:json:c3861370edd7326a25446d29d1c93eaada653e5ae2fb6fee3baf7a5482ce38e0",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro mua nợ"
+          ],
+          "row_label_exact": "Dự phòng rủi ro mua nợ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 25,
+      "render": {
+        "full_page_rgb_sha256": "331c0c2f72c7e39a51260426b08bcd30a662cdf7697d050ddb8ee1789b58dc54",
+        "image_sha256": "58c0584cd92e2a99ef3230e99e9053b6b1d57191483223eade15ee7ff0e2bd25",
+        "image_size_bytes": 513084,
+        "media_type": "image/png",
+        "physical_page": 25,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "render_receipt_sha256": "1551ab18f13a6ed025899c7245f42a58570ba6c857a3834a2f49ffe39e5586ee"
+      },
+      "repair_id": "gjfdcsrv1:repair:e934a9fd2198d55d844bcd3550ffc0eb70cef4128cca9f183e02f28685648161",
+      "source": {
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Q3_2025.pdf",
+        "source_sha256": "f70f321296d8b9da75ee8bbf5e5566b3a64e03c17eaf719ed2579e2043feab48",
+        "source_size_bytes": 9546319
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "390ff4b143be78ebbe1958e44b84369330b60291e9aee0d2fb5bb2cbc3558d21",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "4a15d3c1577cda2c1f5ba0b72fff985cf9dbbb9272526b1cd5dacc5872fc604b",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "ef4560ff0b085a29b1c7cca7c8d814623082fbcf7fd750fe78c1760108d7b370",
+      "base_page_json_version_id": "gfpstorev1:json:07218f950351ba6f80fb9e71bd1037c34dccd673317aef3ab9018191162193c2",
+      "cell_repairs": [
+        {
+          "after_exact": "834.564",
+          "before_exact": "834.564\n-",
+          "column_header_path_exact": [
+            "30/06/2025",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "VALUE"
+        },
+        {
+          "after_exact": "(6.292)",
+          "before_exact": "(6.292) -",
+          "column_header_path_exact": [
+            "30/06/2025",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro mua nợ"
+          ],
+          "row_label_exact": "Dự phòng rủi ro mua nợ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "VALUE"
+        },
+        {
+          "after_exact": "861.953",
+          "before_exact": "861.953 -",
+          "column_header_path_exact": [
+            "30/06/2025",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "VALUE"
+        }
+      ],
+      "physical_page": 25,
+      "render": {
+        "full_page_rgb_sha256": "0d073324aeabaf05c127a28bc117d68ee35918c64cf4512181a19807db94036c",
+        "image_sha256": "66158983f32d6e996ba9485762c799107be56d0a4dbb4c90c6a901e42f0ebca2",
+        "image_size_bytes": 449246,
+        "media_type": "image/png",
+        "physical_page": 25,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "render_receipt_sha256": "43934ff51467b900c4302a89db83c6356a828cfae1c99eb93750ef42cdc34742"
+      },
+      "repair_id": "gjfdcsrv1:repair:55ec6f681daacd9812fa13d7a5fbf639dbf542932f4b74f0027e45d4ace96450",
+      "source": {
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Q2_2025.pdf",
+        "source_sha256": "1bf17e6dafef92f6fcd437dbdff37dbd03e04f84a9c06d89930baf7d38128ff6",
+        "source_size_bytes": 9719793
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "cc9f12a27bc5f28facd19c03cbfe828694279fa868dac7a314ce3da5f78f0134",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "07f6ad325b648dce9889180bf8e0e9e60dd2aeb029b2a6dc6793770b118d884f",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "bbc6a3688155c78e81b94dbc94a79f1001fb4d43cf11bfabd9e8deaf27a81db3",
+      "base_page_json_version_id": "gfpstorev1:json:0cbdbe8b5a0127b49c2a735ac18bbe7320e55b484282197bfcdc7bd5afb70ca2",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "-单/dash/hyphen/minus/0/etc. (represented as '-')",
+          "column_header_path_exact": [
+            "Cuối kỳ"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Đầu kỳ"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Đầu kỳ"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 3,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Đầu kỳ"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro"
+          ],
+          "row_label_exact": "Dự phòng rủi ro",
+          "row_ordinal": 4,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Đầu kỳ"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Tổng"
+          ],
+          "row_label_exact": "Tổng",
+          "row_ordinal": 5,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Đầu kỳ"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "- Nợ gốc đã mua"
+          ],
+          "row_label_exact": "- Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s2",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Đầu kỳ"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "- Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "- Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s2",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Đầu kỳ"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Tổng"
+          ],
+          "row_label_exact": "Tổng",
+          "row_ordinal": 3,
+          "section_id": "s2",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "duplicate_row_repairs": [
+        {
+          "base_row_sha256": "a7fd07b7f586d4d50bc3b85bc7a15a7f26be827ed1fed34b61a0c3e773862093",
+          "drop_row_ordinal": 2,
+          "keep_row_ordinal": 1,
+          "repair_kind": "DROP_EXACT_ADJACENT_DUPLICATE_CONFIRMED_SINGLE_VISIBLE_PDF_ROW",
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "section_id": "s2",
+          "table_id": "t1"
+        }
+      ],
+      "physical_page": 34,
+      "render": {
+        "full_page_rgb_sha256": "5e519ea18a763d528a353158183ff2d415f94f033e97107847839396c43de191",
+        "image_sha256": "8ed213be0670d12d606407cda70b1e86ff34f1baf7841d0f13d32ce3fbc93a96",
+        "image_size_bytes": 2561348,
+        "media_type": "image/png",
+        "physical_page": 34,
+        "pixel_height": 3550,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "20f54285499c5b5db8cc0e71c0e586b278fe0435bf25f34f712af8308e57b90a"
+      },
+      "repair_id": "gjfdcsrv1:repair:e6394c9028efe440fc26572c873c1d3af01424820adee46ab54ea47d23e26f24",
+      "source": {
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+        "source_sha256": "4731cf17493c26feb5cdf533ecf942ce149ab4ba3b8aed1f23dd638926fb9353",
+        "source_size_bytes": 8628432
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "ad896c5fc065f856ac74b89f2da769bc2cd434a9a0690007526f9ff5b96dfc73",
+          "section_id": "s2",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "1a94f6c31d5345728d61bf7e9380e7491dbb710312c06d859eba258d577539c2",
+          "section_id": "s2",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "16840e76a4a895366d7e8be165853244f2055c3aa56cd500c7171d31adf9d15c",
+      "base_page_json_version_id": "gfpstorev1:json:1526ba9272cdb29446a04e9ebb086f70193eacaaf7d465a8325a9667cb59150d",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng chung"
+          ],
+          "row_label_exact": "Dự phòng chung",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 38,
+      "render": {
+        "full_page_rgb_sha256": "245da71374355422beaaf3bb5216dcf29b8e4b3c08d9096aefeac9961f4287b4",
+        "image_sha256": "85f814910622883e81d7843b9859a073e67056cdf0de0c82304b57a50b719842",
+        "image_size_bytes": 429515,
+        "media_type": "image/png",
+        "physical_page": 38,
+        "pixel_height": 3411,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "9e79b0b8f5571fe58beef5ae72296d533cd6cbfb2eedcaae714901aa6891f64d"
+      },
+      "repair_id": "gjfdcsrv1:repair:78409f162a8837f45d5e4113ee1ecba4233cb9191dcaf3a40c644ee92db18bae",
+      "source": {
+        "source_logical_name": "vietstock_bctc/HDB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+        "source_sha256": "082e0fe75550085df0b73351afd3f3561ba1b716bbbf0157bcf1e11f34b78ae8",
+        "source_size_bytes": 4933828
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "28893fc907c9f32be9ca02ca0caa07f1978c5e8dfc84c35b377e76c14b4fc0b0",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "9dc50cec632c1c5c1ce9006ffa69cf6aa3a00c729a27a23f5ce364c3cbeb4707",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "13d99e0d3785a7910e31f57b0a06ad6f83d2944655978e2c66fd319094d542b5",
+      "base_page_json_version_id": "gfpstorev1:json:72162a8f431e6d62cd6391b4732b213a4fd92deff5b7f6617a29ea4e60aeed71",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số cuối kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro"
+          ],
+          "row_label_exact": "Dự phòng rủi ro",
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 4,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số cuối kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 26,
+      "render": {
+        "full_page_rgb_sha256": "81b4c3f049326289528248d4031b85161de913f8cd133f7d719104ba8283c21b",
+        "image_sha256": "80baaca3e1cddf1318b31785b63ad75eae1315bd4afe6282947986b17efdf34a",
+        "image_size_bytes": 322570,
+        "media_type": "image/png",
+        "physical_page": 26,
+        "pixel_height": 3507,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "render_receipt_sha256": "93b3e22e838b9a896e1ab98b8b5ca2349d16ee5ead57297c83f2dee22e149563"
+      },
+      "repair_id": "gjfdcsrv1:repair:2f66efd55348f5600d2567991448e54f442bedd446c24b66e7dcdea776550a0d",
+      "source": {
+        "source_logical_name": "vietstock_bctc/HDB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+        "source_sha256": "d3069e637cf3c3dd0e9b863884d446a4aecba3e1673cc3308e3a883883a2d451",
+        "source_size_bytes": 2358441
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "18e764e24d7ebc49b915aa4b46276c8caee7c0090f26204282607374538045a4",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "3a74464dde100d8ec48c4ae014917cbf6c5b7f01b1bfec71e871ac367820412f",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "77c2a3f1db2e9fe51cbd69ced8fb1318d26ac96b98e47fdde57fa99c1fab157b",
+      "base_page_json_version_id": "gfpstorev1:json:8075e4948f5f5acf80dfac7a935544a3684b1bec3d9733752916d4cf7942c2ba",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng chung"
+          ],
+          "row_label_exact": "Dự phòng chung",
+          "row_ordinal": 2,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Giá trị nợ gốc của khoản nợ đã mua",
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s2",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu năm"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Giá trị nợ gốc của khoản nợ đã mua",
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 2,
+          "section_id": "s2",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 39,
+      "render": {
+        "full_page_rgb_sha256": "2b96cfaf19f41bf2b2495ae2744d38e7947dfe7686c246810267088b8e95741f",
+        "image_sha256": "ea4ae3a237f923c946263e10ccf56617d11b61c58dfa0750967f6de1e4b6e966",
+        "image_size_bytes": 453504,
+        "media_type": "image/png",
+        "physical_page": 39,
+        "pixel_height": 3411,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "0ca90ae3c30c8cd99a0569c49ae353ad40324532a47efd3d65f75ca3954e7fe3"
+      },
+      "repair_id": "gjfdcsrv1:repair:448118627a1709eaa4d0e87436b9aa929595f29128c8f46c484b2a4996f51917",
+      "source": {
+        "source_logical_name": "vietstock_bctc/HDB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "source_sha256": "dad39b45a99747f7290d0a478af2f71f018f4adc59a590e158cdea16dd090ac3",
+        "source_size_bytes": 5043254
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "2cb1acf1c243af6a4eb42da3c368380ae1028837422dbaaf251de7e39c3f06fd",
+          "section_id": "s2",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "0b239bbed6e2808e05de0ef8b08b4909fdaf180c4c0cc9bd3095a72b20dafc99",
+          "section_id": "s2",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "e69f5db6f700b42e09b8fe76ebe132408d9768106e4d7de0c9ffce1e725ad552",
+      "base_page_json_version_id": "gfpstorev1:json:c8b18bb4529374c8b12cf1961c894ee951c92d037b2cc7a8574600a2c808cfb7",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "-"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s2",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 32,
+      "render": {
+        "full_page_rgb_sha256": "b2d78d0aa590f0477e3a5787426970291bcb4671c7adac6c6c7baeff5574635a",
+        "image_sha256": "562fbb361971bf7d958e1e6bb023e3dd921cb97fa04624e93644b904bd03d248",
+        "image_size_bytes": 261153,
+        "media_type": "image/png",
+        "physical_page": 32,
+        "pixel_height": 3548,
+        "pixel_width": 2493,
+        "render_dpi": 300,
+        "render_receipt_sha256": "caf5faec1e4bbf872e0b1dbe4741df98634aa0fe05ec1df60b8f7d3d5fa1e598"
+      },
+      "repair_id": "gjfdcsrv1:repair:aedef5fef9e738cee144e9027f2d66f56e3271640791d1d0f03fe4c2229387d2",
+      "source": {
+        "source_logical_name": "vietstock_bctc/HDB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+        "source_sha256": "88d7f95685de6c070fba76966b5a7f861aaec0eb9e5874aac0529b39b8d8355a",
+        "source_size_bytes": 3456178
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "287585e240ce519b7e69667010a0e11295792d376328690fe177c8b0830c3123",
+          "section_id": "s2",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "933b64ece22ca651d82de6deacf75a3a2cfc2190f9939208ea556a658b49a44d",
+          "section_id": "s2",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "13d99e0d3785a7910e31f57b0a06ad6f83d2944655978e2c66fd319094d542b5",
+      "base_page_json_version_id": "gfpstorev1:json:b81952cc527370568be576d763216de0c1298f1da37165b9348984ab9b08b340",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng VND"
+          ],
+          "row_label_exact": "Mua nợ bằng VND",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số cuối kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Dự phòng rủi ro"
+          ],
+          "row_label_exact": "Dự phòng rủi ro",
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 4,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Nợ gốc đã mua"
+          ],
+          "row_label_exact": "Nợ gốc đã mua",
+          "row_ordinal": 1,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số cuối kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            null
+          ],
+          "row_label_exact": null,
+          "row_ordinal": 3,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 27,
+      "render": {
+        "full_page_rgb_sha256": "f582228048c952f56644212bda818e64b5a01b184531f38c1586983c3177036d",
+        "image_sha256": "457ffd38848a02ad378649d5fdc1217f25d803602b2d904d803c1ca8fde5aeb4",
+        "image_size_bytes": 321382,
+        "media_type": "image/png",
+        "physical_page": 27,
+        "pixel_height": 3507,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8fcf2fce878a7e120aad9d153a57ef656485babc4ce897e969e6bde8d8be23e9"
+      },
+      "repair_id": "gjfdcsrv1:repair:e133619b08d278ae2450893c984397e3ab0e61393d920c8373631869a8916c1d",
+      "source": {
+        "source_logical_name": "vietstock_bctc/HDB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "bc1d04051cb728aab1397c2561987ac3745e739acd2179d424a517df9bd18cd2",
+        "source_size_bytes": 2418118
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "18e764e24d7ebc49b915aa4b46276c8caee7c0090f26204282607374538045a4",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "3a74464dde100d8ec48c4ae014917cbf6c5b7f01b1bfec71e871ac367820412f",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "4aae83facb526f8f75bd7e201a439560dcbb286655c6d538d3f2b9e6b6e82f17",
+      "base_page_json_version_id": "gfpstorev1:json:c9766e6c97c69ec406198c6257c4441181dc2f4cfebe57acbce3919058436eb8",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số cuối kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số cuối kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 26,
+      "render": {
+        "full_page_rgb_sha256": "5d4172ddf634e239ca9f72f3ec8922be7d6dcb3fdad0a3c5e17c510d022525e7",
+        "image_sha256": "57da632cbc06d332117c213061213ae78e74152f9821ca349c5c2a58137c3c6f",
+        "image_size_bytes": 823258,
+        "media_type": "image/png",
+        "physical_page": 26,
+        "pixel_height": 3509,
+        "pixel_width": 2459,
+        "render_dpi": 300,
+        "render_receipt_sha256": "516c99b84c04980bdc0a0b389d9bb1068dd66bf1d9cf52f8e27b57614f25fee1"
+      },
+      "repair_id": "gjfdcsrv1:repair:6fb4176d8fc2942f09cc30fcd0234195a88f4564eb50f51b2a3aa97050c8123b",
+      "source": {
+        "source_logical_name": "vietstock_bctc/HDB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+        "source_sha256": "aca6ac1f48eb643c767b6e5ce6ac0bd922b02a7547d0c1f617f7e379f0548b1d",
+        "source_size_bytes": 6106413
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "b6437e35d64eb8ca8c4d5f2da9fcbb94ac59b3df555f4a9e0f3d5d69ee625648",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "7556e07535336de085df147b57d0ebe240d18186d3a17dfe179d4701886dfce0",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "46c3a1602df2ccc73ae6bee61a732d0775131b1814293a34dbf575f24a78be87",
+      "base_page_json_version_id": "gfpstorev1:json:f0afd5e053b0781702c3ad9049dfc7331584b6998bc31815656d9b8324b918b2",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 26,
+      "render": {
+        "full_page_rgb_sha256": "da073e557ae189ab6ca674d6c6e02f489b385f556b95b163a6e3c56a26eaf210",
+        "image_sha256": "5f9c15198cb10974fb017000e9dc30d1e53b03efc9567d7c6be5bdbabb57a94a",
+        "image_size_bytes": 2180939,
+        "media_type": "image/png",
+        "physical_page": 26,
+        "pixel_height": 3491,
+        "pixel_width": 2477,
+        "render_dpi": 300,
+        "render_receipt_sha256": "2ae32e8981391fe674be9aa1b5e7f8d5e5b0052c6be3db47f7ec084400f392c7"
+      },
+      "repair_id": "gjfdcsrv1:repair:aaf9eef7b60209d1861ed259205b1bcb571ad609a706065c31597769f06edcb4",
+      "source": {
+        "source_logical_name": "vietstock_bctc/HDB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "source_sha256": "9fac6ca4efdd5115e33f79d689c84ba059feff18700135ce653b338c451fa527",
+        "source_size_bytes": 11781629
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "5f25c48a061f93b1df1f8b81b71e0d079e77e1d24eb1fb2deb67e7d31598cdfc",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "7d0d8dd5106878670f74683161ed39e7e2c82bcb725fa59fb6b3c80ebb49ff18",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "9e36e5c11f7322c74cfbcbda6a051edb7a647f3da7226e41dc635475ac1de6d7",
+      "base_page_json_version_id": "gfpstorev1:json:fd8f587d079488889a1b85957e8582fffdf24b612064f95cc4a7fbb9be35bf09",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số cuối kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Mua nợ bằng ngoại tệ"
+          ],
+          "row_label_exact": "Mua nợ bằng ngoại tệ",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số cuối kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "Số đầu kỳ",
+            "Triệu VND"
+          ],
+          "column_ordinal": 2,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 27,
+      "render": {
+        "full_page_rgb_sha256": "c8a11fe627fe023355e90d56794490465daa4423376d872ee4f0dd2ac51e7962",
+        "image_sha256": "2dae59a624930bb49140408706efe04ca07c78c692c81ef140357afea2bd2fce",
+        "image_size_bytes": 2408356,
+        "media_type": "image/png",
+        "physical_page": 27,
+        "pixel_height": 3509,
+        "pixel_width": 2455,
+        "render_dpi": 300,
+        "render_receipt_sha256": "2e7ffb7635a3a2ef98b2a4293d8d21b42a20214244ca1dd3a5405d68ffd1749d"
+      },
+      "repair_id": "gjfdcsrv1:repair:8fab51a99c84584c29c42e03dfeaedb551db1a78a6a6c7b2100963ec9579335c",
+      "source": {
+        "source_logical_name": "vietstock_bctc/HDB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+        "source_sha256": "3965161743e15406524099308794a63820cc9df09dc092beb6e9e7db67521cf5",
+        "source_size_bytes": 6680450
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "2bf6b7c2d92e7615f8b69fbec42050897fc1180d300ddc36d1005601a33e7699",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "7556e07535336de085df147b57d0ebe240d18186d3a17dfe179d4701886dfce0",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "718814f36e06dbe1c6f1693c4bce1178931934a3f2bf1233a059d780ed7c8315",
+      "base_page_json_version_id": "gfpstorev1:json:cdb245fe75216b3bedc22fbd678718c38efb2c0727f04ca9f184e94deecf2732",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/03/2025",
+            "Triệu đồng"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s2",
+          "table_id": "t1",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 31,
+      "render": {
+        "full_page_rgb_sha256": "3fa0cc3a147cc371e3c62b05f8e167f553106f79dcdcd59612b141ea78985340",
+        "image_sha256": "6e2b896f137a0bec88597837358d6f435c1b002bef9e80e7c3bafc9e6da4fb58",
+        "image_size_bytes": 887063,
+        "media_type": "image/png",
+        "physical_page": 31,
+        "pixel_height": 3682,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "render_receipt_sha256": "50900fa1c8b7df9dc36a546691c20c6f2a048383acdb40f280c6321828624074"
+      },
+      "repair_id": "gjfdcsrv1:repair:57f1a5e91d970d409abc7030ebf60939efbd46f650591e6ac8d95d8a23e99117",
+      "source": {
+        "source_logical_name": "vietstock_bctc/MBB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+        "source_sha256": "c4aea54c740ce5c2b825b69752ef4779cd5cb05ab261f1b4399ddc633738903e",
+        "source_size_bytes": 4465256
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "6177459832e2358f27a136499caeb8f26ac7473d8daec8d79057877315a35733",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "80cf56c3c02c1b15d1d62ba949c76b07ab1bac0fe1c84e6eb11c8e323113de1c",
+          "section_id": "s2",
+          "table_id": "t1"
+        }
+      ]
+    },
+    {
+      "base_page_json_sha256": "f14aacfa710a0b54ea0bab137e07cc35687c975533493c9dcbbd055738da286b",
+      "base_page_json_version_id": "gfpstorev1:json:0abcde606a5c4258996ea9969ce8a925a9ba9bb6878c693321b6138d205b0ccb",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "column_header_path_exact": [
+            "31/12/2025",
+            "Triệu đồng"
+          ],
+          "column_ordinal": 1,
+          "row_hierarchy_path_exact": [
+            "Lãi của khoản nợ đã mua"
+          ],
+          "row_label_exact": "Lãi của khoản nợ đã mua",
+          "row_ordinal": 2,
+          "section_id": "s1",
+          "table_id": "t2",
+          "visual_state": "DASH"
+        }
+      ],
+      "physical_page": 35,
+      "render": {
+        "full_page_rgb_sha256": "cc5f56309714bd0143bf625dba06042a5999cb8ad142b3670f8969909b2425bc",
+        "image_sha256": "812d476409c004a4373b66c864b575116d4423b1f38aa58610a9fdcc5bccf89d",
+        "image_size_bytes": 769484,
+        "media_type": "image/png",
+        "physical_page": 35,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "render_receipt_sha256": "94b6b78912b55713f3a0a007f55fa297db94fdaab567c12c726b113ccda82655"
+      },
+      "repair_id": "gjfdcsrv1:repair:0d94ec4970b023b449cc05ab16b93f89f90b8bb1e169d093d2dd4102a714fb24",
+      "source": {
+        "source_logical_name": "vietstock_bctc/MBB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "69eb9144555a7b9ecbef25a22f5b311a54f3af407537c880c69c15440c815041",
+        "source_size_bytes": 3434590
+      },
+      "table_refs": [
+        {
+          "base_table_sha256": "26269d931746638606c3573bb454e3965fd69dd53da5338b075608808ad25088",
+          "section_id": "s1",
+          "table_id": "t1"
+        },
+        {
+          "base_table_sha256": "2d2149587a82796d2debe96cd75da8902cd62cc75c78777c84a1242da1456943",
+          "section_id": "s1",
+          "table_id": "t2"
+        }
+      ]
+    }
+  ]
+}

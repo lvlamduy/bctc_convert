@@ -1,0 +1,4757 @@
+{
+  "family_id": "CAPITAL_AND_FUNDS",
+  "format_version": "GEMINI_JSON_EQUITY_MATRIX_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "overlay_id": "gjeqmsrv1:overlay:6b0780bc3100c8fb72b4668dda62e701e11a8952b694a0d86e7cb8b03fdf227e",
+  "policy": "TRANSCRIBE_ONLY_DIRECTLY_PDF_VISIBLE_TABLE_ROW_CELL_UNIT_TOKENS_NO_EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO_NO_PROVIDER",
+  "repair_axis_sha256": "6954768bcf36f81712cd54503e441cbe66faf344fd99b7655947e363281d8d93",
+  "repair_count": 12,
+  "repairs": [
+    {
+      "base_page_json_sha256": "a3988b3a8cfa5a6e585994bdd375ab528b422a7d720b326dc4ef75b5fd623a6c",
+      "base_page_json_version_id": "gfpstorev1:json:8e6fbde6b361f6514a86dec19a1da6ba400cc1b14e84bec6a51c33db32231b52",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư vốn cổ phần"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Vốn khác"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Chênh lệch tỷ giá hối đoái"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ đầu tư phát triển"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự phòng tài chính"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ bổ sung VĐL"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ khác thuộc VCSH"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận sau thuế"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi ích cổ đông không kiểm soát"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "5d0b08861cd0a833fe7165e465e37b9653d2bcc67b705257c5697871d174cdf5",
+      "extraction_run_id": "gfpstorev1:run:8e03a115e1404b575afcd3cc96ba4707c1a59e922eed0b8d0ec55f65a0f4bf20",
+      "repair_id": "gjeqmsrv1:repair:7d50f5e50a3b07754e267cf425dedce07987f03033a4a05dad40f688e0c4adc7",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "177,437",
+            "-",
+            "-",
+            "(98)",
+            "-",
+            "982",
+            "-",
+            "178,321"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "177,437",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "178,321"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "(98)",
+              "before_exact": "-",
+              "cell_id": "r4:c7",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung VĐL"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "982",
+              "before_exact": "-",
+              "cell_id": "r4:c9",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế"
+              ],
+              "column_ordinal": 9,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Chênh lệch tỷ giá hối đoái"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chênh lệch tỷ giá hối đoái"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(77)",
+            "70,268",
+            "70,191"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(98)",
+            "-",
+            "982",
+            "-",
+            "70,191"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(98)",
+              "cell_id": "r5:c7",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung VĐL"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(77)",
+              "before_exact": "982",
+              "cell_id": "r5:c9",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế"
+              ],
+              "column_ordinal": 9,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "70,268",
+              "before_exact": "-",
+              "cell_id": "r5:c10",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát"
+              ],
+              "column_ordinal": 10,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Tăng/ (Giảm) khác"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Tăng/ (Giảm) khác"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:63ad655cc2f83a8728d5eaee47992959b1d9dff7c97a17f04133f60ff4807045",
+        "image_sha256": "0b7ffd4fb442691bdb03af2e7d5dcf0d03a2237a8f3b43293d4bd78da8d0962b",
+        "image_size_bytes": 1925993,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:d65ea8b5e79b84dddd1713de3f54be6557d5a987c737835868793a88db124476",
+        "physical_page": 26,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BID/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+        "source_sha256": "187ace9c81d224372382b96af20ee98a2469fd2f1ebe5b2d6e49b6d44aa7669e",
+        "source_size_bytes": 15647587
+      },
+      "stored_canonical_json_sha256": "238aacf3b5277d92efad3bab00ab7b43673e8b2ce70c2374d1537e553b79cf3d",
+      "table_ref": {
+        "base_table_sha256": "0d3478ddb2ccb22ffac53429a8edd8ae49571bd91228e456c418d7b7f0161c36",
+        "effective_table_sha256": "c30a626f46a43c04298a48e1e66903b38c10460cd6c521aebe6ddfd642007833",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          2381,
+          3408
+        ],
+        "table_crop_rgb_sha256": "e093819ef37db8794186ff57a890906b0824dfe6fc0c342e335b82f34ee8edf1"
+      }
+    },
+    {
+      "base_page_json_sha256": "09587e6c7345a1df2837ee6b1fd5f379083c94e969d0058eb2be13b44d32ad1f",
+      "base_page_json_version_id": "gfpstorev1:json:9492e61ba6bb30f261757222522b586eda46b27e735552cabda92de789e6bd5e",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn\nđiều lệ\nTriệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư\nvốn\ncổ phần\nTriệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ đầu tư\nphát triển\nTriệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ\ndự phòng\ntài chính\nTriệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ\nbổ sung\nvốn điều lệ\nTriệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận\nchưa\nphân phối\nTriệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng\nTriệu VND"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "6708e5e32f10a3c1f76c819ca54c9733551e2069175ff8bf970582eb4a11361f",
+      "extraction_run_id": "gfpstorev1:run:23c8442aade5fa3eaf3ed6abd00ab528d343d43cf3dc6514c6a540a04927fb01",
+      "repair_id": "gjeqmsrv1:repair:da8a6e4e58d339d7ef85d3f85a92734a428fadee574783207a180d1d15f7d74e",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "4.296.657",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(4.296.657)",
+            "-"
+          ],
+          "before_values_exact": [
+            "4.296.657",
+            "--",
+            null,
+            "-",
+            "(4.296.657)",
+            null,
+            "-"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "--",
+              "cell_id": "r3:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn\ncổ phần\nTriệu VND"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư\nphát triển\nTriệu VND"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(4.296.657)",
+              "cell_id": "r3:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ\nbổ sung\nvốn điều lệ\nTriệu VND"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(4.296.657)",
+              "before_exact": null,
+              "cell_id": "r3:c6",
+              "column_header_path_exact": [
+                "Lợi nhuận\nchưa\nphân phối\nTriệu VND"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Tăng vốn thông qua trả cổ tức\nbằng cổ phiếu (*)"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Tăng vốn thông qua trả cổ tức\nbằng cổ phiếu (*)"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:caccbf93cb9a05e690b0dc84b7aecbe5bd5c1db0667abaf8f5dc52221318ec98",
+        "image_sha256": "7e03a40a6c2f25f9750aaf40e8920937d77f21043ae13b53df9725bfe079f54c",
+        "image_size_bytes": 450845,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:aa4f0a7ef46b0863b0059d64ab3507fb7708556fc8cdc6f67fec065d6c4d755a",
+        "physical_page": 53,
+        "pixel_height": 3480,
+        "pixel_width": 2471,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/LPB/2025/BCTC quý 1 năm 2025.pdf",
+        "source_sha256": "9c937e2c7aed47902ca1523ede288ee8b60a04755387d824097a6b70ae4421b7",
+        "source_size_bytes": 7108187
+      },
+      "stored_canonical_json_sha256": "3b74b801b59263667f1cc56e5dcd32b62b93d619fded43e7b89ca3b5d1c869c2",
+      "table_ref": {
+        "base_table_sha256": "458d9ea10ac150c3f86d1b7f7d7950d6f18467d7e285dcab1f550f53d0301093",
+        "effective_table_sha256": "48c05042ee6d315cc4e07b2437da046ad557a8202e1dc72bba82e5b736dd82cc",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          2371,
+          3380
+        ],
+        "table_crop_rgb_sha256": "93941cc7a12a95ee3dc5642ad4a8cff525d002c5d43e2114408a3e7fb00f2c7d"
+      }
+    },
+    {
+      "base_page_json_sha256": "e3852a938c95089572ecb3ce5a523f4a126e4bc2d3873d85918fa34f16446a21",
+      "base_page_json_version_id": "gfpstorev1:json:642f303b99b0f581d0d21d56b3d816cce98fce162597e983956e936201742b31",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn điều lệ\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư\nvốn cổ phần\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Vốn khác\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự\nphòng\ntài chính\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ\nbổ sung vốn\nđiều lệ\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ khác\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Chênh lệch\ntỷ giá\nhối đoái\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận\nchưa\nphân phối\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi ích cổ\nđông không\nkiểm soát\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng\ntriệu đồng"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "2968246417079a249b159c4ae6bc11d390d2e053be0a6ff0e11ad1699bce4093",
+      "extraction_run_id": "gfpstorev1:run:84ba55181683bbc07e4bea97791aea7653cc4e5ae05d2ad398798a1fe5b20081",
+      "repair_id": "gjeqmsrv1:repair:1cb383176474c026238f8619c66e0719ae926fc3fd1213c05ec3dfe7d4440c56",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "15.744.575",
+            "403.618",
+            "16.148.193"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            "15.744.575",
+            "403.618",
+            "16.148.193"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn cổ phần\ntriệu đồng"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c4",
+              "column_header_path_exact": [
+                "Quỹ dự\nphòng\ntài chính\ntriệu đồng"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c6",
+              "column_header_path_exact": [
+                "Quỹ khác\ntriệu đồng"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong kỳ"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "2.459.690",
+            "2.745.820",
+            "685.093",
+            "-",
+            "(5.890.603)",
+            "-",
+            "-"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            "2.459.690",
+            "2.745.820",
+            "685.093",
+            "(5.890.603)",
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn cổ phần\ntriệu đồng"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(5.890.603)",
+              "cell_id": "r3:c7",
+              "column_header_path_exact": [
+                "Chênh lệch\ntỷ giá\nhối đoái\ntriệu đồng"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(5.890.603)",
+              "before_exact": null,
+              "cell_id": "r3:c8",
+              "column_header_path_exact": [
+                "Lợi nhuận\nchưa\nphân phối\ntriệu đồng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c9",
+              "column_header_path_exact": [
+                "Lợi ích cổ\nđông không\nkiểm soát\ntriệu đồng"
+              ],
+              "column_ordinal": 9,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c10",
+              "column_header_path_exact": [
+                "Tổng cộng\ntriệu đồng"
+              ],
+              "column_ordinal": 10,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập các quỹ thuộc vốn chủ sở\nhữu trong kỳ"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập các quỹ thuộc vốn chủ sở\nhữu trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(2.251.436)",
+            "(29.789)",
+            "(2.281.225)"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            "(2.251.436)",
+            "(29.789)",
+            "(2.281.225)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn cổ phần\ntriệu đồng"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c4",
+              "column_header_path_exact": [
+                "Quỹ dự\nphòng\ntài chính\ntriệu đồng"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c6",
+              "column_header_path_exact": [
+                "Quỹ khác\ntriệu đồng"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích quỹ khen thưởng, phúc lợi (*)"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích quỹ khen thưởng, phúc lợi (*)"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(136.649)",
+            "-",
+            "(136.649)"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            "(136.649)",
+            "(136.649)",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn cổ phần\ntriệu đồng"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c4",
+              "column_header_path_exact": [
+                "Quỹ dự\nphòng\ntài chính\ntriệu đồng"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c6",
+              "column_header_path_exact": [
+                "Quỹ khác\ntriệu đồng"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(136.649)",
+              "cell_id": "r5:c9",
+              "column_header_path_exact": [
+                "Lợi ích cổ\nđông không\nkiểm soát\ntriệu đồng"
+              ],
+              "column_ordinal": 9,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(136.649)",
+              "before_exact": null,
+              "cell_id": "r5:c10",
+              "column_header_path_exact": [
+                "Tổng cộng\ntriệu đồng"
+              ],
+              "column_ordinal": 10,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích quỹ thưởng Người lãnh đạo\nquản trị điều hành (*)"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích quỹ thưởng Người lãnh đạo\nquản trị điều hành (*)"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(133.580)",
+            "-",
+            "-",
+            "-",
+            "(133.580)"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            "(133.580)",
+            "(133.580)",
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r6:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn cổ phần\ntriệu đồng"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r6:c4",
+              "column_header_path_exact": [
+                "Quỹ dự\nphòng\ntài chính\ntriệu đồng"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(133.580)",
+              "cell_id": "r6:c7",
+              "column_header_path_exact": [
+                "Chênh lệch\ntỷ giá\nhối đoái\ntriệu đồng"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r6:c8",
+              "column_header_path_exact": [
+                "Lợi nhuận\nchưa\nphân phối\ntriệu đồng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r6:c9",
+              "column_header_path_exact": [
+                "Lợi ích cổ\nđông không\nkiểm soát\ntriệu đồng"
+              ],
+              "column_ordinal": 9,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(133.580)",
+              "before_exact": null,
+              "cell_id": "r6:c10",
+              "column_header_path_exact": [
+                "Tổng cộng\ntriệu đồng"
+              ],
+              "column_ordinal": 10,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Sử dụng các quỹ trong kỳ"
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_label_exact": "Sử dụng các quỹ trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "1.173.454",
+            "1.173.454"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            null,
+            "1.173.454",
+            "1.173.454"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r7:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn cổ phần\ntriệu đồng"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r7:c4",
+              "column_header_path_exact": [
+                "Quỹ dự\nphòng\ntài chính\ntriệu đồng"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r7:c6",
+              "column_header_path_exact": [
+                "Quỹ khác\ntriệu đồng"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r7:c8",
+              "column_header_path_exact": [
+                "Lợi nhuận\nchưa\nphân phối\ntriệu đồng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Tăng vốn tại công ty con bằng tiền"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Tăng vốn tại công ty con bằng tiền"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(88)",
+            "-",
+            "(6)",
+            "-",
+            "(22.064)",
+            "(8.117)",
+            "(30.275)"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            "(88)",
+            "(6)",
+            null,
+            "-",
+            "(22.064)",
+            "(8.117)",
+            "(30.275)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r8:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn cổ phần\ntriệu đồng"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(6)",
+              "cell_id": "r8:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ\nbổ sung vốn\nđiều lệ\ntriệu đồng"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(6)",
+              "before_exact": null,
+              "cell_id": "r8:c6",
+              "column_header_path_exact": [
+                "Quỹ khác\ntriệu đồng"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Biến động khác"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Biến động khác"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(121)",
+            "687",
+            "(365)",
+            "-",
+            "201"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            "(121)",
+            "687",
+            "(365)",
+            null,
+            "201"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r9:c2",
+              "column_header_path_exact": [
+                "Thặng dư\nvốn cổ phần\ntriệu đồng"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r9:c4",
+              "column_header_path_exact": [
+                "Quỹ dự\nphòng\ntài chính\ntriệu đồng"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r9:c9",
+              "column_header_path_exact": [
+                "Lợi ích cổ\nđông không\nkiểm soát\ntriệu đồng"
+              ],
+              "column_ordinal": 9,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Chênh lệch tỷ giá"
+          ],
+          "row_id": "r9",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chênh lệch tỷ giá"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:b1ac0c82c98b319581acc0e6bd3f1a60fe82cd7adca8b669cfefb11dcb103cf7",
+        "image_sha256": "22dc85fa0fe7e72dd40e878bb3a21289dececcfd9b6fbedc8c8e013742438f9f",
+        "image_size_bytes": 2267408,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:f9c7c04a64523ae89f53c9e0d6f2ebb1e2d44da580829007cb9ebdb852b9b5cb",
+        "physical_page": 71,
+        "pixel_height": 2481,
+        "pixel_width": 3510,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/MBB/2026/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2026.pdf",
+        "source_sha256": "60fd7aa5843a692a270c7a5fb56608d40cdfd5976592781912743ab6d13806fb",
+        "source_size_bytes": 8236325
+      },
+      "stored_canonical_json_sha256": "687dcc8f671a4839cf11c2d129f9850f3d73521246f4c5d493d27264110e3082",
+      "table_ref": {
+        "base_table_sha256": "d37f69b5960fe011dab4bdc64c4010ed706035e1b0b0b790d5c6a56bb288c6b7",
+        "effective_table_sha256": "ee1fd766188de8fe37ee5d0cddc3b645708beeb691ee23ff94f7dd4628556739",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          3410,
+          2381
+        ],
+        "table_crop_rgb_sha256": "e6b6d4761ded6cf4e626ebad9b3c0c34c64d8cdd7dbf9d81688983b6e2853f03"
+      }
+    },
+    {
+      "base_page_json_sha256": "03eaab9959ecac437dd2605c929113511d4606bd90f5520ad48d4e852f3b94c6",
+      "base_page_json_version_id": "gfpstorev1:json:2089084d36065ae2a0e21cb41ec2c9656f97f5162f172b6bfcb9b2e81dc1ec7b",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư vốn cổ phần"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ đầu tư phát triển"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự phòng tài chính"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ bổ sung vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Vốn đầu tư xây dựng cơ bản"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận sau thuế chưa phân phối"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "15a28f83fb82ad3ae84dec4f2b2cc2d2ce0649481fd576dc6389b0155f3492c3",
+      "extraction_run_id": "gfpstorev1:run:402c32f6c99d0229f7e802bf65ce07ff4a422df4a6aea4d3f111ff2984de056e",
+      "repair_id": "gjeqmsrv1:repair:69091b37aeb4edfd1ed2cbbd9eceb1977b1df4e9f53596382f4888ba7b4ca4b7",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "5.525.756",
+            "5.525.756"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "465.215",
+            "232.608",
+            "5.525.756",
+            "5.525.756",
+            "(697.823)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "465.215",
+              "cell_id": "r2:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "232.608",
+              "cell_id": "r2:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "5.525.756",
+              "cell_id": "r2:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "5.525.756",
+              "before_exact": "(697.823)",
+              "cell_id": "r2:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong năm"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong năm"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "465.215",
+            "232.608",
+            "-",
+            "(697.823)",
+            "-"
+          ],
+          "before_values_exact": [
+            "-",
+            "(32)",
+            "(32)",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(32)",
+              "cell_id": "r3:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(32)",
+              "cell_id": "r3:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "465.215",
+              "before_exact": null,
+              "cell_id": "r3:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "232.608",
+              "before_exact": null,
+              "cell_id": "r3:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(697.823)",
+              "before_exact": null,
+              "cell_id": "r3:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập quỹ"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập quỹ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(32)",
+            "-",
+            "-",
+            "-",
+            "(32)"
+          ],
+          "before_values_exact": [
+            "-",
+            "(6.000.000)",
+            "(6.000.000)",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(6.000.000)",
+              "cell_id": "r4:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(6.000.000)",
+              "cell_id": "r4:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(32)",
+              "before_exact": null,
+              "cell_id": "r4:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(32)",
+              "before_exact": null,
+              "cell_id": "r4:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Sử dụng quỹ"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Sử dụng quỹ"
+        },
+        {
+          "after_values_exact": [
+            "6.000.000",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(6.000.000)",
+            "-"
+          ],
+          "before_values_exact": [
+            "6.000.000",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(6.000.000)",
+              "before_exact": null,
+              "cell_id": "r5:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Chia cổ tức bằng cổ phiếu"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chia cổ tức bằng cổ phiếu"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "5.619.168",
+            "5.619.168"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "552.575",
+            "552.576",
+            "5.619.168",
+            "5.619.168",
+            "(1.105.151)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "552.575",
+              "cell_id": "r7:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "552.576",
+              "cell_id": "r7:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "5.619.168",
+              "cell_id": "r7:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "5.619.168",
+              "before_exact": "(1.105.151)",
+              "cell_id": "r7:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong năm"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong năm"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "552.575",
+            "552.576",
+            "-",
+            "(1.105.151)",
+            "-"
+          ],
+          "before_values_exact": [
+            "-",
+            "(19)",
+            "(19)",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(19)",
+              "cell_id": "r8:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(19)",
+              "cell_id": "r8:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "552.575",
+              "before_exact": null,
+              "cell_id": "r8:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "552.576",
+              "before_exact": null,
+              "cell_id": "r8:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r8:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(1.105.151)",
+              "before_exact": null,
+              "cell_id": "r8:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r8:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập quỹ"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập quỹ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(19)",
+            "-",
+            "-",
+            "-",
+            "(19)"
+          ],
+          "before_values_exact": [
+            "-",
+            "(5.200.000)",
+            "(5.200.000)",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(5.200.000)",
+              "cell_id": "r9:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(5.200.000)",
+              "cell_id": "r9:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(19)",
+              "before_exact": null,
+              "cell_id": "r9:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r9:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r9:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r9:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(19)",
+              "before_exact": null,
+              "cell_id": "r9:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Sử dụng quỹ"
+          ],
+          "row_id": "r9",
+          "row_kind": "ITEM",
+          "row_label_exact": "Sử dụng quỹ"
+        },
+        {
+          "after_values_exact": [
+            "5.200.000",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(5.200.000)",
+            "-"
+          ],
+          "before_values_exact": [
+            "5.200.000",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(5.200.000)",
+              "before_exact": null,
+              "cell_id": "r10:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Chia cổ tức bằng cổ phiếu"
+          ],
+          "row_id": "r10",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chia cổ tức bằng cổ phiếu"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:5768c8c334eb8857ba18f1230567b05b6eeb891d570a2d3d7ebd1c4c9ab22dfd",
+        "image_sha256": "1b7198611e3a54b076cb12bd3448d21d81ccd8d7d9a0368e2d4c6f50b95d497b",
+        "image_size_bytes": 408860,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:8674937a8407da8e03de9c94b14d833c2dd7fb8f3e1c1daa32fac3e5139c5fbe",
+        "physical_page": 49,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+        "source_sha256": "0fef0b3df6d3453b4532fd56de24f428f3ced958cebc88b1befd43924b73ed42",
+        "source_size_bytes": 2399899
+      },
+      "stored_canonical_json_sha256": "7beb221f9d652e3fb339c96a7db4f02012e5f7add334657e76248c90d596d8bc",
+      "table_ref": {
+        "base_table_sha256": "6943778a37fbf747e654ed5ae5050e86ce75b012f89dafd5fc5a1f19565c7d1b",
+        "effective_table_sha256": "38ef69028725d7139e920780e225542ff492799ca9cb887475d90aaf8ffe3057",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          2381,
+          3409
+        ],
+        "table_crop_rgb_sha256": "2d1affa7f0637fce5a16dedaecabbffe1dca3e19d25dc3ea07469e035e26be5e"
+      }
+    },
+    {
+      "base_page_json_sha256": "a19bc8364925ac000574987b1628dd1a69ca30f04c834cc371387f816a2639b4",
+      "base_page_json_version_id": "gfpstorev1:json:7ed465a2a608ac82411731aa23305e3d3570664c0b8847484e75e7f2c4724a3d",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư vốn cổ phần"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ đầu tư phát triển"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự phòng tài chính"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ bổ sung vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Vốn đầu tư xây dựng cơ bản"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận sau thuế chưa phân phối"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "6ee4c811136411b0c325135a6476476e4ec9ad039d9a80f5e7d2c7e4053c3ee3",
+      "extraction_run_id": "gfpstorev1:run:3b312d6e76f308030bb37389ee37b8849b146b540432a4ed04b081c18e459fd5",
+      "repair_id": "gjeqmsrv1:repair:e1a9cbea4c3cf825ce319b16215246d08a6cae217b3582edd2557ab337e34262",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "5.519.377",
+            "5.519.377"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "5.519.377",
+            "5.519.377",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "5.519.377",
+              "cell_id": "r2:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "5.519.377",
+              "before_exact": null,
+              "cell_id": "r2:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong năm"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong năm"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "465.399",
+            "232.700",
+            "-",
+            "(698.099)",
+            "-"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "465.399",
+            "232.700",
+            "(698.099)",
+            "(698.099)",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(698.099)",
+              "cell_id": "r3:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập quỹ"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập quỹ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(32)",
+            "-",
+            "-",
+            "-",
+            "(32)"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(32)",
+            "(32)",
+            "(32)",
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(32)",
+              "cell_id": "r4:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(32)",
+              "cell_id": "r4:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(32)",
+              "before_exact": null,
+              "cell_id": "r4:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Sử dụng quỹ"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Sử dụng quỹ"
+        },
+        {
+          "after_values_exact": [
+            "6.000.000",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(6.000.000)",
+            "-"
+          ],
+          "before_values_exact": [
+            "6.000.000",
+            "(6.000.000)",
+            "(6.000.000)",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(6.000.000)",
+              "cell_id": "r5:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(6.000.000)",
+              "cell_id": "r5:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(6.000.000)",
+              "before_exact": null,
+              "cell_id": "r5:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Chia cổ tức bằng cổ phiếu"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chia cổ tức bằng cổ phiếu"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "5.628.520",
+            "5.628.520"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "5.628.520",
+            "5.628.520",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "5.628.520",
+              "cell_id": "r7:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "5.628.520",
+              "before_exact": null,
+              "cell_id": "r7:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong năm"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong năm"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "552.936",
+            "552.936",
+            "-",
+            "(1.105.872)",
+            "-"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "552.936",
+            "552.936",
+            "(1.105.872)",
+            "(1.105.872)",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(1.105.872)",
+              "cell_id": "r8:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r8:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập quỹ"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập quỹ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(19)",
+            "-",
+            "-",
+            "-",
+            "(19)"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(19)",
+            "(19)",
+            "(19)",
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(19)",
+              "cell_id": "r9:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(19)",
+              "cell_id": "r9:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r9:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(19)",
+              "before_exact": null,
+              "cell_id": "r9:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Sử dụng quỹ"
+          ],
+          "row_id": "r9",
+          "row_kind": "ITEM",
+          "row_label_exact": "Sử dụng quỹ"
+        },
+        {
+          "after_values_exact": [
+            "5.200.000",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(5.200.000)",
+            "-"
+          ],
+          "before_values_exact": [
+            "5.200.000",
+            "(5.200.000)",
+            "(5.200.000)",
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "(5.200.000)",
+              "cell_id": "r10:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(5.200.000)",
+              "cell_id": "r10:c3",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c5",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c6",
+              "column_header_path_exact": [
+                "Vốn đầu tư xây dựng cơ bản"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(5.200.000)",
+              "before_exact": null,
+              "cell_id": "r10:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r10:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Chia cổ tức bằng cổ phiếu"
+          ],
+          "row_id": "r10",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chia cổ tức bằng cổ phiếu"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:6f6d0bfa5ffe7101eebb57f6a9cb6e0806b283d3824d9c5177e71da1f725d0b9",
+        "image_sha256": "1714f335d3c32ff283d2f0892c1832701ebc9272e9039a6bccf7127205fb77c2",
+        "image_size_bytes": 427845,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:7ddc53a75d789713ccea4a8ad0ce80fe902cdb2c5919ce38389f00ce8d1ef121",
+        "physical_page": 40,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/MSB/2025/MSB 20260130 - MSB - Bao cao tai chinh Hop nhat Quy 4 2025.pdf",
+        "source_sha256": "7a265b5b15d4d9bc06972c2440d2718827a730beb0431a9282f265eacfcd6d70",
+        "source_size_bytes": 2346614
+      },
+      "stored_canonical_json_sha256": "30581dd625515d5cac03d872503262bfb209a89c16c32e48b768427f122a8386",
+      "table_ref": {
+        "base_table_sha256": "255f3d5a684e67fc396937ca40eb7dbc6da971b4f2dc7a9ad3dd7939af8abf92",
+        "effective_table_sha256": "aac0e346fd7aa0db46b0a447389edc150c6946480f081011d4ed5b4546412ac2",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          2381,
+          3409
+        ],
+        "table_crop_rgb_sha256": "530574d1a00cc3f99802b5d0dc82e47e45d402b07180e35d8077030ae1433afd"
+      }
+    },
+    {
+      "base_page_json_sha256": "bdfbaad0fb91c4d63e4bf407d1609004f743e1e25541c0815721e7a0489542d3",
+      "base_page_json_version_id": "gfpstorev1:json:6957eab6737042187ca5c06901a237d203816c1fc34320068f0fd3200519d94a",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn góp/Vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư vốn cổ phần"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Chênh lệch tỷ giá hối đoái"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Cổ phiếu quỹ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ Đầu tư phát triển"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ Dự phòng tài chính"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ Dự trữ bổ sung vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ khác"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận chưa phân phối"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "ff67bb8008a845dd402aef88fe65d149efa0fadf3879bf72b7d6831e9c2dd284",
+      "extraction_run_id": "gfpstorev1:run:aa16d785d0f352b423ffddfbabf5130249934772efabeeb76c417809672d795c",
+      "repair_id": "gjeqmsrv1:repair:1c280725c80a3e82b2c461366aea4af7a5e086e4ac79f4eb737f6664fd06bc73",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "118.495",
+            "7.287.560",
+            "7.406.055"
+          ],
+          "before_values_exact": [
+            "-Client-side-dash-replacement-error-",
+            "null",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "118.495",
+            "7.287.560",
+            "7.406.055"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "-Client-side-dash-replacement-error-",
+              "cell_id": "r2:c1",
+              "column_header_path_exact": [
+                "Vốn góp/Vốn điều lệ"
+              ],
+              "column_ordinal": 1,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "null",
+              "cell_id": "r2:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c3",
+              "column_header_path_exact": [
+                "Chênh lệch tỷ giá hối đoái"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c4",
+              "column_header_path_exact": [
+                "Cổ phiếu quỹ"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c5",
+              "column_header_path_exact": [
+                "Quỹ Đầu tư phát triển"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c6",
+              "column_header_path_exact": [
+                "Quỹ Dự phòng tài chính"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c7",
+              "column_header_path_exact": [
+                "Quỹ Dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Tăng trong kỳ"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Tăng trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "118.495",
+            "7.287.560",
+            "7.406.055"
+          ],
+          "before_values_exact": [
+            "-Client-side-dash-replacement-error-",
+            "null",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "118.495",
+            "7.287.560",
+            "7.406.055"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "-Client-side-dash-replacement-error-",
+              "cell_id": "r3:c1",
+              "column_header_path_exact": [
+                "Vốn góp/Vốn điều lệ"
+              ],
+              "column_ordinal": 1,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "null",
+              "cell_id": "r3:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c3",
+              "column_header_path_exact": [
+                "Chênh lệch tỷ giá hối đoái"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c4",
+              "column_header_path_exact": [
+                "Cổ phiếu quỹ"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c5",
+              "column_header_path_exact": [
+                "Quỹ Đầu tư phát triển"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c6",
+              "column_header_path_exact": [
+                "Quỹ Dự phòng tài chính"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c7",
+              "column_header_path_exact": [
+                "Quỹ Dự trữ bổ sung vốn điều lệ"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Tăng trong kỳ"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Tăng trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "(16.625)",
+            "-",
+            "(959)",
+            "-",
+            "(1.024)",
+            "(28.393)",
+            "(335.576)",
+            "(382.576)"
+          ],
+          "before_values_exact": [
+            "-Client-side-dash-replacement-error-",
+            "null",
+            "(16.625)",
+            null,
+            "(959)",
+            null,
+            "(1.024)",
+            "(28.393)",
+            "(335.576)",
+            "(382.576)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "-Client-side-dash-replacement-error-",
+              "cell_id": "r4:c1",
+              "column_header_path_exact": [
+                "Vốn góp/Vốn điều lệ"
+              ],
+              "column_ordinal": 1,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "null",
+              "cell_id": "r4:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c4",
+              "column_header_path_exact": [
+                "Cổ phiếu quỹ"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c6",
+              "column_header_path_exact": [
+                "Quỹ Dự phòng tài chính"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Giảm trong kỳ"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Giảm trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "(16.625)",
+            "-",
+            "(959)",
+            "-",
+            "(1.024)",
+            "(28.393)",
+            "(335.576)",
+            "(382.576)"
+          ],
+          "before_values_exact": [
+            "-Client-side-dash-replacement-error-",
+            "null",
+            "(16.625)",
+            null,
+            "(959)",
+            null,
+            "(1.024)",
+            "(28.393)",
+            "(335.576)",
+            "(382.576)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "-Client-side-dash-replacement-error-",
+              "cell_id": "r5:c1",
+              "column_header_path_exact": [
+                "Vốn góp/Vốn điều lệ"
+              ],
+              "column_ordinal": 1,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "null",
+              "cell_id": "r5:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c4",
+              "column_header_path_exact": [
+                "Cổ phiếu quỹ"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c6",
+              "column_header_path_exact": [
+                "Quỹ Dự phòng tài chính"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Giảm khác"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Giảm khác"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:6a2feb8242684dc39c7f4c15a173c5ec316a822acc1800ae304b1ea3a1673be3",
+        "image_sha256": "9ae235457d16d3762bad9082b47e4e33a5a11fd899f0ef8be93268b9b897c28d",
+        "image_size_bytes": 492933,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:592e2cf14b53143757654241496f548eb8de32cf8f5d84f3438180e790b94ceb",
+        "physical_page": 35,
+        "pixel_height": 2486,
+        "pixel_width": 3516,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SHB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "source_sha256": "3a66122194e4dd2e0ca18d584beeacb81279cf71e276eface59d17e72813dcfd",
+        "source_size_bytes": 6465872
+      },
+      "stored_canonical_json_sha256": "bcd2bdeb5d18b42fa6f4bfe5d3e69eeeaa28aa0adfe1d193562ea1f75c912c08",
+      "table_ref": {
+        "base_table_sha256": "f893875e7afc6af8592d9061e5f15b6e78e05695bdc4f4d431424b7c71b3cf32",
+        "effective_table_sha256": "26ef596e126f67a0b0ccccb5fc82827ed5a54a28f007cada78bd0e88d5991af7",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          3416,
+          2386
+        ],
+        "table_crop_rgb_sha256": "74568089b338a3d23288b83ca5e44aabbde4081f6dba9afe0fd502c2a5a37d14"
+      }
+    },
+    {
+      "base_page_json_sha256": "e0e5da486cb327fac6df263d22c1c37af176dd1472cbce907838e4933f867e40",
+      "base_page_json_version_id": "gfpstorev1:json:d80d1bdf48b0c0fb3893869e4ddd7e612813ab4773016564324df3325c47bdbf",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn điều lệ",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự phòng tài chính",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ bổ sung vốn điều lệ",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận chưa phân phối",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi ích cổ đông không kiểm soát",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "701d11ac2a1cf09662e9070e7b16cf35e4f4036ec56a2d453f452a0ecf25226f",
+      "extraction_run_id": "gfpstorev1:run:b894dc4f67f4319bacd4261194ecd56e8f91e0f379d7282c79cfd7eecf6a7f4f",
+      "repair_id": "gjeqmsrv1:repair:0bc7334d19aa16520811746880aa7dfb1345f143d162971635cbb41f4dbcc4f5",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "7.402.000",
+            "1",
+            "7.402.001"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "7.402.000",
+            "1",
+            "7.402.001",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "7.402.000",
+              "cell_id": "r2:c3",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ",
+                "Triệu VND"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "7.402.000",
+              "before_exact": "1",
+              "cell_id": "r2:c4",
+              "column_header_path_exact": [
+                "Lợi nhuận chưa phân phối",
+                "Triệu VND"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "1",
+              "before_exact": "7.402.001",
+              "cell_id": "r2:c5",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát",
+                "Triệu VND"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "7.402.001",
+              "before_exact": null,
+              "cell_id": "r2:c6",
+              "column_header_path_exact": [
+                "Tổng cộng",
+                "Triệu VND"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong năm"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong năm"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "607.090",
+            "607.090",
+            "(1.214.180)",
+            "-",
+            "-"
+          ],
+          "before_values_exact": [
+            "-",
+            "607.090",
+            "607.090",
+            "(1.214.180)",
+            null,
+            "--"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c5",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát",
+                "Triệu VND"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "--",
+              "cell_id": "r3:c6",
+              "column_header_path_exact": [
+                "Tổng cộng",
+                "Triệu VND"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập các quỹ trong năm (i)"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập các quỹ trong năm (i)"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(5.000)",
+            "-",
+            "(5.000)"
+          ],
+          "before_values_exact": [
+            "-",
+            "--",
+            "(5.000)",
+            null,
+            "-(5.000)",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "--",
+              "cell_id": "r4:c2",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính",
+                "Triệu VND"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(5.000)",
+              "cell_id": "r4:c3",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ",
+                "Triệu VND"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(5.000)",
+              "before_exact": null,
+              "cell_id": "r4:c4",
+              "column_header_path_exact": [
+                "Lợi nhuận chưa phân phối",
+                "Triệu VND"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "-(5.000)",
+              "cell_id": "r4:c5",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát",
+                "Triệu VND"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(5.000)",
+              "before_exact": null,
+              "cell_id": "r4:c6",
+              "column_header_path_exact": [
+                "Tổng cộng",
+                "Triệu VND"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập quỹ khen thưởng, phúc lợi (i)"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập quỹ khen thưởng, phúc lợi (i)"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "3.742.651",
+            "3.742.651"
+          ],
+          "before_values_exact": [
+            "-",
+            "--",
+            "3.742.651",
+            "3.742.651",
+            null,
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "--",
+              "cell_id": "r5:c2",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính",
+                "Triệu VND"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "3.742.651",
+              "cell_id": "r5:c3",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ",
+                "Triệu VND"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "3.742.651",
+              "cell_id": "r5:c4",
+              "column_header_path_exact": [
+                "Lợi nhuận chưa phân phối",
+                "Triệu VND"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "3.742.651",
+              "before_exact": null,
+              "cell_id": "r5:c5",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát",
+                "Triệu VND"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "3.742.651",
+              "before_exact": null,
+              "cell_id": "r5:c6",
+              "column_header_path_exact": [
+                "Tổng cộng",
+                "Triệu VND"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Ảnh hưởng do mua công ty con trong năm"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Ảnh hưởng do mua công ty con trong năm"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(43.404)",
+            "-",
+            "(43.404)"
+          ],
+          "before_values_exact": [
+            "-",
+            "--",
+            "(43.404)",
+            null,
+            "-(43.404)",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "--",
+              "cell_id": "r6:c2",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính",
+                "Triệu VND"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(43.404)",
+              "cell_id": "r6:c3",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ",
+                "Triệu VND"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(43.404)",
+              "before_exact": null,
+              "cell_id": "r6:c4",
+              "column_header_path_exact": [
+                "Lợi nhuận chưa phân phối",
+                "Triệu VND"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "-(43.404)",
+              "cell_id": "r6:c5",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát",
+                "Triệu VND"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(43.404)",
+              "before_exact": null,
+              "cell_id": "r6:c6",
+              "column_header_path_exact": [
+                "Tổng cộng",
+                "Triệu VND"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Nộp bổ sung thuế giá trị gia tăng (ii)"
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_label_exact": "Nộp bổ sung thuế giá trị gia tăng (ii)"
+        },
+        {
+          "after_values_exact": [
+            "1.320.907",
+            "-",
+            "-",
+            "(1.320.907)",
+            "-",
+            "-"
+          ],
+          "before_values_exact": [
+            "1.320.907",
+            "--",
+            "(1.320.907)",
+            null,
+            "--",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "--",
+              "cell_id": "r7:c2",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính",
+                "Triệu VND"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(1.320.907)",
+              "cell_id": "r7:c3",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ",
+                "Triệu VND"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(1.320.907)",
+              "before_exact": null,
+              "cell_id": "r7:c4",
+              "column_header_path_exact": [
+                "Lợi nhuận chưa phân phối",
+                "Triệu VND"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "--",
+              "cell_id": "r7:c5",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát",
+                "Triệu VND"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r7:c6",
+              "column_header_path_exact": [
+                "Tổng cộng",
+                "Triệu VND"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Phát hành cổ phiếu để trả cổ tức (iii)"
+          ],
+          "row_id": "r7",
+          "row_kind": "ITEM",
+          "row_label_exact": "Phát hành cổ phiếu để trả cổ tức (iii)"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(2.641.956)",
+            "-",
+            "(2.641.956)"
+          ],
+          "before_values_exact": [
+            "-",
+            "--",
+            "(2.641.956)",
+            null,
+            "-(2.641.956)",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "--",
+              "cell_id": "r8:c2",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính",
+                "Triệu VND"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(2.641.956)",
+              "cell_id": "r8:c3",
+              "column_header_path_exact": [
+                "Quỹ dự trữ bổ sung vốn điều lệ",
+                "Triệu VND"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(2.641.956)",
+              "before_exact": null,
+              "cell_id": "r8:c4",
+              "column_header_path_exact": [
+                "Lợi nhuận chưa phân phối",
+                "Triệu VND"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "-(2.641.956)",
+              "cell_id": "r8:c5",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát",
+                "Triệu VND"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "(2.641.956)",
+              "before_exact": null,
+              "cell_id": "r8:c6",
+              "column_header_path_exact": [
+                "Tổng cộng",
+                "Triệu VND"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trả cổ tức bằng tiền (Thuyết minh 27)"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trả cổ tức bằng tiền (Thuyết minh 27)"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:c2a6d57dae2280f21ec24b3276814e69e0e71768e5ef7bfbe590932432b276ba",
+        "image_sha256": "7bc5582bfc33772c20990ac3c6c0e7755bf190048f8e374a55b2bb91369c2cb4",
+        "image_size_bytes": 563381,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:a08a96b90182599bddc7de9e41a6f60d35d09134c4005adeb957dce08a1d9020",
+        "physical_page": 64,
+        "pixel_height": 2481,
+        "pixel_width": 3510,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "source_sha256": "0659a1f3944534200d0f1fd83f47b24c97a00d13d748cefbad9ec15921f59a6f",
+        "source_size_bytes": 9382896
+      },
+      "stored_canonical_json_sha256": "973f24ef87719644b5bc0b36ca7122b43e7fdbb3194d9161d04aa11e34739a79",
+      "table_ref": {
+        "base_table_sha256": "b20ce4d6e12797c68a613d3622da408330d7de2af079a7edae8cb361ccbe11c8",
+        "effective_table_sha256": "4fe2ad7e80770aff74bf6cb15efe5017133c69fa6694586379cc22fa7ea48e9f",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          3410,
+          2381
+        ],
+        "table_crop_rgb_sha256": "e6f2f73473d7885f9ed4b8b04ee34f214495c2cad34586a065da14bca96fabac"
+      }
+    },
+    {
+      "base_page_json_sha256": "80688a4bd4dd884f92fff35d25d055d20ba77f1caa1165f30afecba74863e972",
+      "base_page_json_version_id": "gfpstorev1:json:e9d4d2ca7df4dd18ad3c77dbbc5c0af5fa69332936667a5aa5e27ea300098d01",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "A"
+          ],
+          "value_kind": "TEXT"
+        },
+        {
+          "header_path_exact": [
+            "Số dư\n31/12/2024"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tăng trong\n12 tháng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Giảm trong\n12 tháng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Số dư\n31/12/2025"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "aa86cd7648f930c7e306a4a8a0bc00f8904a737d2f4e0fb029c5fee9882dcc59",
+      "extraction_run_id": "gfpstorev1:run:bf4c3a2b8d04f1e92035c50c79f04c0c21bde52a08b33ffd462de71deab8e79d",
+      "repair_id": "gjeqmsrv1:repair:89699c9bdb0e5cc011d9cf086d2a0797a2bdccba2e3d8831ac298b7cc1f979e7",
+      "repair_reason": "VISIBLE_PDF_MONEY_TOKEN_MISTRANSCRIBED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "9",
+            "160,197",
+            "216,502",
+            "159,917",
+            "216,783"
+          ],
+          "before_values_exact": [
+            "9",
+            "160,197",
+            "216,`502",
+            "159,917",
+            "216,783"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "216,502",
+              "before_exact": "216,`502",
+              "cell_id": "r9:c3",
+              "column_header_path_exact": [
+                "Tăng trong\n12 tháng"
+              ],
+              "column_ordinal": 3,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Quỹ dự trữ bổ sung vốn\nđiều lệ"
+          ],
+          "row_id": "r9",
+          "row_kind": "ITEM",
+          "row_label_exact": "Quỹ dự trữ bổ sung vốn\nđiều lệ"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:bec4bc75051fc79aca79dd72546826b5812b1f04ff7fd265ba83d5ca3c3f7ba4",
+        "image_sha256": "801e21fd856bec5fb1d94891413d0d6147b430e57f47a04f848253879bc9a1ee",
+        "image_size_bytes": 1172723,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:4d103614fb39d32e733845375d24435bbd5389bbf5acdca3d0d8c4363ed1a900",
+        "physical_page": 39,
+        "pixel_height": 3546,
+        "pixel_width": 2484,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+        "source_sha256": "8fd2017e2267045fd995479d02a7d3229908dd8e771637e0e26e7327d1991a2a",
+        "source_size_bytes": 11578075
+      },
+      "stored_canonical_json_sha256": "d1222b5186d60dc8d7553230f5eea61a99e8d0f90ca1fc965ba33e350076cc73",
+      "table_ref": {
+        "base_table_sha256": "175e96dd6e4df1e5ac426ae38f47f8b64a277c10822d75ed04cd0accc44b6482",
+        "effective_table_sha256": "a5af21ae4555228dda2b94ab61d2b1be93a8e9658d067d0531531ad883432a9b",
+        "section_id": "s3",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          2384,
+          3446
+        ],
+        "table_crop_rgb_sha256": "e26447d899cb2741e697ef9db62ba5ae5bcbb3cd06949c7b556a400209cd6fb9"
+      }
+    },
+    {
+      "base_page_json_sha256": "c26c8198ec53426b082d054e1c0266449042b9ae0120a3ca96d631aa31883bd1",
+      "base_page_json_version_id": "gfpstorev1:json:fc2b9b4ad31c39900d0b0e8627df6a676315b99c8cac32d5630651f961b4f44b",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn điều lệ (*)"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư vốn cổ phần"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Vốn khác"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ dự trữ bổ sung vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ dự phòng tài chính"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ đầu tư phát triển"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Chênh lệch tỷ giá hối đoái"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận sau thuế chưa phân phối"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi ích cổ đông không kiểm soát"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "b318f77214b1bba638561b55b458e0a03beda7e3420716a98706710d6d524c92",
+      "extraction_run_id": "gfpstorev1:run:0476bfe6dc5b7e38353a7713f77435b5f69e229608b8859f20e898768d87fa26",
+      "repair_id": "gjeqmsrv1:repair:c08e8bcfc91f6a7efb3ec07283023585497feb660c9ef4b6cec78b15194862b8",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "8.696.229",
+            "5.497",
+            "8.701.726"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "8.696.229",
+            "5.497",
+            "8.701.726",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "8.696.229",
+              "cell_id": "r2:c8",
+              "column_header_path_exact": [
+                "Chênh lệch tỷ giá hối đoái"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "8.696.229",
+              "before_exact": "5.497",
+              "cell_id": "r2:c9",
+              "column_header_path_exact": [
+                "Lợi nhuận sau thuế chưa phân phối"
+              ],
+              "column_ordinal": 9,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "5.497",
+              "before_exact": "8.701.726",
+              "cell_id": "r2:c10",
+              "column_header_path_exact": [
+                "Lợi ích cổ đông không kiểm soát"
+              ],
+              "column_ordinal": 10,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "8.701.726",
+              "before_exact": null,
+              "cell_id": "r2:c11",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 11,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong kỳ"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong kỳ"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:46c718f48a5ab471d1f96a97001296c7ecbfaa6f1bc80e9ec7fe419c945fce81",
+        "image_sha256": "71b26c3cc68614b3db2b17244bf910fec798dc73212e81c64c7dbf7d1baebdc4",
+        "image_size_bytes": 2704062,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:04431c578fe06493fce1ba995379681ef12c7b45b19576b33fa9b8bdb54c1923",
+        "physical_page": 34,
+        "pixel_height": 2442,
+        "pixel_width": 3498,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VCB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "f25bf036ad962541961817d80b49fba2119881d75cbf7abd5c98854a8fad5321",
+        "source_size_bytes": 14951723
+      },
+      "stored_canonical_json_sha256": "1300ec153a100309d96f506e881bb7abd4b46dda4076db7443ed9526c45ffa96",
+      "table_ref": {
+        "base_table_sha256": "6ef071e3e22d1f0e683efb63dcc881f8dd592a96118af5c2da6924ae06b5d112",
+        "effective_table_sha256": "3637aad6646f9c1404669d236007afb872b64914d378509189f89cd4e8857062",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          3398,
+          2342
+        ],
+        "table_crop_rgb_sha256": "b7cb571251c7140e6a83d5bba65d7239bb4557a3126e875dc36c682f810a324b"
+      }
+    },
+    {
+      "base_page_json_sha256": "072b032fa022b700dde625cc7fccbe93fb165c17b40c18934dca0517bee12648",
+      "base_page_json_version_id": "gfpstorev1:json:676e8137c5cfd99c03b90241a987b24eaf67fdf05ea063410c529a1d66fba7f9",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn\nđiều lệ (*)"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư\nvốn cổ\nphần"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Vốn khác"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ dự trữ\nbổ sung\nvốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ dự\nphòng tài\nchính"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ đầu\ntư phát\ntriển"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Chênh\nlệch tỷ giá\nhối đoái"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận\nsau thuế\nchưa phân\nphối"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi ích cổ\nđông không\nkiểm soát"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "f605d30d367dce0656a9fa6c10189e98fc5e79d73d439d0efc36aeb1e06c7eab",
+      "extraction_run_id": "gfpstorev1:run:01ebd7bc1e679d966e047506c50db2afd02ab96bb058052003060e25af539d36",
+      "repair_id": "gjeqmsrv1:repair:9e0c7d4c815d5d05c515a7019b398e03ee1a9ae04547f715def4da8c1037080d",
+      "repair_reason": "VISIBLE_PDF_TABLE_UNIT_MISSING_IN_SELECTED_JSON",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:7db5523fb5a67942f8e40840f560bc7e891e573d0551b31829136ef7bd4f2553",
+        "image_sha256": "7778bfd9096fcad12685f655c9a96c15927a3216c35265b2512b461dd6e2b5ce",
+        "image_size_bytes": 2514847,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:77c1c37a3bd1749c418362445249279fddbf8b2817892d847b105e869aa884e0",
+        "physical_page": 34,
+        "pixel_height": 2472,
+        "pixel_width": 3504,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VCB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+        "source_sha256": "789948b37004bdfcb11e56c0efa153bc745e4ec2b79b4336d2a8413ac87f034a",
+        "source_size_bytes": 15489752
+      },
+      "stored_canonical_json_sha256": "35b08cb71b12f89d3c72767ae7d0e91fb0684f3218eeeb2e12a2d61142b5d807",
+      "table_ref": {
+        "base_table_sha256": "951dcd319a7fa05ee9a5b0002139e2b2786dd9b3b5f0a3596b17a005acba55b2",
+        "effective_table_sha256": "48a567cad0612db21451d0f03b8e42f1c35d4fc9f908d58b52af36ea9a3a00e5",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": {
+        "after_exact": "Triệu VND",
+        "before_exact": null,
+        "source_surface_axis_exact": [
+          {
+            "column_id": "c1",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c2",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c3",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c4",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c5",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c6",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c7",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c8",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c9",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c10",
+            "source_exact": "Triệu VND"
+          },
+          {
+            "column_id": "c11",
+            "source_exact": "Triệu VND"
+          }
+        ],
+        "visual_state": "PRINTED_UNIT"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          3404,
+          2372
+        ],
+        "table_crop_rgb_sha256": "59226116f0f8c798e1c0b2eb353921beac74167dc1e339e544ee6a4bc667d2bb"
+      }
+    },
+    {
+      "base_page_json_sha256": "9b065dd1fcdfa41f49c3932e12d42cec3c12afda83a33c211c7b8d532c50341b",
+      "base_page_json_version_id": "gfpstorev1:json:814e566252522b95dd29ca31c9a7685de76b83a71800e1d2c05fb159304f9d21",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn\nđiều lệ",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư\nvốn cổ\nphần",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Vốn khác",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ dự trữ\nbổ sung\nvốn điều lệ",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ dự\nphòng tài\nchính",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Quỹ đầu\ntư phát\ntriển",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ",
+            "Tổng cộng",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Chênh\nlệch tỷ giá\nhối đoái",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận\nsau thuế\nchưa phân\nphối",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi ích cổ\nđông không\nkiểm soát",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng",
+            "Triệu VND"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "6dd55b3557e172daa1425c9b7aaa714c555c79a08c97e3dcf3917d592da82eb2",
+      "extraction_run_id": "gfpstorev1:run:c033d4a1e0f19064ddee3ddae2663a85a300a22e28fd2eda3ca701a4d8a4c86e",
+      "repair_id": "gjeqmsrv1:repair:1acac97fa81d961c980389f3a60f07909a5186efd195655c0e24a33d1a0c8e53",
+      "repair_reason": "VISIBLE_PDF_ROW_CELL_AXIS_MISALIGNED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "26.548.613",
+            "16.037",
+            "26.564.650"
+          ],
+          "before_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "26.548.613",
+            "16.037",
+            "26.564.650",
+            null
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": "26.548.613",
+              "cell_id": "r2:c8",
+              "column_header_path_exact": [
+                "Chênh\nlệch tỷ giá\nhối đoái",
+                "Triệu VND"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "26.548.613",
+              "before_exact": "16.037",
+              "cell_id": "r2:c9",
+              "column_header_path_exact": [
+                "Lợi nhuận\nsau thuế\nchưa phân\nphối",
+                "Triệu VND"
+              ],
+              "column_ordinal": 9,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "16.037",
+              "before_exact": "26.564.650",
+              "cell_id": "r2:c10",
+              "column_header_path_exact": [
+                "Lợi ích cổ\nđông không\nkiểm soát",
+                "Triệu VND"
+              ],
+              "column_ordinal": 10,
+              "visual_state": "PRINTED_MONEY"
+            },
+            {
+              "after_exact": "26.564.650",
+              "before_exact": null,
+              "cell_id": "r2:c11",
+              "column_header_path_exact": [
+                "Tổng cộng",
+                "Triệu VND"
+              ],
+              "column_ordinal": 11,
+              "visual_state": "PRINTED_MONEY"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong kỳ"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong kỳ"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:d126e3d80d9a193d1bfa296056812fadfe0c792ae37202aa6123e5490510d010",
+        "image_sha256": "00dd3643de44ae43d819518cb8899b5ceb73c5e106b8e18e0fb4cb06e2c038ac",
+        "image_size_bytes": 2415396,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:f7a3a39ceb5a3156abcd85cf38fe57d916b0ceb96342b92443765939f15301c0",
+        "physical_page": 35,
+        "pixel_height": 2460,
+        "pixel_width": 3504,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VCB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+        "source_sha256": "3afd2b964267c9ec5882fbaec57dabbef2707b40cace4dc0ecdab5b0f52791e7",
+        "source_size_bytes": 15527017
+      },
+      "stored_canonical_json_sha256": "d28a2137acae5477afccbfa197c5b517a395df59ace0ae2c57707045ef42e498",
+      "table_ref": {
+        "base_table_sha256": "2bcb3cd473d61d91bc08bb53ce20b80de8a0e8e3705f2a9f637cbafbe75b9019",
+        "effective_table_sha256": "6506a90e638e3dcdfc161731a34558695ca5fe4c7f519a18a37d6e86b747dfed",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          3404,
+          2360
+        ],
+        "table_crop_rgb_sha256": "d171b4ad75f836a15518aa83e09bf12f18d98ceb71f40e9a0f56cd27f236329e"
+      }
+    },
+    {
+      "base_page_json_sha256": "616d838844188e667687506f0a2cb9914d403c7e48eb10de3ab84f270cf26de3",
+      "base_page_json_version_id": "gfpstorev1:json:f5c8bfc3826ab9753572344ed72aec38060a90d61d01d678e9492e92dd1d633a",
+      "column_axis_exact": [
+        {
+          "header_path_exact": [
+            "Vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Thặng dư vốn cổ phần"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự trữ bổ sung vốn điều lệ"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ dự phòng tài chính"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Quỹ đầu tư phát triển"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Chênh lệch tỷ giá"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Lợi nhuận chưa phân phối"
+          ],
+          "value_kind": "MONEY"
+        },
+        {
+          "header_path_exact": [
+            "Tổng cộng"
+          ],
+          "value_kind": "MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "f24b566d919404dba00e508f271594ce30900b104e4a8ef8acc00bd4c690aca3",
+      "extraction_run_id": "gfpstorev1:run:9151e13ce8832d45443a175ebbdc68cc4c78fdc628c0dbf5e87308af3c5fc9ef",
+      "repair_id": "gjeqmsrv1:repair:9b976fa66336ebb5ee2af571f32b72d142854c89e4d6a990e9221b1e26bbfebe",
+      "repair_reason": "VISIBLE_PDF_MONEY_TOKEN_MISTRANSCRIBED_IN_SELECTED_JSON",
+      "row_repairs": [
+        {
+          "after_values_exact": [
+            "29.791.278",
+            "1.767",
+            "438.149",
+            "3.884.639",
+            "10.556",
+            "-",
+            "7.735.420",
+            "41.861.809"
+          ],
+          "before_values_exact": [
+            "29.791.278",
+            "1.767",
+            "438.149",
+            "3.884.639",
+            "10.556",
+            null,
+            "7.735.420",
+            "41.861.809"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r1:c6",
+              "column_header_path_exact": [
+                "Chênh lệch tỷ giá"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Số dư tại ngày 01/01/2025"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Số dư tại ngày 01/01/2025"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "1.936.464",
+            "1.936.464"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            null,
+            "1.936.464",
+            "1.936.464"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r2:c6",
+              "column_header_path_exact": [
+                "Chênh lệch tỷ giá"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Lợi nhuận thuần trong kỳ"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lợi nhuận thuần trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "715.672",
+            "715.672",
+            "-",
+            "-",
+            "(1.431.344)",
+            "-"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "715.672",
+            "715.672",
+            "10.556",
+            null,
+            "(1.431.344)",
+            "(150.000)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "10.556",
+              "cell_id": "r3:c5",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r3:c6",
+              "column_header_path_exact": [
+                "Chênh lệch tỷ giá"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": "(150.000)",
+              "cell_id": "r3:c8",
+              "column_header_path_exact": [
+                "Tổng cộng"
+              ],
+              "column_ordinal": 8,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập các quỹ dự trữ trong kỳ"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập các quỹ dự trữ trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(150.000)",
+            "(150.000)"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            null,
+            "(150.000)",
+            "(150.000)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r4:c6",
+              "column_header_path_exact": [
+                "Chênh lệch tỷ giá"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Trích lập quỹ phúc lợi trong kỳ"
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_label_exact": "Trích lập quỹ phúc lợi trong kỳ"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "(1.672)",
+            "-",
+            "-",
+            "-",
+            "(1.672)"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            "(1.672)",
+            null,
+            null,
+            "-",
+            "(1.672)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c5",
+              "column_header_path_exact": [
+                "Quỹ đầu tư phát triển"
+              ],
+              "column_ordinal": 5,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r5:c6",
+              "column_header_path_exact": [
+                "Chênh lệch tỷ giá"
+              ],
+              "column_ordinal": 6,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Điều chỉnh khác"
+          ],
+          "row_id": "r5",
+          "row_kind": "ITEM",
+          "row_label_exact": "Điều chỉnh khác"
+        },
+        {
+          "after_values_exact": [
+            "-",
+            "-",
+            "-",
+            "-",
+            "-",
+            "(3.334)",
+            "-",
+            "(3.334)"
+          ],
+          "before_values_exact": [
+            "-",
+            null,
+            "-",
+            null,
+            "-",
+            "(3.334)",
+            null,
+            "(3.334)"
+          ],
+          "cell_repairs": [
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r6:c2",
+              "column_header_path_exact": [
+                "Thặng dư vốn cổ phần"
+              ],
+              "column_ordinal": 2,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r6:c4",
+              "column_header_path_exact": [
+                "Quỹ dự phòng tài chính"
+              ],
+              "column_ordinal": 4,
+              "visual_state": "DASH"
+            },
+            {
+              "after_exact": "-",
+              "before_exact": null,
+              "cell_id": "r6:c7",
+              "column_header_path_exact": [
+                "Lợi nhuận chưa phân phối"
+              ],
+              "column_ordinal": 7,
+              "visual_state": "DASH"
+            }
+          ],
+          "row_hierarchy_path_exact": [
+            "Giảm trong kỳ"
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_label_exact": "Giảm trong kỳ"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:a403bcbbf335499bee3e9fbfd7b6d69d66b4dde4d33a203e916281ad1580960b",
+        "image_sha256": "d84c19bb18c5aaba66cf18146f7b525e337954a6673fccd32ac2658673a47faa",
+        "image_size_bytes": 505686,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:f1b441db6a98194f748d4017b883b8fa37d6a287a3be16508d6336133dcc5dde",
+        "physical_page": 50,
+        "pixel_height": 3507,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/VIB/2025/BCTC Hợp nhất Soát xét quý 1 năm 2025.pdf",
+        "source_sha256": "5b2b6a8d135a6dac734a8cc08cf8125be99776002f61287dcf1f2786d147e52d",
+        "source_size_bytes": 5047834
+      },
+      "stored_canonical_json_sha256": "83fcc96875ffc50c2766623394037ab24676bcef929c19dc706f220aa917f6e5",
+      "table_ref": {
+        "base_table_sha256": "3eab2e0bb70d4f7a29ad9177115fbac3e7b4255167e64cf68d0cc4578f2de706",
+        "effective_table_sha256": "6cb625d2eadfc5c5534ec4371a9b7082d6dcc618e1c1edbd040630c897f165b7",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "table_unit_repair": null,
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ROW_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          100,
+          100,
+          2380,
+          3407
+        ],
+        "table_crop_rgb_sha256": "d6f1b71ab7817bc4219b937b17a14505f7317bb07b7d9bf62db84ecf407a8fca"
+      }
+    }
+  ]
+}

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import sqlite3
 import stat
 import tempfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,10 @@ from typing import Any
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     compile_gemini_json_flat_family_specs_v1,
     validate_gemini_json_flat_family_sweep_v1,
+)
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    SourceObservationMappingContractError,
+    validate_source_observation_mapping_contract_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
@@ -730,6 +735,70 @@ def _checked_implementation_refs(
     return sorted(checked, key=lambda reference: reference["path"])
 
 
+def _checked_source_replay_adapter_v1(
+    adapter: Callable[..., Sequence[Mapping[str, Any]]],
+    *,
+    adapter_ref: Mapping[str, Any],
+    implementation_refs: Sequence[Mapping[str, Any]],
+) -> tuple[Callable[..., Sequence[Mapping[str, Any]]], dict[str, Any]]:
+    """Bind an in-process source replay adapter to its exact implementation bytes."""
+
+    if not inspect.isfunction(adapter):
+        raise _error("family source replay adapter must be a Python function")
+    checked_ref = _checked_ref(adapter_ref)
+    if checked_ref not in implementation_refs:
+        raise _error("family source replay adapter reference is not an implementation reference")
+    source_file = inspect.getsourcefile(adapter)
+    if source_file is None:
+        raise _error("family source replay adapter has no inspectable implementation source")
+    source_path = Path(source_file).resolve()
+    referenced_path = Path(checked_ref["path"])
+    if referenced_path.is_absolute():
+        path_matches = source_path == referenced_path.resolve()
+    else:
+        path_matches = source_path.parts[-len(referenced_path.parts) :] == referenced_path.parts
+    if not path_matches:
+        raise _error("family source replay adapter implementation path drifted")
+    _read_authenticated_file_v1(source_path, checked_ref, retain_payload=False)
+    return adapter, checked_ref
+
+
+def _run_checked_source_replay_adapter_v1(
+    adapter: Callable[..., Sequence[Mapping[str, Any]]],
+    *,
+    adapter_ref: Mapping[str, Any],
+    implementation_refs: Sequence[Mapping[str, Any]],
+    source_page_database: Path,
+    selected_page_json_version_ids: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+    indexed_query_evidence: Mapping[str, Any],
+    expected_trials: Sequence[Mapping[str, Any]],
+) -> None:
+    """Run a byte-bound adapter and require exact reconstruction of every trial."""
+
+    checked_adapter, checked_ref = _checked_source_replay_adapter_v1(
+        adapter,
+        adapter_ref=adapter_ref,
+        implementation_refs=implementation_refs,
+    )
+    replayed_trials = checked_adapter(
+        source_page_database=source_page_database,
+        selected_page_json_version_ids=tuple(selected_page_json_version_ids),
+        compiled_specs=canonical_clone_v1(compiled_specs),
+        indexed_query_evidence=canonical_clone_v1(indexed_query_evidence),
+    )
+    if type(replayed_trials) not in {list, tuple}:
+        raise _error("family source replay adapter did not return a trial sequence")
+    if canonical_json_bytes_v1(list(replayed_trials)) != canonical_json_bytes_v1(
+        list(expected_trials)
+    ):
+        raise _error("family source replay adapter returned a different trial axis")
+    source_file = inspect.getsourcefile(checked_adapter)
+    if source_file is None:
+        raise _error("family source replay adapter implementation disappeared")
+    _read_authenticated_file_v1(Path(source_file).resolve(), checked_ref, retain_payload=False)
+
+
 def _read_authenticated_file_v1(
     path: Path,
     reference: Mapping[str, Any],
@@ -930,12 +999,21 @@ def ingest_gemini_accounting_family_sweep_v1(
     selected_page_json_version_ids: Sequence[str] | None = None,
     corpus_artifact_root: Path | None = None,
     effective_page_artifact_root: Path | None = None,
+    source_replay_adapter: Callable[..., Sequence[Mapping[str, Any]]] | None = None,
+    source_replay_adapter_ref: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Store one validated sweep and every trace row in one SQLite transaction."""
 
     if run_kind not in {"EXPERIMENTAL", "OFFICIAL"}:
         raise _error("family run kind must be EXPERIMENTAL or OFFICIAL")
+    if (source_replay_adapter is None) != (source_replay_adapter_ref is None):
+        raise _error("family source replay adapter and reference must be supplied together")
     checked_sweep = validate_gemini_json_flat_family_sweep_v1(dict(sweep))
+    try:
+        validate_source_observation_mapping_contract_v1(checked_sweep)
+    except SourceObservationMappingContractError as exc:
+        raise _error("family sweep violates the source-observation mapping contract") from exc
+    checked_implementation = _checked_implementation_refs(implementation_refs)
     source_replay_format = checked_sweep["format_version"]
     dual_axis_source_replay = (
         type(checked_sweep["specs"]["evaluation"]["value"].get("dual_axis_projection_policy"))
@@ -975,7 +1053,18 @@ def ingest_gemini_accounting_family_sweep_v1(
             )
             if list(selected_page_json_version_ids) != authoritative_selected_ids:
                 raise _error("caller page frontier differs from authenticated corpus authority")
-            if dual_axis_source_replay:
+            if source_replay_adapter is not None and source_replay_adapter_ref is not None:
+                _run_checked_source_replay_adapter_v1(
+                    source_replay_adapter,
+                    adapter_ref=source_replay_adapter_ref,
+                    implementation_refs=checked_implementation,
+                    source_page_database=source_page_database,
+                    selected_page_json_version_ids=authoritative_selected_ids,
+                    compiled_specs=compiled_specs,
+                    indexed_query_evidence=checked_sweep["indexed_query_evidence"],
+                    expected_trials=checked_sweep["trials"],
+                )
+            elif dual_axis_source_replay:
                 from bctc_ai.storage.gemini_financial_page_store_v1 import (
                     validate_selected_dual_axis_family_candidate_replays_v1,
                 )
@@ -1087,12 +1176,13 @@ def ingest_gemini_accounting_family_sweep_v1(
                 )
         except GeminiAccountingFamilyStoreV1Error:
             raise
-        except (RuntimeError, ValueError) as exc:
+        except (RuntimeError, TypeError, ValueError) as exc:
             raise _error(
                 "family selected query and candidates do not replay from page store"
             ) from exc
+    elif source_replay_adapter is not None or source_replay_adapter_ref is not None:
+        raise _error("family source replay adapter requires a source-replayed family format")
     checked_index_ref = _checked_ref(corpus_index_ref)
-    checked_implementation = _checked_implementation_refs(implementation_refs)
     if not path.exists():
         initialize_gemini_accounting_family_store_v1(path)
 

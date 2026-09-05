@@ -29,6 +29,11 @@ from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _header_text,
     _money,
 )
+from bctc_ai.evaluation.source_observation_lane_math_v1 import (
+    additive_source_lane_receipts_v1,
+    observed_source_coefficient_v1,
+    partial_source_mapping_values_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -39,13 +44,21 @@ ENGINE_FORMAT_VERSION = "GEMINI_JSON_CUSTOMER_DEPOSIT_ACCOUNTING_FAMILY_V1"
 INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = "GEMINI_JSON_INDEXED_CUSTOMER_DEPOSIT_QUERY_EVIDENCE_V1"
 EVALUATION_FORMAT_VERSION = "ACCOUNTING_CUSTOMER_DEPOSIT_FAMILY_EVALUATION_SPEC_V1"
 SCHEMA_FORMAT_VERSION = "ACCOUNTING_CUSTOMER_DEPOSIT_SCHEMA_BINDING_SPEC_V1"
+SOURCE_REPAIR_FORMAT_VERSION = (
+    "GEMINI_JSON_CUSTOMER_DEPOSIT_AUTHENTICATED_SOURCE_REPAIR_SPEC_V1"
+)
+SOURCE_REPAIR_ADAPTER_FORMAT_VERSION = (
+    "GEMINI_JSON_CUSTOMER_DEPOSIT_SOURCE_REPAIR_ADAPTER_V1"
+)
+FAMILY_ID = "CUSTOMER_DEPOSIT_CLASSIFICATION"
 READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 NOT_OBSERVED = "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_CUSTOMER_DEPOSIT_OWNER_RESET_"
     "FENCE_ROW_PERIOD_OR_STACKED_PERIOD_CURRENCY_LAYOUT_OPTIONAL_CUSTOMER_VIEW_"
-    "EXACT_PERIOD_UNIT_HIERARCHY_TOTAL_AND_CHILD_CLOSURE_CONDITIONAL_BLANK_ZERO_"
+    "EXACT_PERIOD_UNIT_HIERARCHY_TOTAL_AND_CHILD_CLOSURE_OR_DISCLOSED_BOUNDED_"
+    "MILLION_VND_ROUNDING_OBSERVED_LANES_ONLY_BLANK_SOURCE_LANES_PRESERVED_"
     "STRUCTURAL_ROOT_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_GEOMETRY_OCR_BANK_FILE_PAGE_"
     "NOTE_ROUTING_BACKSOLVE_CANONICAL_OR_EXPORT_AUTHORITY"
 )
@@ -59,13 +72,28 @@ _TABLE_ID = re.compile(r"t[1-9][0-9]*\Z")
 _TYPE_SOURCE_ROLES = (
     "NO_TERM",
     "TERM",
+    "SAVINGS_COMBINED",
     "SAVINGS_NO_TERM",
     "SAVINGS_TERM",
     "ESCROW",
     "DEDICATED",
+    "OTHER_PAYMENT_GUARANTEE",
 )
-_BASE_TYPE_ROLES = ("NO_TERM", "TERM", "ESCROW", "DEDICATED")
-_DISTINCTIVE_TYPE_ROLES = {"SAVINGS_NO_TERM", "SAVINGS_TERM", "ESCROW", "DEDICATED"}
+_BASE_TYPE_ROLES = (
+    "NO_TERM",
+    "TERM",
+    "ESCROW",
+    "DEDICATED",
+    "OTHER_PAYMENT_GUARANTEE",
+)
+_DISTINCTIVE_TYPE_ROLES = {
+    "SAVINGS_COMBINED",
+    "SAVINGS_NO_TERM",
+    "SAVINGS_TERM",
+    "ESCROW",
+    "DEDICATED",
+    "OTHER_PAYMENT_GUARANTEE",
+}
 _CUSTOMER_SOURCE_ROLES = (
     "CUSTOMER_TCKT",
     "STATE_COMPANY",
@@ -79,12 +107,29 @@ _CUSTOMER_SOURCE_ROLES = (
     "PRIVATE_ENTERPRISE",
     "COMBINED_COMPANY",
     "COOPERATIVE",
+    "JOINT_VENTURE_COOPERATIVE",
     "PARTNERSHIP",
     "FOREIGN_INVESTED",
     "HOUSEHOLD_INDIVIDUAL",
     "ADMIN_ASSOCIATION",
     "OTHER_CUSTOMER",
 )
+_CUSTOMER_TCKT_CHILD_ROLES = {
+    "STATE_COMPANY",
+    "TNHH",
+    "STATE_100_TNHH",
+    "STATE_OVER_50_ONE_MEMBER_TNHH",
+    "STATE_OVER_50_MULTI_MEMBER_TNHH",
+    "OTHER_TNHH",
+    "STATE_OVER_50_JSC",
+    "OTHER_JSC",
+    "PRIVATE_ENTERPRISE",
+    "COMBINED_COMPANY",
+    "COOPERATIVE",
+    "JOINT_VENTURE_COOPERATIVE",
+    "PARTNERSHIP",
+    "FOREIGN_INVESTED",
+}
 _TYPE_OUTPUT_ROLES = (
     "NO_TERM",
     "NO_TERM_VND",
@@ -101,8 +146,14 @@ _TYPE_OUTPUT_ROLES = (
     "DEDICATED",
     "DEDICATED_VND",
     "DEDICATED_FOREIGN",
+    "OTHER_PAYMENT_GUARANTEE",
+    "OTHER_PAYMENT_GUARANTEE_VND",
+    "OTHER_PAYMENT_GUARANTEE_FOREIGN",
 )
-_OUTPUT_ROLES = {*_TYPE_OUTPUT_ROLES, *_CUSTOMER_SOURCE_ROLES}
+_CUSTOMER_OUTPUT_ROLES = tuple(
+    role for role in _CUSTOMER_SOURCE_ROLES if role != "STATE_OVER_50_MULTI_MEMBER_TNHH"
+)
+_OUTPUT_ROLES = {*_TYPE_OUTPUT_ROLES, *_CUSTOMER_OUTPUT_ROLES}
 
 
 class GeminiJsonCustomerDepositFamilyV1Error(ValueError):
@@ -113,11 +164,166 @@ def _error(message: str) -> GeminiJsonCustomerDepositFamilyV1Error:
     return GeminiJsonCustomerDepositFamilyV1Error(message)
 
 
+def _validate_source_repairs(value: Any) -> list[dict[str, Any]]:
+    render_contract = {
+        "alpha": False,
+        "colorspace": "RGB",
+        "format": "PNG",
+        "render_dpi": 300,
+        "renderer": "BCTC_AI_FULL_PDF_PAGE_RENDER_V1_PYMUPDF",
+    }
+    if (
+        type(value) is not dict
+        or set(value)
+        != {
+            "family_id",
+            "format_version",
+            "policy",
+            "render_contract",
+            "repair_axis_sha256",
+            "repairs",
+        }
+        or value.get("family_id") != FAMILY_ID
+        or value.get("format_version") != SOURCE_REPAIR_FORMAT_VERSION
+        or value.get("policy")
+        != "ONLY_PDF_VISIBLE_ACCOUNTING_DASH_MISSING_AS_NULL_NO_BLANK_ZERO_INFERENCE"
+        or value.get("render_contract") != render_contract
+        or type(value.get("repairs")) is not list
+    ):
+        raise _error("customer-deposit authenticated source-repair spec is invalid")
+    checked = []
+    identities = set()
+    for repair in value["repairs"]:
+        locator = repair.get("locator") if type(repair) is dict else None
+        source = repair.get("source") if type(repair) is dict else None
+        render = repair.get("render") if type(repair) is dict else None
+        crop = repair.get("crop_evidence") if type(repair) is dict else None
+        bbox = crop.get("bbox_pixels_xyxy") if type(crop) is dict else None
+        if (
+            type(repair) is not dict
+            or set(repair)
+            != {
+                "after_exact",
+                "before_exact",
+                "crop_evidence",
+                "locator",
+                "observed_pdf_glyph",
+                "repair_id",
+                "repair_kind",
+                "render",
+                "source",
+            }
+            or repair.get("repair_kind") != "MONEY_CELL_VISIBLE_DASH"
+            or repair.get("before_exact") is not None
+            or repair.get("after_exact") != "-"
+            or repair.get("observed_pdf_glyph") != "-"
+            or type(locator) is not dict
+            or set(locator)
+            != {
+                "column_ordinal",
+                "page_json_version_id",
+                "physical_page",
+                "row_ordinal",
+                "section_id",
+                "table_id",
+            }
+            or _PAGE_VERSION.fullmatch(locator.get("page_json_version_id", "")) is None
+            or type(locator.get("physical_page")) is not int
+            or locator["physical_page"] <= 0
+            or type(locator.get("row_ordinal")) is not int
+            or locator["row_ordinal"] <= 0
+            or type(locator.get("column_ordinal")) is not int
+            or locator["column_ordinal"] <= 0
+            or _SECTION_ID.fullmatch(locator.get("section_id", "")) is None
+            or _TABLE_ID.fullmatch(locator.get("table_id", "")) is None
+            or type(source) is not dict
+            or set(source)
+            != {"source_logical_name", "source_sha256", "source_size_bytes"}
+            or type(source.get("source_logical_name")) is not str
+            or not source["source_logical_name"]
+            or source["source_logical_name"].startswith("/")
+            or ".." in source["source_logical_name"].split("/")
+            or _SHA256.fullmatch(source.get("source_sha256", "")) is None
+            or type(source.get("source_size_bytes")) is not int
+            or source["source_size_bytes"] <= 0
+            or type(render) is not dict
+            or set(render)
+            != {
+                "image_sha256",
+                "image_size_bytes",
+                "media_type",
+                "physical_page",
+                "pixel_height",
+                "pixel_width",
+                "render_dpi",
+                "render_receipt_sha256",
+            }
+            or render.get("physical_page") != locator["physical_page"]
+            or render.get("render_dpi") != 300
+            or render.get("media_type") != "image/png"
+            or _SHA256.fullmatch(render.get("image_sha256", "")) is None
+            or _SHA256.fullmatch(render.get("render_receipt_sha256", "")) is None
+            or any(
+                type(render.get(field)) is not int or render[field] <= 0
+                for field in ("image_size_bytes", "pixel_height", "pixel_width")
+            )
+            or type(crop) is not dict
+            or set(crop)
+            != {
+                "bbox_pixels_xyxy",
+                "pixel_height",
+                "pixel_width",
+                "rgb_sha256",
+            }
+            or type(bbox) is not list
+            or len(bbox) != 4
+            or any(type(item) is not int for item in bbox)
+            or not (0 <= bbox[0] < bbox[2] <= render["pixel_width"])
+            or not (0 <= bbox[1] < bbox[3] <= render["pixel_height"])
+            or crop.get("pixel_width") != bbox[2] - bbox[0]
+            or crop.get("pixel_height") != bbox[3] - bbox[1]
+            or _SHA256.fullmatch(crop.get("rgb_sha256", "")) is None
+        ):
+            raise _error("customer-deposit authenticated source repair is invalid")
+        material = {
+            key: canonical_clone_v1(item)
+            for key, item in repair.items()
+            if key != "repair_id"
+        }
+        if repair.get("repair_id") != (
+            "gjfcdav1:source-repair:" + canonical_json_sha256_v1(material)
+        ):
+            raise _error("customer-deposit source-repair identity drifted")
+        identity = (
+            source["source_sha256"],
+            locator["page_json_version_id"],
+            locator["section_id"],
+            locator["table_id"],
+            locator["row_ordinal"],
+            locator["column_ordinal"],
+        )
+        if identity in identities:
+            raise _error("customer-deposit source-repair cell axis is duplicate")
+        identities.add(identity)
+        checked.append(canonical_clone_v1(repair))
+    if value.get("repair_axis_sha256") != canonical_json_sha256_v1(checked):
+        raise _error("customer-deposit source-repair axis seal drifted")
+    return checked
+
+
 def _normalized(value: Any) -> str:
     return normalize_vietnamese_anchor_v1(value) if type(value) is str else ""
 
 
 def _compile_units(value: Any) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Compile an exact, collision-free money-unit policy.
+
+    This low-level helper is also used by the generic hierarchical evaluator,
+    whose families can intentionally accept a different unit frontier.  The
+    customer-deposit-specific accepted-unit invariant is therefore enforced
+    by its compiler after this structural validation.
+    """
+
     if type(value) is not list or not value:
         raise _error("customer-deposit money-unit bindings are absent")
     checked: list[dict[str, Any]] = []
@@ -146,8 +352,8 @@ def _compile_units(value: Any) -> tuple[list[dict[str, Any]], dict[str, dict[str
         for alias in aliases:
             by_alias[alias] = binding
         checked.append(binding)
-    if sum(item["accepted"] for item in checked) != 1:
-        raise _error("customer-deposit policy needs exactly one accepted money unit")
+    if not any(item["accepted"] for item in checked):
+        raise _error("money-unit policy has no accepted unit")
     return checked, by_alias
 
 
@@ -179,16 +385,21 @@ def compile_gemini_json_customer_deposit_family_specs_v1(
         or set(evaluation_spec) != evaluation_fields
         or evaluation_spec.get("format_version") != EVALUATION_FORMAT_VERSION
         or evaluation_spec.get("family_id") != topology["family_id"]
-        or evaluation_spec.get("blank_zero_policy") != "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT"
+        or evaluation_spec.get("blank_zero_policy")
+        != "PRESERVE_BLANK_SOURCE_CELLS_AND_OMIT_ALL_BLANK_ROLES"
         or evaluation_spec.get("closure_policy")
-        != "EXACT_TYPE_CURRENCY_AND_OPTIONAL_CUSTOMER_VIEW_ALL_LANES"
+        != (
+            "EXACT_OR_BOUNDED_MILLION_VND_ROUNDING_TYPE_CURRENCY_AND_OPTIONAL_"
+            "CUSTOMER_VIEW_ALL_LANES"
+        )
         or evaluation_spec.get("customer_view_policy")
         != "OPTIONAL_ONLY_WITHIN_SAME_OWNER_OR_EXPLICIT_CONTINUATION_FENCE"
         or evaluation_spec.get("layout_policy")
         != "ONE_TWO_PERIOD_TABLE_OR_TWO_STACKED_PERIOD_CURRENCY_TABLES"
         or evaluation_spec.get("period_semantics") != "CURRENT_AND_COMPARATIVE_SNAPSHOT"
         or evaluation_spec.get("type_direct_roles") != list(_BASE_TYPE_ROLES)
-        or evaluation_spec.get("type_savings_source_roles") != ["SAVINGS_NO_TERM", "SAVINGS_TERM"]
+        or evaluation_spec.get("type_savings_source_roles")
+        != ["SAVINGS_COMBINED", "SAVINGS_NO_TERM", "SAVINGS_TERM"]
     ):
         raise _error("customer-deposit evaluation spec is invalid")
     aliases_by_source_role: dict[str, list[str]] = {}
@@ -231,6 +442,11 @@ def compile_gemini_json_customer_deposit_family_specs_v1(
             raise _error("customer-deposit parent shorthand declarations are invalid")
         compiled_shorthand[role] = [_normalized(alias) for alias in aliases]
     units, units_by_alias = _compile_units(evaluation_spec["money_unit_bindings"])
+    if {item["canonical_unit"] for item in units if item["accepted"]} != {
+        "MILLION_VND",
+        "VND",
+    }:
+        raise _error("customer-deposit accepted money-unit axis is invalid")
     schema_fields = {
         "family_id",
         "family_root_report_norm_id",
@@ -292,6 +508,41 @@ def compile_gemini_json_customer_deposit_family_specs_v1(
     }
 
 
+def bind_gemini_json_customer_deposit_source_repairs_v1(
+    compiled_specs: Any,
+    source_repair_spec: Any,
+) -> dict[str, Any]:
+    """Bind exact PDF dash observations to one compiled Family-15 frontier."""
+
+    if type(compiled_specs) is not dict:
+        raise _error("customer-deposit compiled family frontier is invalid")
+    compiled = canonical_clone_v1(compiled_specs)
+    if (
+        compiled.get("topology", {}).get("family_id") != FAMILY_ID
+        or compiled.get("schema", {}).get("family_id") != FAMILY_ID
+        or compiled.get("evaluation", {}).get("family_id") != FAMILY_ID
+        or compiled.get("engine_format_version") != ENGINE_FORMAT_VERSION
+        or set(compiled.get("bindings", {})) != _OUTPUT_ROLES
+        or {
+            item["canonical_unit"]
+            for item in compiled.get("unit_bindings", [])
+            if item.get("accepted") is True
+        }
+        != {"MILLION_VND", "VND"}
+    ):
+        raise _error("customer-deposit declarative family frontier is invalid")
+    compiled["customer_deposit_source_repairs"] = _validate_source_repairs(
+        source_repair_spec
+    )
+    compiled["customer_deposit_source_repair_spec_sha256"] = (
+        canonical_json_sha256_v1(source_repair_spec)
+    )
+    compiled["customer_deposit_source_repair_adapter_format_version"] = (
+        SOURCE_REPAIR_ADAPTER_FORMAT_VERSION
+    )
+    return compiled
+
+
 def _match_alias(text: str, alias: str) -> bool:
     if text == alias or text.startswith(alias + " "):
         return True
@@ -323,7 +574,7 @@ def _source_roles_for_text(
 
 def _currency_role_for_text(value: Any) -> str | None:
     folded = _normalized(value)
-    if "ngoai te" in folded or "vang ngoai te" in folded:
+    if "ngoai te" in folded or "ngoai hoi" in folded or "vang ngoai te" in folded:
         return "FOREIGN"
     if any(
         phrase in folded
@@ -334,27 +585,37 @@ def _currency_role_for_text(value: Any) -> str | None:
 
 
 def _parent_role_for_currency_row(
-    row: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+    row: Mapping[str, Any],
+    *,
+    compiled_specs: Mapping[str, Any],
+    active_parent_role: str | None = None,
 ) -> tuple[str | None, bool]:
     path = row.get("hierarchy_path_exact")
     label = row.get("label_exact")
     label_folded = _normalized(label)
-    candidates: set[str] = set()
+    # Gemini normally emits a root-to-leaf hierarchy path.  Resolve the
+    # nearest explicit typed ancestor first instead of unioning the full path:
+    # a child such as "tiền gửi tiết kiệm ... bằng VND" can legitimately sit
+    # below a broader NO_TERM/TERM group and the union is then ambiguous.
     if type(path) is list:
-        for item in path:
+        for item in reversed(path):
             folded = _normalized(item)
             if not folded or folded == label_folded:
                 continue
-            candidates.update(
+            candidates = set(
                 _source_roles_for_text(
                     folded, roles=_TYPE_SOURCE_ROLES, compiled_specs=compiled_specs
                 )
             )
-    if len(candidates) == 1:
-        return next(iter(candidates)), False
-    if len(candidates) > 1:
-        return None, True
-    candidates.update(
+            if len(candidates) == 1:
+                return next(iter(candidates)), False
+            if len(candidates) > 1:
+                if active_parent_role in candidates:
+                    return active_parent_role, False
+                return None, True
+    if active_parent_role in _TYPE_SOURCE_ROLES:
+        return active_parent_role, False
+    candidates = set(
         _source_roles_for_text(label, roles=_TYPE_SOURCE_ROLES, compiled_specs=compiled_specs)
     )
     for role, aliases in compiled_specs["parent_shorthand_aliases"].items():
@@ -461,10 +722,69 @@ def _has_explicit_percentage_evidence(table: Mapping[str, Any]) -> bool:
             path = column.get("header_path_exact")
             if type(path) is list:
                 surfaces.extend(path)
-    return any(
-        type(surface) is str and ("%" in surface or "phan tram" in _normalized(surface))
-        for surface in surfaces
+    rows = table.get("rows")
+    value_surfaces = [
+        value
+        for row in (rows if type(rows) is list else [])
+        if type(row) is dict
+        for value in (row.get("values_exact") if type(row.get("values_exact")) is list else [])
+        if value is not None
+    ]
+    all_values_are_percentages = bool(value_surfaces) and all(
+        type(value) is str and "%" in value for value in value_surfaces
     )
+    return (
+        any(
+            type(surface) is str and ("%" in surface or "phan tram" in _normalized(surface))
+            for surface in surfaces
+        )
+        or all_values_are_percentages
+    )
+
+
+_BOUNDED_RATE_VALUE = re.compile(r"^\s*(\d{1,3}(?:[.,]\d+)?)\s*(?:-\s*(\d{1,3}(?:[.,]\d+)?))?\s*$")
+
+
+def _bounded_interest_rate_range_evidence(table: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Recognise a rate table only when every visible cell is bounded.
+
+    Some audited reports omit the visible interest-rate narrative from JSON
+    and label the two rate columns as ``TEXT/Triệu đồng``.  A source string
+    range cannot be one monetary cell, so at least one range plus an entirely
+    bounded 0..100 value axis is intrinsic, fail-closed non-money evidence.
+    """
+
+    rows = table.get("rows")
+    if type(rows) is not list:
+        return None
+    values = [
+        value.strip()
+        for row in rows
+        if type(row) is dict
+        for value in (row.get("values_exact") if type(row.get("values_exact")) is list else [])
+        if type(value) is str and value.strip()
+    ]
+    if not values:
+        return None
+    saw_range = False
+    range_cell_count = 0
+    for value in values:
+        match = _BOUNDED_RATE_VALUE.fullmatch(value)
+        if match is None:
+            return None
+        numbers = [float(item.replace(",", ".")) for item in match.groups() if item is not None]
+        if not numbers or any(number < 0 or number > 100 for number in numbers):
+            return None
+        saw_range = saw_range or match.group(2) is not None
+        range_cell_count += int(match.group(2) is not None)
+    if not saw_range:
+        return None
+    return {
+        "range_cell_count": range_cell_count,
+        "rule": "ALL_VISIBLE_TEXT_VALUES_BOUNDED_0_TO_100_WITH_AT_LEAST_ONE_RANGE",
+        "value_axis_sha256": canonical_json_sha256_v1(values),
+        "visible_value_count": len(values),
+    }
 
 
 def _surface_matches(value: Any, aliases: Sequence[str]) -> str | None:
@@ -475,6 +795,26 @@ def _surface_matches(value: Any, aliases: Sequence[str]) -> str | None:
     longest = max(map(len, matches))
     selected = sorted(alias for alias in matches if len(alias) == longest)
     return selected[0] if len(selected) == 1 else None
+
+
+def _is_blank_structural_owner_row(
+    row: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> bool:
+    """Recognise an owner heading embedded by Gemini inside a money table.
+
+    Some notes repeat ``18. Tiền gửi của khách hàng`` as the first table
+    row.  It is structural only when every value is absent and the label,
+    after removing a bounded numeric note prefix, equals a declared owner
+    alias.  A valued row can therefore never disappear through this rule.
+    """
+
+    values = row.get("values_exact")
+    if type(values) is not list or any(value is not None for value in values):
+        return False
+    folded = _normalized(row.get("label_exact"))
+    without_note_prefix = re.sub(r"^[0-9]+(?:\s+[0-9]+){0,2}\s+", "", folded)
+    owner_aliases = compiled_specs["query_policy"]["owner_aliases"]
+    return any(without_note_prefix == alias for alias in owner_aliases)
 
 
 def _page_record_axis(page_records: Any) -> list[dict[str, Any]]:
@@ -534,8 +874,12 @@ def _region(
     table_id: str,
     component_role: str,
     fragment_ordinal: int,
+    *,
+    row_start_ordinal: int | None = None,
+    row_end_ordinal: int | None = None,
+    fragment_layout: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    material = {
         "component_role": component_role,
         "document_id": record["document_id"],
         "document_ordinal": record["document_ordinal"],
@@ -548,6 +892,215 @@ def _region(
         "source_sha256": record["source_sha256"],
         "table_id": table_id,
     }
+    if row_start_ordinal is not None or row_end_ordinal is not None or fragment_layout is not None:
+        material.update(
+            {
+                "fragment_layout": fragment_layout,
+                "row_end_ordinal": row_end_ordinal,
+                "row_start_ordinal": row_start_ordinal,
+            }
+        )
+    return material
+
+
+def _table_fragment(
+    item: Mapping[str, Any],
+    *,
+    row_start_ordinal: int,
+    row_end_ordinal: int,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    table = item["table"]
+    rows = table.get("rows")
+    if type(rows) is not list or not 1 <= row_start_ordinal <= row_end_ordinal <= len(rows):
+        raise _error("customer-deposit table fragment boundary is invalid")
+    sliced = canonical_clone_v1(table)
+    sliced["rows"] = canonical_clone_v1(rows[row_start_ordinal - 1 : row_end_ordinal])
+    return {
+        **{key: item[key] for key in ("position", "record", "section_id", "table_id")},
+        "classification": classify_gemini_json_customer_deposit_table_v1(
+            sliced, compiled_specs=compiled_specs
+        ),
+        "full_table": row_start_ordinal == 1 and row_end_ordinal == len(rows),
+        "row_end_ordinal": row_end_ordinal,
+        "row_start_ordinal": row_start_ordinal,
+        "table": sliced,
+    }
+
+
+def _logical_fragments_for_table(
+    item: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    """Return full table or exact TOTAL-bounded slices for mixed presentations."""
+
+    rows = item["table"].get("rows")
+    if type(rows) is not list or not rows:
+        return []
+    classification = item["classification"]
+    if classification["component_role"] is not None:
+        return [
+            _table_fragment(
+                item,
+                row_start_ordinal=1,
+                row_end_ordinal=len(rows),
+                compiled_specs=compiled_specs,
+            )
+        ]
+    total_ordinals = [
+        ordinal
+        for ordinal, row in enumerate(rows, start=1)
+        if type(row) is dict and row.get("row_kind") == "TOTAL"
+    ]
+    if len(total_ordinals) <= 1:
+        return [
+            _table_fragment(
+                item,
+                row_start_ordinal=1,
+                row_end_ordinal=len(rows),
+                compiled_specs=compiled_specs,
+            )
+        ]
+    fragments = []
+    start = 1
+    for end in total_ordinals:
+        fragment = _table_fragment(
+            item,
+            row_start_ordinal=start,
+            row_end_ordinal=end,
+            compiled_specs=compiled_specs,
+        )
+        if (
+            fragment["classification"]["type_role_hits"]
+            or fragment["classification"]["customer_role_hits"]
+        ):
+            fragments.append(fragment)
+        start = end + 1
+    if start <= len(rows):
+        fragment = _table_fragment(
+            item,
+            row_start_ordinal=start,
+            row_end_ordinal=len(rows),
+            compiled_specs=compiled_specs,
+        )
+        if (
+            fragment["classification"]["type_role_hits"]
+            or fragment["classification"]["customer_role_hits"]
+        ):
+            fragments.append(fragment)
+    return fragments
+
+
+def _merge_row_fragments(fragments: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    if not fragments:
+        raise _error("customer-deposit logical row fragment axis is empty")
+    first = fragments[0]["table"]
+    merged = canonical_clone_v1(first)
+    merged["rows"] = [
+        canonical_clone_v1(row)
+        for fragment in fragments
+        for row in fragment["table"].get("rows", [])
+    ]
+    # Continuation pages commonly omit repeated headers/units.  The first
+    # explicit surface is inherited only inside the authenticated fragment
+    # group; conflicting explicit evidence is rejected by the join helper.
+    for field in ("columns", "unit_exact"):
+        if field == "columns":
+            continue
+        if merged.get(field) is None:
+            merged[field] = next(
+                (
+                    fragment["table"].get(field)
+                    for fragment in fragments
+                    if fragment["table"].get(field) is not None
+                ),
+                None,
+            )
+    merged["continuation"] = "NONE"
+    return merged
+
+
+def _fragment_join_is_authenticated(
+    first: Mapping[str, Any],
+    second: Mapping[str, Any],
+    *,
+    markers: Sequence[Mapping[str, Any]],
+) -> bool:
+    same_table = (
+        first["record"]["page_json_version_id"] == second["record"]["page_json_version_id"]
+        and first["section_id"] == second["section_id"]
+        and first["table_id"] == second["table_id"]
+    )
+    if same_table:
+        return first["row_end_ordinal"] + 1 == second["row_start_ordinal"]
+    next_page = (
+        second["record"]["selected_page_ordinal"] == first["record"]["selected_page_ordinal"] + 1
+        and second["record"]["physical_page"] == first["record"]["physical_page"] + 1
+    )
+    explicit_continuation = (
+        first["table"].get("continuation") == "CONTINUES_ON_NEXT_PAGE"
+        or second["table"].get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE"
+    )
+    if not next_page or not explicit_continuation:
+        return False
+    if any(
+        marker["kind"] in {"RESET", "HARD_NEGATIVE"}
+        and first["position"] < marker["position"] < second["position"]
+        for marker in markers
+    ):
+        return False
+    first_columns = first["classification"]["money_column_ordinals"]
+    second_columns = second["classification"]["money_column_ordinals"]
+    if len(first_columns) != 2 or len(second_columns) != 2:
+        return False
+    first_period = _two_period_axis(first["table"])
+    second_period = _two_period_axis(second["table"])
+    if not first_period["reasons"] and not second_period["reasons"]:
+        if first_period.get("signatures") != second_period.get("signatures"):
+            return False
+    elif not first_period["reasons"] and second_period.get("signatures") not in (
+        None,
+        [None, None],
+    ):
+        # An incomplete continuation is allowed only when it carries no
+        # competing period assertion at all.
+        return False
+    first_unit = _normalized(first["table"].get("unit_exact"))
+    second_unit = _normalized(second["table"].get("unit_exact"))
+    return not (first_unit and second_unit and first_unit != second_unit)
+
+
+def _component_candidate(
+    fragments: Sequence[Mapping[str, Any]],
+    *,
+    component_role: str,
+    compiled_specs: Mapping[str, Any],
+    fragment_layout: str,
+) -> dict[str, Any] | None:
+    merged = _merge_row_fragments(fragments)
+    classification = classify_gemini_json_customer_deposit_table_v1(
+        merged, compiled_specs=compiled_specs
+    )
+    if classification["component_role"] != component_role:
+        return None
+    if component_role == "TYPE_CURRENCY" and any(
+        fragment["classification"]["customer_role_hits"] for fragment in fragments
+    ):
+        return None
+    if component_role == "CUSTOMER_TYPE" and any(
+        fragment["classification"]["type_role_hits"] for fragment in fragments
+    ):
+        return None
+    return {
+        "classification": classification,
+        "fragment_layout": fragment_layout,
+        "fragments": list(fragments),
+        "position": fragments[0]["position"],
+        "end_position": fragments[-1]["position"],
+        "record": fragments[0]["record"],
+        "section_id": fragments[0]["section_id"],
+        "table": merged,
+        "table_id": fragments[0]["table_id"],
+    }
 
 
 def coalesce_gemini_json_customer_deposit_document_v1(
@@ -556,7 +1109,7 @@ def coalesce_gemini_json_customer_deposit_document_v1(
     """Select one exhaustive type cluster and optional owner-bound customer view."""
 
     pages = _page_record_axis(page_records)
-    tables: list[dict[str, Any]] = []
+    raw_tables: list[dict[str, Any]] = []
     declared_role_tables: list[dict[str, Any]] = []
     markers: list[dict[str, Any]] = []
     for record in pages:
@@ -620,134 +1173,302 @@ def coalesce_gemini_json_customer_deposit_document_v1(
                                 "table_id": table_id,
                             }
                         )
-                if classification["component_role"] is not None:
-                    tables.append(
-                        {
-                            "classification": classification,
-                            "position": position,
-                            "record": record,
-                            "section_id": section_id,
-                            "table": table,
-                            "table_id": table_id,
-                        }
-                    )
+                item = {
+                    "classification": classification,
+                    "position": position,
+                    "record": record,
+                    "section_id": section_id,
+                    "table": table,
+                    "table_id": table_id,
+                }
+                raw_tables.append(item)
                 if classification["type_role_hits"] or classification["customer_role_hits"]:
-                    declared_role_tables.append(
-                        {
-                            "classification": classification,
-                            "position": position,
-                            "record": record,
-                            "section_id": section_id,
-                            "table": table,
-                            "table_id": table_id,
-                        }
-                    )
-    type_tables = [
-        item for item in tables if item["classification"]["component_role"] == "TYPE_CURRENCY"
+                    declared_role_tables.append(item)
+
+    fragment_source_tables = [
+        item
+        for item in raw_tables
+        if item["classification"]["type_role_hits"]
+        or item["classification"]["customer_role_hits"]
+        or (
+            item["table"].get("continuation")
+            in {"CONTINUES_ON_NEXT_PAGE", "CONTINUES_FROM_PREVIOUS_PAGE"}
+            and len(item["classification"]["money_column_ordinals"]) == 2
+        )
     ]
-    reasons: list[str] = []
-    selected_type: list[dict[str, Any]] = []
-    if len(type_tables) == 1:
-        selected_type = type_tables
-    elif len(type_tables) == 2:
-        first_type, second_type = type_tables
+    logical_fragments = [
+        fragment
+        for item in fragment_source_tables
+        for fragment in _logical_fragments_for_table(item, compiled_specs=compiled_specs)
+    ]
+
+    def order_key(fragment: Mapping[str, Any]) -> tuple[int, int, int, int]:
+        return (*fragment["position"], fragment["row_start_ordinal"])
+
+    def nearest_boundary(position: Sequence[int]) -> dict[str, Any] | None:
+        prior = [
+            marker
+            for marker in markers
+            if marker["position"] <= list(position)
+            and marker["kind"] in {"OWNER", "RESET", "HARD_NEGATIVE"}
+        ]
+        local_structural_owners = [
+            marker
+            for marker in prior
+            if marker["kind"] == "OWNER"
+            and marker["position"][:2] == list(position)[:2]
+            and marker["source_kind"] in {"SECTION_TITLE", "TABLE_TITLE"}
+        ]
+        if (
+            local_structural_owners
+            and prior
+            and prior[-1]["kind"] == "HARD_NEGATIVE"
+            and _normalized(prior[-1]["alias"]).startswith("muc lai suat")
+        ):
+            return local_structural_owners[-1]
+        return prior[-1] if prior else None
+
+    def embedded_owner(fragment: Mapping[str, Any]) -> dict[str, Any] | None:
+        for row_offset, row in enumerate(fragment["table"].get("rows", [])):
+            if type(row) is not dict:
+                continue
+            alias = _surface_matches(
+                row.get("label_exact"), compiled_specs["query_policy"]["owner_aliases"]
+            )
+            if alias is not None:
+                return {
+                    "alias": alias,
+                    "kind": "OWNER",
+                    "position": [*fragment["position"], fragment["row_start_ordinal"] + row_offset],
+                    "section_id": fragment["section_id"],
+                    "source_exact": row.get("label_exact"),
+                    "source_kind": "TABLE_ROW_LABEL",
+                    "table_id": fragment["table_id"],
+                }
+        return None
+
+    def candidate_owner(candidate: Mapping[str, Any]) -> dict[str, Any] | None:
+        return next(
+            (
+                receipt
+                for fragment in candidate["fragments"]
+                if (receipt := embedded_owner(fragment)) is not None
+            ),
+            nearest_boundary(candidate["position"]),
+        )
+
+    def prune_strict_subsets(candidates: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+        axes = [
+            {
+                (
+                    fragment["record"]["page_json_version_id"],
+                    fragment["section_id"],
+                    fragment["table_id"],
+                    fragment["row_start_ordinal"],
+                    fragment["row_end_ordinal"],
+                )
+                for fragment in candidate["fragments"]
+            }
+            for candidate in candidates
+        ]
+        return [
+            candidate
+            for ordinal, candidate in enumerate(candidates)
+            if not any(
+                axes[ordinal] < other for index, other in enumerate(axes) if index != ordinal
+            )
+        ]
+
+    type_candidates: list[dict[str, Any]] = []
+    for fragment in logical_fragments:
+        if (
+            fragment["classification"]["component_role"] == "TYPE_CURRENCY"
+            and len(fragment["classification"]["money_column_ordinals"]) == 2
+        ):
+            candidate = _component_candidate(
+                [fragment],
+                component_role="TYPE_CURRENCY",
+                compiled_specs=compiled_specs,
+                fragment_layout=("LEGACY" if fragment["full_table"] else "ROW_CONTINUATION"),
+            )
+            if candidate is not None:
+                type_candidates.append(candidate)
+    for first, second in zip(logical_fragments, logical_fragments[1:], strict=False):
+        if not _fragment_join_is_authenticated(first, second, markers=markers):
+            continue
+        candidate = _component_candidate(
+            [first, second],
+            component_role="TYPE_CURRENCY",
+            compiled_specs=compiled_specs,
+            fragment_layout="ROW_CONTINUATION",
+        )
+        if candidate is not None:
+            type_candidates.append(candidate)
+
+    stacked_fragments = [
+        fragment
+        for fragment in logical_fragments
+        if fragment["full_table"]
+        and fragment["classification"]["component_role"] == "TYPE_CURRENCY"
+        and len(fragment["classification"]["money_column_ordinals"]) == 3
+    ]
+    if len(stacked_fragments) == 2:
+        first, second = stacked_fragments
         same_page_section = (
-            first_type["record"]["page_json_version_id"]
-            == second_type["record"]["page_json_version_id"]
-            and first_type["section_id"] == second_type["section_id"]
-        )
-        second_local_owner = any(
-            marker["kind"] == "OWNER"
-            and marker["position"][:2] == second_type["position"][:2]
-            and marker["position"] <= second_type["position"]
-            for marker in markers
-        )
-        explicit_continuation = second_type["table"].get(
-            "continuation"
-        ) == "CONTINUES_FROM_PREVIOUS_PAGE" or any(
-            marker["kind"] == "OWNER"
-            and marker["position"][:2] == second_type["position"][:2]
-            and "tiep theo" in _normalized(marker["alias"])
-            for marker in markers
+            first["record"]["page_json_version_id"] == second["record"]["page_json_version_id"]
+            and first["section_id"] == second["section_id"]
         )
         adjacent_continuation = (
-            second_type["record"]["selected_page_ordinal"]
-            == first_type["record"]["selected_page_ordinal"] + 1
-            and second_type["record"]["physical_page"] == first_type["record"]["physical_page"] + 1
-            and second_local_owner
-            and explicit_continuation
+            second["record"]["selected_page_ordinal"]
+            == first["record"]["selected_page_ordinal"] + 1
+            and second["record"]["physical_page"] == first["record"]["physical_page"] + 1
+            and second["table"].get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE"
             and not any(
                 marker["kind"] in {"RESET", "HARD_NEGATIVE"}
-                and first_type["position"] < marker["position"] < second_type["position"]
+                and first["position"] < marker["position"] < second["position"]
                 for marker in markers
             )
         )
         same_role_population = {
-            hit["role"] for hit in first_type["classification"]["type_role_hits"]
-        } == {hit["role"] for hit in second_type["classification"]["type_role_hits"]}
-        if (
-            (same_page_section or adjacent_continuation)
-            and all(
-                len(item["classification"]["money_column_ordinals"]) == 3 for item in type_tables
+            hit["role"] for hit in first["classification"]["type_role_hits"]
+        } == {hit["role"] for hit in second["classification"]["type_role_hits"]}
+        if (same_page_section or adjacent_continuation) and same_role_population:
+            type_candidates.append(
+                {
+                    "classification": {"reasons": []},
+                    "end_position": second["position"],
+                    "fragment_layout": "STACKED_PERIOD",
+                    "fragments": [first, second],
+                    "position": first["position"],
+                    "record": first["record"],
+                    "section_id": first["section_id"],
+                    "table": None,
+                    "table_id": first["table_id"],
+                }
             )
-            and same_role_population
-        ):
-            selected_type = type_tables
-        else:
+
+    # Deduplicate the one-fragment and composed candidate projections.
+    candidate_by_axis = {}
+    for candidate in type_candidates:
+        key = tuple(
+            (
+                fragment["record"]["page_json_version_id"],
+                fragment["section_id"],
+                fragment["table_id"],
+                fragment["row_start_ordinal"],
+                fragment["row_end_ordinal"],
+            )
+            for fragment in candidate["fragments"]
+        )
+        candidate_by_axis[key] = candidate
+    type_candidates = prune_strict_subsets(list(candidate_by_axis.values()))
+
+    reasons: list[str] = []
+    explicit_owner_candidates = [
+        candidate
+        for candidate in type_candidates
+        if (candidate_owner(candidate) or {}).get("kind") == "OWNER"
+    ]
+    eligible_candidates = explicit_owner_candidates or type_candidates
+    selected_type = eligible_candidates[0] if len(eligible_candidates) == 1 else None
+    owner_bound_type_fragment = any(
+        fragment["classification"]["type_role_hits"]
+        and (
+            embedded_owner(fragment) is not None
+            or (nearest_boundary(fragment["position"]) or {}).get("kind") == "OWNER"
+        )
+        for fragment in logical_fragments
+    )
+    if selected_type is None:
+        if eligible_candidates:
             reasons.append("TYPE_CURRENCY_COMPONENT_NOT_EXACTLY_ONE_LAYOUT_CLUSTER")
-    elif not type_tables:
-        reasons.append("NO_DISTINCTIVE_TYPE_CURRENCY_COMPONENT")
-    else:
-        reasons.append("TYPE_CURRENCY_COMPONENT_NOT_EXACTLY_ONE_LAYOUT_CLUSTER")
+        elif owner_bound_type_fragment:
+            reasons.append("OWNER_BOUND_TYPE_COMPONENT_INCOMPLETE")
+        else:
+            reasons.append("NO_DISTINCTIVE_TYPE_CURRENCY_COMPONENT")
+
     owner = None
     if selected_type:
-        first_position = selected_type[0]["position"]
-        prior_markers = [
-            marker
-            for marker in markers
-            if marker["position"] <= first_position
-            and marker["kind"] in {"OWNER", "RESET", "HARD_NEGATIVE"}
-        ]
-        if prior_markers and prior_markers[-1]["kind"] == "OWNER":
-            owner = prior_markers[-1]
-        elif prior_markers:
+        first_position = selected_type["position"]
+        boundary = candidate_owner(selected_type)
+        if boundary is not None and boundary["kind"] == "OWNER":
+            owner = boundary
+        elif boundary is not None:
             reasons.append("IMPLIED_OWNER_BLOCKED_BY_RESET_OR_HARD_NEGATIVE")
         else:
             owner = {
                 "alias": None,
                 "kind": "IMPLIED_OWNER",
                 "position": first_position,
-                "section_id": selected_type[0]["section_id"],
+                "section_id": selected_type["section_id"],
                 "source_exact": None,
                 "source_kind": "UNIQUE_DISTINCTIVE_TYPE_ROLE_POPULATION",
-                "table_id": selected_type[0]["table_id"],
+                "table_id": selected_type["table_id"],
             }
+
+    customer_candidates: list[dict[str, Any]] = []
+    for fragment in logical_fragments:
+        if fragment["classification"]["component_role"] == "CUSTOMER_TYPE":
+            candidate = _component_candidate(
+                [fragment],
+                component_role="CUSTOMER_TYPE",
+                compiled_specs=compiled_specs,
+                fragment_layout=("LEGACY" if fragment["full_table"] else "ROW_CONTINUATION"),
+            )
+            if candidate is not None:
+                customer_candidates.append(candidate)
+    for first, second in zip(logical_fragments, logical_fragments[1:], strict=False):
+        if not _fragment_join_is_authenticated(first, second, markers=markers):
+            continue
+        candidate = _component_candidate(
+            [first, second],
+            component_role="CUSTOMER_TYPE",
+            compiled_specs=compiled_specs,
+            fragment_layout="ROW_CONTINUATION",
+        )
+        if candidate is not None:
+            customer_candidates.append(candidate)
+    customer_by_axis = {}
+    for candidate in customer_candidates:
+        key = tuple(
+            (
+                fragment["record"]["page_json_version_id"],
+                fragment["section_id"],
+                fragment["table_id"],
+                fragment["row_start_ordinal"],
+                fragment["row_end_ordinal"],
+            )
+            for fragment in candidate["fragments"]
+        )
+        customer_by_axis[key] = candidate
+    customer_candidates = prune_strict_subsets(list(customer_by_axis.values()))
+
     selected_customer = None
-    customer_tables = [
-        item for item in tables if item["classification"]["component_role"] == "CUSTOMER_TYPE"
-    ]
     if selected_type:
-        last_type = selected_type[-1]
+        last_type = selected_type["fragments"][-1]
         attachable = []
-        for item in customer_tables:
-            same_section_after = (
-                item["record"]["page_json_version_id"]
+        last_key = order_key(last_type)
+        for item in customer_candidates:
+            first_customer = item["fragments"][0]
+            same_page_after = (
+                first_customer["record"]["page_json_version_id"]
                 == last_type["record"]["page_json_version_id"]
-                and item["section_id"] == last_type["section_id"]
-                and item["position"] > last_type["position"]
+                and order_key(first_customer) > last_key
             )
-            next_page = item["record"]["physical_page"] == last_type["record"]["physical_page"] + 1
-            local_owner = any(
-                marker["kind"] == "OWNER"
-                and marker["position"][:2] == item["position"][:2]
-                and marker["position"] <= item["position"]
-                for marker in markers
+            next_page = (
+                first_customer["record"]["physical_page"]
+                == last_type["record"]["physical_page"] + 1
             )
-            if same_section_after or (next_page and local_owner):
+            explicit_customer_continuation = (
+                first_customer["table"].get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE"
+                or last_type["table"].get("continuation") == "CONTINUES_ON_NEXT_PAGE"
+                or (nearest_boundary(first_customer["position"]) or {}).get("kind") == "OWNER"
+            )
+            if same_page_after or (next_page and explicit_customer_continuation):
                 intervening = [
                     marker
                     for marker in markers
-                    if last_type["position"] < marker["position"] < item["position"]
+                    if last_type["position"] < marker["position"] < first_customer["position"]
                     and marker["kind"] in {"RESET", "HARD_NEGATIVE"}
                 ]
                 if not intervening:
@@ -756,52 +1477,110 @@ def coalesce_gemini_json_customer_deposit_document_v1(
             selected_customer = attachable[0]
         elif len(attachable) > 1:
             reasons.append("CUSTOMER_TYPE_VIEW_NOT_UNIQUE_WITHIN_OWNER_FENCE")
+    selected_components = [
+        *([] if selected_type is None else [selected_type]),
+        *([] if selected_customer is None else [selected_customer]),
+    ]
+    selected_classification_reasons = sorted(
+        {reason for item in selected_components for reason in item["classification"]["reasons"]}
+    )
+    if selected_classification_reasons:
+        # The evaluator deliberately rejects any fragment whose row-role
+        # classification is ambiguous.  Preserve that same gate here so the
+        # indexed query emits an UNRESOLVED disposition instead of advertising
+        # a READY cluster that can only crash during candidate construction.
+        reasons.extend(selected_classification_reasons)
+        reasons.append("SELECTED_COMPONENT_CLASSIFICATION_UNRESOLVED")
     regions = []
-    for ordinal, item in enumerate(selected_type, start=1):
-        regions.append(
-            _region(
-                item["record"],
-                item["section_id"],
-                item["table_id"],
-                "TYPE_CURRENCY",
-                ordinal,
+    if selected_type is not None:
+        for ordinal, item in enumerate(selected_type["fragments"], start=1):
+            extended = selected_type["fragment_layout"] == "ROW_CONTINUATION"
+            regions.append(
+                _region(
+                    item["record"],
+                    item["section_id"],
+                    item["table_id"],
+                    "TYPE_CURRENCY",
+                    ordinal,
+                    row_start_ordinal=item["row_start_ordinal"] if extended else None,
+                    row_end_ordinal=item["row_end_ordinal"] if extended else None,
+                    fragment_layout="ROW_CONTINUATION" if extended else None,
+                )
             )
-        )
     if selected_customer is not None:
-        regions.append(
-            _region(
-                selected_customer["record"],
-                selected_customer["section_id"],
-                selected_customer["table_id"],
-                "CUSTOMER_TYPE",
-                1,
+        for ordinal, item in enumerate(selected_customer["fragments"], start=1):
+            extended = selected_customer["fragment_layout"] == "ROW_CONTINUATION"
+            regions.append(
+                _region(
+                    item["record"],
+                    item["section_id"],
+                    item["table_id"],
+                    "CUSTOMER_TYPE",
+                    ordinal,
+                    row_start_ordinal=item["row_start_ordinal"] if extended else None,
+                    row_end_ordinal=item["row_end_ordinal"] if extended else None,
+                    fragment_layout="ROW_CONTINUATION" if extended else None,
+                )
             )
-        )
     selected_table_keys = {
         (
-            item["record"]["page_json_version_id"],
-            item["section_id"],
-            item["table_id"],
+            fragment["record"]["page_json_version_id"],
+            fragment["section_id"],
+            fragment["table_id"],
         )
-        for item in [*selected_type, *([] if selected_customer is None else [selected_customer])]
+        for item in selected_components
+        for fragment in item["fragments"]
+    }
+    selected_problem_table_keys = {
+        (
+            fragment["record"]["page_json_version_id"],
+            fragment["section_id"],
+            fragment["table_id"],
+        )
+        for item in selected_components
+        if item["classification"]["reasons"]
+        for fragment in item["fragments"]
     }
     fence_start = (
         owner["position"]
         if owner is not None
-        else selected_type[0]["position"]
+        else selected_type["position"]
         if selected_type
         else None
     )
     fence_end = None
     if selected_type:
+        last_selected = (
+            selected_customer["fragments"][-1]
+            if selected_customer is not None
+            else selected_type["fragments"][-1]
+        )
         boundary_markers = [
             marker
             for marker in markers
-            if marker["position"] > selected_type[-1]["position"]
+            if marker["position"] > last_selected["position"]
             and marker["kind"] in {"OWNER", "RESET", "HARD_NEGATIVE"}
         ]
         if boundary_markers:
             fence_end = min(marker["position"] for marker in boundary_markers)
+
+    def explicit_interest_rate_marker(item: Mapping[str, Any]) -> dict[str, Any] | None:
+        if (
+            item["classification"]["money_column_ordinals"]
+            or item["classification"]["percent_column_ordinals"]
+        ):
+            return None
+        candidates = [
+            marker
+            for marker in markers
+            if marker["kind"] == "HARD_NEGATIVE"
+            and _normalized(marker["alias"]).startswith("muc lai suat")
+            and marker["section_id"] == item["section_id"]
+            and marker["position"] <= item["position"]
+            and (marker["table_id"] is None or marker["table_id"] == item["table_id"])
+        ]
+        return max(candidates, key=lambda marker: marker["position"]) if candidates else None
+
     declared_role_inventory = []
     for item in declared_role_tables:
         key = (
@@ -813,33 +1592,61 @@ def coalesce_gemini_json_customer_deposit_document_v1(
             fence_start is not None
             and item["position"] >= fence_start
             and (fence_end is None or item["position"] < fence_end)
-        )
-        if key in selected_table_keys:
-            disposition = "SELECTED_FAMILY_COMPONENT"
-        elif item["classification"]["component_role"] == "INTEREST_RATE_CONTROL" or (
-            not item["classification"]["money_column_ordinals"]
-            and (
-                item["classification"]["percent_column_ordinals"]
-                or _has_explicit_percentage_evidence(item["table"])
+            and item["record"]["selected_page_ordinal"]
+            <= (
+                selected_customer["fragments"][-1]["record"]["selected_page_ordinal"]
+                if selected_customer is not None
+                else selected_type["fragments"][-1]["record"]["selected_page_ordinal"] + 1
+                if selected_type is not None
+                else 0
             )
+        )
+        rate_range_evidence = (
+            None
+            if item["classification"]["money_column_ordinals"]
+            or item["classification"]["percent_column_ordinals"]
+            else _bounded_interest_rate_range_evidence(item["table"])
+        )
+        rate_marker = explicit_interest_rate_marker(item)
+        exclusion_evidence = None
+        if key in selected_problem_table_keys:
+            disposition = "SELECTED_COMPONENT_CLASSIFICATION_UNRESOLVED"
+        elif key in selected_table_keys:
+            disposition = "SELECTED_FAMILY_COMPONENT"
+        elif (
+            item["classification"]["component_role"] == "INTEREST_RATE_CONTROL"
+            or (
+                not item["classification"]["money_column_ordinals"]
+                and item["classification"]["percent_column_ordinals"]
+            )
+            or _has_explicit_percentage_evidence(item["table"])
+            or rate_range_evidence is not None
         ):
             disposition = "EXCLUDED_TYPED_NON_MONEY_CONTROL"
+            if rate_range_evidence is not None:
+                exclusion_evidence = {
+                    "rate_range_evidence": rate_range_evidence,
+                    "rule": "TEXT_COLUMNS_WITH_INTRINSIC_BOUNDED_RATE_RANGE_VALUES",
+                }
+                if rate_marker is not None:
+                    exclusion_evidence["interest_rate_marker"] = canonical_clone_v1(rate_marker)
         elif inside_fence:
             disposition = "UNCONSUMED_DECLARED_ROLE_TABLE_WITHIN_OWNER_FENCE"
             reasons.append(disposition)
         else:
             disposition = "OUTSIDE_SELECTED_OWNER_FENCE"
-        declared_role_inventory.append(
-            {
-                "classification": item["classification"],
-                "disposition": disposition,
-                "page_json_version_id": item["record"]["page_json_version_id"],
-                "physical_page": item["record"]["physical_page"],
-                "position": item["position"],
-                "section_id": item["section_id"],
-                "table_id": item["table_id"],
-            }
-        )
+        inventory_item = {
+            "classification": item["classification"],
+            "disposition": disposition,
+            "page_json_version_id": item["record"]["page_json_version_id"],
+            "physical_page": item["record"]["physical_page"],
+            "position": item["position"],
+            "section_id": item["section_id"],
+            "table_id": item["table_id"],
+        }
+        if exclusion_evidence is not None:
+            inventory_item["exclusion_evidence"] = exclusion_evidence
+        declared_role_inventory.append(inventory_item)
     material = {
         "component_regions": regions if not reasons else [],
         "declared_role_table_inventory": declared_role_inventory,
@@ -851,7 +1658,7 @@ def coalesce_gemini_json_customer_deposit_document_v1(
         "source_sha256": pages[0]["source_sha256"],
         "status": READY
         if regions and not reasons
-        else (NOT_OBSERVED if not type_tables else UNRESOLVED),
+        else (UNRESOLVED if type_candidates or owner_bound_type_fragment else NOT_OBSERVED),
     }
     return {
         **material,
@@ -880,8 +1687,124 @@ def _source_table(
     return section, tables[table_index]
 
 
+def _source_table_for_region(
+    page_json: Mapping[str, Any], *, region: Mapping[str, Any]
+) -> dict[str, Any]:
+    _section, table = _source_table(
+        page_json,
+        section_id=region["section_id"],
+        table_id=region["table_id"],
+    )
+    if "fragment_layout" not in region:
+        return table
+    rows = table.get("rows")
+    start = region["row_start_ordinal"]
+    end = region["row_end_ordinal"]
+    if type(rows) is not list or not 1 <= start <= end <= len(rows):
+        raise _error("customer-deposit bound row fragment is outside the source table")
+    fragment = canonical_clone_v1(table)
+    fragment["rows"] = canonical_clone_v1(rows[start - 1 : end])
+    return fragment
+
+
+def _repair_is_inside_region(
+    repair: Mapping[str, Any], region: Mapping[str, Any]
+) -> bool:
+    locator = repair["locator"]
+    if not all(
+        region.get(field) == locator[field]
+        for field in (
+            "page_json_version_id",
+            "physical_page",
+            "section_id",
+            "table_id",
+        )
+    ):
+        return False
+    return (
+        "fragment_layout" not in region
+        or region["row_start_ordinal"]
+        <= locator["row_ordinal"]
+        <= region["row_end_ordinal"]
+    )
+
+
+def _apply_authenticated_source_repairs(
+    *,
+    regions: Sequence[Mapping[str, Any]],
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    """Overlay only registered null cells whose selected component contains them."""
+
+    pages = {
+        page_json_version_id: canonical_clone_v1(page_json)
+        for page_json_version_id, page_json in page_json_by_version.items()
+    }
+    if not regions:
+        return pages, []
+    identities = {
+        (region.get("source_logical_name"), region.get("source_sha256"))
+        for region in regions
+    }
+    if len(identities) != 1:
+        raise _error("customer-deposit repair candidate source identity is ambiguous")
+    source_logical_name, source_sha256 = next(iter(identities))
+    applicable = [
+        canonical_clone_v1(repair)
+        for repair in compiled_specs.get("customer_deposit_source_repairs", [])
+        if repair["source"]["source_sha256"] == source_sha256
+        and any(_repair_is_inside_region(repair, region) for region in regions)
+    ]
+    for repair in applicable:
+        source = repair["source"]
+        locator = repair["locator"]
+        if source["source_logical_name"] != source_logical_name:
+            raise _error("customer-deposit repair logical source identity drifted")
+        matching_regions = [
+            region
+            for region in regions
+            if _repair_is_inside_region(repair, region)
+        ]
+        if len(matching_regions) != 1:
+            raise _error("customer-deposit repair is outside one selected component fragment")
+        page = pages.get(locator["page_json_version_id"])
+        if page is None:
+            raise _error("customer-deposit repair page is outside the selected document")
+        _section, table = _source_table(
+            page,
+            section_id=locator["section_id"],
+            table_id=locator["table_id"],
+        )
+        rows = table.get("rows")
+        if type(rows) is not list or locator["row_ordinal"] > len(rows):
+            raise _error("customer-deposit repair row is outside its selected table")
+        row = rows[locator["row_ordinal"] - 1]
+        values = row.get("values_exact") if type(row) is dict else None
+        if (
+            type(values) is not list
+            or locator["column_ordinal"] > len(values)
+            or values[locator["column_ordinal"] - 1] is not repair["before_exact"]
+        ):
+            raise _error("customer-deposit repair cell before-image drifted")
+        values[locator["column_ordinal"] - 1] = repair["after_exact"]
+    return pages, applicable
+
+
+def _fragment_row_source_axis(
+    tables: Sequence[Mapping[str, Any]], regions: Sequence[Mapping[str, Any]]
+) -> list[tuple[Mapping[str, Any], int]]:
+    if len(tables) != len(regions):
+        raise _error("customer-deposit fragment/source axes differ")
+    return [
+        (region, region.get("row_start_ordinal", 1) + local_ordinal - 1)
+        for table, region in zip(tables, regions, strict=True)
+        for local_ordinal, _row in enumerate(table.get("rows", []), start=1)
+    ]
+
+
 def _region_axis(regions: Any) -> list[dict[str, Any]]:
-    fields = {
+    base_fields = {
         "component_role",
         "document_id",
         "document_ordinal",
@@ -894,7 +1817,12 @@ def _region_axis(regions: Any) -> list[dict[str, Any]]:
         "source_sha256",
         "table_id",
     }
-    if type(regions) not in {list, tuple} or not 1 <= len(regions) <= 3:
+    continuation_fields = base_fields | {
+        "fragment_layout",
+        "row_end_ordinal",
+        "row_start_ordinal",
+    }
+    if type(regions) not in {list, tuple} or not 1 <= len(regions) <= 4:
         raise _error("customer-deposit region axis cardinality is invalid")
     checked = []
     identity = None
@@ -904,7 +1832,7 @@ def _region_axis(regions: Any) -> list[dict[str, Any]]:
     for raw in regions:
         if (
             type(raw) is not dict
-            or set(raw) != fields
+            or frozenset(raw) not in {frozenset(base_fields), frozenset(continuation_fields)}
             or raw.get("component_role") not in {"TYPE_CURRENCY", "CUSTOMER_TYPE"}
             or _DOCUMENT_ID.fullmatch(raw.get("document_id", "")) is None
             or type(raw.get("document_ordinal")) is not int
@@ -923,6 +1851,14 @@ def _region_axis(regions: Any) -> list[dict[str, Any]]:
             or _SHA256.fullmatch(raw.get("source_sha256", "")) is None
         ):
             raise _error("customer-deposit region is invalid")
+        extended = set(raw) == continuation_fields
+        if extended and (
+            raw.get("fragment_layout") != "ROW_CONTINUATION"
+            or type(raw.get("row_start_ordinal")) is not int
+            or type(raw.get("row_end_ordinal")) is not int
+            or not 1 <= raw["row_start_ordinal"] <= raw["row_end_ordinal"]
+        ):
+            raise _error("customer-deposit row-continuation region is invalid")
         current_identity = tuple(
             raw[key]
             for key in ("document_id", "document_ordinal", "source_logical_name", "source_sha256")
@@ -931,6 +1867,7 @@ def _region_axis(regions: Any) -> list[dict[str, Any]]:
             raw["selected_page_ordinal"],
             int(raw["section_id"][1:]),
             int(raw["table_id"][1:]),
+            raw.get("row_start_ordinal", 0),
         )
         if identity is None:
             identity = current_identity
@@ -945,11 +1882,21 @@ def _region_axis(regions: Any) -> list[dict[str, Any]]:
                 raise _error("customer-deposit type fragment axis is invalid")
         else:
             customer_fragments += 1
-            if raw["fragment_ordinal"] != 1 or customer_fragments > 1:
+            if raw["fragment_ordinal"] != customer_fragments or customer_fragments > 2:
                 raise _error("customer-deposit customer-view axis is invalid")
         checked.append(canonical_clone_v1(raw))
     if type_fragments not in {1, 2}:
         raise _error("customer-deposit type layout needs one or two fragments")
+    type_axis = [item for item in checked if item["component_role"] == "TYPE_CURRENCY"]
+    if any("fragment_layout" in item for item in type_axis) and not all(
+        item.get("fragment_layout") == "ROW_CONTINUATION" for item in type_axis
+    ):
+        raise _error("customer-deposit type fragment layouts are mixed")
+    customer_axis = [item for item in checked if item["component_role"] == "CUSTOMER_TYPE"]
+    if any("fragment_layout" in item for item in customer_axis) and not all(
+        item.get("fragment_layout") == "ROW_CONTINUATION" for item in customer_axis
+    ):
+        raise _error("customer-deposit customer fragment layouts are mixed")
     return checked
 
 
@@ -975,7 +1922,9 @@ def build_gemini_json_customer_deposit_region_query_receipt_v1(
 def _semantic_period_roles(value: str) -> list[str]:
     folded = _normalized(value)
     roles = []
-    if any(alias == folded or f" {alias} " in f" {folded} " for alias in _CURRENT_PERIOD_ALIASES):
+    if " so du cuoi quy " in f" {folded} " or any(
+        alias == folded or f" {alias} " in f" {folded} " for alias in _CURRENT_PERIOD_ALIASES
+    ):
         roles.append("CURRENT_PERIOD")
     if any(
         alias == folded or f" {alias} " in f" {folded} " for alias in _COMPARATIVE_PERIOD_ALIASES
@@ -1104,16 +2053,27 @@ def _column_unit_surfaces(
 def _document_unit_context_axis(
     page_json_by_version: Mapping[str, dict[str, Any]], *, compiled_specs: Mapping[str, Any]
 ) -> dict[str, Any]:
-    """Build a document unit consensus from explicit scaled table-unit carriers."""
+    """Build exact document-unit evidence and owner-row corroboration.
 
-    scaled_aliases = [
+    A document may legitimately mix VND and million-VND tables, so a bare
+    document majority is never enough.  In addition to the strict all-page
+    consensus, retain explicit-unit rows whose label is the declared customer
+    deposit owner; an otherwise unitless detail table may inherit that unit
+    only when its two-period visible total and period axis match exactly.
+    """
+
+    accepted_aliases = [
         alias
         for alias, binding in compiled_specs["unit_binding_by_alias"].items()
-        if binding["magnitude_power10"] > 0
+        if binding["accepted"]
     ]
     evidence = []
     conflicts = []
-    for page_json_version_id, page_json in sorted(page_json_by_version.items()):
+    owner_row_evidence = []
+    table_axis = []
+    for selected_page_ordinal, (page_json_version_id, page_json) in enumerate(
+        page_json_by_version.items(), start=1
+    ):
         if _PAGE_VERSION.fullmatch(page_json_version_id) is None or type(page_json) is not dict:
             raise _error("customer-deposit document unit context page is invalid")
         sections = page_json.get("sections")
@@ -1125,21 +2085,41 @@ def _document_unit_context_axis(
             for table_ordinal, table in enumerate(section["tables"], start=1):
                 if type(table) is not dict:
                     continue
+                locator = {
+                    "page_json_version_id": page_json_version_id,
+                    "section_id": f"s{section_ordinal}",
+                    "table_id": f"t{table_ordinal}",
+                }
+                period_axis = _two_period_axis(table)
+                local_unit_axis = _unit_axis(
+                    table,
+                    compiled_specs=compiled_specs,
+                    document_unit_context=None,
+                )
+                table_axis.append(
+                    {
+                        "column_count": len(table.get("columns", [])),
+                        "local_unit_axis": local_unit_axis,
+                        "locator": locator,
+                        "money_column_ordinals": canonical_clone_v1(
+                            period_axis.get("money_column_ordinals", [])
+                        ),
+                        "page_status": page_json.get("status"),
+                        "period_axis": period_axis,
+                        "selected_page_ordinal": selected_page_ordinal,
+                        "table": table,
+                    }
+                )
                 unit_exact = table.get("unit_exact")
                 if type(unit_exact) is not str or not unit_exact.strip():
                     continue
-                matches = _alias_occurrences(_normalized(unit_exact), scaled_aliases)
+                matches = _alias_occurrences(_normalized(unit_exact), accepted_aliases)
                 if not matches:
                     continue
                 bindings = [compiled_specs["unit_binding_by_alias"][alias] for alias in matches]
                 identities = {
                     (binding["canonical_unit"], binding["magnitude_power10"])
                     for binding in bindings
-                }
-                locator = {
-                    "page_json_version_id": page_json_version_id,
-                    "section_id": f"s{section_ordinal}",
-                    "table_id": f"t{table_ordinal}",
                 }
                 if len(identities) != 1:
                     conflicts.append({**locator, "source_exact": unit_exact})
@@ -1156,6 +2136,138 @@ def _document_unit_context_axis(
                         "source_kind": "TABLE_UNIT",
                     }
                 )
+                if binding["accepted"]:
+                    money_columns = period_axis.get("money_column_ordinals", [])
+                    for row_ordinal, row in enumerate(table.get("rows", []), start=1):
+                        if (
+                            type(row) is not dict
+                            or _surface_matches(
+                                row.get("label_exact"),
+                                compiled_specs["query_policy"]["owner_aliases"],
+                            )
+                            is None
+                            or not period_axis.get("complete")
+                        ):
+                            continue
+                        try:
+                            cells = _parse_cells(row, money_columns)
+                        except GeminiJsonCustomerDepositFamilyV1Error:
+                            continue
+                        owner_row_evidence.append(
+                            {
+                                **locator,
+                                "canonical_unit": binding["canonical_unit"],
+                                "coefficients": [cell["coefficient"] for cell in cells],
+                                "magnitude_power10": binding["magnitude_power10"],
+                                "period_axis_complete": True,
+                                "period_signatures": canonical_clone_v1(period_axis["signatures"]),
+                                "row_ordinal": row_ordinal,
+                                "source_exact": unit_exact,
+                                "source_kind": "EXPLICIT_UNIT_CUSTOMER_DEPOSIT_OWNER_ROW",
+                            }
+                        )
+    direct_owner_refs = {
+        (
+            item["page_json_version_id"],
+            item["section_id"],
+            item["table_id"],
+            item["row_ordinal"],
+        )
+        for item in owner_row_evidence
+    }
+    for item in table_axis:
+        table = item["table"]
+        period_axis = item["period_axis"]
+        local_unit_axis = item["local_unit_axis"]
+        if not period_axis.get("complete"):
+            continue
+        owner_rows = [
+            (row_ordinal, row)
+            for row_ordinal, row in enumerate(table.get("rows", []), start=1)
+            if type(row) is dict
+            and _surface_matches(
+                row.get("label_exact"), compiled_specs["query_policy"]["owner_aliases"]
+            )
+            is not None
+        ]
+        if not owner_rows:
+            continue
+        unit_source = None
+        unit_carrier_locator = None
+        unit_carrier_selected_page_ordinal = None
+        source_kind = None
+        if local_unit_axis.get("complete"):
+            unit_source = local_unit_axis
+            source_kind = "LOCAL_EXPLICIT_UNIT_CUSTOMER_DEPOSIT_OWNER_ROW"
+        elif item["page_status"] == "PRIMARY_FINANCIAL_STATEMENT":
+            carriers = [
+                candidate
+                for candidate in table_axis
+                if candidate["selected_page_ordinal"] == item["selected_page_ordinal"] - 1
+                and candidate["page_status"] == "PRIMARY_FINANCIAL_STATEMENT"
+                and candidate["local_unit_axis"].get("complete")
+                and len(candidate["money_column_ordinals"])
+                == len(item["money_column_ordinals"])
+                == 2
+                and candidate["period_axis"].get("complete")
+                and candidate["period_axis"].get("signatures") == period_axis.get("signatures")
+            ]
+            carrier_units = {
+                candidate["local_unit_axis"]["canonical_unit"] for candidate in carriers
+            }
+            if len(carrier_units) == 1:
+                unit_source = carriers[-1]["local_unit_axis"]
+                unit_carrier_locator = canonical_clone_v1(carriers[-1]["locator"])
+                unit_carrier_selected_page_ordinal = carriers[-1]["selected_page_ordinal"]
+                source_kind = (
+                    "ADJACENT_PRIMARY_STATEMENT_CONTINUATION_UNIT_CUSTOMER_DEPOSIT_OWNER_ROW"
+                )
+        if unit_source is None:
+            continue
+        canonical_unit = unit_source["canonical_unit"]
+        magnitude_powers = {
+            binding["magnitude_power10"]
+            for binding in compiled_specs["unit_binding_by_alias"].values()
+            if binding["accepted"] and binding["canonical_unit"] == canonical_unit
+        }
+        if len(magnitude_powers) != 1:
+            continue
+        for row_ordinal, row in owner_rows:
+            direct_ref = (
+                item["locator"]["page_json_version_id"],
+                item["locator"]["section_id"],
+                item["locator"]["table_id"],
+                row_ordinal,
+            )
+            if direct_ref in direct_owner_refs:
+                continue
+            try:
+                cells = _parse_cells(row, period_axis["money_column_ordinals"])
+            except GeminiJsonCustomerDepositFamilyV1Error:
+                continue
+            owner_row_evidence.append(
+                {
+                    **item["locator"],
+                    "canonical_unit": canonical_unit,
+                    "coefficients": [cell["coefficient"] for cell in cells],
+                    "magnitude_power10": next(iter(magnitude_powers)),
+                    "period_axis_complete": True,
+                    "period_signatures": canonical_clone_v1(period_axis["signatures"]),
+                    "row_ordinal": row_ordinal,
+                    "source_exact": canonical_clone_v1(unit_source.get("evidence", [])),
+                    "source_kind": source_kind,
+                    **(
+                        {
+                            "unit_carrier_locator": unit_carrier_locator,
+                            "unit_carrier_selected_page_ordinal": (
+                                unit_carrier_selected_page_ordinal
+                            ),
+                        }
+                        if unit_carrier_locator is not None
+                        else {}
+                    ),
+                }
+            )
     identities = {
         (item["canonical_unit"], item["magnitude_power10"], item["accepted"]) for item in evidence
     }
@@ -1173,6 +2285,8 @@ def _document_unit_context_axis(
         "distinct_page_version_count": len(distinct_pages),
         "evidence": evidence,
         "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
+        "owner_row_evidence": owner_row_evidence,
+        "owner_row_evidence_axis_sha256": canonical_json_sha256_v1(owner_row_evidence),
         "rule": "EXPLICIT_SCALED_TABLE_UNIT_UNIQUE_ACROSS_AT_LEAST_TWO_SELECTED_PAGES",
         "status": "UNIQUE" if unique else "NOT_UNIQUE",
     }
@@ -1275,6 +2389,52 @@ def _unit_axis(
     else:
         reasons.append("MONEY_UNIT_NOT_EXACTLY_RESOLVED")
     inherited_context = None
+    if (
+        canonical_unit is None
+        and reasons == ["MONEY_UNIT_NOT_EXACTLY_RESOLVED"]
+        and not evidence
+        and not undeclared
+        and not conflicts
+        and type(document_unit_context) is dict
+    ):
+        period_axis = _two_period_axis(table)
+        totals = [
+            row
+            for row in table.get("rows", [])
+            if type(row) is dict and row.get("row_kind") == "TOTAL"
+        ]
+        target_coefficients = None
+        if period_axis.get("complete") and len(totals) == 1:
+            try:
+                target_coefficients = [
+                    cell["coefficient"]
+                    for cell in _parse_cells(
+                        totals[0], period_axis.get("money_column_ordinals", [])
+                    )
+                ]
+            except GeminiJsonCustomerDepositFamilyV1Error:
+                target_coefficients = None
+        matches = [
+            item
+            for item in document_unit_context.get("owner_row_evidence", [])
+            if target_coefficients is not None
+            and item.get("coefficients") == target_coefficients
+            and item.get("period_axis_complete") is True
+        ]
+        matched_units = {item["canonical_unit"] for item in matches}
+        if len(matched_units) == 1:
+            canonical_unit = next(iter(matched_units))
+            source = "DOCUMENT_OWNER_ROW_EXACT_VALUE_PERIOD_UNIT_CORROBORATION"
+            inherited_context = {
+                "evidence": canonical_clone_v1(matches),
+                "evidence_axis_sha256": canonical_json_sha256_v1(matches),
+                "rule": (
+                    "EXPLICIT_UNIT_CUSTOMER_DEPOSIT_OWNER_ROW_EQUALS_UNIT_LESS_"
+                    "DETAIL_VISIBLE_TOTAL_WITH_BOTH_AXES_EXACT_CURRENT_COMPARATIVE"
+                ),
+                "status": "UNIQUE",
+            }
+            reasons = []
     if (
         canonical_unit is None
         and reasons == ["MONEY_UNIT_NOT_EXACTLY_RESOLVED"]
@@ -1410,24 +2570,81 @@ def _parse_cells(row: Mapping[str, Any], column_ordinals: Sequence[int]) -> list
         raise _error("customer-deposit money cell is invalid") from exc
 
 
+def _parse_customer_cells(
+    row: Mapping[str, Any], column_ordinals: Sequence[int]
+) -> list[dict[str, Any]]:
+    """Retain a trailing-dash magnitude only for later exact child closure.
+
+    A trailing dash can mean a negative number, an OCR artefact, or a stray
+    table rule, so this parser never accepts it by itself.  ``_customer_view``
+    may upgrade the provisional magnitude only when ordinary child cells prove
+    it through an exact parent-equals-children equation.
+    """
+
+    values = row.get("values_exact")
+    if type(values) is not list or any(
+        not 1 <= ordinal <= len(values) for ordinal in column_ordinals
+    ):
+        raise _error("customer-deposit row value vector does not bind the selected columns")
+    cells = []
+    for ordinal in column_ordinals:
+        value = values[ordinal - 1]
+        try:
+            cells.append(_money(value))
+            continue
+        except ValueError:
+            pass
+        if type(value) is not str:
+            raise _error("customer-deposit money cell is invalid")
+        body = value.strip()
+        unsigned = body[:-1].strip() if body.endswith("-") else ""
+        digits = unsigned.replace(".", "").replace(",", "").replace(" ", "")
+        if not unsigned or not digits.isdigit():
+            raise _error("customer-deposit money cell is invalid")
+        cells.append(
+            {
+                "coefficient": int(digits),
+                "source_text": value,
+                "state": "TRAILING_DASH_POSITIVE_IF_EXACT_CHILD_CLOSURE",
+            }
+        )
+    return cells
+
+
 def _derived_cells(records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     if not records:
         raise _error("customer-deposit derived cell axis is empty")
     width = len(records[0]["cells"])
     if width != 2 or any(len(record["cells"]) != width for record in records):
         raise _error("customer-deposit derived cell vectors do not align")
-    return [
-        {
-            "coefficient": sum(record["cells"][lane]["coefficient"] for record in records),
-            "source_text": None,
-            "state": "DERIVED_EXACT_SUM_OF_SOURCE_ROWS",
-        }
-        for lane in range(width)
-    ]
+    cells = []
+    for lane in range(width):
+        coefficients = [
+            observed_source_coefficient_v1(record["cells"][lane]) for record in records
+        ]
+        if any(coefficient is None for coefficient in coefficients):
+            cells.append(
+                {
+                    "coefficient": None,
+                    "source_text": None,
+                    "state": "DERIVED_INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL",
+                }
+            )
+            continue
+        cells.append(
+            {
+                "coefficient": sum(
+                    coefficient for coefficient in coefficients if coefficient is not None
+                ),
+                "source_text": None,
+                "state": "DERIVED_EXACT_SUM_OF_SOURCE_ROWS",
+            }
+        )
+    return cells
 
 
-def _coefficients(record: Mapping[str, Any]) -> list[int]:
-    return [cell["coefficient"] for cell in record["cells"]]
+def _coefficients(record: Mapping[str, Any]) -> list[int | None]:
+    return [observed_source_coefficient_v1(cell) for cell in record["cells"]]
 
 
 def _equation(
@@ -1436,12 +2653,51 @@ def _equation(
     component_records: Sequence[Mapping[str, Any]],
     result_record: Mapping[str, Any],
     result_role: str,
+    unit_axis: Mapping[str, Any],
 ) -> dict[str, Any]:
-    component_sums = [
-        sum(record["cells"][lane]["coefficient"] for record in component_records)
-        for lane in range(2)
+    rounding_bound = (len(component_records) + 1) // 2
+    maximum_absolute_residual = (
+        rounding_bound if unit_axis.get("canonical_unit") == "MILLION_VND" else 0
+    )
+    lane_receipts = additive_source_lane_receipts_v1(
+        result_cells=result_record["cells"],
+        component_cell_vectors=[record["cells"] for record in component_records],
+        maximum_absolute_residual=maximum_absolute_residual,
+    )
+    complete_statuses = {
+        "EXACT_OBSERVED_SOURCE_LANE",
+        "BOUNDED_DISPLAY_ROUNDING_SOURCE_LANE",
+    }
+    observed_receipts = [
+        receipt for receipt in lane_receipts if receipt["status"] in complete_statuses
     ]
-    result = _coefficients(result_record)
+    any_unobserved = len(observed_receipts) != len(lane_receipts)
+    any_conflict = any(
+        receipt["status"] == "SOURCE_LANE_EQUATION_CONFLICT"
+        for receipt in lane_receipts
+    )
+    any_rounding = any(
+        receipt["status"] == "BOUNDED_DISPLAY_ROUNDING_SOURCE_LANE"
+        for receipt in lane_receipts
+    )
+    if any_conflict:
+        status = "MISMATCH"
+    elif not observed_receipts:
+        status = "INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"
+    elif any_unobserved:
+        status = (
+            "PARTIAL_OBSERVED_LANES_BOUNDED_MILLION_VND_ROUNDING"
+            if any_rounding
+            else "PARTIAL_OBSERVED_LANES_EXACT"
+        )
+    else:
+        status = "BOUNDED_MILLION_VND_ROUNDING" if any_rounding else "EXACT"
+    component_sums = [receipt["component_sum"] for receipt in lane_receipts]
+    result = [receipt["result_coefficient"] for receipt in lane_receipts]
+    deltas = [
+        -receipt["residual"] if type(receipt["residual"]) is int else None
+        for receipt in lane_receipts
+    ]
     material = {
         "component_roles": [record["role"] for record in component_records],
         "component_source_refs": [
@@ -1449,14 +2705,31 @@ def _equation(
         ],
         "component_sums": component_sums,
         "equation_kind": equation_kind,
+        "lane_receipts": lane_receipts,
         "result_coefficients": result,
         "result_role": result_role,
         "result_source_refs": canonical_clone_v1(result_record["source_refs"]),
-        "status": "EXACT" if component_sums == result else "MISMATCH",
+        "rounding_receipt": {
+            "accepted_only_for_unit": "MILLION_VND",
+            "component_count": len(component_records),
+            "maximum_absolute_delta": rounding_bound,
+            "observed_deltas": deltas,
+            "rule": "SUM_OF_N_INDEPENDENTLY_ROUNDED_COMPONENTS_VS_ONE_ROUNDED_TOTAL",
+        },
+        "status": status,
     }
     return {
         **material,
         "equation_id": "gjfcdev1:equation:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _equation_closes(equation: Mapping[str, Any]) -> bool:
+    return equation.get("status") in {
+        "EXACT",
+        "BOUNDED_MILLION_VND_ROUNDING",
+        "PARTIAL_OBSERVED_LANES_EXACT",
+        "PARTIAL_OBSERVED_LANES_BOUNDED_MILLION_VND_ROUNDING",
     }
 
 
@@ -1499,6 +2772,8 @@ def _ordinary_type_view(
     region: Mapping[str, Any],
     compiled_specs: Mapping[str, Any],
     document_unit_context: Mapping[str, Any] | None,
+    row_source_axis: Sequence[tuple[Mapping[str, Any], int]] | None = None,
+    layout: str = "ROW_ROLES_X_TWO_PERIOD_COLUMNS",
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], dict[str, Any], list[str]]:
     period_axis = _two_period_axis(table)
     unit_axis = _unit_axis(
@@ -1511,16 +2786,22 @@ def _ordinary_type_view(
     rows = table.get("rows")
     if type(rows) is not list:
         raise _error("customer-deposit ordinary type row axis is invalid")
+    if row_source_axis is not None and len(row_source_axis) != len(rows):
+        raise _error("customer-deposit ordinary type source-row axis is invalid")
     direct: dict[str, list[dict[str, Any]]] = defaultdict(list)
     children: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     savings_children: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     totals: list[dict[str, Any]] = []
     inventory = []
+    active_parent_role: str | None = None
     for ordinal, row in enumerate(rows, start=1):
         if type(row) is not dict:
             reasons.append("SOURCE_ROW_AXIS_INVALID")
             continue
-        ref = _source_ref(region, ordinal, row)
+        source_region, source_row_ordinal = (
+            row_source_axis[ordinal - 1] if row_source_axis is not None else (region, ordinal)
+        )
+        ref = _source_ref(source_region, source_row_ordinal, row)
         label = row.get("label_exact")
         currency_role = _currency_role_for_text(label)
         matched_roles = _source_roles_for_text(
@@ -1541,9 +2822,15 @@ def _ordinary_type_view(
                 )
             )
             inventory.append({**ref, "disposition": "TYPE_VISIBLE_TOTAL", "matched_roles": []})
+            active_parent_role = None
             continue
         disposition = "UNCLASSIFIED_TYPE_ROW"
-        if currency_role is None and len(matched_roles) == 1:
+        structural_typed_parent = (
+            row.get("row_kind") in {"GROUP", "SUBTOTAL"}
+            and len(matched_roles) == 1
+            and not any(value is not None for value in row.get("values_exact", []))
+        )
+        if (currency_role is None or structural_typed_parent) and len(matched_roles) == 1:
             role = matched_roles[0]
             try:
                 cells = _parse_cells(row, money_columns)
@@ -1554,9 +2841,12 @@ def _ordinary_type_view(
                 _record(role=role, cells=cells, source_refs=[ref], state="SOURCE_VISIBLE")
             )
             disposition = "TYPE_DIRECT_ROLE"
+            active_parent_role = role
         elif currency_role is not None:
             parent_role, parent_ambiguous = _parent_role_for_currency_row(
-                row, compiled_specs=compiled_specs
+                row,
+                compiled_specs=compiled_specs,
+                active_parent_role=active_parent_role,
             )
             if parent_ambiguous:
                 reasons.append(f"TYPE_CURRENCY_PARENT_AMBIGUOUS:r{ordinal}")
@@ -1574,13 +2864,43 @@ def _ordinary_type_view(
                     source_refs=[ref],
                     state="SOURCE_VISIBLE",
                 )
-                children[(parent_role, currency_role)].append(child)
-                savings_role_hits = [
-                    role for role in matched_roles if role in {"SAVINGS_NO_TERM", "SAVINGS_TERM"}
-                ]
-                if len(savings_role_hits) == 1:
-                    savings_children[(savings_role_hits[0], currency_role)].append(child)
-                disposition = "TYPE_CURRENCY_CHILD"
+                if cells and all(
+                    observed_source_coefficient_v1(cell) is None for cell in cells
+                ):
+                    # A labelled currency subtype with no observed lane is an
+                    # omission.  It cannot become an equation operand or a
+                    # derived numeric zero merely because the visible sibling
+                    # rows happen to close the printed parent.
+                    disposition = "TYPE_CURRENCY_CHILD_ALL_LANES_BLANK_OMITTED"
+                else:
+                    children[(parent_role, currency_role)].append(child)
+                    savings_role_hits = [
+                        role
+                        for role in matched_roles
+                        if role in {"SAVINGS_NO_TERM", "SAVINGS_TERM"}
+                    ]
+                    if len(savings_role_hits) == 1:
+                        savings_children[(savings_role_hits[0], currency_role)].append(
+                            child
+                        )
+                    disposition = "TYPE_CURRENCY_CHILD"
+        elif _is_blank_structural_owner_row(row, compiled_specs=compiled_specs):
+            disposition = "EXCLUDED_EXACT_STRUCTURAL_CUSTOMER_DEPOSIT_OWNER"
+        elif (
+            row.get("row_kind") == "GROUP"
+            and _normalized(label).lstrip("- ") == "thuyet minh theo loai tien gui"
+            and not any(value is not None for value in row.get("values_exact", []))
+        ):
+            # A source-visible section caption embedded as a GROUP row is not
+            # a monetary family item.  This exact structural label is narrow;
+            # unknown valued rows remain fail-closed below.
+            disposition = "EXCLUDED_EXACT_TYPE_VIEW_CAPTION"
+        elif row.get("label_exact") is None and not any(
+            value is not None for value in row.get("values_exact", [])
+        ):
+            disposition = "EXCLUDED_BLANK_STRUCTURAL_ROW"
+        elif row.get("row_kind") in {"GROUP", "SUBTOTAL"}:
+            active_parent_role = None
         if disposition == "UNCLASSIFIED_TYPE_ROW":
             reasons.append(f"UNCONSUMED_TYPE_SOURCE_ROW:r{ordinal}")
         inventory.append(
@@ -1599,7 +2919,7 @@ def _ordinary_type_view(
     source_parent_records: dict[str, dict[str, Any]] = {}
     equations: list[dict[str, Any]] = []
     output: dict[str, dict[str, Any]] = {}
-    for role in _TYPE_SOURCE_ROLES:
+    for role in (item for item in _TYPE_SOURCE_ROLES if item != "SAVINGS_COMBINED"):
         direct_record = direct.get(role, [None])[0] if len(direct.get(role, [])) == 1 else None
         child_records = [
             child
@@ -1620,12 +2940,20 @@ def _ordinary_type_view(
                     component_records=child_records,
                     result_record=direct_record,
                     result_role=role,
+                    unit_axis=unit_axis,
                 )
                 equations.append(equation)
-                if equation["status"] != "EXACT":
+                if not _equation_closes(equation):
                     reasons.append(f"TYPE_PARENT_CURRENCY_EQUATION_MISMATCH:{role}")
         elif child_sum is not None:
             parent_record = child_sum
+        elif direct_record is not None and all(
+            observed_source_coefficient_v1(cell) is None
+            for cell in direct_record["cells"]
+        ):
+            # A labelled optional row that is blank in every lane is an
+            # omission, not a numeric zero and not an equation operand.
+            continue
         else:
             reasons.append(f"TYPE_PARENT_BLANK_WITHOUT_CHILD_FRONTIER:{role}")
             continue
@@ -1647,19 +2975,68 @@ def _ordinary_type_view(
         for role in ("SAVINGS_NO_TERM", "SAVINGS_TERM")
         if role in source_parent_records
     ]
-    if savings_source_records:
+    combined_direct = (
+        direct.get("SAVINGS_COMBINED", [None])[0]
+        if len(direct.get("SAVINGS_COMBINED", [])) == 1
+        else None
+    )
+    combined_children = [
+        child
+        for currency_role in ("VND", "FOREIGN")
+        for child in children.get(("SAVINGS_COMBINED", currency_role), [])
+    ]
+    combined_child_sum = (
+        _aggregate_records("SAVINGS_COMBINED", combined_children) if combined_children else None
+    )
+    combined_direct_visible = combined_direct is not None and any(
+        cell["source_text"] is not None for cell in combined_direct["cells"]
+    )
+    specific_sum = (
+        _aggregate_records("SAVINGS_COMBINED", savings_source_records)
+        if savings_source_records
+        else None
+    )
+    combined_record = None
+    if combined_direct_visible:
+        combined_record = combined_direct
+        comparison_records = combined_children or savings_source_records
+        if comparison_records:
+            equation = _equation(
+                equation_kind="SAVINGS_COMBINED_EQUALS_SOURCE_COMPONENTS",
+                component_records=comparison_records,
+                result_record=combined_direct,
+                result_role="SAVINGS_COMBINED",
+                unit_axis=unit_axis,
+            )
+            equations.append(equation)
+            if not _equation_closes(equation):
+                reasons.append("SAVINGS_COMBINED_SOURCE_COMPONENT_EQUATION_MISMATCH")
+    elif combined_child_sum is not None:
+        combined_record = combined_child_sum
+    elif specific_sum is not None:
+        combined_record = specific_sum
+    elif combined_direct is not None and all(
+        observed_source_coefficient_v1(cell) is None
+        for cell in combined_direct["cells"]
+    ):
+        combined_record = None
+    if combined_record is not None:
+        source_parent_records["SAVINGS_COMBINED"] = combined_record
+        output["SAVINGS"] = _record(
+            role="SAVINGS",
+            cells=combined_record["cells"],
+            source_refs=combined_record["source_refs"],
+            state=combined_record["state"],
+        )
+    elif savings_source_records:
         output["SAVINGS"] = _aggregate_records("SAVINGS", savings_source_records)
     for currency_role in ("VND", "FOREIGN"):
-        records = [
-            child
-            for source_role in ("SAVINGS_NO_TERM", "SAVINGS_TERM")
-            for child in savings_children.get((source_role, currency_role), [])
-        ]
+        records = list(children.get(("SAVINGS_COMBINED", currency_role), []))
         if not records:
             records = [
                 child
                 for source_role in ("SAVINGS_NO_TERM", "SAVINGS_TERM")
-                for child in children.get((source_role, currency_role), [])
+                for child in savings_children.get((source_role, currency_role), [])
             ]
         if records:
             output_role = f"SAVINGS_{currency_role}"
@@ -1672,22 +3049,44 @@ def _ordinary_type_view(
             output["SAVINGS"] = _aggregate_records("SAVINGS", savings_currency_records)
     present_base_roles = [role for role in _BASE_TYPE_ROLES if role in source_parent_records]
     additive_roles = list(present_base_roles)
-    for role in ("SAVINGS_NO_TERM", "SAVINGS_TERM"):
-        record = source_parent_records.get(role)
-        if record is None:
-            continue
-        if all(
-            type(ref.get("hierarchy_path_exact")) is list
-            and bool(ref["hierarchy_path_exact"])
-            and _source_roles_for_text(
-                ref["hierarchy_path_exact"][0],
+    savings_structural_records = []
+    if "SAVINGS_COMBINED" in source_parent_records:
+        if combined_direct is not None or combined_children:
+            structural_record = (
+                combined_direct
+                if combined_direct is not None
+                else source_parent_records["SAVINGS_COMBINED"]
+            )
+            savings_structural_records.append(("SAVINGS_COMBINED", structural_record))
+        else:
+            for source_role in ("SAVINGS_NO_TERM", "SAVINGS_TERM"):
+                record = source_parent_records.get(source_role)
+                if record is None:
+                    continue
+                direct_structural_records = direct.get(source_role, [])
+                savings_structural_records.append(
+                    (
+                        source_role,
+                        direct_structural_records[0]
+                        if len(direct_structural_records) == 1
+                        else record,
+                    )
+                )
+    if savings_structural_records and all(
+        not {
+            ancestor_role
+            for value in ref.get("hierarchy_path_exact", [])[:-1]
+            for ancestor_role in _source_roles_for_text(
+                value,
                 roles=_TYPE_SOURCE_ROLES,
                 compiled_specs=compiled_specs,
             )
-            == [role]
-            for ref in record["source_refs"]
-        ):
-            additive_roles.append(role)
+            if ancestor_role != source_role
+        }
+        for source_role, record in savings_structural_records
+        for ref in record["source_refs"]
+    ):
+        additive_roles.append("SAVINGS_COMBINED")
     if not any(
         set(required_roles) <= set(present_base_roles)
         for required_roles in compiled_specs["topology"]["required_role_combinations"]
@@ -1699,15 +3098,16 @@ def _ordinary_type_view(
             component_records=[source_parent_records[role] for role in additive_roles],
             result_record=totals[0],
             result_role="TYPE_VISIBLE_TOTAL",
+            unit_axis=unit_axis,
         )
         equations.append(equation)
-        if equation["status"] != "EXACT":
+        if not _equation_closes(equation):
             reasons.append("TYPE_ROOT_TOTAL_EQUATION_MISMATCH")
     return (
         output,
         equations,
         {
-            "layout": "ROW_ROLES_X_TWO_PERIOD_COLUMNS",
+            "layout": layout,
             "period_axis": period_axis,
             "source_inventory": inventory,
             "unit_axis": unit_axis,
@@ -1863,9 +3263,10 @@ def _stacked_type_view(
             component_records=[records_by_currency["VND"], records_by_currency["FOREIGN"]],
             result_record=records_by_currency["TOTAL"],
             result_role=role,
+            unit_axis=unit_receipts[0],
         )
         equations.append(equation)
-        if equation["status"] != "EXACT":
+        if not _equation_closes(equation):
             reasons.append(f"STACKED_ROLE_CURRENCY_EQUATION_MISMATCH:{role}")
         if role in _BASE_TYPE_ROLES:
             output[role] = _record(
@@ -1882,9 +3283,11 @@ def _stacked_type_view(
                     source_refs=records_by_currency[currency_role]["source_refs"],
                     state=records_by_currency[currency_role]["state"],
                 )
-    savings_roles = [
-        role for role in ("SAVINGS_NO_TERM", "SAVINGS_TERM") if role in source_period_records
-    ]
+    savings_roles = (
+        ["SAVINGS_COMBINED"]
+        if "SAVINGS_COMBINED" in source_period_records
+        else [role for role in ("SAVINGS_NO_TERM", "SAVINGS_TERM") if role in source_period_records]
+    )
     if savings_roles:
         for output_role, currency_role in (
             ("SAVINGS", "TOTAL"),
@@ -1896,7 +3299,7 @@ def _stacked_type_view(
             )
     present_base_roles = [role for role in _BASE_TYPE_ROLES if role in source_period_records]
     additive_roles = list(present_base_roles)
-    for role in ("SAVINGS_NO_TERM", "SAVINGS_TERM"):
+    for role in savings_roles:
         if role not in source_period_records:
             continue
         refs = source_period_records[role]["TOTAL"]["source_refs"]
@@ -1940,9 +3343,10 @@ def _stacked_type_view(
                 ],
                 result_record=total_records[currency_role],
                 result_role=f"TYPE_VISIBLE_TOTAL_{currency_role}",
+                unit_axis=unit_receipts[0],
             )
             equations.append(equation)
-            if equation["status"] != "EXACT":
+            if not _equation_closes(equation):
                 reasons.append(f"STACKED_TYPE_ROOT_EQUATION_MISMATCH:{currency_role}")
     return (
         output,
@@ -1964,6 +3368,8 @@ def _customer_view(
     region: Mapping[str, Any],
     compiled_specs: Mapping[str, Any],
     document_unit_context: Mapping[str, Any] | None,
+    row_source_axis: Sequence[tuple[Mapping[str, Any], int]] | None = None,
+    layout: str = "CUSTOMER_ROWS_X_MONEY_AND_OPTIONAL_PERCENT_COLUMNS",
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], dict[str, Any], list[str]]:
     period_axis = _two_period_axis(table)
     unit_axis = _unit_axis(
@@ -1976,15 +3382,25 @@ def _customer_view(
     rows = table.get("rows")
     if type(rows) is not list:
         raise _error("customer-deposit customer-view row axis is invalid")
+    if row_source_axis is not None and len(row_source_axis) != len(rows):
+        raise _error("customer-deposit customer-view source-row axis is invalid")
     by_role: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    parent_role_by_row: dict[int, str | None] = {}
+    structural_by_role: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    parent_role_by_source_ref: dict[str, str | None] = {}
     totals = []
     inventory = []
+    active_customer_parent_role: str | None = None
     for ordinal, row in enumerate(rows, start=1):
         if type(row) is not dict:
             reasons.append("CUSTOMER_SOURCE_ROW_INVALID")
             continue
-        ref = _source_ref(region, ordinal, row)
+        source_region, source_row_ordinal = (
+            row_source_axis[ordinal - 1] if row_source_axis is not None else (region, ordinal)
+        )
+        ref = _source_ref(source_region, source_row_ordinal, row)
+        ref_key = canonical_json_sha256_v1(
+            {"locator": ref["locator"], "row_ordinal": ref["row_ordinal"]}
+        )
         if row.get("row_kind") == "TOTAL":
             try:
                 cells = _parse_cells(row, money_columns)
@@ -2000,10 +3416,53 @@ def _customer_view(
                 )
             )
             inventory.append({**ref, "disposition": "CUSTOMER_VISIBLE_TOTAL", "matched_roles": []})
+            active_customer_parent_role = None
+            continue
+        normalized_label = _normalized(row.get("label_exact")).lstrip("- ")
+        if (
+            row.get("row_kind") == "GROUP"
+            and any(
+                normalized_label.startswith(prefix)
+                for prefix in (
+                    "thuyet minh theo doi tuong khach hang",
+                    "thuyet minh theo loai hinh doanh nghiep",
+                )
+            )
+            and not any(value is not None for value in row.get("values_exact", []))
+        ):
+            inventory.append(
+                {
+                    **ref,
+                    "disposition": "EXCLUDED_EXACT_CUSTOMER_VIEW_CAPTION",
+                    "matched_roles": [],
+                }
+            )
+            continue
+        if _is_blank_structural_owner_row(row, compiled_specs=compiled_specs):
+            inventory.append(
+                {
+                    **ref,
+                    "disposition": "EXCLUDED_EXACT_STRUCTURAL_CUSTOMER_DEPOSIT_OWNER",
+                    "matched_roles": [],
+                }
+            )
             continue
         matched = _source_roles_for_text(
             row.get("label_exact"), roles=_CUSTOMER_SOURCE_ROLES, compiled_specs=compiled_specs
         )
+        if not matched and row.get("row_kind") == "SUBTOTAL" and row.get("label_exact") is None:
+            hierarchy_path = row.get("hierarchy_path_exact")
+            hierarchy_roles = {
+                role
+                for value in (hierarchy_path if type(hierarchy_path) is list else [])
+                for role in _source_roles_for_text(
+                    value,
+                    roles=_CUSTOMER_SOURCE_ROLES,
+                    compiled_specs=compiled_specs,
+                )
+            }
+            if len(hierarchy_roles) == 1:
+                matched = sorted(hierarchy_roles)
         if len(matched) != 1:
             reasons.append(f"CUSTOMER_SOURCE_ROW_UNCONSUMED_OR_AMBIGUOUS:r{ordinal}")
             inventory.append(
@@ -2011,48 +3470,142 @@ def _customer_view(
             )
             continue
         role = matched[0]
+        cells_valid = True
         try:
-            cells = _parse_cells(row, money_columns)
+            cells = _parse_customer_cells(row, money_columns)
         except GeminiJsonCustomerDepositFamilyV1Error:
             reasons.append(f"CUSTOMER_ROLE_MONEY_VECTOR_INVALID:{role}:r{ordinal}")
             cells = []
+            cells_valid = False
         record = _record(role=role, cells=cells, source_refs=[ref], state="SOURCE_VISIBLE")
-        by_role[role].append(record)
-        ancestors = []
+        source_visible = any(cell["source_text"] is not None for cell in cells)
+        if source_visible or not cells_valid:
+            by_role[role].append(record)
+        ancestors: list[str] = []
         path = row.get("hierarchy_path_exact")
         label_folded = _normalized(row.get("label_exact"))
         if type(path) is list:
-            for value in path:
+            for value in reversed(path):
                 if _normalized(value) == label_folded:
                     continue
-                ancestors.extend(
+                path_roles = set(
                     _source_roles_for_text(
-                        value, roles=_CUSTOMER_SOURCE_ROLES, compiled_specs=compiled_specs
+                        value,
+                        roles=_CUSTOMER_SOURCE_ROLES,
+                        compiled_specs=compiled_specs,
                     )
                 )
-        parent_role_by_row[ordinal] = ancestors[0] if len(set(ancestors)) == 1 else None
-        if len(set(ancestors)) > 1:
+                path_roles.discard(role)
+                if len(path_roles) == 1:
+                    ancestors = sorted(path_roles)
+                    break
+                if len(path_roles) > 1:
+                    ancestors = sorted(path_roles)
+                    break
+        parent_role_by_source_ref[ref_key] = ancestors[0] if len(ancestors) == 1 else None
+        if len(ancestors) > 1:
             reasons.append(f"CUSTOMER_HIERARCHY_PARENT_AMBIGUOUS:r{ordinal}")
-        inventory.append(
-            {
-                **ref,
-                "disposition": "MAPPED_CUSTOMER_ROLE",
-                "matched_roles": matched,
-                "parent_role": parent_role_by_row[ordinal],
-            }
-        )
+        if (
+            not ancestors
+            and active_customer_parent_role == "CUSTOMER_TCKT"
+            and role in _CUSTOMER_TCKT_CHILD_ROLES
+        ):
+            parent_role_by_source_ref[ref_key] = "CUSTOMER_TCKT"
+        if not source_visible and cells_valid and row.get("row_kind") in {"GROUP", "SUBTOTAL"}:
+            structural_by_role[role].append(record)
+        if role == "CUSTOMER_TCKT":
+            active_customer_parent_role = (
+                None if row.get("row_kind") == "SUBTOTAL" else "CUSTOMER_TCKT"
+            )
+        elif role not in _CUSTOMER_TCKT_CHILD_ROLES:
+            active_customer_parent_role = None
+        inventory_item = {
+            **ref,
+            "disposition": (
+                "SOURCE_ONLY_NO_EQUIVALENT_CUSTOMER_DEPOSIT_SCHEMA_ID"
+                if cells and source_visible and role not in compiled_specs["bindings"]
+                else "MAPPED_CUSTOMER_ROLE"
+                if cells and source_visible
+                else "STRUCTURAL_CUSTOMER_ROLE_WITHOUT_VISIBLE_VALUE"
+                if cells
+                else "UNRESOLVED_INVALID_CUSTOMER_MONEY_VECTOR"
+            ),
+            "matched_roles": matched,
+            "parent_role": parent_role_by_source_ref[ref_key],
+        }
+        conditional_lanes = [
+            lane
+            for lane, cell in enumerate(cells, start=1)
+            if cell["state"] == "TRAILING_DASH_POSITIVE_IF_EXACT_CHILD_CLOSURE"
+        ]
+        if conditional_lanes:
+            inventory_item["conditional_money_lanes"] = conditional_lanes
+            inventory_item["disposition"] = "PROVISIONAL_TRAILING_DASH_CUSTOMER_MONEY"
+        inventory.append(inventory_item)
     if len(totals) != 1 or not totals[0]["cells"]:
         reasons.append("CUSTOMER_VISIBLE_TOTAL_COUNT_NOT_ONE")
-    output = {role: _aggregate_records(role, records) for role, records in by_role.items()}
-    equations = []
-    for parent_role in by_role:
+    complete_by_role = {
+        role: records
+        for role, records in by_role.items()
+        if records and all(len(record["cells"]) == 2 for record in records)
+    }
+    for role in sorted(set(by_role) - set(complete_by_role)):
+        reasons.append(f"CUSTOMER_ROLE_CELL_VECTOR_INCOMPLETE:{role}")
+    derived_structural_roles: set[str] = set()
+    for role, structural_records in structural_by_role.items():
+        if role in complete_by_role:
+            continue
+        if len(structural_records) != 1:
+            reasons.append(f"CUSTOMER_STRUCTURAL_PARENT_COUNT_NOT_ONE:{role}")
+            continue
         child_records = [
             record
-            for role, records in by_role.items()
+            for child_role, records in complete_by_role.items()
+            if child_role != role
             for record in records
             if any(
-                ref["row_ordinal"] in parent_role_by_row
-                and parent_role_by_row[ref["row_ordinal"]] == parent_role
+                parent_role_by_source_ref.get(
+                    canonical_json_sha256_v1(
+                        {"locator": ref["locator"], "row_ordinal": ref["row_ordinal"]}
+                    )
+                )
+                == role
+                for ref in record["source_refs"]
+            )
+        ]
+        if not child_records:
+            continue
+        derived = _aggregate_records(role, child_records)
+        derived["source_refs"] = [
+            *canonical_clone_v1(structural_records[0]["source_refs"]),
+            *derived["source_refs"],
+        ]
+        derived["state"] = "DERIVED_EXACT_COMPLETE_STRUCTURAL_CHILD_FRONTIER"
+        complete_by_role[role] = [derived]
+        derived_structural_roles.add(role)
+        structural_ref = structural_records[0]["source_refs"][0]
+        for item in inventory:
+            if item["row_ordinal"] == structural_ref["row_ordinal"] and same_typed_json_v1(
+                item["locator"], structural_ref["locator"]
+            ):
+                item["disposition"] = "DERIVED_FROM_COMPLETE_HIERARCHY_CHILD_FRONTIER"
+    output = {role: _aggregate_records(role, records) for role, records in complete_by_role.items()}
+    equations = []
+    conditional_money_recoveries = []
+    authenticated_conditional_cells: set[tuple[str, str, int]] = set()
+    for parent_role in complete_by_role:
+        child_records = [
+            record
+            for role, records in complete_by_role.items()
+            if role != parent_role
+            for record in records
+            if any(
+                parent_role_by_source_ref.get(
+                    canonical_json_sha256_v1(
+                        {"locator": ref["locator"], "row_ordinal": ref["row_ordinal"]}
+                    )
+                )
+                == parent_role
                 for ref in record["source_refs"]
             )
         ]
@@ -2063,17 +3616,97 @@ def _customer_view(
             component_records=child_records,
             result_record=output[parent_role],
             result_role=parent_role,
+            unit_axis=unit_axis,
         )
         equations.append(equation)
-        if equation["status"] != "EXACT":
+        if not _equation_closes(equation):
             reasons.append(f"CUSTOMER_HIERARCHY_EQUATION_MISMATCH:{parent_role}")
+        parent_records = complete_by_role[parent_role]
+        if equation["status"] == "EXACT" and len(parent_records) == 1:
+            parent_record = parent_records[0]
+            parent_ref = parent_record["source_refs"][0]
+            for lane, cell in enumerate(parent_record["cells"], start=1):
+                if cell["state"] != "TRAILING_DASH_POSITIVE_IF_EXACT_CHILD_CLOSURE":
+                    continue
+                if any(
+                    record["cells"][lane - 1]["state"]
+                    == "TRAILING_DASH_POSITIVE_IF_EXACT_CHILD_CLOSURE"
+                    for record in child_records
+                ):
+                    continue
+                authenticated_conditional_cells.add(
+                    (
+                        parent_role,
+                        canonical_json_sha256_v1(
+                            {
+                                "locator": parent_ref["locator"],
+                                "row_ordinal": parent_ref["row_ordinal"],
+                            }
+                        ),
+                        lane,
+                    )
+                )
+                recovered = output[parent_role]["cells"][lane - 1]
+                recovered["source_text"] = cell["source_text"]
+                recovered["state"] = "INFERRED_TRAILING_DASH_POSITIVE_EXACT_CHILD_CLOSURE"
+                output[parent_role]["state"] = (
+                    "DERIVED_WITH_TRAILING_DASH_POSITIVE_EXACT_CHILD_CLOSURE"
+                )
+                conditional_money_recoveries.append(
+                    {
+                        "equation_id": equation["equation_id"],
+                        "lane": lane,
+                        "role": parent_role,
+                        "source_ref": canonical_clone_v1(parent_ref),
+                        "source_text": cell["source_text"],
+                        "state": "INFERRED_TRAILING_DASH_POSITIVE_EXACT_CHILD_CLOSURE",
+                    }
+                )
+    for role, records in complete_by_role.items():
+        for record in records:
+            ref = record["source_refs"][0]
+            for lane, cell in enumerate(record["cells"], start=1):
+                if (
+                    cell["state"] == "TRAILING_DASH_POSITIVE_IF_EXACT_CHILD_CLOSURE"
+                    and (
+                        role,
+                        canonical_json_sha256_v1(
+                            {"locator": ref["locator"], "row_ordinal": ref["row_ordinal"]}
+                        ),
+                        lane,
+                    )
+                    not in authenticated_conditional_cells
+                ):
+                    reasons.append(
+                        f"CUSTOMER_TRAILING_DASH_NOT_EXACT_CHILD_CLOSURE:{role}:"
+                        f"r{ref['row_ordinal']}:lane{lane}"
+                    )
+    for item in inventory:
+        recoveries = [
+            recovery
+            for recovery in conditional_money_recoveries
+            if recovery["source_ref"]["row_ordinal"] == item["row_ordinal"]
+            and same_typed_json_v1(recovery["source_ref"]["locator"], item["locator"])
+        ]
+        if recoveries:
+            item["conditional_money_recoveries"] = canonical_clone_v1(recoveries)
+            item["disposition"] = "MAPPED_AFTER_EXACT_CHILD_CLOSURE"
     root_records = []
-    for role, records in by_role.items():
+    for role, records in complete_by_role.items():
+        if role in derived_structural_roles:
+            root_records.append(output[role])
+            continue
         top_level_records = [
             record
             for record in records
             if all(
-                parent_role_by_row.get(ref["row_ordinal"]) is None for ref in record["source_refs"]
+                parent_role_by_source_ref.get(
+                    canonical_json_sha256_v1(
+                        {"locator": ref["locator"], "row_ordinal": ref["row_ordinal"]}
+                    )
+                )
+                is None
+                for ref in record["source_refs"]
             )
         ]
         if top_level_records:
@@ -2084,30 +3717,86 @@ def _customer_view(
             component_records=root_records,
             result_record=totals[0],
             result_role="CUSTOMER_VISIBLE_TOTAL",
+            unit_axis=unit_axis,
         )
         equations.append(equation)
-        if equation["status"] != "EXACT":
+        if not _equation_closes(equation):
             reasons.append("CUSTOMER_ROOT_TOTAL_EQUATION_MISMATCH")
     else:
         reasons.append("CUSTOMER_ROOT_FRONTIER_INCOMPLETE")
+    receipt = {
+        "layout": layout,
+        "period_axis": period_axis,
+        "source_only_schema_roles": sorted(
+            role for role in complete_by_role if role not in compiled_specs["bindings"]
+        ),
+        "source_inventory": inventory,
+        "unit_axis": unit_axis,
+    }
+    if conditional_money_recoveries:
+        receipt["conditional_money_recoveries"] = conditional_money_recoveries
     return (
         output,
         equations,
-        {
-            "layout": "CUSTOMER_ROWS_X_MONEY_AND_OPTIONAL_PERCENT_COLUMNS",
-            "period_axis": period_axis,
-            "source_inventory": inventory,
-            "unit_axis": unit_axis,
-        },
+        receipt,
         sorted(set(reasons)),
     )
 
 
-def _upgrade_blank_states(records: Sequence[Mapping[str, Any]]) -> None:
-    for record in records:
-        for cell in record["cells"]:
-            if cell["state"] == "BLANK_ZERO_IF_EQUATION_EXACT":
-                cell["state"] = "INFERRED_BLANK_ZERO_EQUATION_EXACT"
+def _partial_direct_customer_output(
+    *,
+    proposed_output: Mapping[str, Mapping[str, Any]],
+    receipt: Mapping[str, Any],
+    rejection_reasons: Sequence[str],
+) -> dict[str, dict[str, Any]]:
+    """Retain individually exact customer rows while disclosing residuals.
+
+    The customer-classification table is an optional second view.  One
+    source-only compound row must not erase other directly printed rows that
+    have a unique schema identity, exact two-period columns, and an accepted
+    unit.  Derived/blank/conditional/duplicate roles remain excluded until a
+    complete equation closes.
+    """
+
+    if (
+        not receipt.get("period_axis", {}).get("complete")
+        or not receipt.get("unit_axis", {}).get("complete")
+        or any(
+            reason
+            in {
+                "CUSTOMER_AND_TYPE_PERIOD_AXES_DIFFER",
+                "CUSTOMER_AND_TYPE_UNITS_DIFFER",
+            }
+            or "MONEY_VECTOR_INVALID" in reason
+            for reason in rejection_reasons
+        )
+    ):
+        return {}
+    inventory_by_ref = {
+        canonical_json_sha256_v1(
+            {"locator": item["locator"], "row_ordinal": item["row_ordinal"]}
+        ): item
+        for item in receipt.get("source_inventory", [])
+        if type(item) is dict and "locator" in item and "row_ordinal" in item
+    }
+    output = {}
+    for role, record in proposed_output.items():
+        refs = record.get("source_refs")
+        if type(refs) is not list or len(refs) != 1:
+            continue
+        source_item = inventory_by_ref.get(
+            canonical_json_sha256_v1(
+                {"locator": refs[0]["locator"], "row_ordinal": refs[0]["row_ordinal"]}
+            )
+        )
+        if source_item is None or source_item.get("disposition") != "MAPPED_CUSTOMER_ROLE":
+            continue
+        selected = canonical_clone_v1(record)
+        selected["state"] = "SOURCE_VISIBLE_DIRECT_PARTIAL_OPTIONAL_CUSTOMER_VIEW"
+        for cell in selected["cells"]:
+            cell["state"] = "SOURCE_VISIBLE_DIRECT_PARTIAL_OPTIONAL_CUSTOMER_VIEW"
+        output[role] = selected
+    return output
 
 
 def evaluate_gemini_json_customer_deposit_family_cluster_v1(
@@ -2123,33 +3812,50 @@ def evaluate_gemini_json_customer_deposit_family_cluster_v1(
     expected_receipt = build_gemini_json_customer_deposit_region_query_receipt_v1(region_axis)
     if type(query_receipt) is not dict or not same_typed_json_v1(query_receipt, expected_receipt):
         raise _error("customer-deposit query receipt does not bind the exact fragments")
+    source_pages, authenticated_source_repairs = _apply_authenticated_source_repairs(
+        regions=region_axis,
+        page_json_by_version=page_json_by_version,
+        compiled_specs=compiled_specs,
+    )
     document_unit_context = _document_unit_context_axis(
-        page_json_by_version, compiled_specs=compiled_specs
+        source_pages, compiled_specs=compiled_specs
     )
     type_regions = [item for item in region_axis if item["component_role"] == "TYPE_CURRENCY"]
     customer_regions = [item for item in region_axis if item["component_role"] == "CUSTOMER_TYPE"]
     tables = []
     for region in region_axis:
-        page_json = page_json_by_version.get(region["page_json_version_id"])
+        page_json = source_pages.get(region["page_json_version_id"])
         if type(page_json) is not dict:
             raise _error("customer-deposit selected page JSON is absent")
-        _section, table = _source_table(
-            page_json, section_id=region["section_id"], table_id=region["table_id"]
-        )
-        classification = classify_gemini_json_customer_deposit_table_v1(
-            table, compiled_specs=compiled_specs
-        )
-        if (
-            classification["component_role"] != region["component_role"]
-            or classification["reasons"]
-        ):
-            raise _error("customer-deposit source fragment classification drifted")
-        tables.append(table)
+        tables.append(_source_table_for_region(page_json, region=region))
     table_by_region = dict(
         zip((canonical_json_sha256_v1(item) for item in region_axis), tables, strict=True)
     )
     type_tables = [table_by_region[canonical_json_sha256_v1(item)] for item in type_regions]
-    if len(type_regions) == 1:
+    row_continuation_type = all(
+        item.get("fragment_layout") == "ROW_CONTINUATION" for item in type_regions
+    )
+    if row_continuation_type:
+        merged_type_table = _merge_row_fragments([{"table": table} for table in type_tables])
+        classification = classify_gemini_json_customer_deposit_table_v1(
+            merged_type_table, compiled_specs=compiled_specs
+        )
+        if classification["component_role"] != "TYPE_CURRENCY" or classification["reasons"]:
+            raise _error("customer-deposit source fragment classification drifted")
+        type_output, type_equations, type_receipt, reasons = _ordinary_type_view(
+            table=merged_type_table,
+            region=type_regions[0],
+            compiled_specs=compiled_specs,
+            document_unit_context=document_unit_context,
+            row_source_axis=_fragment_row_source_axis(type_tables, type_regions),
+            layout="ROW_CONTINUATION_FRAGMENTS_X_TWO_PERIOD_COLUMNS",
+        )
+    elif len(type_regions) == 1:
+        classification = classify_gemini_json_customer_deposit_table_v1(
+            type_tables[0], compiled_specs=compiled_specs
+        )
+        if classification["component_role"] != "TYPE_CURRENCY" or classification["reasons"]:
+            raise _error("customer-deposit source fragment classification drifted")
         type_output, type_equations, type_receipt, reasons = _ordinary_type_view(
             table=type_tables[0],
             region=type_regions[0],
@@ -2157,17 +3863,51 @@ def evaluate_gemini_json_customer_deposit_family_cluster_v1(
             document_unit_context=document_unit_context,
         )
     else:
+        if any(
+            (
+                classification := classify_gemini_json_customer_deposit_table_v1(
+                    table, compiled_specs=compiled_specs
+                )
+            )["component_role"]
+            != "TYPE_CURRENCY"
+            or classification["reasons"]
+            for table in type_tables
+        ):
+            raise _error("customer-deposit source fragment classification drifted")
         type_output, type_equations, type_receipt, reasons = _stacked_type_view(
             tables=type_tables,
             regions=type_regions,
             compiled_specs=compiled_specs,
             document_unit_context=document_unit_context,
         )
+    type_units = (
+        [type_receipt["unit_axis"].get("canonical_unit")]
+        if "unit_axis" in type_receipt
+        else [receipt.get("canonical_unit") for receipt in type_receipt["unit_axes"]]
+    )
+    mapping_unit = next(iter(set(type_units))) if len(set(type_units)) == 1 else None
+    if mapping_unit not in {"MILLION_VND", "VND"}:
+        reasons.append("TYPE_MAPPING_UNIT_AXIS_NOT_EXACTLY_ONE_ACCEPTED_UNIT")
     customer_output: dict[str, dict[str, Any]] = {}
     customer_equations: list[dict[str, Any]] = []
     customer_receipt = None
     if customer_regions:
-        customer_table = table_by_region[canonical_json_sha256_v1(customer_regions[0])]
+        customer_tables = [
+            table_by_region[canonical_json_sha256_v1(item)] for item in customer_regions
+        ]
+        row_continuation_customer = all(
+            item.get("fragment_layout") == "ROW_CONTINUATION" for item in customer_regions
+        )
+        customer_table = (
+            _merge_row_fragments([{"table": table} for table in customer_tables])
+            if row_continuation_customer
+            else customer_tables[0]
+        )
+        classification = classify_gemini_json_customer_deposit_table_v1(
+            customer_table, compiled_specs=compiled_specs
+        )
+        if classification["component_role"] != "CUSTOMER_TYPE" or classification["reasons"]:
+            raise _error("customer-deposit source fragment classification drifted")
         (
             proposed_customer_output,
             proposed_customer_equations,
@@ -2178,19 +3918,24 @@ def evaluate_gemini_json_customer_deposit_family_cluster_v1(
             region=customer_regions[0],
             compiled_specs=compiled_specs,
             document_unit_context=document_unit_context,
+            row_source_axis=(
+                _fragment_row_source_axis(customer_tables, customer_regions)
+                if row_continuation_customer
+                else None
+            ),
+            layout=(
+                "CUSTOMER_ROW_CONTINUATION_FRAGMENTS_X_TWO_PERIOD_COLUMNS"
+                if row_continuation_customer
+                else "CUSTOMER_ROWS_X_MONEY_AND_OPTIONAL_PERCENT_COLUMNS"
+            ),
         )
         type_period = (
             type_receipt["period_axis"]["signatures"]
-            if type_receipt["layout"] == "ROW_ROLES_X_TWO_PERIOD_COLUMNS"
+            if "period_axis" in type_receipt
             else [receipt["signature"] for receipt in type_receipt["period_axes"]]
         )
         if proposed_customer_receipt["period_axis"].get("signatures") != type_period:
             customer_reasons.append("CUSTOMER_AND_TYPE_PERIOD_AXES_DIFFER")
-        type_units = (
-            [type_receipt["unit_axis"].get("canonical_unit")]
-            if "unit_axis" in type_receipt
-            else [receipt.get("canonical_unit") for receipt in type_receipt["unit_axes"]]
-        )
         if any(
             unit != proposed_customer_receipt["unit_axis"].get("canonical_unit")
             for unit in type_units
@@ -2198,7 +3943,7 @@ def evaluate_gemini_json_customer_deposit_family_cluster_v1(
             customer_reasons.append("CUSTOMER_AND_TYPE_UNITS_DIFFER")
         customer_reasons = sorted(set(customer_reasons))
         if not customer_reasons and all(
-            equation["status"] == "EXACT" for equation in proposed_customer_equations
+            _equation_closes(equation) for equation in proposed_customer_equations
         ):
             customer_output = proposed_customer_output
             customer_equations = proposed_customer_equations
@@ -2208,9 +3953,20 @@ def evaluate_gemini_json_customer_deposit_family_cluster_v1(
                 "rejection_reasons": [],
             }
         else:
+            partial_customer_output = _partial_direct_customer_output(
+                proposed_output=proposed_customer_output,
+                receipt=proposed_customer_receipt,
+                rejection_reasons=customer_reasons,
+            )
+            customer_output = partial_customer_output
             customer_receipt = {
                 **proposed_customer_receipt,
-                "disposition": "EXCLUDED_NONEXACT_OPTIONAL_CUSTOMER_VIEW",
+                "disposition": (
+                    "INCLUDED_PARTIAL_DIRECT_CUSTOMER_VIEW_WITH_SOURCE_ONLY_RESIDUAL"
+                    if partial_customer_output
+                    else "EXCLUDED_NONEXACT_OPTIONAL_CUSTOMER_VIEW"
+                ),
+                "partial_direct_roles": sorted(partial_customer_output),
                 "rejection_reasons": customer_reasons,
             }
     all_output = {**type_output, **customer_output}
@@ -2222,16 +3978,17 @@ def evaluate_gemini_json_customer_deposit_family_cluster_v1(
     exact = (
         bool(all_output)
         and not reasons
-        and all(equation["status"] == "EXACT" for equation in equations)
+        and all(_equation_closes(equation) for equation in equations)
     )
-    if exact:
-        _upgrade_blank_states(list(all_output.values()))
     mappings = []
     if exact:
         role_order = [item["role"] for item in compiled_specs["schema"]["role_bindings"]]
         for role in role_order:
             record = all_output.get(role)
             if record is None:
+                continue
+            mapping_values = partial_source_mapping_values_v1(record["cells"])
+            if mapping_values is None:
                 continue
             material = {
                 "report_norm_id": compiled_specs["bindings"][role],
@@ -2243,8 +4000,8 @@ def evaluate_gemini_json_customer_deposit_family_cluster_v1(
                 ),
                 "source_refs": canonical_clone_v1(record["source_refs"]),
                 "state": record["state"],
-                "unit": "MILLION_VND",
-                "values": canonical_clone_v1(record["cells"]),
+                "unit": mapping_unit,
+                "values": mapping_values,
             }
             mappings.append(
                 {
@@ -2259,16 +4016,34 @@ def evaluate_gemini_json_customer_deposit_family_cluster_v1(
         "report_norm_id": compiled_specs["schema"]["family_root_report_norm_id"],
         "role": compiled_specs["topology"]["parent"]["role"],
     }
+    closure_receipt = {
+        "customer_view": customer_receipt,
+        "equations": equations,
+        "query_receipt": canonical_clone_v1(expected_receipt),
+        "rule": "OBSERVED_LANES_EXACT_OR_BOUNDED_BLANK_SOURCE_LANES_OMITTED_FROM_MATH",
+        "structural_root_receipt": structural_root_receipt,
+        "type_currency_view": type_receipt,
+    }
+    if "customer_deposit_source_repairs" in compiled_specs:
+        repair_material = {
+            "adapter_format_version": SOURCE_REPAIR_ADAPTER_FORMAT_VERSION,
+            "authenticated_source_repairs": canonical_clone_v1(
+                authenticated_source_repairs
+            ),
+            "source_repair_spec_sha256": compiled_specs.get(
+                "customer_deposit_source_repair_spec_sha256"
+            ),
+        }
+        closure_receipt["customer_deposit_source_repair_receipt"] = {
+            **repair_material,
+            "source_repair_receipt_id": (
+                "gjfcdav1:source-repair-receipt:"
+                + canonical_json_sha256_v1(repair_material)
+            ),
+        }
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
-        "closure_receipt": {
-            "customer_view": customer_receipt,
-            "equations": equations,
-            "query_receipt": canonical_clone_v1(expected_receipt),
-            "rule": "EXACT_TYPE_CURRENCY_AND_OPTIONAL_CUSTOMER_VIEW_ALL_LANES",
-            "structural_root_receipt": structural_root_receipt,
-            "type_currency_view": type_receipt,
-        },
+        "closure_receipt": closure_receipt,
         "component_regions": region_axis,
         "document_id": first["document_id"],
         "family_id": compiled_specs["topology"]["family_id"],

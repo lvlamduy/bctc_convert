@@ -8,8 +8,16 @@ import pytest
 
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     GeminiJsonFirstCorpusLedgerV1Error,
+    acquire_corpus_task_execution_lock_v1,
+    claim_agy_schema_alignment_recovery_pages_v1,
+    claim_agy_tool_denied_orientation_repaired_pages_v1,
+    claim_exhausted_openrouter_unaccepted_pages_for_agy_v1,
+    claim_failed_openrouter_provider_pages_for_agy_v1,
     claim_google_document_for_openrouter_acceleration_v1,
+    claim_legacy_failed_openrouter_provider_pages_for_agy_v1,
     claim_pending_openrouter_corpus_task_for_agy_v1,
+    claim_pending_openrouter_corpus_task_for_ckey_v1,
+    claim_source_render_repaired_pages_for_agy_v1,
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
     list_corpus_tasks_v1,
@@ -17,6 +25,7 @@ from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (
     recover_failed_openrouter_artifact_collision_v1,
     requeue_failed_openrouter_corpus_task_v1,
     seal_agy_corpus_task_v1,
+    seal_ckey_corpus_task_v1,
     seal_current_document_revalidated_corpus_tasks_v1,
     seal_google_fallback_corpus_task_v1,
     seal_offline_revalidated_corpus_task_v1,
@@ -670,6 +679,93 @@ def test_failed_openrouter_task_can_be_sealed_by_complete_google_page_fallback(t
     assert repaired["attempt_count"] == running["attempt_count"]
 
 
+def test_legacy_subprocess_failure_can_seal_from_revalidated_attempted_pages(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/ABB/2025/legacy.pdf",
+                "source_sha256": "3" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(
+        ledger,
+        plan=plan,
+        max_task_attempts=1,
+    )
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+            "provider_returncode": 1,
+            "provider_stderr_bytes": 1,
+            "provider_stderr_sha256": sha256(b"x").hexdigest(),
+            "provider_stdout_bytes": 0,
+            "provider_stdout_sha256": sha256(b"").hexdigest(),
+            "retry_allowed": False,
+        },
+    )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="event chain"):
+        openrouter_failed_task_repair_frontier_v1(ledger, task_id=task["task_id"])
+
+    result = {
+        "cached_pages": [],
+        "disposition": "SUCCEEDED",
+        "failed_pages": [],
+        "ingested_pages": [2],
+        "offline_missing_pages": [],
+        "provider_request_pages": [2],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [],
+        "unresolved_pages": [],
+    }
+    repaired = seal_openrouter_exhausted_page_repair_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        receipt={
+            "disposition": "SUCCEEDED",
+            "document_manifest_id": "gfdmv1:manifest:" + "4" * 64,
+            "failed_pages": [],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "offline_replay_results": [],
+            "offline_missing_pages": [],
+            "prior_failed_receipt_sha256": sha256(failed["last_receipt_json"]).hexdigest(),
+            "provider_results": [
+                {
+                    "accepted_pages": [2],
+                    "physical_pages": [2],
+                    "prompt_variant": "simple",
+                    "repair_attempt": 1,
+                    "result": result,
+                }
+            ],
+            "recitation_failed_pages": [],
+            "repair_attempt": 1,
+            "repair_gateway": "OPENROUTER",
+            "requested_service_tier": "flex",
+            "revalidated_pages": [1, 2, 3],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        },
+    )
+    assert repaired["state"] == "SUCCEEDED"
+
+
 def test_failed_openrouter_task_can_be_sealed_by_bounded_flex_page_repair(tmp_path) -> None:
     plan = build_gemini_json_first_corpus_plan_v1(
         [
@@ -1029,6 +1125,1296 @@ def test_agy_claim_is_disjoint_and_seals_only_exact_complete_manifest(tmp_path) 
         ledger,
         task_id=claimed["task_id"],
         provider_job_ref=claimed["provider_job_ref"],
+        document_manifest=manifest,
+    )
+    assert succeeded["state"] == "SUCCEEDED"
+
+
+def test_agy_terminal_claim_leases_only_authenticated_provider_failed_pages(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "MBB/2025/provider.pdf",
+                "source_sha256": "1" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            },
+            {
+                "relative_path": "VCB/2025/semantic.pdf",
+                "source_sha256": "2" * 64,
+                "source_size_bytes": 200,
+                "page_count": 3,
+            },
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-terminal-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan)
+    tasks = list_corpus_tasks_v1(ledger, states=["PENDING"], route=OPENROUTER_ROUTE)
+    provider_task, semantic_task = tasks[:2]
+    for task, semantic_pages in ((provider_task, []), (semantic_task, [1])):
+        transition_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            expected_state="PENDING",
+            next_state="RUNNING",
+            receipt={"document_run_started": True},
+        )
+        transition_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            expected_state="RUNNING",
+            next_state="FAILED",
+            receipt={
+                "failed_pages": [1],
+                "recitation_failed_pages": [],
+                "semantic_failed_pages": semantic_pages,
+                "unresolved_pages": [],
+            },
+        )
+
+    before_attempt_count = provider_task["attempt_count"] + 1
+    claimed = claim_failed_openrouter_provider_pages_for_agy_v1(
+        ledger,
+        task_id=provider_task["task_id"],
+    )
+    assert claimed["state"] == "SUBMITTED"
+    assert claimed["attempt_count"] == before_attempt_count
+    assert claimed["provider_job_ref"].startswith("agyjobv1:")
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert receipt["format_version"] == ("GEMINI_JSON_FIRST_AGY_TERMINAL_PROVIDER_REPAIR_CLAIM_V1")
+    assert receipt["failed_pages"] == [1]
+    assert len(receipt["prior_failed_receipt_sha256"]) == 64
+    transition_corpus_task_v1(
+        ledger,
+        task_id=claimed["task_id"],
+        expected_state="SUBMITTED",
+        next_state="FAILED",
+        receipt={
+            "disposition": "AGY_TERMINAL_PROVIDER_REPAIR_FAILED",
+            "failed_pages": [1],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        },
+        provider_job_ref=claimed["provider_job_ref"],
+    )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="provider-only"):
+        claim_failed_openrouter_provider_pages_for_agy_v1(
+            ledger,
+            task_id=provider_task["task_id"],
+        )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="provider-only"):
+        claim_failed_openrouter_provider_pages_for_agy_v1(
+            ledger,
+            task_id=semantic_task["task_id"],
+        )
+
+
+def test_agy_terminal_claim_intersects_authenticated_and_store_missing_pages(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/SGB/2025/parent-q1.pdf",
+                "source_sha256": "1" * 64,
+                "source_size_bytes": 100,
+                "page_count": 44,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-store-intersection.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan)
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [20, 22, 23, 33, 34],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [22],
+            "unresolved_pages": [],
+        },
+    )
+    stored_pages = [page for page in range(1, 45) if page not in {20, 23}]
+    source_frontier = {
+        "failed_pages": [20, 23],
+        "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+        "semantic_failure_artifact_pages": [],
+        "source_logical_name": task["relative_path"],
+        "source_sha256": task["source_sha256"],
+        "stored_pages": stored_pages,
+    }
+    claimed = claim_failed_openrouter_provider_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=source_frontier,
+    )
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert receipt["failed_pages"] == [20, 23]
+    assert receipt["authenticated_failed_pages"] == [20, 22, 23, 33, 34]
+    assert receipt["frontier_kind"] == "AUTHENTICATED_FAILURE_STORE_MISSING_INTERSECTION"
+    assert 22 not in receipt["failed_pages"]
+    assert 33 not in receipt["failed_pages"]
+    assert 34 not in receipt["failed_pages"]
+
+
+def test_agy_unaccepted_claim_binds_exhausted_mixed_frontier_and_page_evidence(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/TPB/2026/parent-q2.pdf",
+                "source_sha256": "4" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-unaccepted-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=1)
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [1, 2],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [1],
+            "source_failed_pages": [],
+            "unresolved_pages": [],
+        },
+    )
+    prior_sha = sha256(failed["last_receipt_json"]).hexdigest()
+    source_frontier = {
+        "failed_pages": [1, 2],
+        "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+        "semantic_failure_artifact_pages": [1],
+        "source_logical_name": task["relative_path"],
+        "source_sha256": task["source_sha256"],
+        "stored_pages": [3],
+    }
+    exhaustion = [
+        {
+            "disposition": "NEEDS_REPAIR",
+            "failed_pages": [1, 2],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "prior_failed_receipt_sha256": prior_sha,
+            "receipt_sha256": "c" * 64,
+            "repair_attempt": 1,
+        },
+        {
+            "disposition": "NEEDS_REPAIR",
+            "failed_pages": [1, 2],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "prior_failed_receipt_sha256": prior_sha,
+            "receipt_sha256": "d" * 64,
+            "repair_attempt": 2,
+        },
+    ]
+    evidence_hashes = sorted({prior_sha, "c" * 64, "d" * 64})
+    evidence = [
+        {
+            "failure_evidence_sha256s": evidence_hashes,
+            "failure_kind": "SEMANTIC_NO_ACCEPTED_JSON",
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+        },
+        {
+            "failure_evidence_sha256s": evidence_hashes,
+            "failure_kind": "PROVIDER_NO_ACCEPTED_JSON",
+            "image_sha256": "b" * 64,
+            "physical_page": 2,
+        },
+    ]
+    claimed = claim_exhausted_openrouter_unaccepted_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=source_frontier,
+        exhaustion_evidence=exhaustion,
+        page_evidence=evidence,
+    )
+    assert claimed["state"] == "SUBMITTED"
+    assert claimed["attempt_count"] == 1
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert receipt["format_version"] == ("GEMINI_JSON_FIRST_AGY_EXHAUSTED_UNACCEPTED_PAGE_CLAIM_V1")
+    assert receipt["failed_pages"] == [1, 2]
+    assert receipt["page_evidence"] == evidence
+    assert receipt["page_evidence_sha256"] == canonical_json_sha256_v1(evidence)
+    assert receipt["exhaustion_evidence"] == exhaustion
+
+
+def test_agy_unaccepted_claim_accepts_balanced_semantic_structural_exhaustion(
+    tmp_path,
+) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/TPB/2025/blocked-by-balanced.pdf",
+                "source_sha256": "4" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-balanced-terminal-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=1)
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [1, 2],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [1],
+            "source_failed_pages": [],
+            "unresolved_pages": [],
+        },
+    )
+    prior_sha = sha256(failed["last_receipt_json"]).hexdigest()
+    receipt_sha = "c" * 64
+    exhaustion = [
+        {
+            "balanced_semantic_failed_pages": [1],
+            "disposition": "NEEDS_REPAIR",
+            "exhaustion_kind": "BALANCED_SEMANTIC_RETRY_BLOCKS_SECOND_ATTEMPT",
+            "failed_pages": [1, 2],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "prior_failed_receipt_sha256": prior_sha,
+            "receipt_sha256": receipt_sha,
+            "repair_attempt": 1,
+        }
+    ]
+    evidence_hashes = sorted({prior_sha, receipt_sha})
+    evidence = [
+        {
+            "failure_evidence_sha256s": evidence_hashes,
+            "failure_kind": "SEMANTIC_NO_ACCEPTED_JSON",
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+        },
+        {
+            "failure_evidence_sha256s": evidence_hashes,
+            "failure_kind": "PROVIDER_NO_ACCEPTED_JSON",
+            "image_sha256": "b" * 64,
+            "physical_page": 2,
+        },
+    ]
+
+    claimed = claim_exhausted_openrouter_unaccepted_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier={
+            "failed_pages": [1, 2],
+            "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+            "semantic_failure_artifact_pages": [1],
+            "source_logical_name": task["relative_path"],
+            "source_sha256": task["source_sha256"],
+            "stored_pages": [3],
+        },
+        exhaustion_evidence=exhaustion,
+        page_evidence=evidence,
+    )
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert claimed["state"] == "SUBMITTED"
+    assert receipt["failed_pages"] == [1, 2]
+    assert receipt["exhaustion_evidence"] == exhaustion
+
+
+def test_agy_unaccepted_claim_accepts_only_strict_legacy_subprocess_frontier(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/ABB/2025/legacy-exhausted.pdf",
+                "source_sha256": "6" * 64,
+                "source_size_bytes": 100,
+                "page_count": 2,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-unaccepted-legacy.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=1)
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+            "provider_returncode": 1,
+            "provider_stderr_bytes": 1,
+            "provider_stderr_sha256": sha256(b"x").hexdigest(),
+            "provider_stdout_bytes": 0,
+            "provider_stdout_sha256": sha256(b"").hexdigest(),
+            "retry_allowed": False,
+        },
+    )
+    prior_sha = sha256(failed["last_receipt_json"]).hexdigest()
+    exhaustion = [
+        {
+            "disposition": "NEEDS_REPAIR",
+            "failed_pages": [1],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "prior_failed_receipt_sha256": prior_sha,
+            "receipt_sha256": digest,
+            "repair_attempt": attempt,
+        }
+        for attempt, digest in ((1, "c" * 64), (2, "d" * 64))
+    ]
+    evidence = [
+        {
+            "failure_evidence_sha256s": sorted({prior_sha, "c" * 64, "d" * 64}),
+            "failure_kind": "SEMANTIC_NO_ACCEPTED_JSON",
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+        }
+    ]
+    claimed = claim_exhausted_openrouter_unaccepted_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier={
+            "failed_pages": [1],
+            "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+            "semantic_failure_artifact_pages": [1],
+            "source_logical_name": task["relative_path"],
+            "source_sha256": task["source_sha256"],
+            "stored_pages": [2],
+        },
+        exhaustion_evidence=exhaustion,
+        page_evidence=evidence,
+    )
+    assert claimed["state"] == "SUBMITTED"
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert receipt["failed_pages"] == [1]
+    assert receipt["page_evidence"] == evidence
+
+
+def test_agy_unaccepted_cross_corpus_claim_binds_history_and_rejects_identity_drift(
+    tmp_path,
+) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/BAB/2026/parent-q2.pdf",
+                "source_sha256": "6" * 64,
+                "source_size_bytes": 100,
+                "page_count": 2,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+
+    def failed_legacy_ledger(name: str):
+        ledger = tmp_path / name
+        initialize_gemini_json_first_corpus_ledger_v1(
+            ledger,
+            plan=plan,
+            max_task_attempts=1,
+        )
+        task = list_corpus_tasks_v1(ledger)[0]
+        transition_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            expected_state="PENDING",
+            next_state="RUNNING",
+            receipt={"document_run_started": True},
+        )
+        failed = transition_corpus_task_v1(
+            ledger,
+            task_id=task["task_id"],
+            expected_state="RUNNING",
+            next_state="FAILED",
+            receipt={
+                "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+                "provider_returncode": 1,
+                "provider_stderr_bytes": 1,
+                "provider_stderr_sha256": sha256(b"x").hexdigest(),
+                "provider_stdout_bytes": 0,
+                "provider_stdout_sha256": sha256(b"").hexdigest(),
+                "retry_allowed": False,
+            },
+        )
+        return ledger, task, failed, corpus_ledger_summary_v1(ledger)
+
+    historical_prior_sha = "9" * 64
+
+    def evidence_for(failed):
+        current_prior_sha = sha256(failed["last_receipt_json"]).hexdigest()
+        exhaustion = [
+            {
+                "disposition": "NEEDS_REPAIR",
+                "failed_pages": [1],
+                "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+                "prior_failed_receipt_sha256": historical_prior_sha,
+                "receipt_sha256": digest,
+                "repair_attempt": attempt,
+            }
+            for attempt, digest in ((1, "c" * 64), (2, "d" * 64))
+        ]
+        page_evidence = [
+            {
+                "failure_evidence_sha256s": sorted(
+                    {current_prior_sha, historical_prior_sha, "c" * 64, "d" * 64}
+                ),
+                "failure_kind": "SEMANTIC_NO_ACCEPTED_JSON",
+                "image_sha256": "a" * 64,
+                "physical_page": 1,
+            }
+        ]
+        return exhaustion, page_evidence
+
+    ledger, task, failed, summary = failed_legacy_ledger("cross-corpus.sqlite3")
+    history = {
+        "current_corpus_plan_id": summary["corpus_plan_id"],
+        "current_corpus_run_id": summary["corpus_run_id"],
+        "format_version": "GEMINI_JSON_FIRST_AGY_CROSS_CORPUS_FLEX_HISTORY_V1",
+        "historical_corpus_plan_id": "gjfpcorpusv1:" + "7" * 64,
+        "historical_corpus_run_id": "gjfpcrunv1:" + "8" * 64,
+        "historical_ledger_sha256": "b" * 64,
+        "historical_prior_failed_receipt_sha256": historical_prior_sha,
+        "historical_task_event_ordinal": 7,
+        "historical_task_identity_sha256": "e" * 64,
+    }
+    exhaustion, page_evidence = evidence_for(failed)
+    frontier = {
+        "failed_pages": [1],
+        "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+        "semantic_failure_artifact_pages": [1],
+        "source_logical_name": task["relative_path"],
+        "source_sha256": task["source_sha256"],
+        "stored_pages": [2],
+    }
+    claimed = claim_exhausted_openrouter_unaccepted_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=frontier,
+        exhaustion_evidence=exhaustion,
+        page_evidence=page_evidence,
+        cross_corpus_history_evidence=history,
+    )
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert claimed["state"] == "SUBMITTED"
+    assert receipt["cross_corpus_history_evidence"] == history
+    assert receipt["cross_corpus_history_evidence_sha256"] == canonical_json_sha256_v1(history)
+
+    drift_ledger, drift_task, drift_failed, drift_summary = failed_legacy_ledger(
+        "cross-corpus-drift.sqlite3"
+    )
+    drift_exhaustion, drift_page_evidence = evidence_for(drift_failed)
+    drift_history = {
+        **history,
+        "current_corpus_plan_id": drift_summary["corpus_plan_id"],
+        "current_corpus_run_id": "gjfpcrunv1:" + "f" * 64,
+    }
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="cross-corpus history"):
+        claim_exhausted_openrouter_unaccepted_pages_for_agy_v1(
+            drift_ledger,
+            task_id=drift_task["task_id"],
+            source_bound_store_frontier={
+                **frontier,
+                "source_logical_name": drift_task["relative_path"],
+                "source_sha256": drift_task["source_sha256"],
+            },
+            exhaustion_evidence=drift_exhaustion,
+            page_evidence=drift_page_evidence,
+            cross_corpus_history_evidence=drift_history,
+        )
+
+
+@pytest.mark.parametrize(
+    ("receipt_patch", "evidence_patch", "message"),
+    [
+        ({"source_failed_pages": [1]}, {}, "source/render"),
+        ({"recitation_failed_pages": [2]}, {}, "recitation"),
+        ({}, {"failure_kind": "PROVIDER_NO_ACCEPTED_JSON"}, "failure class"),
+        ({}, {"failure_evidence_sha256s": ["f" * 64]}, "failure class"),
+        ({}, {"image_sha256": "short"}, "failure class"),
+    ],
+)
+def test_agy_unaccepted_claim_rejects_unsafe_failure_or_evidence_frontier(
+    tmp_path, receipt_patch, evidence_patch, message
+) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/TPB/2026/unsafe.pdf",
+                "source_sha256": "5" * 64,
+                "source_size_bytes": 100,
+                "page_count": 2,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-unaccepted-unsafe.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=1)
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed_receipt = {
+        "failed_pages": [1, 2],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [1],
+        "source_failed_pages": [],
+        "unresolved_pages": [],
+        **receipt_patch,
+    }
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt=failed_receipt,
+    )
+    prior_sha = sha256(failed["last_receipt_json"]).hexdigest()
+    exhaustion = [
+        {
+            "disposition": "NEEDS_REPAIR",
+            "failed_pages": [1, 2],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "prior_failed_receipt_sha256": prior_sha,
+            "receipt_sha256": "c" * 64,
+            "repair_attempt": 1,
+        },
+        {
+            "disposition": "NEEDS_REPAIR",
+            "failed_pages": [1, 2],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "prior_failed_receipt_sha256": prior_sha,
+            "receipt_sha256": "d" * 64,
+            "repair_attempt": 2,
+        },
+    ]
+    evidence_hashes = sorted({prior_sha, "c" * 64, "d" * 64})
+    evidence = [
+        {
+            "failure_evidence_sha256s": evidence_hashes,
+            "failure_kind": "SEMANTIC_NO_ACCEPTED_JSON",
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+            **evidence_patch,
+        },
+        {
+            "failure_evidence_sha256s": evidence_hashes,
+            "failure_kind": "PROVIDER_NO_ACCEPTED_JSON",
+            "image_sha256": "b" * 64,
+            "physical_page": 2,
+        },
+    ]
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match=message):
+        claim_exhausted_openrouter_unaccepted_pages_for_agy_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier={
+                "failed_pages": [1, 2],
+                "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+                "semantic_failure_artifact_pages": [1],
+                "source_logical_name": task["relative_path"],
+                "source_sha256": task["source_sha256"],
+                "stored_pages": [],
+            },
+            exhaustion_evidence=exhaustion,
+            page_evidence=evidence,
+        )
+
+
+def test_agy_legacy_claim_requires_exact_provider_only_store_partition(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/ABB/2025/legacy.pdf",
+                "source_sha256": "3" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-legacy-claim.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=1)
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+            "provider_returncode": 1,
+            "provider_stderr_bytes": 1,
+            "provider_stderr_sha256": sha256(b"x").hexdigest(),
+            "provider_stdout_bytes": 0,
+            "provider_stdout_sha256": sha256(b"").hexdigest(),
+            "retry_allowed": False,
+        },
+    )
+    frontier = {
+        "failed_pages": [2],
+        "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+        "semantic_failure_artifact_pages": [],
+        "source_logical_name": task["relative_path"],
+        "source_sha256": task["source_sha256"],
+        "stored_pages": [1, 3],
+    }
+    claimed = claim_legacy_failed_openrouter_provider_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=frontier,
+    )
+    assert claimed["attempt_count"] == failed["attempt_count"]
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert receipt["failed_pages"] == [2]
+    assert receipt["frontier_kind"] == "LEGACY_SOURCE_BOUND_STORE_MISSING_PROVIDER_ONLY"
+
+
+def _source_render_recovery_case(tmp_path, *, failed_receipt_patch=None):
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/VBB/2025/repaired-render.pdf",
+                "source_sha256": "7" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-source-render-recovery.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=1)
+    task = list_corpus_tasks_v1(ledger)[0]
+    provider_job_ref = "agyjobv1:" + "8" * 64
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+        provider_job_ref=provider_job_ref,
+    )
+    failed_receipt = {
+        "disposition": "AGY_TERMINAL_PROVIDER_REPAIR_FAILED",
+        "failed_pages": [1, 2],
+        "format_version": "GEMINI_JSON_FIRST_AGY_DOCUMENT_RUNNER_V1",
+        "provider_failed_pages": [2],
+        "provider_job_ref": provider_job_ref,
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [],
+        "source_failed_pages": [1],
+        "task_id": task["task_id"],
+        "unresolved_pages": [1],
+    }
+    failed_receipt.update(failed_receipt_patch or {})
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt=failed_receipt,
+        provider_job_ref=provider_job_ref,
+    )
+    prior_sha = sha256(failed["last_receipt_json"]).hexdigest()
+    frontier = {
+        "failed_pages": [1, 2],
+        "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+        "semantic_failure_artifact_pages": [],
+        "source_logical_name": task["relative_path"],
+        "source_sha256": task["source_sha256"],
+        "stored_pages": [3],
+    }
+    local_evidence = [
+        {
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+            "render_receipt_sha256": "c" * 64,
+        }
+    ]
+    page_evidence = [
+        {
+            "failure_evidence_sha256s": sorted({prior_sha, "c" * 64}),
+            "failure_kind": "LOCAL_RENDER_REPAIRED",
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+        },
+        {
+            "failure_evidence_sha256s": [prior_sha],
+            "failure_kind": "PROVIDER_NO_ACCEPTED_JSON",
+            "image_sha256": "b" * 64,
+            "physical_page": 2,
+        },
+    ]
+    return ledger, task, failed, frontier, local_evidence, page_evidence
+
+
+def test_agy_source_render_recovery_claim_is_exact_authenticated_and_one_shot(tmp_path) -> None:
+    ledger, task, failed, frontier, local_evidence, page_evidence = _source_render_recovery_case(
+        tmp_path
+    )
+    claimed = claim_source_render_repaired_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=frontier,
+        local_render_repair_evidence=local_evidence,
+        page_evidence=page_evidence,
+        renderer_source_sha256="d" * 64,
+    )
+    assert claimed["state"] == "SUBMITTED"
+    assert claimed["attempt_count"] == failed["attempt_count"]
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert receipt["format_version"] == ("GEMINI_JSON_FIRST_AGY_SOURCE_RENDER_RECOVERY_CLAIM_V1")
+    assert receipt["failed_pages"] == [1, 2]
+    assert receipt["local_render_repair_evidence"] == local_evidence
+    assert receipt["page_evidence"] == page_evidence
+    assert receipt["provider_job_ref"].startswith("agyjobv1:")
+    with pytest.raises(
+        GeminiJsonFirstCorpusLedgerV1Error,
+        match="requires one failed OpenRouter task",
+    ):
+        claim_source_render_repaired_pages_for_agy_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            local_render_repair_evidence=local_evidence,
+            page_evidence=page_evidence,
+            renderer_source_sha256="d" * 64,
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ("missing_local_evidence", "local evidence frontier"),
+        ("forged_render_receipt", "page evidence"),
+        ("image_mismatch", "page evidence"),
+        ("source_partition_drift", "failure partition"),
+        ("semantic_source_frontier", "semantic failure"),
+    ],
+)
+def test_agy_source_render_recovery_claim_rejects_tamper_and_partition_drift(
+    tmp_path, mutation, message
+) -> None:
+    ledger, task, _failed, frontier, local_evidence, page_evidence = _source_render_recovery_case(
+        tmp_path
+    )
+    if mutation == "missing_local_evidence":
+        local_evidence = []
+    elif mutation == "forged_render_receipt":
+        local_evidence[0]["render_receipt_sha256"] = "e" * 64
+    elif mutation == "image_mismatch":
+        page_evidence[0]["image_sha256"] = "e" * 64
+    elif mutation == "source_partition_drift":
+        frontier["failed_pages"] = [1]
+        frontier["stored_pages"] = [2, 3]
+    elif mutation == "semantic_source_frontier":
+        frontier["semantic_failure_artifact_pages"] = [1]
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match=message):
+        claim_source_render_repaired_pages_for_agy_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            local_render_repair_evidence=local_evidence,
+            page_evidence=page_evidence,
+            renderer_source_sha256="d" * 64,
+        )
+
+
+def test_agy_source_render_recovery_claim_rejects_provider_job_binding_drift(tmp_path) -> None:
+    ledger, task, _failed, frontier, local_evidence, page_evidence = _source_render_recovery_case(
+        tmp_path,
+        failed_receipt_patch={"provider_job_ref": "agyjobv1:" + "9" * 64},
+    )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="not authenticated"):
+        claim_source_render_repaired_pages_for_agy_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            local_render_repair_evidence=local_evidence,
+            page_evidence=page_evidence,
+            renderer_source_sha256="d" * 64,
+        )
+
+
+def _source_render_custom_failure_case(tmp_path, *, claim_receipt_sha256=None):
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/VBB/2025/custom-source-failure.pdf",
+                "source_sha256": "7" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-custom-source-render-recovery.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=1)
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [1, 2],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "source_failed_pages": [],
+            "unresolved_pages": [],
+        },
+    )
+    claimed = claim_failed_openrouter_provider_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+    )
+    claim = json.loads(claimed["last_receipt_json"])
+    custom = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="SUBMITTED",
+        next_state="FAILED",
+        receipt={
+            "accepted_pages": [2],
+            "claim_receipt_sha256": claim_receipt_sha256
+            or sha256(claimed["last_receipt_json"]).hexdigest(),
+            "disposition": "AGY_TERMINAL_PROVIDER_REPAIR_FAILED",
+            "failed_pages": [1],
+            "format_version": "GEMINI_JSON_FIRST_AGY_TERMINAL_LOCAL_OR_PROVIDER_FAILURE_V1",
+            "prior_failed_receipt_sha256": claim["prior_failed_receipt_sha256"],
+            "provider_failed_pages": [],
+            "provider_job_ref": claimed["provider_job_ref"],
+            "provider_request_pages": [2],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "source_failed_pages": [1],
+            "unresolved_pages": [1],
+        },
+        provider_job_ref=claimed["provider_job_ref"],
+    )
+    prior_sha = sha256(custom["last_receipt_json"]).hexdigest()
+    frontier = {
+        "failed_pages": [1],
+        "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+        "semantic_failure_artifact_pages": [],
+        "source_logical_name": task["relative_path"],
+        "source_sha256": task["source_sha256"],
+        "stored_pages": [2, 3],
+    }
+    local_evidence = [
+        {
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+            "render_receipt_sha256": "c" * 64,
+        }
+    ]
+    page_evidence = [
+        {
+            "failure_evidence_sha256s": sorted({prior_sha, "c" * 64}),
+            "failure_kind": "LOCAL_RENDER_REPAIRED",
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+        }
+    ]
+    return ledger, task, frontier, local_evidence, page_evidence
+
+
+def test_agy_source_render_recovery_authenticates_custom_local_failure_event_chain(
+    tmp_path,
+) -> None:
+    ledger, task, frontier, local_evidence, page_evidence = _source_render_custom_failure_case(
+        tmp_path
+    )
+    claimed = claim_source_render_repaired_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=frontier,
+        local_render_repair_evidence=local_evidence,
+        page_evidence=page_evidence,
+        renderer_source_sha256="d" * 64,
+    )
+    assert claimed["state"] == "SUBMITTED"
+    assert json.loads(claimed["last_receipt_json"])["failed_pages"] == [1]
+
+
+def test_agy_source_render_recovery_rejects_custom_failure_claim_hash_tamper(tmp_path) -> None:
+    ledger, task, frontier, local_evidence, page_evidence = _source_render_custom_failure_case(
+        tmp_path, claim_receipt_sha256="f" * 64
+    )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="not authenticated"):
+        claim_source_render_repaired_pages_for_agy_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            local_render_repair_evidence=local_evidence,
+            page_evidence=page_evidence,
+            renderer_source_sha256="d" * 64,
+        )
+
+
+def _tool_denied_orientation_case(tmp_path, *, failed_receipt_patch=None):
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "vietstock_bctc/BVB/2025/sideways.pdf",
+                "source_sha256": "7" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            }
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "agy-tool-denied-orientation.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan, max_task_attempts=1)
+    task = list_corpus_tasks_v1(ledger)[0]
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="PENDING",
+        next_state="RUNNING",
+        receipt={"document_run_started": True},
+    )
+    failed = transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="RUNNING",
+        next_state="FAILED",
+        receipt={
+            "failed_pages": [1],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "source_failed_pages": [],
+            "unresolved_pages": [],
+        },
+    )
+    prior_sha = sha256(failed["last_receipt_json"]).hexdigest()
+    frontier = {
+        "failed_pages": [1],
+        "format_version": "GEMINI_JSON_FIRST_SOURCE_BOUND_STORE_FRONTIER_V1",
+        "semantic_failure_artifact_pages": [],
+        "source_logical_name": task["relative_path"],
+        "source_sha256": task["source_sha256"],
+        "stored_pages": [2, 3],
+    }
+    exhaustion = [
+        {
+            "disposition": "NEEDS_REPAIR",
+            "failed_pages": [1],
+            "format_version": "GEMINI_JSON_FIRST_OPENROUTER_EXHAUSTED_PAGE_REPAIR_V2",
+            "prior_failed_receipt_sha256": prior_sha,
+            "receipt_sha256": digest,
+            "repair_attempt": attempt,
+        }
+        for attempt, digest in ((1, "c" * 64), (2, "d" * 64))
+    ]
+    page_evidence = [
+        {
+            "failure_evidence_sha256s": sorted({prior_sha, "c" * 64, "d" * 64}),
+            "failure_kind": "PROVIDER_NO_ACCEPTED_JSON",
+            "image_sha256": "a" * 64,
+            "physical_page": 1,
+        }
+    ]
+    claimed = claim_exhausted_openrouter_unaccepted_pages_for_agy_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=frontier,
+        exhaustion_evidence=exhaustion,
+        page_evidence=page_evidence,
+    )
+    failed_receipt = {
+        "disposition": "AGY_EXHAUSTED_UNACCEPTED_REPAIR_FAILED",
+        "effort_counts": {"high": 0, "low": 0, "medium": 0},
+        "failed_pages": [1],
+        "format_version": "GEMINI_JSON_FIRST_AGY_DOCUMENT_RUNNER_V1",
+        "provider_authorized_pages": [1],
+        "provider_failed_pages": [1],
+        "provider_job_ref": claimed["provider_job_ref"],
+        "provider_request_pages": [1],
+        "recitation_failed_pages": [],
+        "reused_pages": [2, 3],
+        "semantic_failed_pages": [],
+        "source_failed_pages": [],
+        "task_id": task["task_id"],
+        "unresolved_pages": [],
+    }
+    failed_receipt.update(failed_receipt_patch or {})
+    transition_corpus_task_v1(
+        ledger,
+        task_id=task["task_id"],
+        expected_state="SUBMITTED",
+        next_state="FAILED",
+        receipt=failed_receipt,
+        provider_job_ref=claimed["provider_job_ref"],
+    )
+    orientation = [
+        {
+            "clockwise_degrees": 90,
+            "corrected_image_sha256": "b" * 64,
+            "orientation_receipt_sha256": "e" * 64,
+            "original_image_sha256": "a" * 64,
+            "physical_page": 1,
+        }
+    ]
+    denial = [
+        {
+            "effort": effort,
+            "failure_sha256": "1" * 64,
+            "invocation_sha256": "2" * 64,
+            "physical_page": 1,
+            "response_sha256": "3" * 64,
+            "stderr_sha256": "4" * 64,
+        }
+        for effort in ("low", "medium", "high")
+    ]
+    return ledger, task, frontier, orientation, denial
+
+
+def test_agy_tool_denied_orientation_claim_is_exact_and_one_shot(tmp_path) -> None:
+    ledger, task, frontier, orientation, denial = _tool_denied_orientation_case(tmp_path)
+    claimed = claim_agy_tool_denied_orientation_repaired_pages_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=frontier,
+        orientation_repair_evidence=orientation,
+        tool_denial_evidence=denial,
+    )
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert claimed["state"] == "SUBMITTED"
+    assert receipt["format_version"] == (
+        "GEMINI_JSON_FIRST_AGY_TOOL_DENIED_ORIENTATION_RECOVERY_CLAIM_V1"
+    )
+    assert receipt["failed_pages"] == [1]
+    assert receipt["page_evidence"] == [{"image_sha256": "b" * 64, "physical_page": 1}]
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="requires one failed"):
+        claim_agy_tool_denied_orientation_repaired_pages_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            orientation_repair_evidence=orientation,
+            tool_denial_evidence=denial,
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ("original_image", "image evidence"),
+        ("corrected_same", "image evidence"),
+        ("missing_denial", "tool-denial evidence"),
+        ("effort_order", "tool-denial evidence"),
+        ("semantic_frontier", "semantic failure"),
+    ],
+)
+def test_agy_tool_denied_orientation_claim_rejects_tamper(tmp_path, mutation, message) -> None:
+    ledger, task, frontier, orientation, denial = _tool_denied_orientation_case(tmp_path)
+    if mutation == "original_image":
+        orientation[0]["original_image_sha256"] = "f" * 64
+    elif mutation == "corrected_same":
+        orientation[0]["corrected_image_sha256"] = "a" * 64
+    elif mutation == "missing_denial":
+        denial.pop()
+    elif mutation == "effort_order":
+        denial[0]["effort"] = "high"
+    elif mutation == "semantic_frontier":
+        frontier["semantic_failure_artifact_pages"] = [1]
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match=message):
+        claim_agy_tool_denied_orientation_repaired_pages_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            orientation_repair_evidence=orientation,
+            tool_denial_evidence=denial,
+        )
+
+
+def test_agy_tool_denied_orientation_claim_rejects_nonzero_effort_success(tmp_path) -> None:
+    ledger, task, frontier, orientation, denial = _tool_denied_orientation_case(
+        tmp_path,
+        failed_receipt_patch={"effort_counts": {"high": 0, "low": 1, "medium": 0}},
+    )
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="not authenticated"):
+        claim_agy_tool_denied_orientation_repaired_pages_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            orientation_repair_evidence=orientation,
+            tool_denial_evidence=denial,
+        )
+
+
+def test_agy_schema_alignment_claim_is_exact_one_shot_and_rejects_tamper(tmp_path) -> None:
+    ledger, task, frontier, _orientation, _denial = _tool_denied_orientation_case(tmp_path)
+    frontier["semantic_failure_artifact_pages"] = [1]
+    page_evidence = [{"image_sha256": "a" * 64, "physical_page": 1}]
+    attempts = [
+        {
+            "effort": effort,
+            "failure_kind": ("ROW_COLUMN_ALIGNMENT" if effort == "low" else "COMMAND_TOOL_DENIED"),
+            "failure_sha256": "1" * 64,
+            "invocation_sha256": "2" * 64,
+            "physical_page": 1,
+            "response_sha256": "3" * 64,
+            "stderr_sha256": "4" * 64,
+        }
+        for effort in ("low", "medium", "high")
+    ]
+    claimed = claim_agy_schema_alignment_recovery_pages_v1(
+        ledger,
+        task_id=task["task_id"],
+        source_bound_store_frontier=frontier,
+        page_evidence=page_evidence,
+        prior_attempt_evidence=attempts,
+        repair_instruction_sha256="5" * 64,
+        repair_registry_entry_sha256="6" * 64,
+    )
+    receipt = json.loads(claimed["last_receipt_json"])
+    assert claimed["state"] == "SUBMITTED"
+    assert receipt["format_version"] == ("GEMINI_JSON_FIRST_AGY_SCHEMA_ALIGNMENT_RECOVERY_CLAIM_V1")
+    assert receipt["failed_pages"] == [1]
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="requires one failed"):
+        claim_agy_schema_alignment_recovery_pages_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            page_evidence=page_evidence,
+            prior_attempt_evidence=attempts,
+            repair_instruction_sha256="5" * 64,
+            repair_registry_entry_sha256="6" * 64,
+        )
+
+    tamper_root = tmp_path / "tamper"
+    tamper_root.mkdir()
+    ledger, task, frontier, _orientation, _denial = _tool_denied_orientation_case(tamper_root)
+    frontier["semantic_failure_artifact_pages"] = [1]
+    attempts[0]["failure_kind"] = "COMMAND_TOOL_DENIED"
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="prior-attempt evidence"):
+        claim_agy_schema_alignment_recovery_pages_v1(
+            ledger,
+            task_id=task["task_id"],
+            source_bound_store_frontier=frontier,
+            page_evidence=page_evidence,
+            prior_attempt_evidence=attempts,
+            repair_instruction_sha256="5" * 64,
+            repair_registry_entry_sha256="6" * 64,
+        )
+
+
+def test_corpus_task_execution_lock_is_exclusive_and_crash_releasable(tmp_path) -> None:
+    ledger = tmp_path / "task-lock-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=_plan())
+    task = list_corpus_tasks_v1(ledger)[0]
+    first = acquire_corpus_task_execution_lock_v1(ledger, task_id=task["task_id"])
+    try:
+        with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="already owned"):
+            acquire_corpus_task_execution_lock_v1(ledger, task_id=task["task_id"])
+    finally:
+        first.close()
+    resumed = acquire_corpus_task_execution_lock_v1(ledger, task_id=task["task_id"])
+    resumed.close()
+
+
+def test_ckey_claim_is_disjoint_from_agy_and_seals_exact_manifest(tmp_path) -> None:
+    plan = build_gemini_json_first_corpus_plan_v1(
+        [
+            {
+                "relative_path": "MBB/2025/a.pdf",
+                "source_sha256": "1" * 64,
+                "source_size_bytes": 100,
+                "page_count": 3,
+            },
+            {
+                "relative_path": "VCB/2025/b.pdf",
+                "source_sha256": "2" * 64,
+                "source_size_bytes": 200,
+                "page_count": 3,
+            },
+        ],
+        openrouter_page_fraction="1.0",
+    )
+    ledger = tmp_path / "external-ledger.sqlite3"
+    initialize_gemini_json_first_corpus_ledger_v1(ledger, plan=plan)
+    agy = claim_pending_openrouter_corpus_task_for_agy_v1(ledger)
+    ckey = claim_pending_openrouter_corpus_task_for_ckey_v1(ledger)
+    assert agy["task_id"] != ckey["task_id"]
+    assert ckey["state"] == "SUBMITTED"
+    assert ckey["provider_job_ref"].startswith("ckeyjobv1:")
+    pages = [
+        {"physical_page": page}
+        for page in range(ckey["first_physical_page"], ckey["last_physical_page"] + 1)
+    ]
+    manifest = {
+        "document_manifest_id": "gfdmv1:manifest:" + "c" * 64,
+        "document": {
+            "source_logical_name": ckey["relative_path"],
+            "source_sha256": ckey["source_sha256"],
+        },
+        "pages": pages,
+        "status_counts": {"FINANCIAL_NOTE_CONTENT": len(pages)},
+    }
+    with pytest.raises(GeminiJsonFirstCorpusLedgerV1Error, match="seal input"):
+        seal_ckey_corpus_task_v1(
+            ledger,
+            task_id=ckey["task_id"],
+            provider_job_ref=agy["provider_job_ref"],
+            document_manifest=manifest,
+        )
+    succeeded = seal_ckey_corpus_task_v1(
+        ledger,
+        task_id=ckey["task_id"],
+        provider_job_ref=ckey["provider_job_ref"],
         document_manifest=manifest,
     )
     assert succeeded["state"] == "SUCCEEDED"

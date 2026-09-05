@@ -24,6 +24,34 @@ def _pdf(path: Path, *, hidden_x: float | None = None) -> bytes:
     return path.read_bytes()
 
 
+def _scan_and_masked_overlay_pngs() -> tuple[bytes, bytes]:
+    scan = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 20, 20), False)
+    scan.clear_with(255)
+    overlay = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 20, 30), True)
+    overlay.clear_with(0)
+    return scan.tobytes("png"), overlay.tobytes("png")
+
+
+def _recurring_masked_overlay_pdf(path: Path) -> bytes:
+    scan, overlay = _scan_and_masked_overlay_pngs()
+    document = fitz.open()
+    overlay_xref = None
+    for ordinal in range(4):
+        portrait = ordinal % 2 == 0
+        page = document.new_page(
+            width=200 if portrait else 300,
+            height=300 if portrait else 200,
+        )
+        page.insert_image(page.rect, stream=scan)
+        if overlay_xref is None:
+            overlay_xref = page.insert_image(fitz.Rect(10, 10, 190, 290), stream=overlay)
+        else:
+            page.insert_image(fitz.Rect(10, 10, 190, 290), xref=overlay_xref)
+    document.save(path)
+    document.close()
+    return path.read_bytes()
+
+
 def test_full_page_render_expands_declared_box_for_hidden_pdf_content(tmp_path) -> None:
     path = tmp_path / "hidden.pdf"
     source = _pdf(path, hidden_x=190)
@@ -163,6 +191,153 @@ def test_full_page_render_rejects_unbounded_hidden_source_content(tmp_path) -> N
         render_full_pdf_page_v1(
             document[0],
             physical_page=1,
+            dpi=300,
+            source_sha256=sha256(source).hexdigest(),
+        )
+
+
+def test_full_page_render_clips_recurring_masked_overlay_to_complete_scan(
+    tmp_path,
+) -> None:
+    path = tmp_path / "recurring-watermark.pdf"
+    source = _recurring_masked_overlay_pdf(path)
+    with fitz.open(path) as document:
+        standard = document[1].get_pixmap(dpi=200, alpha=False).tobytes("png")
+    with fitz.open(path) as document:
+        rendered = render_full_pdf_page_v1(
+            document[1],
+            physical_page=2,
+            dpi=200,
+            source_sha256=sha256(source).hexdigest(),
+        )
+    assert rendered.receipt["mode"] == "DECLARED_PAGE_BOX"
+    assert rendered.receipt["selected_media_box"] == [0.0, 0.0, 300.0, 200.0]
+    assert rendered.receipt["painted_object_count"] == 2
+    assert rendered.image == standard
+
+
+def test_full_page_render_rejects_one_off_masked_image_outlier(tmp_path) -> None:
+    path = tmp_path / "one-off-masked-outlier.pdf"
+    scan, overlay = _scan_and_masked_overlay_pngs()
+    document = fitz.open()
+    page = document.new_page(width=300, height=200)
+    page.insert_image(page.rect, stream=scan)
+    page.insert_image(fitz.Rect(10, 10, 190, 290), stream=overlay)
+    document.save(path)
+    document.close()
+    source = path.read_bytes()
+    with (
+        fitz.open(path) as document,
+        pytest.raises(
+            GeminiJsonFirstPageRenderV1Error,
+            match="bounded whole-page expansion",
+        ),
+    ):
+        render_full_pdf_page_v1(
+            document[0],
+            physical_page=1,
+            dpi=300,
+            source_sha256=sha256(source).hexdigest(),
+        )
+
+
+def test_full_page_render_counts_recurring_overlay_pages_not_placements(tmp_path) -> None:
+    path = tmp_path / "repeated-on-too-few-pages.pdf"
+    scan, overlay = _scan_and_masked_overlay_pngs()
+    document = fitz.open()
+    overlay_xref = None
+    for ordinal in range(10):
+        page = document.new_page(width=300, height=200)
+        page.insert_image(page.rect, stream=scan)
+        if ordinal == 0:
+            overlay_xref = page.insert_image(fitz.Rect(10, 10, 190, 290), stream=overlay)
+            for offset in range(1, 5):
+                page.insert_image(
+                    fitz.Rect(10 + offset, 10, 190 + offset, 290),
+                    xref=overlay_xref,
+                )
+        elif ordinal == 1:
+            page.insert_image(fitz.Rect(10, 10, 190, 190), xref=overlay_xref)
+    document.save(path)
+    document.close()
+    source = path.read_bytes()
+    with (
+        fitz.open(path) as document,
+        pytest.raises(
+            GeminiJsonFirstPageRenderV1Error,
+            match="bounded whole-page expansion",
+        ),
+    ):
+        render_full_pdf_page_v1(
+            document[0],
+            physical_page=1,
+            dpi=300,
+            source_sha256=sha256(source).hexdigest(),
+        )
+
+
+def test_full_page_render_requires_bounded_sibling_for_recurring_overlay(tmp_path) -> None:
+    path = tmp_path / "recurring-unbounded-overlay.pdf"
+    scan, overlay = _scan_and_masked_overlay_pngs()
+    document = fitz.open()
+    overlay_xref = None
+    for _ordinal in range(4):
+        page = document.new_page(width=300, height=200)
+        page.insert_image(page.rect, stream=scan)
+        if overlay_xref is None:
+            overlay_xref = page.insert_image(fitz.Rect(10, 10, 190, 290), stream=overlay)
+        else:
+            page.insert_image(fitz.Rect(10, 10, 190, 290), xref=overlay_xref)
+    document.save(path)
+    document.close()
+    source = path.read_bytes()
+    with (
+        fitz.open(path) as document,
+        pytest.raises(
+            GeminiJsonFirstPageRenderV1Error,
+            match="bounded whole-page expansion",
+        ),
+    ):
+        render_full_pdf_page_v1(
+            document[0],
+            physical_page=1,
+            dpi=300,
+            source_sha256=sha256(source).hexdigest(),
+        )
+
+
+def test_full_page_render_requires_95_percent_unmasked_scan_coverage(tmp_path) -> None:
+    path = tmp_path / "recurring-overlay-incomplete-scan.pdf"
+    scan, overlay = _scan_and_masked_overlay_pngs()
+    document = fitz.open()
+    overlay_xref = None
+    for ordinal in range(4):
+        portrait = ordinal % 2 == 0
+        page = document.new_page(
+            width=200 if portrait else 300,
+            height=300 if portrait else 200,
+        )
+        page.insert_image(
+            fitz.Rect(0, 0, page.rect.width * 0.94, page.rect.height),
+            stream=scan,
+        )
+        if overlay_xref is None:
+            overlay_xref = page.insert_image(fitz.Rect(10, 10, 190, 290), stream=overlay)
+        else:
+            page.insert_image(fitz.Rect(10, 10, 190, 290), xref=overlay_xref)
+    document.save(path)
+    document.close()
+    source = path.read_bytes()
+    with (
+        fitz.open(path) as document,
+        pytest.raises(
+            GeminiJsonFirstPageRenderV1Error,
+            match="bounded whole-page expansion",
+        ),
+    ):
+        render_full_pdf_page_v1(
+            document[1],
+            physical_page=2,
             dpi=300,
             source_sha256=sha256(source).hexdigest(),
         )

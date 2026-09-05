@@ -282,6 +282,14 @@ def _evaluate_indexed_query_disposition_repair_v1(
         minimum_distinct_child_roles=policy["minimum_distinct_child_roles"],
         structural_branch_role=branch_role,
         structural_branch_aliases=compiled_specs["query_presence_aliases_by_role"][branch_role],
+        structural_branch_fallback_group_aliases=[
+            alias
+            for role in policy.get("structural_branch_fallback_group_roles", [])
+            for alias in compiled_specs["query_presence_aliases_by_role"][role]
+        ],
+        unresolved_near_source_policy=policy.get(
+            "unresolved_near_source_policy", "ANY_UNVETOED_STRUCTURAL_AXIS"
+        ),
         structural_surface_kinds=policy["structural_surface_kinds"],
         explicit_parent_role=compiled_specs["topology"]["parent"]["role"],
         explicit_parent_aliases=compiled_specs["query_parent_aliases"],

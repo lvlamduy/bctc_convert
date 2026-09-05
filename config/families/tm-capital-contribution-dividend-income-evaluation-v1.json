@@ -5,6 +5,7 @@
     "INVESTMENT_EQUITY_DIVIDEND",
     "LONG_TERM_CAPITAL_DIVIDEND",
     "COMBINED_EQUITY_DIVIDEND_SOURCE_ONLY",
+    "LONG_TERM_INVESTMENT_PROVISION_SOURCE_ONLY",
     "EQUITY_METHOD",
     "OTHER_INCOME"
   ],
@@ -18,10 +19,11 @@
   "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
   "duplicate_complete_table_population_policy": "UNRESOLVED_EXACT_REPEATED_POPULATION",
   "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
+  "duration_header_path_scope_policy": "DISTINCT_SUFFIX_AFTER_EXACT_COMMON_PREFIX",
   "equation_consumed_unmatched_residual_role": null,
   "family_id": "CAPITAL_CONTRIBUTION_DIVIDEND_INCOME",
   "family_root_population_policy": "WHOLE_TABLE",
-  "family_root_requirement": "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT",
+  "family_root_requirement": "OPTIONAL",
   "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
   "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
   "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
@@ -38,14 +40,26 @@
   "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
   "period_semantics": "CURRENT_AND_COMPARATIVE_DURATION",
   "root_component_equation_policy": "DECLARED_DIRECT_SUM",
-  "root_component_roles": ["DIRECT_DIVIDEND", "EQUITY_METHOD", "OTHER_INCOME"],
+  "root_component_roles": [
+    "DIRECT_DIVIDEND",
+    "EQUITY_METHOD",
+    "OTHER_INCOME",
+    "LONG_TERM_INVESTMENT_PROVISION_SOURCE_ONLY"
+  ],
   "role_unit_overrides": [],
-  "row_alias_prefix_roles": ["EQUITY_METHOD"],
+  "row_alias_prefix_roles": [
+    "EQUITY_METHOD",
+    "INVESTMENT_EQUITY_DIVIDEND",
+    "LONG_TERM_CAPITAL_DIVIDEND",
+    "OTHER_INCOME"
+  ],
   "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
   "structural_parent_derivation_policy": "DECLARED_CONTEXT_CHILD_FRONTIER",
+  "source_total_blank_lane_control_policy": "OBSERVED_LANES_EXACT_REMAINDER_BLANK",
   "supplemental_owner_aliases": [],
   "supplemental_detail_residuals": [],
   "table_context_roles": ["DIRECT_DIVIDEND"],
   "typed_control_exclusions": [],
+  "validation_only_roles": ["LONG_TERM_INVESTMENT_PROVISION_SOURCE_ONLY"],
   "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
 }

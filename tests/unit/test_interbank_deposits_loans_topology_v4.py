@@ -139,6 +139,12 @@ def test_v4_schema_exact_roles_partition_ambiguous_and_context_bound_sources() -
         "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
         "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
     } <= source_only
+    for role in (
+        "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+        "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
+    ):
+        assert "Bằng ngoại tệ, vàng" in roles[role]["matchers"][0]["aliases"]
     assert "Dự phòng rủi ro" not in roles["TOTAL_INTERBANK_PROVISION"]["matchers"][0]["aliases"]
     assert "Dự phòng rủi ro" in roles["INTERBANK_PROVISION_AMBIGUOUS"]["matchers"][0]["aliases"]
     assert source_only <= set(binding["ignored_roles"])

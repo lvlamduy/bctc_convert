@@ -17,7 +17,8 @@
       "matchers": [
         {
           "aliases": [
-            "Nước ngoài"
+            "Nước ngoài",
+            "Ngoài nước"
           ],
           "within_role": null
         }

@@ -22,7 +22,7 @@
       {
         "application_policy": "REQUIRED_WHEN_ANY_DECLARED_ROLE_VISIBLE",
         "component_role_alternatives": [{
-          "component_roles": ["STANDARD", "SPECIAL_MENTION", "SUBSTANDARD", "DOUBTFUL", "LOSS", "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"],
+          "component_roles": ["STANDARD", "SPECIAL_MENTION", "SUBSTANDARD", "DOUBTFUL", "LOSS", "PENDING_PROCESSING_SECURED_DEBT", "STANDALONE_MARGIN_AND_SECURITIES_ADVANCE"],
           "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
           "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
         }],

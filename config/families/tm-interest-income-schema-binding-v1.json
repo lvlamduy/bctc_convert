@@ -13,6 +13,6 @@
     {"report_norm_id": 1149, "role": "PURCHASED_DEBT_INTEREST"},
     {"report_norm_id": 1150, "role": "OTHER_CREDIT_INCOME"}
   ],
-  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_PROVEN_BY_EXACT_EQUATION_ONLY",
+  "root_mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
   "schema_period_type": "DURATION"
 }

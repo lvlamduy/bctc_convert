@@ -1,0 +1,693 @@
+{
+  "family_id": "SERVICE_ACTIVITY",
+  "format_version": "GEMINI_JSON_SERVICE_ACTIVITY_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "overlay_id": "gjsafav1:overlay:33575846ee64630de7c4fc5bcc906be946a983b04c8558f7189bf1fc533111f3",
+  "repairs": [
+    {
+      "base_page_json_sha256": "187b97924f62bce3e7163fee78a3c952c29458553a070c54064b7073ec4697e2",
+      "base_page_json_version_id": "gfpstorev1:json:f5581c44aeb1b05766b4a00438fa81fb5feb06e9bb7ed86635aacb7f538d7de9",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "31/12/2024",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1850,
+            2550,
+            2310,
+            2760
+          ],
+          "crop_rgb_sha256": "3ee57ca3ebe55830a8542c7115ed77e47836217d3eefb26075caab5400e55635",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ hoạt động dịch vụ",
+            "Thu phí nghiệp vụ chiết khấu"
+          ],
+          "row_label_exact": "Thu phí nghiệp vụ chiết khấu",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "2915fcfa367ef6cd06dce97a97505555b6b73457b646535f14f79283b3633219",
+      "extraction_run_id": "gfpstorev1:run:691e788809dcd896b970b4799176e5dce58aa0fae37fc21f00323cee3aa7c66e",
+      "repair_id": "gjsafav1:repair:c7324905c274322834188aa75627bcc9866bdad2ba79b4c17c0a4bb05f35fbdb",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:d48203a1e60966469e7f12a14f41ed0c3b56ade7f99348d765f5f7ae4dba7322",
+        "image_sha256": "05ad6ff10eec7ae628278c1f241c814b28e4ea2fa955d1d45bff5cc962b4ef4e",
+        "image_size_bytes": 969340,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:b51919eabf0d311d1f6db73f028cccd86ff3f2e1472100ab9db38bd02e267c2b",
+        "physical_page": 34,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "28a0d17b780fdddee6faa8c211f09eb4b3b9870a6720ba677ff1eebb667af747",
+        "source_size_bytes": 9571545
+      },
+      "stored_canonical_json_sha256": "1437361704223fb4ea925ab7d22f87322a37a443a75e71f586318fac70a4579b",
+      "table_ref": {
+        "base_table_sha256": "6898fc9372acff6f49c4c05830749276937dec559ecffbc9ffb1943f7840c525",
+        "effective_table_sha256": "62af7ba27c0f9f1693466b6bcf872d2f543d3ac78f3044660dc792d1778976d1",
+        "section_id": "s4",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          250,
+          2250,
+          2320,
+          3200
+        ],
+        "table_crop_rgb_sha256": "f497d9082cfee37a62bc378b9fba70014f475a6cc5484bf7188354c3d7121b5f"
+      }
+    },
+    {
+      "base_page_json_sha256": "07eb3b11a42f76d37faccea9af384ed26b4d339abc4be9bb3c36e0d4dee0049a",
+      "base_page_json_version_id": "gfpstorev1:json:3b5cd7ae246868b1ae75408c84be0ab4dc7578b36655d684c3ab40a60a204250",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r11:c2",
+          "column_header_path_exact": [
+            "Kỳ trước"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1880,
+            2110,
+            2310,
+            2290
+          ],
+          "crop_rgb_sha256": "4dc723b9e8bdc1378c1d2e0bce3d97a817fbec507a5c47caf2109cb8b9d3e746",
+          "row_hierarchy_path_exact": [
+            "Chi phí từ hoạt động dịch vụ",
+            "Cước phí bưu điện về mạng viễn thông"
+          ],
+          "row_label_exact": "Cước phí bưu điện về mạng viễn thông",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "3eac99a905d9c330c8711c86b43070fc0551cc22dd9e85469ce3c29b5bbea5e2",
+      "extraction_run_id": "gfpstorev1:run:7c436047c65e9085791e869ada82b0c131c679547c8196f4062564b66c3219ed",
+      "repair_id": "gjsafav1:repair:5fbade58d0a36b9a8645576f3f7decd69b0691153f2b887ad61ed2a121f41494",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:550eabbe79d1e8b736b06ce35afd00ee3f5322f90697af0d84e173285b327276",
+        "image_sha256": "11a42ab2dc8fac4c0bc97f6994a881c6bac55c11ceda22457097ed9da3397851",
+        "image_size_bytes": 3200375,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:f7d49f68209df17f6aa88405823ec33bd57e8d5066f9e45a1fab30b3465d931d",
+        "physical_page": 28,
+        "pixel_height": 3546,
+        "pixel_width": 2484,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/KLB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "42042c433e047b6c4581053155f6a845c7caed4715ff871ba2ebc865647f5f43",
+        "source_size_bytes": 8441164
+      },
+      "stored_canonical_json_sha256": "34f4248cb652ad3c16521afc9c50954a80060da8bfafa5073a99538998658d65",
+      "table_ref": {
+        "base_table_sha256": "0b90bc7342b4cb87e8e428c5e7243c002425a950bd636541f64a6901f43d26d6",
+        "effective_table_sha256": "8b07e322c8561210ce3a19f12e2d8de9358d5c28ce142fbbad48dd934a65f20f",
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          250,
+          1450,
+          2320,
+          2480
+        ],
+        "table_crop_rgb_sha256": "7799a9612a2b5dc2809d95207c1091d704b530caade034a433f625124e4f956b"
+      }
+    },
+    {
+      "base_page_json_sha256": "fb2fd47b1857e10cd2359c0661baa77d7719df6c697558fb67be84ad4a790a0e",
+      "base_page_json_version_id": "gfpstorev1:json:0cf7ca82a7d95895d2df5e3284b78f6aeafe573c03528749c8fbcb45cdd8794f",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r3:c2",
+          "column_header_path_exact": [
+            "31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1860,
+            820,
+            2240,
+            960
+          ],
+          "crop_rgb_sha256": "29800c33aa20aaf03ef2e8e2779973bf3cdadb9790f955739df96f96c3c467f4",
+          "row_hierarchy_path_exact": [
+            "Thu từ nghiệp vụ uỷ thác và đại lý"
+          ],
+          "row_label_exact": "Thu từ nghiệp vụ uỷ thác và đại lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1860,
+            900,
+            2240,
+            1040
+          ],
+          "crop_rgb_sha256": "bfe4bed8501a413582d214c40cbdf689d6871305c3b265e52b334a3bc5c209e3",
+          "row_hierarchy_path_exact": [
+            "Thu từ dịch vụ tư vấn"
+          ],
+          "row_label_exact": "Thu từ dịch vụ tư vấn",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1860,
+            1040,
+            2240,
+            1220
+          ],
+          "crop_rgb_sha256": "3564a8a985d2afe0bc9532c48c6313eee42572d09d8b0edbc5c0688c87126340",
+          "row_hierarchy_path_exact": [
+            "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ két"
+          ],
+          "row_label_exact": "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ két",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c2",
+          "column_header_path_exact": [
+            "31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1860,
+            1310,
+            2240,
+            1480
+          ],
+          "crop_rgb_sha256": "1a90850c4309de470bd38224f86511741df0a6162a14170720bb77d24bd397b3",
+          "row_hierarchy_path_exact": [
+            "Cước phí bưu điện về mạng viễn thông"
+          ],
+          "row_label_exact": "Cước phí bưu điện về mạng viễn thông",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r12:c2",
+          "column_header_path_exact": [
+            "31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1860,
+            1450,
+            2240,
+            1620
+          ],
+          "crop_rgb_sha256": "f17b1891481b495c145da618d7942617dd93b5d609c86c647ea9c5670ea66594",
+          "row_hierarchy_path_exact": [
+            "Chi về nghiệp vụ uỷ thác và đại lý"
+          ],
+          "row_label_exact": "Chi về nghiệp vụ uỷ thác và đại lý",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "6db39f7372d83a34c2017f08a301c5e1aea950c6101bef796bfc7501372f60ca",
+      "extraction_run_id": "gfpstorev1:run:d2beb7858076774cc8333071c0a96397732d8df682bdba0d70dcf95d47919265",
+      "repair_id": "gjsafav1:repair:e51828715814e7ee27145265a72affc850dcb4f096acc9869d92db1b88663c55",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [
+        {
+          "after_hierarchy_path_exact": [
+            "Thu từ dịch vụ ngân quỹ"
+          ],
+          "after_label_exact": "Thu từ dịch vụ ngân quỹ",
+          "before_hierarchy_path_exact": [
+            "Thụ từ dịch vụ ngân quỹ"
+          ],
+          "before_label_exact": "Thụ từ dịch vụ ngân quỹ",
+          "crop_bbox_pixels_xyxy": [
+            180,
+            720,
+            1150,
+            910
+          ],
+          "crop_rgb_sha256": "9b54dab61f4daf68e9d3c394e16978ccbbe43ac3fd71328b32165161d800bd3b",
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "visual_state": "PRINTED_LABEL"
+        }
+      ],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:31e59cb5c3e2068ce4eaa267601d10f679ca69a8710354e7ba9ceebb087c30d1",
+        "image_sha256": "aa4d62dd635f11361250803d70325884fb03d3fbf2ad9a2fad0061c93bcbcfc5",
+        "image_size_bytes": 1562555,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:4a7853e43afe51400025ec4da46f74ec17c57b9e7e4f7f83481b54ee47b0de16",
+        "physical_page": 38,
+        "pixel_height": 3508,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/PGB/2025/4_pgb_2026_1_22_d793078_vi_baocaotaichinh_q4_2025.pdf",
+        "source_sha256": "d323b33958279f6dfb5452834c5f7a688bb0b055688f5f88267b9f8c2ba4799d",
+        "source_size_bytes": 19531995
+      },
+      "stored_canonical_json_sha256": "5521ea5f794ee0c8c0a2f42c22da9fbd9e6a7d021d7366f1764576732786856c",
+      "table_ref": {
+        "base_table_sha256": "8c5f1260788b09e4b6b0207196ab00939f0c9e6be66153a76a51ba6c8ef3304d",
+        "effective_table_sha256": "1af6c401dc2a495f0c7432812d9462bfce6eaf6bffef6f7a44b999cd9d8bb961",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          180,
+          540,
+          2260,
+          1850
+        ],
+        "table_crop_rgb_sha256": "f9c5b942055bd60a5c931341337c45e6356e300db7f995687c0aa912102b0951"
+      }
+    },
+    {
+      "base_page_json_sha256": "ad55742098baee523c70a363e4ce6a0473b43656ff3d4f7214fca06a639062d4",
+      "base_page_json_version_id": "gfpstorev1:json:6ce30d69e588ee57d2e93688fc19ab1baa76849cff41451699664ad07207a64a",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c2",
+          "column_header_path_exact": [
+            "2024",
+            "triệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1770,
+            1780,
+            2240,
+            1990
+          ],
+          "crop_rgb_sha256": "f887487dc93ef254eba8851f5ceccb58e8320f161f15289ad21877622a94f092",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ hoạt động dịch vụ",
+            "Dịch vụ bảo hiểm"
+          ],
+          "row_label_exact": "Dịch vụ bảo hiểm",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r17:c2",
+          "column_header_path_exact": [
+            "2024",
+            "triệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1770,
+            2180,
+            2240,
+            2410
+          ],
+          "crop_rgb_sha256": "9ec1e59ff0ff2bfd836b595f8c0a9ec2eaed38dbe3d5b42bab2baa8ef6da6d3c",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động dịch vụ",
+            "Dịch vụ bảo hiểm"
+          ],
+          "row_label_exact": "Dịch vụ bảo hiểm",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "b5377cad6daa809276349620406a30fb483aac8257261cf165f2eedac0e359b1",
+      "extraction_run_id": "gfpstorev1:run:ede8aa90f821e77bd7d745e80f68944bacf07b67ca1d928ba2badfe8da6c9fdc",
+      "repair_id": "gjsafav1:repair:03f5a2e4870cd37442b2e906f2642d2f70d691fa2280f8ca72ba0e0fbe282369",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:84e22b272cbddbd028fb7c5033ac194645b8c2f21bcf6405184e0800cfdb8da7",
+        "image_sha256": "b7f486e99616a1872c71dcf3decf6e376cc8bd4cd79722e0a74763d10f8a4ae9",
+        "image_size_bytes": 493847,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:18961250fe31133a5c0166236abc95c73467d4a52b6e8ed092a62c92c086541d",
+        "physical_page": 72,
+        "pixel_height": 3508,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "source_sha256": "553195cdc772f58a5ea34cb118cfcf98f7ea7460efc802ecc4e95269665a8527",
+        "source_size_bytes": 8559645
+      },
+      "stored_canonical_json_sha256": "b0d671a4d3e6b21e648ec318c85adbc26580f274a36a9720df164609ca1dc91e",
+      "table_ref": {
+        "base_table_sha256": "6fa8e56aa4d0ec3759c39322ad35fe742257f3f205bd245916cc07a71fa7e638",
+        "effective_table_sha256": "05989bf88d4f4a838d5730666278b8be6f3c11e9b813743d4bfad6d078d8aeeb",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          350,
+          1120,
+          2260,
+          2500
+        ],
+        "table_crop_rgb_sha256": "79d8e50f20e2be70e3032bb720d2bab740f1ae27d9fdfea9f3bff57cf239e194"
+      }
+    },
+    {
+      "base_page_json_sha256": "4d1fe8c284f18a8f209fd1e04c014db7f1b5c12497899e89ae218b45d281269f",
+      "base_page_json_version_id": "gfpstorev1:json:702f6a93ba28931ec95484b671052aba3ea899cd5097a39e43872efd79dde1ec",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c2",
+          "column_header_path_exact": [
+            "Từ 1/1/2024\nđến 30/9/2024\ntriệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1770,
+            1040,
+            2240,
+            1240
+          ],
+          "crop_rgb_sha256": "7a7958b46970969602376fedad89941d2e675cb44b3a1be7f6e147612022b7a9",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ hoạt động dịch vụ",
+            "Dịch vụ bảo hiểm"
+          ],
+          "row_label_exact": "Dịch vụ bảo hiểm",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r17:c2",
+          "column_header_path_exact": [
+            "Từ 1/1/2024\nđến 30/9/2024\ntriệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1770,
+            1430,
+            2240,
+            1680
+          ],
+          "crop_rgb_sha256": "1f675c3780ea599266833249199d3ca2f816971d455f9b3c1b745ac4e23d8d78",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động dịch vụ",
+            "Dịch vụ bảo hiểm"
+          ],
+          "row_label_exact": "Dịch vụ bảo hiểm",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "5be33f4787a92b6b2db80cc81af4d7dc143b4c7c0641baeffc3b359edc821dac",
+      "extraction_run_id": "gfpstorev1:run:4ece4490703a09cff2092538a5ebaa97ae3b9c96bc5b4b813665ef31b09194e1",
+      "repair_id": "gjsafav1:repair:6a9d37cae88b8603552fae97029cb23f201c109a1bcecedc00ce9a00c3eba53f",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:b66f22e2f21cfed1b9ed419b56e6da2d0817ae39747faa506142ad27e140fd01",
+        "image_sha256": "9fe31bc0e305de199ba1e6ffc993e98404045f702ffb61bce33ae2c6b838028c",
+        "image_size_bytes": 300243,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:f1b130617d8bbab85532dc031cb77b15ca66d641d1606086319b42c3b4288ff6",
+        "physical_page": 62,
+        "pixel_height": 3507,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+        "source_sha256": "791460cc8f49996a54a2013d4d182153a7404d753d7a78399fd30cb1d5bc3b7b",
+        "source_size_bytes": 4666837
+      },
+      "stored_canonical_json_sha256": "aa084fb47d965e01a3131f94bdfb6da19d631bfb39475b5828ac8dc855a3b2e1",
+      "table_ref": {
+        "base_table_sha256": "b9224ee7d4e712e0db3575a36ea32b452b63ec6d97ede80016a06e0f52623c51",
+        "effective_table_sha256": "7e85e8d4b1c415f1ae81c1dbf8271a010de17f6a0334f952fa796708b65c16ca",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          350,
+          350,
+          2260,
+          1850
+        ],
+        "table_crop_rgb_sha256": "d6ca1968c004b0703c8496a5e5777508348b520dfb9633c11c7686606a78090f"
+      }
+    },
+    {
+      "base_page_json_sha256": "92d3bd599e71aaebcb20a73dc9d3f825f4efd87d509ef5ff96988841bb457558",
+      "base_page_json_version_id": "gfpstorev1:json:df3a7805aa853413cdc34927f472813d6c1f1ef0bffe5a86941fac66ea7785eb",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c2",
+          "column_header_path_exact": [
+            "Từ 1/1/2024\nđến 31/12/2024\ntriệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1770,
+            1040,
+            2240,
+            1240
+          ],
+          "crop_rgb_sha256": "f128b0e59c55c31c655a63368c66f5c612b3c99c96c14fee8eaa594f1f33c346",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ hoạt động dịch vụ",
+            "Dịch vụ bảo hiểm"
+          ],
+          "row_label_exact": "Dịch vụ bảo hiểm",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r17:c2",
+          "column_header_path_exact": [
+            "Từ 1/1/2024\nđến 31/12/2024\ntriệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1770,
+            1430,
+            2240,
+            1680
+          ],
+          "crop_rgb_sha256": "ce959ce023b9b6bb020f25caf1756d2eca292651d4b35a0117c9e31f6d7c4053",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động dịch vụ",
+            "Dịch vụ bảo hiểm"
+          ],
+          "row_label_exact": "Dịch vụ bảo hiểm",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "e73a94c29a46557c9d58268dc408b57ecc95383a2bb49eaaec9b45fb6fdee31b",
+      "extraction_run_id": "gfpstorev1:run:5621ce627a3fed540d7271294f10ff8c87d15762d7db4cfc47b7fd764cb9eb32",
+      "repair_id": "gjsafav1:repair:d914150d683ea7aafaa774b0e4d0812125b37d802b0b1277079205f72be022f1",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:33b1166203fa38acff0561516a5cd50fa7bdd50b5ecf371635ff043379775942",
+        "image_sha256": "2b20abf9887d58a4bb15f3176f509f9c4f19311e06b06c0dcd6e17170720044c",
+        "image_size_bytes": 459198,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:ad0fe9786a382425a137d393c75912e6c4a14fa759a271665ff2d0af1c724541",
+        "physical_page": 63,
+        "pixel_height": 3507,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TCB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "c1df78d8d31faa6079e9a7738c31c759573d15620f4a9f551e57e2ac9b3957eb",
+        "source_size_bytes": 4725303
+      },
+      "stored_canonical_json_sha256": "e7083f255420badd079d18a9098bf119466eaac2e828c50b2fa91cc5a17b492f",
+      "table_ref": {
+        "base_table_sha256": "116191bc3e18937795849031c7c55bf06405dc6d84084bb44db11be6f72f90f8",
+        "effective_table_sha256": "a4cce764b6c9a42849d46f6c6cb45efe23c90e7343e6df7cc4e7630acd52bf5c",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          350,
+          350,
+          2260,
+          1850
+        ],
+        "table_crop_rgb_sha256": "c314772565d6141e3d2dee70ee784c8c00db6b10c53099c384110a4d3cb1b699"
+      }
+    },
+    {
+      "base_page_json_sha256": "8a7241354623e61537575767f48aad40d5463f11d579e58a597032122f63caaf",
+      "base_page_json_version_id": "gfpstorev1:json:2dc28f04bf5bf87757645a8426d63f43f1b51d80d4cb3bedc889c4cf9089d9b3",
+      "cell_repairs": [
+        {
+          "after_exact": "1.175.572",
+          "before_exact": "1.75.572",
+          "cell_id": "r1:c1",
+          "column_header_path_exact": [
+            "Từ 01/01/2025 đến\n31/03/2025\nTriệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1540,
+            550,
+            1960,
+            780
+          ],
+          "crop_rgb_sha256": "301ee35d3a465d8874be43db43760936dafd0fb5355111cf228d007c7a3efee5",
+          "row_hierarchy_path_exact": [
+            "Thu phí dịch vụ"
+          ],
+          "row_label_exact": "Thu phí dịch vụ",
+          "visual_state": "PRINTED_MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "5635ba9bf8bef17be21803b0cc11671b76325b2474f7243d7762704e40e2e201",
+      "extraction_run_id": "gfpstorev1:run:38a4f16237d91a7518fbc073763de448e1ee5b3f520ba6f99aee7c6ca0674486",
+      "repair_id": "gjsafav1:repair:d99bbc26f584766c553a53d974a30b85f7045707338e4298cad138cb486db522",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:1487b932b129c184522bb305da2e5d0a82acbad2115c1cbc6d70eda0506cdbbe",
+        "image_sha256": "0169369994e3572ed21548d1f6046a334d710bc675d8b4c2b379475ecbd41b8c",
+        "image_size_bytes": 3157834,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:4fc72146e789767239f6bc1ba9efdcf212682a6186837130cf298c969ac6e755",
+        "physical_page": 43,
+        "pixel_height": 3508,
+        "pixel_width": 2464,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "f95e7cacd969ceb004fb516d39e81871372a93d02ec9b5edc611e1e578788533",
+        "source_size_bytes": 7895615
+      },
+      "stored_canonical_json_sha256": "93b6c09555807297b5f50ffe698f0ce232ad7b45c7fe99dc0fdd5db7f0e1bb5e",
+      "table_ref": {
+        "base_table_sha256": "6dfe83ec7ef95990c0020ef1d1db00b3b68ce2f446aac7bfe3c2cebcb9c7d0e2",
+        "effective_table_sha256": "85099edee8cfd5c20ae86c8a54713ee6bd7f21d0d326a195f8044cddeee6244f",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          180,
+          300,
+          2310,
+          1750
+        ],
+        "table_crop_rgb_sha256": "c785448e10a2dd76b2b18b43e34f38be31e5082e44d44875d8a881d94d0f5aa6"
+      }
+    },
+    {
+      "base_page_json_sha256": "e86fb49dcccfb6429dd3fe2ee8d7d50c37d180811c5832078c250a4e274658d2",
+      "base_page_json_version_id": "gfpstorev1:json:b89da3d5ffb1b0c5bb2bd75391fb86174441248e4f3c502615c63320cd27d4ba",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Từ 01/01/2024 đến 31/12/2024"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1900,
+            1430,
+            2280,
+            1610
+          ],
+          "crop_rgb_sha256": "f43623340516c4d69f5fcbc258e475aa017bf1cc31ab6329a4cb0b75426ac674",
+          "row_hierarchy_path_exact": [
+            "Thu phí dịch vụ",
+            "- Dịch ủy thác và đại lý"
+          ],
+          "row_label_exact": "- Dịch ủy thác và đại lý",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "34ef2a5f5cc8eeb72545d7ce019f3faf19adb89e15bb50ed93d44e9f9dbf1dea",
+      "extraction_run_id": "gfpstorev1:run:ca179ef2b26248c7ece52a934907a0df06a42463b295dd0e0e60b37a3f7bebab",
+      "repair_id": "gjsafav1:repair:dc9817720a192595f8fa843a9f7c4d4f20762d5318bb77a074b02c008df16025",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "row_repairs": [],
+      "source_binding": {
+        "document_id": "gfpstorev1:document:ecba442009405394db43678276daded9e3e1cdc89d6ca51da7a91c7429897b19",
+        "image_sha256": "48ccf6ec8703156001533e00cd6822024390b26aa3bc46279256ec7fc8f44f48",
+        "image_size_bytes": 818022,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:c38f5c07b1b7a2baeda2bcc77eafaa1f9bcf0417c539a3be2902f4c341775bc4",
+        "physical_page": 49,
+        "pixel_height": 3471,
+        "pixel_width": 2438,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "7035db49b3b4ca6bdc5ed67e4c9913896f1cadfd54fd52119daea50638dff26c",
+        "source_size_bytes": 11290003
+      },
+      "stored_canonical_json_sha256": "90dfdf0a55e4d90bd8fa301987455017066ca945662f36a9df203e5e675d4f7b",
+      "table_ref": {
+        "base_table_sha256": "c4978af0964883c0458d975e2a8c28c81afab7e888fb46f9e2dd3aadc7164d64",
+        "effective_table_sha256": "225e132e9723fd7b209fb1f1388381f269aa2b9ad66aedef186704e8e4f26aa5",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          170,
+          950,
+          2300,
+          2250
+        ],
+        "table_crop_rgb_sha256": "8a7b692f29dc2352be07c7dc0b41bbc72cfde736e9661bf585a5546ba06426b2"
+      }
+    }
+  ],
+  "review_policy": "TRANSCRIBE_ONLY_PDF_VISIBLE_TOKENS_NO_EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO_NO_PROVIDER"
+}

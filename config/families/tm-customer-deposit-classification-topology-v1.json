@@ -13,6 +13,12 @@
       "role_kind": "ADDITIVE_CHILD"
     },
     {
+      "matchers": [{"aliases": ["Tiền gửi tiết kiệm"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "SAVINGS_COMBINED",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
       "matchers": [{"aliases": ["Tiền gửi tiết kiệm không kỳ hạn"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "SAVINGS_NO_TERM",
@@ -37,13 +43,19 @@
       "role_kind": "ADDITIVE_CHILD"
     },
     {
+      "matchers": [{"aliases": ["Tiền gửi đảm bảo thanh toán khác"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "OTHER_PAYMENT_GUARANTEE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
       "matchers": [{"aliases": ["Tiền gửi của các tổ chức kinh tế", "Tiền gửi của TCKT", "Các tổ chức kinh tế", "Tổ chức kinh tế"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "CUSTOMER_TCKT",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Doanh nghiệp Nhà nước", "Công ty Nhà nước"], "within_role": null}],
+      "matchers": [{"aliases": ["Doanh nghiệp Nhà nước", "Công ty Nhà nước", "Doanh nghiệp quốc doanh"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "STATE_COMPANY",
       "role_kind": "NONADDITIVE_CHILD"
@@ -97,19 +109,25 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Công ty cổ phần, công ty TNHH và doanh nghiệp khác", "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác"], "within_role": null}],
+      "matchers": [{"aliases": ["Công ty cổ phần, công ty TNHH và doanh nghiệp khác", "Công ty cổ phần, công ty trách nhiệm hữu hạn và doanh nghiệp khác", "Doanh nghiệp ngoài quốc doanh"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "COMBINED_COMPANY",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Hợp tác xã", "Hợp tác xã và liên hiệp hợp tác xã", "Hợp tác xã và liên hợp tác xã"], "within_role": null}],
+      "matchers": [{"aliases": ["Hợp tác xã", "Hợp tác xã và liên hiệp hợp tác xã", "Hợp tác xã và liên hợp tác xã", "Tổ chức kinh tế tập thể"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "COOPERATIVE",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Công ty hợp danh", "Công ty liên doanh, hợp doanh"], "within_role": null}],
+      "matchers": [{"aliases": ["Công ty liên doanh, hợp doanh"], "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "JOINT_VENTURE_COOPERATIVE",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Công ty hợp danh"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "PARTNERSHIP",
       "role_kind": "NONADDITIVE_CHILD"
@@ -133,7 +151,7 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Các đối tượng khác", "Khách hàng khác", "Thành phần kinh tế khác", "Khác"], "within_role": null}],
+      "matchers": [{"aliases": ["Các đối tượng khác", "Khách hàng khác", "Thành phần kinh tế khác", "Các tổ chức khác", "Tổ chức kinh tế khác", "Doanh nghiệp khác", "Tiền gửi khác", "Khác"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "OTHER_CUSTOMER",
       "role_kind": "NONADDITIVE_CHILD"

@@ -1,13 +1,13 @@
 {
   "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
   "closure_policy": "EXACT_MULTI_COMPONENT_HIERARCHY_AND_TOTAL_ALL_LANES",
-  "component_policy": "AFS_REQUIRED_HTM_QUALITY_VAMC_OPTIONAL_WITHIN_ONE_OWNER_RESET_FENCE",
+  "component_policy": "AFS_OR_HTM_REQUIRED_QUALITY_VAMC_OPTIONAL_WITHIN_ONE_OWNER_RESET_FENCE",
   "family_id": "INVESTMENT_SECURITIES",
   "format_version": "ACCOUNTING_INVESTMENT_SECURITIES_FAMILY_EVALUATION_SPEC_V1",
   "money_unit_bindings": [
     {
       "accepted": true,
-      "aliases": ["Triệu VND", "Triệu đồng", "Đơn vị: Triệu VND", "Đơn vị: Triệu đồng"],
+      "aliases": ["Triệu VND", "Triệu đồng", "Triệu Đồng Việt Nam", "VND million", "VND milion", "Đơn vị: Triệu VND", "Đơn vị: Triệu đồng", "Đơn vị tính: Triệu Đồng Việt Nam", "Unit: VND million", "Unit: VND milion"],
       "canonical_unit": "MILLION_VND",
       "magnitude_power10": 6
     },
@@ -22,6 +22,12 @@
       "aliases": ["Tỷ VND", "Tỷ đồng"],
       "canonical_unit": "BILLION_VND",
       "magnitude_power10": 9
+    },
+    {
+      "accepted": true,
+      "aliases": ["VND", "Đồng", "Đồng Việt Nam", "Đơn vị: VND", "Đơn vị tính: VND"],
+      "canonical_unit": "VND",
+      "magnitude_power10": 0
     }
   ],
   "period_semantics": "CURRENT_AND_COMPARATIVE_SNAPSHOT",
@@ -31,6 +37,7 @@
     "NON_SNAPSHOT_MULTI_MONEY_AXIS_VIEW",
     "PROVISION_MOVEMENT",
     "INVESTMENT_SECURITIES_TRADING_ACTIVITY",
+    "OTHER_LONG_TERM_INVESTMENT_VIEW",
     "INTEREST_RATE_OR_PERCENTAGE_VIEW"
   ]
 }

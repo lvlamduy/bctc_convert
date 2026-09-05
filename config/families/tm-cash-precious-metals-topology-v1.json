@@ -38,7 +38,8 @@
     },
     {
       "aliases": [
-        "Vàng phi tiền tệ"
+        "Vàng phi tiền tệ",
+        "Vàng nữ trang"
       ],
       "presence": "OPTIONAL",
       "role": "NONMONETARY_GOLD",
@@ -66,6 +67,7 @@
   "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1",
   "hard_negative_aliases": [
     "Tiền và các khoản tương đương tiền",
+    "Tiền mặt và các khoản tương đương tiền",
     "Phân loại tài sản tài chính và công nợ tài chính",
     "Rủi ro thanh khoản",
     "Rủi ro tiền tệ"
@@ -78,6 +80,7 @@
   "parent": {
     "aliases": [
       "Tiền, kim loại quý và đá quý",
+      "Tiền mặt",
       "Tiền mặt, vàng bạc, đá quý",
       "Tiền mặt, vàng",
       "Tiền mặt và vàng",

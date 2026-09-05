@@ -15,8 +15,10 @@
     "DEFERRED_TAX_NET",
     "TOTAL_TAX_COMPONENTS",
     "TAX_RATE_SOURCE_ONLY",
+    "STATUTORY_TAX_AMOUNT_SOURCE_ONLY",
     "SOURCE_ONLY_EQUATION_COMPONENT"
   ],
+  "accepted_value_column_kinds": ["MONEY", "UNKNOWN"],
   "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
   "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
   "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
@@ -39,10 +41,10 @@
   "minimum_declared_detail_role_count": 2,
   "minimum_source_visible_root_component_count": 2,
   "money_unit_bindings": [
-    {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
+    {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Triệu Đồng Việt Nam", "Million VND", "Đơn vị tính: triệu đồng", "Đơn vị tính: Triệu Đồng Việt Nam"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
     {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
     {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
-    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+    {"accepted": true, "aliases": ["VND", "Đồng", "Đơn vị tính: VND"], "canonical_unit": "VND", "magnitude_power10": 0}
   ],
   "non_money_metric_roles": ["TAX_RATE_SOURCE_ONLY"],
   "ordered_role_scopes": [
@@ -86,12 +88,14 @@
   "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
   "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
   "period_semantics": "CURRENT_AND_COMPARATIVE_DURATION",
+  "duration_header_path_scope_policy": "DISTINCT_SUFFIX_AFTER_EXACT_COMMON_PREFIX",
   "query_owner_aliases": [
     "Chi phí thuế thu nhập doanh nghiệp",
     "Chi phí thuế thu nhập doanh nghiệp hiện hành",
     "Thuế thu nhập doanh nghiệp",
     "Thuế thu nhập doanh nghiệp hiện hành",
     "Thuế TNDN hiện hành",
+    "Thuế TNDN",
     "Đối chiếu thuế suất thực tế"
   ],
   "role_anchored_owner_fallback_policy": "UNIQUE_REQUIRED_ROLE_TABLE_PLUS_SAME_PAGE_DECLARED_SUPPLEMENTAL_TABLES",
@@ -133,6 +137,7 @@
   "unmapped_direct_family_row_policy": "IGNORE",
   "validation_only_roles": [
     "TAX_RATE_SOURCE_ONLY",
+    "STATUTORY_TAX_AMOUNT_SOURCE_ONLY",
     "PROFIT_BEFORE_TAX_BANK_SOURCE_ONLY",
     "SOURCE_ONLY_EQUATION_COMPONENT"
   ]

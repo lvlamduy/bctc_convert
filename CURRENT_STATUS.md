@@ -1,40 +1,115 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-09-03 06:45 UTC (27-bank Gemini extraction checkpoint)
+Updated: 2026-09-05 UTC (machine-migration checkpoint)
+
+## Machine-migration checkpoint — 2026-09-05
+
+- All long-running family, test, render, replay, and store processes have been
+  stopped. No provider request is active or authorized by this checkpoint.
+- The current implementation/audit sequence has reached **Family 40**.
+  Families 33, 35, 38, and 40 are among the latest terminal seals; Families
+  36, 37, and 39 are intentionally frozen as incomplete checkpoints and must be
+  resumed before claiming another family.
+- The authoritative handoff, exact file hashes, unfinished algorithms, invalid
+  artifact warnings, restart order, Git references, S3 layout, and Codex-session
+  recovery commands are in
+  [`docs/operations/MACHINE_MIGRATION_CHECKPOINT_2026-09-05.md`](docs/operations/MACHINE_MIGRATION_CHECKPOINT_2026-09-05.md).
+- The private migration prefix is
+  `s3://test-s3-duylv/bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/`.
+  Credentials are deliberately excluded; authenticate Git, AWS, and Codex
+  again on the destination machine.
+- Kiến trúc cần khôi phục là PDF → Gemini JSON → receipt/validation →
+  SQLite/database. PPOCR6, VietOCR, geometry OCR, DeepSeek OCR, Gemma và
+  PaddleOCR đã bị loại khỏi chiến lược; không backup/restore chúng và xóa các
+  object S3 liên quan theo receipt trong tài liệu migration.
+- Do not delete the current machine until the Git push, S3 uploads, remote
+  checksum verification, and final migration receipt have all passed.
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
 
-## Checkpoint vận hành 19 ngân hàng mới — 2026-09-03 06:45 UTC
+## Checkpoint an toàn trước khi khởi động lại — 2026-09-04
+
+- Mọi tiến trình Gemini, Agy, OpenRouter, family replay và test dài đã dừng; không
+  còn task/lease đang chạy. Không mở thêm request provider tại checkpoint này.
+- Phạm vi đang làm vẫn là **19 ngân hàng mới, chỉ PDF từ năm 2025 đến hiện tại**.
+  Tám ngân hàng ACB, BID, CTG, HDB, MBB, VCB, VIB và VPB chỉ dùng lại dữ liệu đã
+  có; không gửi lại provider. Hai nguồn SSB 6 tháng/2025 bị hỏng đã được thay bằng
+  hai nguồn chính thức hoàn chỉnh và không còn nằm trong mẫu số hiệu lực.
+- Khâu chuyển PDF thành Gemini JSON đã hoàn tất **271/271 PDF và
+  14.945/14.945 trang (100%)**. Chỉ mục corpus bất biến nằm tại
+  `/dev/shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/current-corpus-manifest-indexes/8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a.json`;
+  báo cáo kiểm tra nằm tại
+  `/dev/shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/current-corpus-validation-reports/ded4ee5ccfd69733e89e96d18ec3ecec20d5a6c114eba2b96ac5d5ff756ceb06.json`.
+  Chỉ mục có đủ 19 mã ngân hàng, chỉ năm 2025–2026, không có tám ngân hàng cũ,
+  không có CKey/free và không thiếu trang.
+- Ranh giới tiếng Việt của OCB được giữ theo từng PDF bằng kiểm tra ảnh, không áp
+  một mốc 102 trang cho mọi file. Đặc biệt BCTC hợp nhất kiểm toán có tiếng Việt
+  đến physical page 104 và tiếng Anh bắt đầu từ page 105.
+- Kết quả family hiện hành dưới đây vẫn là checkpoint trên tập bất biến **204 PDF
+  đã hoàn chỉnh trước đó**, chưa phải thống kê cuối của toàn bộ 271 PDF:
+  F1 `131/61/12`, F2 `115/52/37`, F3 `184/4/16`, F4 `80/92/32`,
+  F5 `128/25/51`, F6 `173/12/19`, F7 `112/89/3`, F8 `204/0/0`
+  theo thứ tự `READY/NOT_OBSERVED/UNRESOLVED`. Báo cáo dễ đọc đã được lưu dần
+  trong `docs/experiments/staging/family-audit-19-bank/`.
+- Family 9 có baseline `177/0/27`; các sửa alias đã qua test và mục tiêu có bằng
+  chứng là `203/0/1`, nhưng chưa chạy replay cuối. Một PDF PGB Q1/2025 trang 26
+  phải giữ `UNRESOLVED` vì kỳ trên bảng 31/12/2025 mâu thuẫn kỳ báo cáo
+  31/03/2025. Family 10 đã đạt `50/151/3`; ba trường hợp còn lại là sai lệch
+  số học nguồn ±1. Family 11 đã được rà soát thủ công thành `73 READY / 3
+  UNRESOLVED / 101 SOURCE_ONLY / 27 NOT_OBSERVED`; ba trường hợp vướng đều là
+  NVB có tổng theo địa lý cao hơn dư nợ khách hàng đúng 300 triệu đồng.
+- Full-271 hiện bị chặn trước bước đánh giá family bởi đúng một trang VBB hợp
+  nhất Q2/2025 dùng prompt sửa cấu trúc hợp lệ `schema_alignment`. Toàn bộ
+  source, ảnh, prompt, JSON và claim đã xác thực; bước đầu tiên sau restart là
+  bổ sung biến thể này vào gate có kiểm thử chống giả mạo, không gửi lại Gemini.
+- Sau khi đóng gate trên: chạy lại Family 10 trên đủ 271 PDF; hoàn tất hai guard
+  còn lại và replay Family 9; triển khai/replay Family 11; sau đó tiếp tục Family
+  12 và khoanh lỗi orientation đầu tiên của Family 13. Không biến lỗi runner thành
+  `NOT_OBSERVED` hoặc `UNRESOLVED`.
+- Worktree cần tiếp tục sau khi khởi động lại là `/tmp/bctc-ai-27-bank`, branch
+  `codex/27-bank-2025-current` (không phải checkout sạch tại
+  `/workspace/bctc-ai`). Worktree đang giữ nhiều thay đổi có chủ đích và chưa
+  commit vì chuỗi family chưa đạt checkpoint phát hành. Không reset, không xóa
+  và không ghi đè các thay đổi này khi khởi động lại.
+
+## Checkpoint vận hành 19 ngân hàng mới — 2026-09-03 14:34 UTC
 
 - Paid frontier hiện hành chỉ gồm **271 PDF / 14.947 trang** của 19 ngân hàng
   mới, trong phạm vi từ Quý 1/2025 đến hiện tại. Tám ngân hàng ACB, BID, CTG,
   HDB, MBB, VCB, VIB và VPB vẫn là reuse-only và không được gửi lại provider.
-- Đã có JSON hợp lệ cho đúng **9.087 / 14.947 trang thuộc manifest (60,79%)**;
-  còn **5.860 trang**. OpenRouter đã tạo 8.671 trang duy nhất thuộc manifest
-  (7.644 Flex và 1.027 standard lịch sử); Agy đã tạo 455 trang. Có 39 trang có
-  cả version Agy và OpenRouter nên tổng hợp theo page chỉ đếm một lần.
-- Con số 9.364 từng báo trước đó là số page toàn store, đã lẫn các page/version
-  ngoài manifest chính thức và không được dùng làm tiến độ. Từ checkpoint này,
-  mẫu số và tử số tiến độ đều được join trực tiếp vào 271 PDF của manifest.
-- Agy đã chạm quota ngày và được dừng hoàn toàn từ 05:24 UTC. Không health-check
-  hay gửi Agy trước **08:58 UTC ngày 2026-09-03** (15:58 giờ Việt Nam). Sau mốc
-  này chỉ mở lại từ Gemini 3.7 Flash Low; Medium/High chỉ dùng khi Low thất bại
-  đúng điều kiện escalation đã niêm phong.
+- Đã có JSON hợp lệ cho đúng **12.216 / 14.947 trang thuộc frontier (81,73%)**;
+  còn **2.731 trang**. Khi chọn đúng một version ưu tiên cho mỗi trang, có 9.483
+  trang OpenRouter Vertex Flex, 1.706 trang Agy và 1.027 trang Google AI Studio
+  standard lịch sử. Page có nhiều version hợp lệ chỉ được đếm một lần.
+- Tử số và mẫu số được join trực tiếp bằng tên file, SHA nguồn và số trang vào
+  đúng 271 PDF của plan 2025-current; không dùng tổng page toàn store và không
+  cộng inventory năm 2024.
+- Agy chỉ bị giới hạn tạm thời trong cửa sổ 5 giờ, không phải quota cả ngày.
+  Luồng đã tự hoạt động lại lúc 14:00 UTC và tạo thêm page hợp lệ đến khoảng
+  14:33 UTC. Khi 26 page cuối của một PDF cùng trả lỗi provider liên tiếp, Agy
+  được dừng để không lặp request và đặt lịch thử lại sau 5 giờ, lúc 19:34 UTC.
+  Mọi lượt luôn bắt đầu bằng Gemini 3.7 Flash Low; Medium/High chỉ được dùng sau
+  khi kết quả mức thấp chưa đạt. Cache lookup đã được sửa để tái sử dụng cả các
+  trang hợp lệ từ prompt `items`, `balanced`, `scope` hoặc `compact`, không gửi
+  lại chỉ vì Agy dùng prompt `simple`.
 - OpenRouter tiếp tục chạy `google/gemini-3.7-flash` qua Google Vertex Flex.
-  Tại checkpoint, báo cáo TPB hợp nhất kiểm toán năm 2025 có 108 trang đang
-  retry đúng hai trang 2 và 91. Không mở thêm dispatcher thủ công trong khi
-  supervisor hiện hành còn chạy để tránh hai process claim cùng một PDF.
-- Chi phí provider gắn trực tiếp với các page thuộc manifest là **34,151715 USD**:
-  27,793229 USD trên Vertex Flex, 6,358487 USD của các fallback standard lịch
+  VBB hợp nhất 6 tháng/2025 đã seal đủ 82/82; SHB công ty mẹ Q1/2025 đã repair
+  đúng ba trang và seal đủ 39/39. Agy đã seal SGB riêng, OCB hợp nhất Q1/2026,
+  TCB công ty mẹ năm 2025 đủ 90/90, TPB công ty mẹ 6 tháng/2025 đủ 91/91 và OCB
+  hợp nhất Q3/2025 đủ 41/41. Với OCB, chỉ phần tiếng Việt theo frontier được xử
+  lý; riêng PDF nguồn 78 trang chỉ chọn 40 trang tiếng Việt, toàn bộ
+  phụ lục tiếng Anh bị loại. Không gửi lại các trang đã có cache hợp lệ.
+- Chi phí provider gắn trực tiếp với các page thuộc frontier là **40,899114 USD**:
+  34,540627 USD trên Vertex Flex, 6,358487 USD của các fallback standard lịch
   sử, và 0 USD incremental cho Agy. Toàn production store ở cùng thời điểm có
-  35,095888 USD vì còn chứa các extraction ngoài frontier hiện hành; phần đó
-  được giữ để truy vết nhưng không tính vào tiến độ/chi phí 271 PDF. Luồng mới
-  hiện tại là Flex-only; số standard lịch sử không phải quyền fallback cho
-  request kế tiếp.
-- Ledger tại checkpoint gồm 30 PDF `SUCCEEDED`, 54 PDF `FAILED` có receipt để
-  sửa đúng page, 186 PDF `PENDING` và một PDF `RUNNING`. Trạng thái task không
+  thêm các extraction ngoài frontier hiện hành; phần đó được giữ để truy vết
+  nhưng không tính vào tiến độ/chi phí 271 PDF. Luồng request mới hiện tại là
+  Flex-only; số standard lịch sử không phải quyền fallback cho request kế tiếp.
+- Ledger tại checkpoint gồm 107 PDF `SUCCEEDED`, 91 PDF `FAILED` có receipt để
+  sửa đúng page, một PDF `NEEDS_RETRY`, 71 PDF `PENDING` và một PDF `RUNNING`
+  qua OpenRouter. Agy đang chờ hết cửa sổ 5 giờ. Trạng thái task không
   dùng thay cho tiến độ page: nhiều PDF `FAILED` đã có phần lớn page hợp lệ và
   được tái sử dụng, không gửi lại toàn bộ tài liệu.
 - Chín task từng bị ghi `FAILED` dù store đã đủ toàn bộ page đã được seal lại

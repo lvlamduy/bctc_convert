@@ -1139,10 +1139,10 @@ def test_tracked_trading_securities_specs_partition_variants_without_bank_routes
     binding_path = config_root / "tm-trading-securities-schema-binding-v1.json"
     binding_bytes = binding_path.read_bytes()
     assert hashlib.sha256(binding_bytes).hexdigest() == (
-        "26ff67c7f14c88a6f37c7fb4a94d021818fef4926d1aab568b088ebb4c78b0bd"
+        "74d28d4d6b5d5cfaf4e0e8536e3a1b4f66e86e2e2c4e10665c647824a2aeecbd"
     )
     binding = json.loads(binding_bytes.decode("utf-8"))
-    assert binding["format_version"] == subject.SPEC_FORMAT_VERSION_V4
+    assert binding["format_version"] == subject.SPEC_FORMAT_VERSION_V8
     assert all(set(item) == {"report_norm_id", "role"} for item in binding["role_bindings"])
 
     compiled = topology_v1._spec(family)
@@ -1163,7 +1163,13 @@ def test_tracked_trading_securities_specs_partition_variants_without_bank_routes
     assert direct["DEBT_LISTED"]["schema_id"] == 618
     assert direct["EQUITY_UNLISTED"]["schema_id"] == 622
     assert direct["OTHER_UNLISTED"]["schema_id"] == 625
+    assert direct["ISSUER_TRADING_SECURITIES_PROVISION_GROUP"]["schema_id"] == 612
+    assert direct["LISTING_DEBT_SECURITIES_GROUP"]["schema_id"] == 617
     assert aggregates == []
+    assert [item["context"] for item in binding["presentation_context_bindings"]] == [
+        "ISSUER_CLASSIFICATION",
+        "LISTING_CLASSIFICATION",
+    ]
     assert binding["ignored_roles"] == [
         "DEBT_SECURITIES_GROUP",
         "EQUITY_SECURITIES_GROUP",

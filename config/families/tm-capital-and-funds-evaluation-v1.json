@@ -1,27 +1,66 @@
 {
-  "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_MATRIX_GRAPH_EXACT",
-  "closure_policy": "EXACT_HORIZONTAL_TOTALS_AND_VERTICAL_ROLLFORWARD_ALL_SELECTED_CELLS",
+  "authenticated_source_repair_artifact_ref": {
+    "artifact_format_version": "GEMINI_JSON_EQUITY_MATRIX_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+    "overlay_id": "gjeqmsrv1:overlay:6b0780bc3100c8fb72b4668dda62e701e11a8952b694a0d86e7cb8b03fdf227e",
+    "path": "data/registered/gemini_json_equity_matrix_source_repairs_v1.json",
+    "sha256": "4ff68eb6a3a1953cc042cac7521fb46f2eeb407559909e976e87712784caa68d",
+    "size_bytes": 144825
+  },
+  "blank_zero_policy": "PRESERVE_BLANK_SOURCE_LANES_AS_NULL_NEVER_INFER_ZERO",
+  "closure_policy": "EXACT_WHERE_FULLY_OBSERVED_INCOMPLETE_BLANK_LANES_NON_BLOCKING",
   "family_id": "CAPITAL_AND_FUNDS",
   "format_version": "ACCOUNTING_EQUITY_MATRIX_FAMILY_EVALUATION_SPEC_V1",
   "matrix_policy": {
     "accepted_orientations": ["COMPONENT_COLUMNS", "COMPONENT_ROWS"],
+    "component_row_continuation_policy": {
+      "allow_blank_leading_label_tail": true,
+      "mode": "EXPLICIT_RECIPROCAL_ADJACENT_COMPLEMENTARY_COMPONENT_AXIS"
+    },
+    "directional_duplicate_control_policy": {
+      "mode": "EXACT_ADJACENT_DIRECTIONAL_CHILD_CONTROL",
+      "subordinate_aliases_by_role": {
+        "DECREASE": ["Giảm khác"]
+      }
+    },
+    "hierarchy_policy": {
+      "aggregate_duplicate_roles": [],
+      "disclosure_group_aliases": ["Các quỹ"],
+      "mapped_group_total_roles": []
+    },
+    "implicit_owner_policy": {
+      "minimum_mapped_component_roles": 5,
+      "mode": "UNIQUE_COMPLETE_MATRIX_PLUS_SUPPLEMENTAL_COMPONENT_GROUP"
+    },
     "max_continuation_pages": 1,
     "minimum_mapped_component_roles": 2,
+    "primary_statement_root_unit_policy": {
+      "mode": "EXACT_FAMILY_ROOT_BOUNDARY_VECTOR_CORROBORATION"
+    },
     "movement_role_aliases": {
-      "CLOSING": ["Dư cuối", "Số dư cuối kỳ", "Số dư cuối năm"],
-      "DECREASE": ["Giảm", "Giảm trong kỳ", "Sử dụng/Giảm", "Sử dụng/Điều chỉnh"],
-      "INCREASE": ["Tăng", "Tăng trong kỳ", "Trích lập/Tăng"],
-      "OPENING": ["Dư đầu", "Số dư đầu kỳ", "Số dư đầu kỳ (Số kiểm toán)", "Số dư đầu kỳ (trình bày lại)", "Số dư đầu năm", "Số dư đầu năm (Trình bày lại)"]
+      "CLOSING": ["Dư cuối", "Số cuối kỳ", "Số cuối quý", "Số cuối năm", "Số dư cuối kỳ", "Số dư cuối kỳ này", "Số dư cuối kỳ trước", "Số dư cuối quý", "Số dư cuối năm", "Số dư cuối năm nay", "Số dư cuối năm trước", "Balance at 31 December"],
+      "DECREASE": ["Giảm", "Giảm trong kỳ", "Giảm trong năm", "Sử dụng/Giảm", "Sử dụng/Điều chỉnh"],
+      "INCREASE": ["Tăng", "Tăng trong kỳ", "Tăng trong năm", "Trích lập/Tăng"],
+      "OPENING": ["Dư đầu", "Số đầu kỳ", "Số đầu năm", "Số dư đầu kỳ", "Số dư đầu kỳ này", "Số dư đầu kỳ (Số kiểm toán)", "Số dư đầu kỳ (trình bày lại)", "Số dư đầu năm", "Số dư đầu năm (Trình bày lại)", "Số dư đầu năm nay", "Số dư đầu năm trước", "Balance at 1 January"]
     },
     "source_only_component_aliases": {
       "ASSET_REVALUATION_DIFFERENCE": ["Chênh lệch đánh giá lại TS", "Chênh lệch đánh giá lại tài sản"],
-      "BASIC_CONSTRUCTION_CAPITAL": ["Quỹ đầu tư xây dựng cơ bản", "Vốn đầu tư xây dựng cơ bản"],
-      "DEVELOPMENT_INVESTMENT_FUND": ["Quỹ đầu tư phát triển"],
+      "BASIC_CONSTRUCTION_CAPITAL": ["Quỹ đầu tư xây dựng cơ bản", "Vốn đầu tư xây dựng cơ bản", "Vốn đầu tư XDCB", "Vốn đầu tư XDCB, mua sắm TSCĐ", "Vốn đầu tư XDCB và mua sắm TSCĐ"],
+      "DEVELOPMENT_INVESTMENT_FUND": ["Quỹ đầu tư phát triển", "Investment and development fund"],
+      "FUNDS_OF_CREDIT_INSTITUTION": ["Quỹ của TCTD", "Các quỹ của TCTD"],
+      "OTHER_UNSPECIFIED_COMPONENT": ["Khác"],
+      "PREFERRED_SHARES": ["Cổ phiếu ưu đãi"],
       "TREASURY_SHARES": ["Cổ phiếu quỹ"]
     },
-    "total_aliases": ["Tổng", "Tổng cộng"],
+    "supplemental_component_group_policy": {
+      "group_source_only_role": "FUNDS_OF_CREDIT_INSTITUTION",
+      "mapped_child_roles": ["CAPITAL_RESERVE", "FINANCIAL_RESERVE", "OTHER_FUNDS"],
+      "mode": "EXACT_SUPPLEMENTAL_COMPONENT_GROUP_MATRIX",
+      "owner_aliases": ["Các quỹ của TCTD", "Các quỹ của Tổ chức tín dụng", "Các quỹ của Ngân hàng", "Các quỹ của Tập đoàn", "Quỹ của TCTD"]
+    },
+    "total_aliases": ["Cộng", "Cộng (Trình bày lại)", "Tổng", "Tổng cộng", "Tổng cộng các quỹ", "Total"],
     "unit_bindings": [
-      {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND", "Đơn vị: triệu đồng", "Đơn vị tính: triệu đồng"], "canonical_unit": "MILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 6},
+      {"accepted": true, "aliases": ["Triệu đồng", "Triệu VND", "Đơn vị: triệu đồng", "Đơn vị tính: triệu đồng", "VND million", "VND milion", "Unit: VND million", "Unit: VND milion"], "canonical_unit": "MILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 6},
+      {"accepted": true, "aliases": ["VND", "Đồng Việt Nam", "Đơn vị: VND", "Đơn vị tính: VND"], "canonical_unit": "VND", "document_consensus_eligible": true, "magnitude_power10": 0},
       {"accepted": false, "aliases": ["Nghìn đồng", "Nghìn VND"], "canonical_unit": "THOUSAND_VND", "document_consensus_eligible": true, "magnitude_power10": 3},
       {"accepted": false, "aliases": ["Tỷ đồng", "Tỷ VND"], "canonical_unit": "BILLION_VND", "document_consensus_eligible": true, "magnitude_power10": 9}
     ]

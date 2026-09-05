@@ -14,6 +14,7 @@ from test_gemini_json_rollforward_indexed_wiring_v1 import (
 
 from bctc_ai.evaluation.gemini_json_dual_component_accounting_family_v1 import (
     READY,
+    _apply_authenticated_source_repairs_v1,
     build_gemini_json_dual_component_region_query_receipt_v1,
     evaluate_gemini_json_dual_component_family_cluster_v1,
 )
@@ -22,6 +23,9 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     build_gemini_json_flat_family_sweep_v1,
     compile_gemini_json_flat_family_specs_v1,
     validate_gemini_json_flat_family_sweep_v1,
+)
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    validate_source_observation_mapping_contract_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (
@@ -155,6 +159,472 @@ def _trial(document: dict, *, candidate: dict | None, status: str, reasons: list
         "source_sha256": document["source_sha256"],
         "status": status,
     }
+
+
+def test_blank_comparative_lane_is_preserved_and_never_inferred_as_zero(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _target_page()
+    for table in page["sections"][0]["tables"]:
+        for row in table["rows"]:
+            row["values_exact"][1] = None
+    selected = _ingest(database, page_json=page)
+    _, _, _, compiled = _specs()
+    indexed = query_selected_dual_component_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    regions = indexed["accepted_clusters"][0]["component_regions"]
+    candidate = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert candidate["status"] == READY
+    assert {equation["status"] for equation in candidate["closure_receipt"]["equations"]} == {
+        "EXACT_OBSERVED_SOURCE_LANE",
+        "SOURCE_LANE_UNOBSERVED",
+    }
+    assert all(
+        mapping["values"][1]
+        == {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"}
+        for mapping in candidate["mappings"]
+    )
+    assert validate_source_observation_mapping_contract_v1(candidate)["violation_count"] == 0
+
+    incomplete = copy.deepcopy(page)
+    incomplete["sections"][0]["tables"][0]["rows"][-1]["values_exact"][1] = "1"
+    partial = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: incomplete},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert partial["status"] == READY
+    assert any(
+        equation["status"] == "COMPONENT_SOURCE_LANE_UNOBSERVED"
+        for equation in partial["closure_receipt"]["equations"]
+    )
+    assert all(mapping["values"][1]["coefficient"] is None for mapping in partial["mappings"])
+
+
+def test_authenticated_pdf_dash_repair_is_clone_only_and_exactly_bound(tmp_path: Path) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _target_page()
+    page["sections"][0]["tables"][0]["rows"][0]["values_exact"][1] = None
+    selected = _ingest(database, page_json=page)
+    _, _, _, compiled = _specs()
+    indexed = query_selected_dual_component_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    regions = indexed["accepted_clusters"][0]["component_regions"]
+    source = {
+        "source_logical_name": regions[0]["source_logical_name"],
+        "source_sha256": regions[0]["source_sha256"],
+        "source_size_bytes": 1,
+    }
+    balance = page["sections"][0]["tables"][0]
+    repair = {
+        "base_page_json_sha256": canonical_json_sha256_v1(page),
+        "base_page_json_version_id": selected["page_json_version_id"],
+        "cell_repairs": [
+            {
+                "after_exact": "-",
+                "before_exact": None,
+                "column_header_path_exact": _columns()[1]["header_path_exact"],
+                "column_ordinal": 2,
+                "row_hierarchy_path_exact": ["Mua nợ bằng VND"],
+                "row_label_exact": "Mua nợ bằng VND",
+                "row_ordinal": 1,
+                "section_id": "s1",
+                "table_id": "t1",
+                "visual_state": "DASH",
+            }
+        ],
+        "physical_page": regions[0]["physical_page"],
+        "render": {},
+        "repair_id": "gjfdcsrv1:repair:" + "1" * 64,
+        "source": source,
+        "table_refs": [
+            {
+                "base_table_sha256": canonical_json_sha256_v1(balance),
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "base_table_sha256": canonical_json_sha256_v1(page["sections"][0]["tables"][1]),
+                "section_id": "s1",
+                "table_id": "t2",
+            },
+        ],
+    }
+    compiled = copy.deepcopy(compiled)
+    compiled["source_repair_artifact_ref"] = {
+        "path": "data/registered/test-only.json",
+        "sha256": "2" * 64,
+        "size_bytes": 1,
+    }
+    compiled["source_repairs"] = [repair]
+
+    effective, receipts = _apply_authenticated_source_repairs_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: page},
+        compiled_specs=compiled,
+    )
+    assert page["sections"][0]["tables"][0]["rows"][0]["values_exact"][1] is None
+    assert (
+        effective[selected["page_json_version_id"]]["sections"][0]["tables"][0]["rows"][0][
+            "values_exact"
+        ][1]
+        == "-"
+    )
+    assert receipts[0]["applied_cell_repairs"] == repair["cell_repairs"]
+
+    missing_frontier = copy.deepcopy(compiled)
+    missing_frontier["source_repairs"][0]["table_refs"] = repair["table_refs"][:1]
+    with pytest.raises(ValueError, match="table frontier drifted"):
+        _apply_authenticated_source_repairs_v1(
+            regions=regions,
+            page_json_by_version={selected["page_json_version_id"]: page},
+            compiled_specs=missing_frontier,
+        )
+
+    tampered_compiled = copy.deepcopy(compiled)
+    tampered_compiled["source_repairs"][0]["cell_repairs"][0]["row_label_exact"] = "Khác"
+    with pytest.raises(ValueError, match="cell before-image drifted"):
+        _apply_authenticated_source_repairs_v1(
+            regions=regions,
+            page_json_by_version={selected["page_json_version_id"]: page},
+            compiled_specs=tampered_compiled,
+        )
+
+
+def test_authenticated_value_cleanup_and_exact_duplicate_row_repair_feed_query(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _target_page()
+    balance = page["sections"][0]["tables"][0]
+    balance["rows"][0]["values_exact"][0] = "100 -"
+    balance["rows"].insert(1, copy.deepcopy(balance["rows"][0]))
+    selected = _ingest(database, page_json=page)
+    _, _, _, compiled = _specs()
+    repair = {
+        "base_page_json_sha256": canonical_json_sha256_v1(page),
+        "base_page_json_version_id": selected["page_json_version_id"],
+        "cell_repairs": [
+            {
+                "after_exact": "100",
+                "before_exact": "100 -",
+                "column_header_path_exact": _columns()[0]["header_path_exact"],
+                "column_ordinal": 1,
+                "row_hierarchy_path_exact": ["Mua nợ bằng VND"],
+                "row_label_exact": "Mua nợ bằng VND",
+                "row_ordinal": 1,
+                "section_id": "s1",
+                "table_id": "t1",
+                "visual_state": "VALUE",
+            }
+        ],
+        "duplicate_row_repairs": [
+            {
+                "base_row_sha256": canonical_json_sha256_v1(balance["rows"][0]),
+                "drop_row_ordinal": 2,
+                "keep_row_ordinal": 1,
+                "repair_kind": ("DROP_EXACT_ADJACENT_DUPLICATE_CONFIRMED_SINGLE_VISIBLE_PDF_ROW"),
+                "row_hierarchy_path_exact": ["Mua nợ bằng VND"],
+                "row_label_exact": "Mua nợ bằng VND",
+                "section_id": "s1",
+                "table_id": "t1",
+            }
+        ],
+        "physical_page": 7,
+        "render": {},
+        "repair_id": "gjfdcsrv1:repair:" + "1" * 64,
+        "source": {
+            "source_logical_name": "report.pdf",
+            "source_sha256": "b" * 64,
+            "source_size_bytes": 123,
+        },
+        "table_refs": [
+            {
+                "base_table_sha256": canonical_json_sha256_v1(balance),
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "base_table_sha256": canonical_json_sha256_v1(page["sections"][0]["tables"][1]),
+                "section_id": "s1",
+                "table_id": "t2",
+            },
+        ],
+    }
+    compiled = copy.deepcopy(compiled)
+    compiled["source_repair_artifact_ref"] = {
+        "path": "data/registered/test-only.json",
+        "sha256": "2" * 64,
+        "size_bytes": 1,
+    }
+    compiled["source_repairs"] = [repair]
+    indexed = query_selected_dual_component_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    regions = indexed["accepted_clusters"][0]["component_regions"]
+    candidate = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert candidate["status"] == READY
+    assert page["sections"][0]["tables"][0]["rows"][0]["values_exact"][0] == "100 -"
+    assert len(page["sections"][0]["tables"][0]["rows"]) == 4
+    receipt = candidate["closure_receipt"]["source_repair_receipts"][0]
+    assert receipt["applied_cell_repairs"] == repair["cell_repairs"]
+    assert receipt["applied_duplicate_row_repairs"] == repair["duplicate_row_repairs"]
+    purchase = next(
+        mapping for mapping in candidate["mappings"] if mapping["role"] == "PURCHASE_VND"
+    )
+    assert purchase["values"][0]["coefficient"] == 100
+
+    tampered = copy.deepcopy(compiled)
+    tampered["source_repairs"][0]["duplicate_row_repairs"][0]["base_row_sha256"] = "3" * 64
+    with pytest.raises(ValueError, match="duplicate-row repair before-image drifted"):
+        query_selected_dual_component_family_regions_v1(
+            database,
+            selected_page_json_version_ids=[selected["page_json_version_id"]],
+            compiled_specs=tampered,
+        )
+
+
+def test_unitless_explicit_zero_is_unit_invariant_but_nonzero_is_not(tmp_path: Path) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _target_page()
+    for table in page["sections"][0]["tables"]:
+        table["unit_exact"] = None
+        for ordinal, column in enumerate(table["columns"]):
+            column["header_path_exact"] = [["30/06/2026"], ["31/12/2025"]][ordinal]
+        for row in table["rows"]:
+            row["values_exact"] = ["-", "-"]
+    selected = _ingest(database, page_json=page)
+    _, _, _, compiled = _specs()
+    indexed = query_selected_dual_component_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    regions = indexed["accepted_clusters"][0]["component_regions"]
+    candidate = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert candidate["status"] == READY
+    assert {
+        axes["unit"]["canonical_unit"]
+        for axes in candidate["closure_receipt"]["axes_by_component"].values()
+    } == {"UNIT_INVARIANT_EXPLICIT_SOURCE_ZERO"}
+
+    nonzero = copy.deepcopy(page)
+    nonzero["sections"][0]["tables"][0]["rows"][0]["values_exact"][0] = "1"
+    rejected = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: nonzero},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert rejected["status"] != READY
+    assert "UNIT_INVARIANT_ZERO_CANNOT_SUPPLY_NONZERO_SIBLING_UNIT" in rejected["reasons"]
+
+
+def test_single_labelled_detail_total_is_both_observation_and_result(tmp_path: Path) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _target_page()
+    page["sections"][0]["tables"][1]["rows"] = [_row("Nợ gốc đã mua", ["100", "80"], "TOTAL")]
+    page["sections"][0]["tables"][0]["rows"][0]["values_exact"] = ["100", "80"]
+    page["sections"][0]["tables"][0]["rows"][1]["values_exact"] = ["-", "-"]
+    page["sections"][0]["tables"][0]["rows"][2]["values_exact"] = ["100", "80"]
+    selected = _ingest(database, page_json=page)
+    _, _, _, compiled = _specs()
+    indexed = query_selected_dual_component_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    regions = indexed["accepted_clusters"][0]["component_regions"]
+    candidate = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert candidate["status"] == READY
+    assert [mapping["role"] for mapping in candidate["mappings"]] == [
+        "PURCHASE_VND",
+        "PURCHASE_PROVISION",
+        "PURCHASED_PRINCIPAL",
+    ]
+
+
+def test_invalid_date_header_requires_exact_valid_sibling_and_seed_vector(tmp_path: Path) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _target_page()
+    balance, detail = page["sections"][0]["tables"]
+    balance["columns"][0]["header_path_exact"] = ["31/103/2026", "Triệu đồng"]
+    balance["rows"][1]["values_exact"] = ["-", "-"]
+    balance["rows"][2]["values_exact"] = ["100", "80"]
+    detail["rows"][0]["values_exact"] = ["100", "80"]
+    detail["rows"][1]["values_exact"] = ["-", "-"]
+    detail["rows"][2]["values_exact"] = ["100", "80"]
+    selected = _ingest(database, page_json=page)
+    _, _, _, compiled = _specs()
+    indexed = query_selected_dual_component_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+    regions = indexed["accepted_clusters"][0]["component_regions"]
+    candidate = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert candidate["status"] == READY
+    balance_period = candidate["closure_receipt"]["axes_by_component"]["BALANCE"]["period"]
+    assert balance_period["source"] == "INVALID_DATE_HEADER_RECONCILED_FROM_EXACT_SEED_SIBLING"
+    assert balance_period["invalid_date_reconciliation"]["invalid_header_exact"].startswith(
+        "31/103/2026"
+    )
+
+    mismatched = copy.deepcopy(page)
+    mismatched["sections"][0]["tables"][1]["rows"][0]["values_exact"][0] = "99"
+    rejected = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={selected["page_json_version_id"]: mismatched},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert rejected["status"] != READY
+    assert "EXPLICIT_PERIOD_EVIDENCE_CANNOT_BE_REPLACED_BY_INHERITANCE" in rejected["reasons"]
+
+
+def test_indexed_query_and_replay_bind_one_page_directional_continuation(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    first_page = _target_page()
+    balance, detail = first_page["sections"][0]["tables"]
+    detail["continuation"] = "CONTINUES_ON_NEXT_PAGE"
+    detail["rows"] = [_row("Nợ gốc đã mua", ["70", "60"])]
+    second_page = _empty_page()
+    second_page["sections"][0]["title_exact"] = None
+    continuation = _table(
+        [
+            _row("Lãi từ các khoản nợ đã mua", ["5", "4"]),
+            _row(None, ["75", "64"], "TOTAL"),
+        ]
+    )
+    continuation["continuation"] = "CONTINUES_FROM_PREVIOUS_PAGE"
+    continuation["columns"] = [
+        {"header_path_exact": [None], "value_kind": "MONEY"},
+        {"header_path_exact": [None], "value_kind": "MONEY"},
+    ]
+    continuation["unit_exact"] = None
+    second_page["sections"][0]["tables"] = [continuation]
+    first = _ingest(database, physical_page=7, page_json=first_page)
+    second = _ingest(
+        database,
+        physical_page=8,
+        image_sha256="1" * 64,
+        prompt_sha256="2" * 64,
+        page_json=second_page,
+    )
+    selected_ids = [first["page_json_version_id"], second["page_json_version_id"]]
+    _, _, _, compiled = _specs()
+    indexed = query_selected_dual_component_family_regions_v1(
+        database,
+        selected_page_json_version_ids=selected_ids,
+        compiled_specs=compiled,
+    )
+    assert indexed["query_receipt"]["disposition_counts"] == {
+        "ACCEPTED_CLUSTER": 1,
+        "NOT_OBSERVED": 0,
+        "UNRESOLVED_CLUSTER": 0,
+    }
+    regions = indexed["accepted_clusters"][0]["component_regions"]
+    assert len(regions) == 3
+    candidate = evaluate_gemini_json_dual_component_family_cluster_v1(
+        regions=regions,
+        page_json_by_version={
+            first["page_json_version_id"]: first_page,
+            second["page_json_version_id"]: second_page,
+        },
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_dual_component_region_query_receipt_v1(regions),
+    )
+    assert candidate["status"] == READY
+    assert len(candidate["closure_receipt"]["continuation_receipts"]) == 1
+    assert {mapping["locator"]["physical_page"] for mapping in candidate["mappings"]} == {7, 8}
+    assert (
+        validate_selected_dual_component_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            indexed_query_evidence=indexed,
+            trials=[
+                _trial(
+                    indexed["selected_document_axis"][0],
+                    candidate=candidate,
+                    status=READY,
+                    reasons=[],
+                )
+            ],
+        )[0]["status"]
+        == READY
+    )
+
+    without_direction = copy.deepcopy(second_page)
+    without_direction["sections"][0]["tables"][0]["continuation"] = "NONE"
+    rejected_database = tmp_path / "rejected.sqlite3"
+    initialize_gemini_financial_page_store_v1(rejected_database)
+    rejected_first = _ingest(rejected_database, physical_page=7, page_json=first_page)
+    rejected_second = _ingest(
+        rejected_database,
+        physical_page=8,
+        image_sha256="3" * 64,
+        prompt_sha256="4" * 64,
+        page_json=without_direction,
+    )
+    rejected = query_selected_dual_component_family_regions_v1(
+        rejected_database,
+        selected_page_json_version_ids=[
+            rejected_first["page_json_version_id"],
+            rejected_second["page_json_version_id"],
+        ],
+        compiled_specs=compiled,
+    )
+    assert len(rejected["accepted_clusters"]) == 1
+    assert len(rejected["accepted_clusters"][0]["component_regions"]) == 2
+    assert all(
+        region["physical_page"] == 7
+        for region in rejected["accepted_clusters"][0]["component_regions"]
+    )
 
 
 def test_indexed_query_exhaustive_dispositions_and_standard_sweep_replay(
@@ -292,6 +762,9 @@ def test_indexed_query_exhaustive_dispositions_and_standard_sweep_replay(
             database=database,
             sweep=forged_sweep,
             sweep_output=tmp_path / "forged-sweep.json",
+            historical_comparator_policy=runner.DISJOINT_EXPANSION,
+            current_manifest_index_id=forged_sweep["corpus_manifest_index_id"],
+            current_manifest_source_sha256s=[document["source_sha256"] for document in documents],
             selected_page_json_version_ids=selected_ids,
             indexed_query_evidence=indexed,
             trials=forged_sweep["trials"],
@@ -314,6 +787,9 @@ def test_indexed_query_exhaustive_dispositions_and_standard_sweep_replay(
             database=database,
             sweep=root_drift_sweep,
             sweep_output=tmp_path / "root-drift-sweep.json",
+            historical_comparator_policy=runner.DISJOINT_EXPANSION,
+            current_manifest_index_id=root_drift_sweep["corpus_manifest_index_id"],
+            current_manifest_source_sha256s=[document["source_sha256"] for document in documents],
             selected_page_json_version_ids=selected_ids,
             indexed_query_evidence=indexed,
             trials=root_drift_sweep["trials"],
@@ -617,6 +1093,17 @@ def test_experimental_audit_content_validator_rejects_rehashed_axis_tamper(
         "axis_sha256": digests,
         "claim_boundary": "SYNTHETIC_AUDIT_VALIDATOR_TEST_ONLY",
         "format_version": runner.AUDIT_FORMAT_VERSION,
+        "historical_comparator_policy_receipt": {
+            "comparison_axis": [{}],
+            "corpus_relation": {},
+            "current_axis_validation": {},
+            "disposition": runner.EXACT_HISTORICAL_COMPARISON,
+            "format_version": runner.HISTORICAL_COMPARATOR_POLICY_FORMAT_VERSION,
+            "oracle_authentication": {
+                "refs": [reference for reference, _oracle in runner._pinned_old_oracles()]
+            },
+            "policy": runner.STRICT_RELEASE,
+        },
         "metrics": metrics,
         "pinned_old_oracle_refs": [
             reference for reference, _oracle in runner._pinned_old_oracles()
@@ -650,6 +1137,6 @@ def test_experimental_audit_content_validator_rejects_rehashed_axis_tamper(
     )
     with pytest.raises(
         runner.RunGeminiJsonDualComponentAccountingFamilyV1Error,
-        match="count/hash pin drifted",
+        match="strict-release audit pin drifted",
     ):
         runner.validate_dual_component_experimental_audit_content_v1(tampered)

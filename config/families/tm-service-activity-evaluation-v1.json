@@ -1,8 +1,10 @@
 {
-  "aggregate_duplicate_roles": ["INCOME_PARENT", "INCOME_PAYMENT", "INCOME_TREASURY", "INCOME_PAYMENT_TREASURY", "INCOME_SECURITIES", "INCOME_TRUST_AGENCY", "INCOME_INSURANCE", "INCOME_CONSULTING", "INCOME_DEBT_VALUATION", "INCOME_OTHER", "INCOME_COMBINED_CONSULTING_TRUST_AGENCY", "INCOME_GUARANTEE_SECURITIES_AGENCY", "EXPENSE_PARENT", "EXPENSE_PAYMENT", "EXPENSE_TREASURY", "EXPENSE_PAYMENT_TREASURY", "EXPENSE_SECURITIES", "EXPENSE_BROKERAGE_COMMISSION", "EXPENSE_SECURITIES_BROKERAGE", "EXPENSE_INSURANCE", "EXPENSE_TRUST_AGENCY", "EXPENSE_TELECOM", "EXPENSE_CONSULTING", "EXPENSE_DEBT_VALUATION", "EXPENSE_OTHER", "EXPENSE_COMBINED_CONSULTING_TRUST_AGENCY"],
+  "aggregate_duplicate_roles": ["INCOME_PARENT", "INCOME_PAYMENT", "INCOME_TREASURY", "INCOME_PAYMENT_TREASURY", "INCOME_SECURITIES", "INCOME_TRUST_AGENCY", "INCOME_INSURANCE", "INCOME_CONSULTING", "INCOME_DEBT_VALUATION", "INCOME_OTHER", "INCOME_COMBINED_CONSULTING_TRUST_AGENCY", "INCOME_GUARANTEE_SECURITIES_AGENCY", "INCOME_COMBINED_TREASURY_TRUST_AGENCY_SOURCE_ONLY", "INCOME_COMBINED_INSURANCE_CONSULTING_SOURCE_ONLY", "INCOME_CUSTODY_RENT_SOURCE_ONLY", "INCOME_FORFAITING_SOURCE_ONLY", "INCOME_OTHER_SCHEMA_GAP_SOURCE_ONLY", "NET_PAYMENT_SOURCE_ONLY", "NET_TREASURY_SOURCE_ONLY", "NET_TRUST_AGENCY_SOURCE_ONLY", "NET_CONSULTING_SOURCE_ONLY", "NET_OTHER_SOURCE_ONLY", "EXPENSE_PARENT", "EXPENSE_PAYMENT", "EXPENSE_TREASURY", "EXPENSE_PAYMENT_TREASURY", "EXPENSE_SECURITIES", "EXPENSE_BROKERAGE_COMMISSION", "EXPENSE_SECURITIES_BROKERAGE", "EXPENSE_INSURANCE", "EXPENSE_TRUST_AGENCY", "EXPENSE_TELECOM", "EXPENSE_CONSULTING", "EXPENSE_DEBT_VALUATION", "EXPENSE_OTHER", "EXPENSE_COMBINED_CONSULTING_TRUST_AGENCY", "EXPENSE_PARTNER_SERVICE_SOURCE_ONLY"],
   "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
   "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
   "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
+  "continuation_leading_child_scope_policy": "EXACT_PRIOR_ROOT_CARRIER_SCOPES_CONSECUTIVE_RECEIVER_PREFIX",
+  "continuation_period_axis_policy": "ADJACENT_PAGE_EXPLICIT_CONTINUATION_INHERITS_COMPLETE_BLANK_HEADER_AXIS",
   "corroboration_pairs": [],
   "context_total_mapping_roles": ["INCOME_PARENT", "EXPENSE_PARENT"],
   "derived_role_equations": [],
@@ -17,23 +19,44 @@
   "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
   "label_only_structural_group_policy": "DIRECT_CHILD_FRONTIER_ONLY_AFTER_SOURCE_TOTAL_CLOSURE",
   "layout_policy": "TWO_PERIOD_COLUMNS_OR_ORDERED_PERIOD_TABLES_WITH_LOCAL_SOURCE_PROVENANCE",
+  "mapped_source_subtotal_policy": "ALLOW_SOURCE_VISIBLE_ROOT_COMPONENT_CONSUMED_BY_EXACT_ROOT_EQUATION",
   "money_unit_bindings": [
     {"accepted": true, "aliases": ["Triệu VND", "Triệu đồng", "Million VND"], "canonical_unit": "MILLION_VND", "magnitude_power10": 6},
     {"accepted": false, "aliases": ["Nghìn VND", "Nghìn đồng", "Thousand VND"], "canonical_unit": "THOUSAND_VND", "magnitude_power10": 3},
     {"accepted": false, "aliases": ["Tỷ VND", "Tỷ đồng", "Billion VND"], "canonical_unit": "BILLION_VND", "magnitude_power10": 9},
-    {"accepted": false, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
+    {"accepted": true, "aliases": ["VND", "Đồng"], "canonical_unit": "VND", "magnitude_power10": 0}
   ],
   "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
   "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
   "period_semantics": "CURRENT_AND_COMPARATIVE_DURATION",
-  "query_owner_aliases": ["Lãi thuần từ hoạt động dịch vụ", "Lãi/lỗ thuần từ hoạt động dịch vụ", "Lỗ/lãi thuần từ hoạt động dịch vụ", "Thu nhập từ hoạt động dịch vụ", "Thu nhập hoạt động dịch vụ", "Chi phí từ hoạt động dịch vụ", "Chi phí hoạt động dịch vụ", "Chi phí cho hoạt động dịch vụ"],
+  "query_owner_aliases": ["Lãi thuần từ hoạt động dịch vụ", "Lãi/lỗ thuần từ hoạt động dịch vụ", "Lỗ/lãi thuần từ hoạt động dịch vụ", "Thu nhập từ hoạt động dịch vụ", "Thu nhập hoạt động dịch vụ", "Thu nhập từ hoạt động dịch vụ từ", "Thu phí dịch vụ", "Chi phí từ hoạt động dịch vụ", "Chi phí hoạt động dịch vụ", "Chi phí hoạt động dịch vụ cho", "Chi phí cho hoạt động dịch vụ", "Chi về dịch vụ", "Chi phí dịch vụ liên quan"],
+  "root_component_role_combinations": [
+    {
+      "component_frontier_equation_policy": "DECLARED_DIRECT_SUM",
+      "equation_policy": "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE",
+      "roles": ["INCOME_PARENT", "EXPENSE_PARENT"]
+    },
+    {
+      "component_frontier_equation_policy": "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE",
+      "equation_policy": "DECLARED_DIRECT_SUM",
+      "roles": ["NET_PAYMENT_SOURCE_ONLY", "NET_TREASURY_SOURCE_ONLY", "NET_TRUST_AGENCY_SOURCE_ONLY", "NET_CONSULTING_SOURCE_ONLY", "NET_OTHER_SOURCE_ONLY"]
+    }
+  ],
   "root_component_roles": ["INCOME_PARENT", "EXPENSE_PARENT"],
   "root_component_equation_policy": "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE",
   "row_population_context_policy": "AT_LEAST_TWO_DECLARED_CHILD_ROLES",
   "role_unit_overrides": [],
   "structural_marker_policy": "WHOLE_SURFACE_AND_INDIVIDUAL_LINES",
-  "supplemental_owner_aliases": ["Thu nhập từ hoạt động dịch vụ", "Thu nhập hoạt động dịch vụ", "Chi phí từ hoạt động dịch vụ", "Chi phí hoạt động dịch vụ", "Chi phí cho hoạt động dịch vụ"],
+  "supplemental_owner_aliases": ["Thu nhập từ hoạt động dịch vụ", "Thu nhập hoạt động dịch vụ", "Thu nhập từ hoạt động dịch vụ từ", "Thu phí dịch vụ", "Chi phí từ hoạt động dịch vụ", "Chi phí hoạt động dịch vụ", "Chi phí hoạt động dịch vụ cho", "Chi phí cho hoạt động dịch vụ", "Chi về dịch vụ", "Chi phí dịch vụ liên quan"],
   "table_context_roles": ["INCOME_PARENT", "EXPENSE_PARENT"],
-  "typed_control_exclusions": [],
-  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
+  "typed_control_exclusions": [
+    {
+      "aliases": ["Giao dịch với các bên liên quan"],
+      "disposition": "RELATED_PARTY_TRANSACTION_VIEW",
+      "match_mode": "CONTAINS_NORMALIZED",
+      "surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"]
+    }
+  ],
+  "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD",
+  "validation_only_roles": ["INCOME_COMBINED_CONSULTING_TRUST_AGENCY", "INCOME_GUARANTEE_SECURITIES_AGENCY", "INCOME_COMBINED_TREASURY_TRUST_AGENCY_SOURCE_ONLY", "INCOME_COMBINED_INSURANCE_CONSULTING_SOURCE_ONLY", "INCOME_CUSTODY_RENT_SOURCE_ONLY", "INCOME_FORFAITING_SOURCE_ONLY", "INCOME_OTHER_SCHEMA_GAP_SOURCE_ONLY", "NET_PAYMENT_SOURCE_ONLY", "NET_TREASURY_SOURCE_ONLY", "NET_TRUST_AGENCY_SOURCE_ONLY", "NET_CONSULTING_SOURCE_ONLY", "NET_OTHER_SOURCE_ONLY", "EXPENSE_COMBINED_CONSULTING_TRUST_AGENCY", "EXPENSE_PARTNER_SERVICE_SOURCE_ONLY"]
 }

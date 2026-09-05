@@ -1,0 +1,18 @@
+{
+  "format_version": "GEMINI_JSON_FIRST_AGY_ORIENTATION_REPAIR_REGISTRY_V1",
+  "policy": {
+    "exact_source_page_only": true,
+    "implicit_orientation_detection": false
+  },
+  "repairs": [
+    {
+      "clockwise_degrees": 90,
+      "corrected_image_sha256": "6a97aa3e6a33737b9561b9e320230cc1a8c126b1d006e7ebed00c0cdc20e5283",
+      "original_image_sha256": "2490e5416e33b939689968573dc43a27c9e46b8c9457f2491d78c88bb7191693",
+      "physical_page": 46,
+      "reason": "Ảnh scan nằm ngang trong trang PDF dọc có metadata rotation bằng 0; đã kiểm tra trực quan và xoay 90 độ theo chiều kim đồng hồ.",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Q2_2025-1.pdf",
+      "source_sha256": "831abe75cfbd1987c8e63ecec9e3cc1f9a0ee49db1ffc7c930c0851847cc98a3"
+    }
+  ]
+}

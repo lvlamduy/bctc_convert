@@ -104,6 +104,51 @@ def _candidate_for_page(selected: dict, page_json: dict, indexed: dict, compiled
     )
 
 
+def _reporting_date_table(current: str, comparative: str) -> dict:
+    return {
+        "columns": [
+            {"header_path_exact": [current], "value_kind": "MONEY"},
+            {"header_path_exact": [comparative], "value_kind": "MONEY"},
+        ],
+        "continuation": "NONE",
+        "rows": [
+            {
+                "hierarchy_path_exact": ["Cho vay khách hàng"],
+                "label_exact": "Cho vay khách hàng",
+                "row_kind": "ITEM",
+                "values_exact": ["120", "110"],
+            }
+        ],
+        "title_exact": "Giá trị ghi sổ",
+        "unit_exact": "Triệu đồng",
+    }
+
+
+def _explicit_group_stacked_table() -> dict:
+    current = _period_table("Current values")
+    comparative = _period_table("Comparative values")
+    rows = []
+    for group_label, source_rows in (
+        ("Kỳ này", current["rows"]),
+        ("Kỳ trước", comparative["rows"]),
+    ):
+        rows.append(
+            {
+                "hierarchy_path_exact": [group_label],
+                "label_exact": group_label,
+                "row_kind": "GROUP",
+                "values_exact": [None, None, None],
+            }
+        )
+        for source_row in source_rows:
+            row = deepcopy(source_row)
+            row["hierarchy_path_exact"] = [group_label, row["label_exact"]]
+            rows.append(row)
+    current["rows"] = rows
+    current["title_exact"] = "Biến động dự phòng rủi ro cho vay khách hàng"
+    return current
+
+
 def _trial(
     *,
     ordinal: int,
@@ -567,6 +612,306 @@ def test_selected_rollforward_query_projects_each_layout_without_unselected_page
         )
         == indexed
     )
+
+
+def test_one_period_lane_column_component_is_unresolved_without_orientation_drift(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "one-period-pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page_json = _page(_period_table("Tại ngày 31 tháng 12 năm 2024"))
+    selected = _ingest(database, page_json=page_json)
+    topology, evaluation, schema, compiled = _specs()
+    indexed = query_selected_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+
+    assert len(indexed["accepted_regions"]) == 1
+    assert indexed["accepted_regions"][0]["layout_kind"] == "STACKED_PERIOD_BLOCKS"
+    candidate = _candidate_for_page(selected, page_json, indexed, compiled)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["closure_receipt"]["orientation"] == "STACKED_PERIOD_BLOCKS"
+    assert "ROLLFORWARD_EXACT_TWO_PERIOD_AXIS_NOT_RESOLVED" in candidate["reasons"]
+    assert "ROLLFORWARD_REQUIRED_COMPARATIVE_LANES_INCOMPLETE" in candidate["reasons"]
+
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "5" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[
+            _trial(
+                ordinal=1,
+                source=candidate["source_logical_name"],
+                source_sha256=candidate["source_sha256"],
+                status=UNRESOLVED,
+                candidate=candidate,
+            )
+        ],
+        indexed_query_evidence=indexed,
+    )
+    assert sweep["metrics"] == {
+        "document_count": 1,
+        "mapping_count": 0,
+        "not_observed_count": 0,
+        "ready_count": 0,
+        "unresolved_count": 1,
+    }
+    validate_gemini_json_flat_family_sweep_v1(sweep)
+
+
+def test_stacked_same_period_blocks_replay_duplicate_sources_from_raw_axis(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "duplicate-source-pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    first = _period_table("Năm tài chính 2025")
+    second = _period_table("Năm tài chính 2025")
+    second["rows"][0]["values_exact"] = ["210", "315", "210"]
+    second["rows"][-1]["values_exact"] = ["220", "330", "220"]
+    page_json = _page(first)
+    page_json["sections"][0]["tables"][0]["rows"] = [
+        *first["rows"],
+        *second["rows"],
+    ]
+    selected = _ingest(database, page_json=page_json)
+    topology, evaluation, schema, compiled = _specs()
+    indexed = query_selected_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+
+    assert len(indexed["accepted_regions"]) == 1
+    assert indexed["accepted_regions"][0]["layout_kind"] == "STACKED_PERIOD_BLOCKS"
+    candidate = _candidate_for_page(selected, page_json, indexed, compiled)
+    assert candidate["status"] == UNRESOLVED
+    closure = candidate["closure_receipt"]
+    assert len(closure["source_role_vectors"]) == 24
+    assert len(closure["role_vectors"]) == 12
+    assert len(closure["duplicate_source_ambiguities"]) == 12
+    assert {
+        item["disposition"] for item in closure["duplicate_source_ambiguities"]
+    } == {
+        "CONFLICTING_DUPLICATE_SOURCE_AMBIGUOUS",
+        "IDENTICAL_DUPLICATE_SOURCE_AMBIGUOUS",
+    }
+
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "6" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[
+            _trial(
+                ordinal=1,
+                source=candidate["source_logical_name"],
+                source_sha256=candidate["source_sha256"],
+                status=UNRESOLVED,
+                candidate=candidate,
+            )
+        ],
+        indexed_query_evidence=indexed,
+    )
+    validate_gemini_json_flat_family_sweep_v1(sweep)
+
+
+def test_single_current_period_matching_page_reporting_date_is_ready(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "single-current-pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page_json = _page(
+        _period_table("Tại ngày 31 tháng 03 năm 2025"),
+        _reporting_date_table("31/03/2025", "31/12/2024"),
+    )
+    selected = _ingest(database, page_json=page_json)
+    topology, evaluation, schema, compiled = _specs()
+    indexed = query_selected_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+
+    assert len(indexed["accepted_regions"]) == 1
+    candidate = _candidate_for_page(selected, page_json, indexed, compiled)
+    assert candidate["status"] == READY
+    assert candidate["reasons"] == []
+    assert candidate["closure_receipt"]["period_assignment_receipt"]["status"] == (
+        "SINGLE_CURRENT_PERIOD_CONTEXT_BOUND"
+    )
+    assert {mapping["period_role"] for mapping in candidate["mappings"]} == {
+        "CURRENT_PERIOD"
+    }
+
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "7" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[
+            _trial(
+                ordinal=1,
+                source=candidate["source_logical_name"],
+                source_sha256=candidate["source_sha256"],
+                status=READY,
+                candidate=candidate,
+            )
+        ],
+        indexed_query_evidence=indexed,
+    )
+    validate_gemini_json_flat_family_sweep_v1(sweep)
+
+
+@pytest.mark.parametrize(
+    ("page_json", "accepted_region_count"),
+    [
+        (_page(_period_table("Kỳ này"), _period_table("Kỳ trước")), 2),
+        (_page(_explicit_group_stacked_table()), 1),
+    ],
+)
+def test_explicit_current_comparative_labels_bind_without_fabricating_dates(
+    tmp_path: Path,
+    page_json: dict,
+    accepted_region_count: int,
+) -> None:
+    database = tmp_path / f"explicit-period-{accepted_region_count}.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    selected = _ingest(database, page_json=page_json)
+    topology, evaluation, schema, compiled = _specs()
+    indexed = query_selected_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+
+    assert len(indexed["accepted_regions"]) == accepted_region_count
+    candidate = _candidate_for_page(selected, page_json, indexed, compiled)
+    assert candidate["status"] == READY
+    assert candidate["reasons"] == []
+    assert candidate["closure_receipt"]["period_assignment_receipt"]["status"] == (
+        "EXPLICIT_CURRENT_COMPARATIVE_COMPONENT_ROLES_BOUND"
+    )
+    assert {vector["resolved_period"] for vector in candidate["closure_receipt"]["role_vectors"]} == {
+        "COMPARATIVE_UNDATED",
+        "CURRENT_UNDATED",
+    }
+
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id="gjfccmiv1:index:" + "8" * 64,
+        topology_spec=topology,
+        evaluation_spec=evaluation,
+        schema_binding_spec=schema,
+        trials=[
+            _trial(
+                ordinal=1,
+                source=candidate["source_logical_name"],
+                source_sha256=candidate["source_sha256"],
+                status=READY,
+                candidate=candidate,
+            )
+        ],
+        indexed_query_evidence=indexed,
+    )
+    validate_gemini_json_flat_family_sweep_v1(sweep)
+
+
+def test_explicit_comparative_only_component_never_becomes_current(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "explicit-comparative-only.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page_json = _page(_period_table("Kỳ trước"))
+    selected = _ingest(database, page_json=page_json)
+    _, _, _, compiled = _specs()
+    indexed = query_selected_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+
+    candidate = _candidate_for_page(selected, page_json, indexed, compiled)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["closure_receipt"]["period_assignment_receipt"]["status"] == (
+        "SINGLE_CURRENT_EXPLICIT_COMPARATIVE_ONLY"
+    )
+    assert "ROLLFORWARD_EXACT_TWO_PERIOD_AXIS_NOT_RESOLVED" in candidate["reasons"]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected_receipt_status", "expected_reason"),
+    [
+        (
+            "CONFLICTING_PERIOD",
+            "SINGLE_CURRENT_TABLE_PERIOD_CONFLICTING",
+            "ROLLFORWARD_EXACT_TWO_PERIOD_AXIS_NOT_RESOLVED",
+        ),
+        (
+            "AMBIGUOUS_REPORTING_DATE",
+            "SINGLE_CURRENT_REPORTING_CONTEXT_NOT_UNIQUE",
+            "ROLLFORWARD_EXACT_TWO_PERIOD_AXIS_NOT_RESOLVED",
+        ),
+        (
+            "MISSING_REQUIRED_LANE",
+            "SINGLE_CURRENT_PERIOD_CONTEXT_BOUND",
+            "ROLLFORWARD_REQUIRED_CURRENT_LANES_INCOMPLETE",
+        ),
+        (
+            "EQUATION_MISMATCH",
+            "SINGLE_CURRENT_PERIOD_CONTEXT_BOUND",
+            "ROLLFORWARD_LANE_EQUATION_MISMATCH:GENERAL_PROVISION_LANE",
+        ),
+        (
+            "MISSING_UNIT",
+            "SINGLE_CURRENT_PERIOD_CONTEXT_BOUND",
+            "ROLLFORWARD_MONEY_UNIT_NOT_VISIBLE",
+        ),
+    ],
+)
+def test_single_current_period_never_bypasses_ambiguity_or_accounting_gates(
+    tmp_path: Path,
+    mutation: str,
+    expected_receipt_status: str,
+    expected_reason: str,
+) -> None:
+    database = tmp_path / f"single-current-negative-{mutation}.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    target = _period_table(
+        "Tại ngày 31 tháng 03 năm 2025"
+        if mutation != "CONFLICTING_PERIOD"
+        else "Tại ngày 31 tháng 03 năm 2026"
+    )
+    reporting_tables = [_reporting_date_table("31/03/2025", "31/12/2024")]
+    if mutation == "AMBIGUOUS_REPORTING_DATE":
+        reporting_tables.append(_reporting_date_table("30/06/2025", "31/12/2024"))
+    elif mutation == "MISSING_REQUIRED_LANE":
+        target["columns"].pop(0)
+        for row in target["rows"]:
+            row["values_exact"].pop(0)
+    elif mutation == "EQUATION_MISMATCH":
+        target["rows"][-1]["values_exact"][0] = "122"
+    elif mutation == "MISSING_UNIT":
+        target["unit_exact"] = None
+    page_json = _page(target, *reporting_tables)
+    selected = _ingest(database, page_json=page_json)
+    _, _, _, compiled = _specs()
+    indexed = query_selected_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[selected["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+
+    assert len(indexed["accepted_regions"]) == 1
+    candidate = _candidate_for_page(selected, page_json, indexed, compiled)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["closure_receipt"]["period_assignment_receipt"]["status"] == (
+        expected_receipt_status
+    )
+    assert expected_reason in candidate["reasons"]
 
 
 def test_selected_rollforward_query_persists_typed_veto_and_rejects_hash_tamper(

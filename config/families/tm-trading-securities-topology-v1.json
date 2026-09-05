@@ -56,7 +56,8 @@
             "Chứng khoán nợ do các TCTD trong nước phát hành",
             "Trái phiếu do các TCTD khác trong nước phát hành",
             "Trái phiếu do các TCTD trong nước phát hành",
-            "Chứng chỉ tiền gửi do các TCTD khác trong nước phát hành"
+            "Chứng chỉ tiền gửi do các TCTD khác trong nước phát hành",
+            "Chứng chỉ tiền gửi"
           ],
           "within_role": "DEBT_SECURITIES_GROUP"
         },
@@ -151,6 +152,7 @@
         {
           "aliases": [
             "Đã niêm yết",
+            "Niêm yết",
             "Chứng khoán nợ đã niêm yết",
             "Trái phiếu đã niêm yết"
           ],
@@ -225,12 +227,25 @@
             "Chứng khoán vốn do các TCTD khác phát hành",
             "Chứng khoán vốn do các TCTD khác trong nước phát hành",
             "Chứng khoán vốn do các TCTD trong nước phát hành",
+            "Chứng khoán vốn do các tổ chức tín dụng khác trong nước phát hành",
             "Cổ phiếu do các TCTD khác phát hành",
             "Cổ phiếu do các TCTD khác trong nước phát hành",
             "Cổ phiếu do các TCTD trong nước phát hành",
             "Chứng khoán do các TCTD khác trong nước phát hành"
           ],
           "within_role": "EQUITY_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán vốn do các TCTD khác phát hành",
+            "Chứng khoán vốn do các TCTD khác trong nước phát hành",
+            "Chứng khoán vốn do các TCTD trong nước phát hành",
+            "Chứng khoán vốn do các tổ chức tín dụng khác trong nước phát hành",
+            "Cổ phiếu do các TCTD khác phát hành",
+            "Cổ phiếu do các TCTD khác trong nước phát hành",
+            "Cổ phiếu do các TCTD trong nước phát hành"
+          ],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -242,6 +257,7 @@
         {
           "aliases": [
             "Chứng khoán vốn do các TCKT trong nước phát hành",
+            "Chứng khoán vốn do các TCKT phát hành",
             "Chứng khoán vốn do các TCKT khác phát hành",
             "Chứng khoán vốn do các TCKT khác trong nước phát hành",
             "Chứng khoán do các TCKT trong nước phát hành",
@@ -256,6 +272,7 @@
         {
           "aliases": [
             "Chứng khoán vốn do các TCKT trong nước phát hành",
+            "Chứng khoán vốn do các TCKT phát hành",
             "Chứng khoán vốn do các TCKT khác phát hành",
             "Chứng khoán vốn do các TCKT khác trong nước phát hành",
             "Chứng khoán do các TCKT trong nước phát hành",
@@ -307,6 +324,7 @@
         {
           "aliases": [
             "Đã niêm yết",
+            "Niêm yết",
             "Chứng khoán vốn đã niêm yết",
             "Cổ phiếu đã niêm yết"
           ],
@@ -404,7 +422,8 @@
       "matchers": [
         {
           "aliases": [
-            "Do các TCKT nước ngoài phát hành"
+            "Do các TCKT nước ngoài phát hành",
+            "Chứng chỉ quỹ mở do các TCKT nước ngoài phát hành"
           ],
           "within_role": "OTHER_TRADING_SECURITIES_GROUP"
         }
@@ -417,7 +436,8 @@
       "matchers": [
         {
           "aliases": [
-            "Đã niêm yết"
+            "Đã niêm yết",
+            "Niêm yết"
           ],
           "within_role": "OTHER_TRADING_SECURITIES_GROUP"
         }
@@ -497,6 +517,7 @@
         {
           "aliases": [
             "Dự phòng chung",
+            "Dự phòng chung chứng khoán kinh doanh",
             "Dự phòng rủi ro tín dụng chung"
           ],
           "within_role": "TRADING_SECURITIES_PROVISION_GROUP"
@@ -541,6 +562,7 @@
     "Chứng khoán đầu tư",
     "Chứng khoán đầu tư sẵn sàng để bán",
     "Chứng khoán đầu tư giữ đến ngày đáo hạn",
+    "Tài sản, GTCG thế chấp, cầm cố và chiết khấu, tái chiết khấu",
     "Lãi thuần từ mua bán chứng khoán kinh doanh",
     "Lỗ thuần từ mua bán chứng khoán kinh doanh"
   ],
@@ -572,6 +594,15 @@
       "DEBT_UNLISTED"
     ],
     [
+      "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS"
+    ],
+    [
+      "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS"
+    ],
+    [
+      "EQUITY_LISTED"
+    ],
+    [
       "DEBT_SECURITIES_GROUP",
       "EQUITY_SECURITIES_GROUP"
     ],
@@ -582,6 +613,14 @@
     [
       "DEBT_SECURITIES_GROUP",
       "DEBT_DOMESTIC_CREDIT_INSTITUTIONS"
+    ],
+    [
+      "DEBT_SECURITIES_GROUP",
+      "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS"
+    ],
+    [
+      "OTHER_TRADING_SECURITIES_GROUP",
+      "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS"
     ]
   ],
   "structural_reset_aliases": [

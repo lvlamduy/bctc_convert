@@ -1,7 +1,12 @@
 {
     "children": [
         {
-            "matchers": [{"aliases": ["Nguyên giá"], "within_role": null}],
+            "matchers": [
+                {
+                    "aliases": ["Nguyên giá", "Nguyên giá TSCĐ vô hình"],
+                    "within_role": null
+                }
+            ],
             "presence": "OPTIONAL",
             "role": "COST_BRANCH",
             "role_kind": "STRUCTURAL_GROUP"
@@ -9,7 +14,13 @@
         {
             "matchers": [
                 {
-                    "aliases": ["Giá trị hao mòn lũy kế", "Hao mòn lũy kế", "Khấu hao lũy kế"],
+                    "aliases": [
+                        "Giá trị hao mòn lũy kế",
+                        "Giá trị khấu hao lũy kế",
+                        "Giá trị hao mòn",
+                        "Hao mòn lũy kế",
+                        "Khấu hao lũy kế"
+                    ],
                     "within_role": null
                 }
             ],
@@ -18,7 +29,12 @@
             "role_kind": "STRUCTURAL_GROUP"
         },
         {
-            "matchers": [{"aliases": ["Giá trị còn lại"], "within_role": null}],
+            "matchers": [
+                {
+                    "aliases": ["Giá trị còn lại", "Giá trị còn lại của TSCĐ vô hình"],
+                    "within_role": null
+                }
+            ],
             "presence": "OPTIONAL",
             "role": "CARRYING_BRANCH",
             "role_kind": "STRUCTURAL_GROUP"
@@ -42,7 +58,17 @@
         },
         {
             "matchers": [
-                {"aliases": ["Tăng trong kỳ", "Tăng trong năm"], "within_role": "COST_BRANCH"}
+                {
+                    "aliases": [
+                        "Tăng trong kỳ",
+                        "Tăng trong năm",
+                        "Số tăng trong kỳ",
+                        "Số tăng trong năm",
+                        "Mua sắm và xây dựng hoàn thành cơ bản trong kỳ",
+                        "Mua sắm và xây dựng hoàn thành cơ bản trong năm"
+                    ],
+                    "within_role": "COST_BRANCH"
+                }
             ],
             "presence": "OPTIONAL",
             "role": "COST_TOTAL_INCREASE",
@@ -51,7 +77,13 @@
         {
             "matchers": [
                 {
-                    "aliases": ["Mua trong kỳ", "Mua trong năm", "Mua mới"],
+                    "aliases": [
+                        "Mua trong kỳ",
+                        "Mua trong năm",
+                        "Mua sắm trong kỳ",
+                        "Mua sắm trong năm",
+                        "Mua mới"
+                    ],
                     "within_role": "COST_BRANCH"
                 }
             ],
@@ -79,7 +111,14 @@
                 {
                     "aliases": [
                         "Chuyển từ chi phí xây dựng cơ bản dở dang",
-                        "Chuyển từ chi phí xây dựng CBDD"
+                        "Chuyển từ chi phí xây dựng CBDD",
+                        "Chuyển từ xây dựng cơ bản dở dang",
+                        "Chuyển từ mua sắm, XDCB dở dang",
+                        "Chuyển từ XDCD dở dang",
+                        "Chuyển từ tạm ứng mua sắm tài sản cố định và chi phí xây dựng cơ bản dở dang",
+                        "Chuyển từ tạm ứng mua sắm TSCĐ và chi phí XDCB dở dang",
+                        "Chuyển từ chi phí xây dựng cơ bản dở dang và mua sắm tài sản cố định",
+                        "Kết chuyển từ mua sắm TSCĐ"
                     ],
                     "within_role": "COST_BRANCH"
                 }
@@ -91,7 +130,12 @@
         {
             "matchers": [
                 {
-                    "aliases": ["Tăng do hợp nhất kinh doanh", "Hợp nhất kinh doanh"],
+                    "aliases": [
+                        "Tăng do hợp nhất kinh doanh",
+                        "Hợp nhất kinh doanh",
+                        "Ảnh hưởng của hợp nhất trong kỳ",
+                        "Ảnh hưởng từ mua thêm cổ phần công ty con"
+                    ],
                     "within_role": "COST_BRANCH"
                 }
             ],
@@ -100,14 +144,32 @@
             "role_kind": "NONADDITIVE_CHILD"
         },
         {
-            "matchers": [{"aliases": ["Tăng khác", "Khác"], "within_role": "COST_BRANCH"}],
+            "matchers": [
+                {
+                    "aliases": [
+                        "Tăng khác",
+                        "Khác",
+                        "Nâng cấp trong kỳ",
+                        "Nâng cấp trong năm"
+                    ],
+                    "within_role": "COST_BRANCH"
+                }
+            ],
             "presence": "OPTIONAL",
             "role": "COST_OTHER_INCREASE",
             "role_kind": "NONADDITIVE_CHILD"
         },
         {
             "matchers": [
-                {"aliases": ["Giảm trong kỳ", "Giảm trong năm"], "within_role": "COST_BRANCH"}
+                {
+                    "aliases": [
+                        "Giảm trong kỳ",
+                        "Giảm trong năm",
+                        "Số giảm trong kỳ",
+                        "Số giảm trong năm"
+                    ],
+                    "within_role": "COST_BRANCH"
+                }
             ],
             "presence": "OPTIONAL",
             "role": "COST_TOTAL_DECREASE",
@@ -167,14 +229,22 @@
             "role_kind": "NONADDITIVE_CHILD"
         },
         {
-            "matchers": [{"aliases": ["Giảm khác", "Khác"], "within_role": "COST_BRANCH"}],
+            "matchers": [
+                {
+                    "aliases": ["Giảm khác", "Giảm do bán công ty con", "Khác"],
+                    "within_role": "COST_BRANCH"
+                }
+            ],
             "presence": "OPTIONAL",
             "role": "COST_OTHER_DECREASE",
             "role_kind": "NONADDITIVE_CHILD"
         },
         {
             "matchers": [
-                {"aliases": ["Tăng/(giảm) khác", "Biến động khác"], "within_role": "COST_BRANCH"}
+                {
+                    "aliases": ["Tăng/(giảm) khác", "Biến động khác", "Điều chỉnh khác"],
+                    "within_role": "COST_BRANCH"
+                }
             ],
             "presence": "OPTIONAL",
             "role": "COST_OTHER_NET",
@@ -228,7 +298,12 @@
         {
             "matchers": [
                 {
-                    "aliases": ["Tăng trong kỳ", "Tăng trong năm"],
+                    "aliases": [
+                        "Tăng trong kỳ",
+                        "Tăng trong năm",
+                        "Số tăng trong kỳ",
+                        "Số tăng trong năm"
+                    ],
                     "within_role": "DEPRECIATION_BRANCH"
                 }
             ],
@@ -257,7 +332,12 @@
         {
             "matchers": [
                 {
-                    "aliases": ["Tăng do hợp nhất kinh doanh", "Hợp nhất kinh doanh"],
+                    "aliases": [
+                        "Tăng do hợp nhất kinh doanh",
+                        "Hợp nhất kinh doanh",
+                        "Ảnh hưởng của hợp nhất trong kỳ",
+                        "Ảnh hưởng từ mua thêm cổ phần công ty con"
+                    ],
                     "within_role": "DEPRECIATION_BRANCH"
                 }
             ],
@@ -274,7 +354,12 @@
         {
             "matchers": [
                 {
-                    "aliases": ["Giảm trong kỳ", "Giảm trong năm"],
+                    "aliases": [
+                        "Giảm trong kỳ",
+                        "Giảm trong năm",
+                        "Số giảm trong kỳ",
+                        "Số giảm trong năm"
+                    ],
                     "within_role": "DEPRECIATION_BRANCH"
                 }
             ],
@@ -336,7 +421,12 @@
             "role_kind": "NONADDITIVE_CHILD"
         },
         {
-            "matchers": [{"aliases": ["Giảm khác", "Khác"], "within_role": "DEPRECIATION_BRANCH"}],
+            "matchers": [
+                {
+                    "aliases": ["Giảm khác", "Giảm do bán công ty con", "Khác"],
+                    "within_role": "DEPRECIATION_BRANCH"
+                }
+            ],
             "presence": "OPTIONAL",
             "role": "DEP_OTHER_DECREASE",
             "role_kind": "NONADDITIVE_CHILD"
@@ -344,7 +434,7 @@
         {
             "matchers": [
                 {
-                    "aliases": ["Tăng/(giảm) khác", "Biến động khác"],
+                    "aliases": ["Tăng/(giảm) khác", "Biến động khác", "Điều chỉnh khác"],
                     "within_role": "DEPRECIATION_BRANCH"
                 }
             ],
@@ -422,7 +512,9 @@
                         "Nguyên giá TSCĐ vô hình đã khấu hao hết nhưng vẫn còn sử dụng",
                         "Nguyên giá tài sản cố định vô hình đã hao mòn hết nhưng vẫn đang được sử dụng",
                         "Nguyên giá tài sản cố định vô hình đã khấu hao hết nhưng vẫn đang được sử dụng",
-                        "Nguyên giá của TSCĐ vô hình đã khấu hao hết nhưng vẫn còn sử dụng"
+                        "Nguyên giá của TSCĐ vô hình đã khấu hao hết nhưng vẫn còn sử dụng",
+                        "Đã hao mòn hết nhưng vẫn còn sử dụng",
+                        "Đã khấu hao hết nhưng vẫn còn sử dụng"
                     ],
                     "within_role": null
                 }

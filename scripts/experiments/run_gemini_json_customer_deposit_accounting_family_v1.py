@@ -14,8 +14,12 @@ from collections import Counter, defaultdict
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from hashlib import sha256
+from io import BytesIO
 from pathlib import Path
 from typing import Any
+
+import fitz
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
@@ -25,15 +29,23 @@ from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import (  # noqa:
     NOT_OBSERVED,
     READY,
     UNRESOLVED,
+    bind_gemini_json_customer_deposit_source_repairs_v1,
     build_gemini_json_customer_deposit_region_query_receipt_v1,
     evaluate_gemini_json_customer_deposit_family_cluster_v1,
+)
+from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
+    render_full_pdf_page_v1,
 )
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: E402
     build_gemini_json_flat_family_sweep_v1,
     compile_gemini_json_flat_family_specs_v1,
     validate_gemini_json_flat_family_sweep_v1,
 )
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (  # noqa: E402
+    validate_source_observation_mapping_contract_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
+    canonical_clone_v1,
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
@@ -70,12 +82,12 @@ PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256 = (
 )
 PINNED_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
-        "ba5ab6083dd0cf3a0d1b81d4c027a64f55b2f478003a955b6b8d5bc3fcef8d50"
+        "f3bb3807e1f8feb485a7494c95abadc1ffa5f80f3c0f66bbe83a1757d43ab1b6"
     ),
     "accepted_cluster_count": 140,
     "accepted_fragment_count": 222,
     "candidate_disposition_axis_sha256": (
-        "a0d4d65bab344cdae14c6d21faf790dae9e703ec0fa5115ccd77ade8ccef8735"
+        "0bfb088f30ab9e634bccf4d16f8b34e784732fe2e796c2cb82fb2bb56fed6c99"
     ),
     "candidate_disposition_count": 140,
     "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
@@ -92,22 +104,22 @@ PINNED_QUERY_RECEIPT = {
 }
 PINNED_RELEASE_METRICS = {
     "document_count": 140,
-    "mapping_count": 2206,
+    "mapping_count": 2189,
     "not_observed_count": 0,
     "ready_count": 140,
     "unresolved_count": 0,
 }
 PINNED_RELEASE_AUDIT_METRICS = {
-    "equation_count": 730,
-    "historical_direct_binding_count": 155,
+    "equation_count": 732,
+    "historical_direct_binding_count": 151,
     "historical_schema_id_migration_count": 2,
     "historical_schema_role_rename_count": 2,
-    "historical_value_match_count": 159,
+    "historical_value_match_count": 155,
     "optional_customer_view_dispositions": {
         "ABSENT": 70,
-        "EXCLUDED_NONEXACT_OPTIONAL_CUSTOMER_VIEW": 2,
-        "INCLUDED_EXACT_OPTIONAL_CUSTOMER_VIEW": 68,
+        "INCLUDED_EXACT_OPTIONAL_CUSTOMER_VIEW": 70,
     },
+    "source_repair_count": 6,
 }
 PINNED_HISTORICAL_ORACLE = {
     "format_version": "ANNUAL_2025_CUSTOMER_DEPOSIT_8BANK_CODEX_VERIFIED_MAPPING_V1",
@@ -115,6 +127,9 @@ PINNED_HISTORICAL_ORACLE = {
     "sha256": "0d832b33929523846a45d33644fcd95c4a7b8f5c12072da8457a78fa9030f394",
     "size_bytes": 198448,
 }
+SOURCE_REPAIR_SPEC_PATH = (
+    ROOT / "data/registered/gemini_json_customer_deposit_source_repairs_v1.json"
+)
 _SQLITE_SIDECAR_SUFFIXES = ("-journal", "-shm", "-wal")
 
 
@@ -144,6 +159,85 @@ def _file_ref(path: Path, *, root: Path | None = None) -> dict[str, Any]:
     resolved = path.resolve()
     logical = str(resolved.relative_to(root.resolve())) if root is not None else str(resolved)
     return {"path": logical, "sha256": _sha256(resolved), "size_bytes": resolved.stat().st_size}
+
+
+def _authenticate_source_repairs_v1(
+    *, repairs: list[dict[str, Any]], source_pdf_root: Path
+) -> list[dict[str, Any]]:
+    """Replay every registered full-page render and RGB crop binding."""
+
+    root = source_pdf_root.resolve()
+    if source_pdf_root.is_symlink() or not root.is_dir():
+        raise _error("customer-deposit repair source root is unavailable")
+    source_payloads: dict[tuple[str, str, int], bytes] = {}
+    render_cache: dict[tuple[str, int], tuple[bytes, dict[str, Any]]] = {}
+    checked = []
+    for repair in repairs:
+        source = repair["source"]
+        locator = repair["locator"]
+        logical_name = source["source_logical_name"]
+        path = (root / logical_name).resolve()
+        if not path.is_relative_to(root) or path.is_symlink() or not path.is_file():
+            raise _error("customer-deposit repair source path is unavailable")
+        source_key = (
+            logical_name,
+            source["source_sha256"],
+            source["source_size_bytes"],
+        )
+        payload = source_payloads.get(source_key)
+        if payload is None:
+            payload = path.read_bytes()
+            if (
+                len(payload) != source["source_size_bytes"]
+                or sha256(payload).hexdigest() != source["source_sha256"]
+            ):
+                raise _error("customer-deposit repair source artifact drifted")
+            source_payloads[source_key] = payload
+        cache_key = (logical_name, locator["physical_page"])
+        cached = render_cache.get(cache_key)
+        if cached is None:
+            with fitz.open(stream=payload, filetype="pdf") as document:
+                if locator["physical_page"] > len(document):
+                    raise _error(
+                        "customer-deposit repair physical page is outside its PDF"
+                    )
+                rendered = render_full_pdf_page_v1(
+                    document[locator["physical_page"] - 1],
+                    physical_page=locator["physical_page"],
+                    dpi=300,
+                    source_sha256=source["source_sha256"],
+                )
+            cached = rendered.image, rendered.receipt
+            render_cache[cache_key] = cached
+        image_bytes, render_receipt = cached
+        with Image.open(BytesIO(image_bytes)) as image:
+            image.load()
+            rgb = image.convert("RGB")
+            bbox = repair["crop_evidence"]["bbox_pixels_xyxy"]
+            crop = rgb.crop(tuple(bbox))
+            actual_render = {
+                "image_sha256": sha256(image_bytes).hexdigest(),
+                "image_size_bytes": len(image_bytes),
+                "media_type": "image/png",
+                "physical_page": locator["physical_page"],
+                "pixel_height": rgb.height,
+                "pixel_width": rgb.width,
+                "render_dpi": 300,
+                "render_receipt_sha256": canonical_json_sha256_v1(render_receipt),
+            }
+            actual_crop = {
+                "bbox_pixels_xyxy": bbox,
+                "pixel_height": crop.height,
+                "pixel_width": crop.width,
+                "rgb_sha256": sha256(crop.tobytes()).hexdigest(),
+            }
+        if (
+            actual_render != repair["render"]
+            or actual_crop != repair["crop_evidence"]
+        ):
+            raise _error("customer-deposit repair render or crop evidence drifted")
+        checked.append(canonical_clone_v1(repair))
+    return checked
 
 
 def _content_ref(root: Path, reference: Any) -> Path:
@@ -345,6 +439,17 @@ def _historical_comparator_axis(
     *, trials: Sequence[dict[str, Any]], compiled_specs: Mapping[str, Any]
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     oracle_ref, oracle = _historical_oracle()
+    oracle_sources = {trial.get("source_pdf_sha256") for trial in oracle["trials"]}
+    trial_sources = {trial.get("source_sha256") for trial in trials}
+    overlap = oracle_sources & trial_sources
+    if not overlap:
+        # The immutable 19-bank expansion corpus deliberately excludes the
+        # original eight-bank oracle.  An entirely disjoint source frontier has
+        # no historical comparisons; a partial overlap is rejected below so a
+        # caller cannot silently omit only the inconvenient oracle documents.
+        return [], oracle_ref
+    if overlap != oracle_sources:
+        raise _error("historical customer-deposit source frontier is only partially present")
     candidates = _candidate_by_source(trials)
     current_role_by_id = {
         report_norm_id: role for role, report_norm_id in compiled_specs["bindings"].items()
@@ -493,10 +598,12 @@ def build_customer_deposit_experimental_audit_v1(
     trials: Sequence[dict[str, Any]],
     compiled_specs: Mapping[str, Any],
     spec_refs: Mapping[str, Any],
+    source_repair_authentication: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     """Build transparent semantic axes after the exact SQLite candidate replay."""
 
     axes, oracle_ref = _audit_axes(trials=trials, compiled_specs=compiled_specs)
+    axes["source_repairs"] = canonical_clone_v1(list(source_repair_authentication))
     axis_counts = {name: len(axis) for name, axis in axes.items()}
     axis_sha256 = {name: canonical_json_sha256_v1(axis) for name, axis in axes.items()}
     optional_counts = dict(
@@ -516,6 +623,7 @@ def build_customer_deposit_experimental_audit_v1(
             item["disposition"] != "MISMATCH" for item in axes["historical_comparator"]
         ),
         "optional_customer_view_dispositions": optional_counts,
+        "source_repair_count": axis_counts["source_repairs"],
     }
     sweep_payload = canonical_json_bytes_v1(sweep)
     material = {
@@ -525,7 +633,8 @@ def build_customer_deposit_experimental_audit_v1(
         "audit_metrics": audit_metrics,
         "claim_boundary": (
             "AUTHENTICATED_SELECTED_GEMINI_JSON_SQLITE_REPLAY_AND_HISTORICAL_ROLE_VALUE_"
-            "COMPARATOR_ONLY_NO_PROVIDER_NO_GEOMETRY_NO_CANONICAL_EXPORT_AUTHORITY"
+            "COMPARATOR_PLUS_REGISTERED_FULL_PAGE_PDF_DASH_RECEIPTS_ONLY_NO_PROVIDER_"
+            "NO_UNREGISTERED_GEOMETRY_NO_CANONICAL_EXPORT_AUTHORITY"
         ),
         "format_version": AUDIT_FORMAT_VERSION,
         "historical_oracle_ref": oracle_ref,
@@ -572,6 +681,7 @@ def validate_customer_deposit_experimental_audit_content_v1(value: Any) -> dict[
         "historical_comparator",
         "mappings",
         "optional_customer_views",
+        "source_repairs",
     }
     if (
         type(value) is not dict
@@ -604,6 +714,8 @@ def validate_customer_deposit_experimental_audit_replay_v1(
     trials: Sequence[dict[str, Any]],
     compiled_specs: Mapping[str, Any],
     spec_refs: Mapping[str, Any],
+    source_repair_spec: Mapping[str, Any] | None = None,
+    source_repair_authentication: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     checked_sweep = validate_gemini_json_flat_family_sweep_v1(sweep)
     embedded = compile_gemini_json_flat_family_specs_v1(
@@ -611,6 +723,10 @@ def validate_customer_deposit_experimental_audit_replay_v1(
         checked_sweep["specs"]["evaluation"]["value"],
         checked_sweep["specs"]["schema_binding"]["value"],
     )
+    if source_repair_spec is not None:
+        embedded = bind_gemini_json_customer_deposit_source_repairs_v1(
+            embedded, source_repair_spec
+        )
     if not same_typed_json_v1(embedded, compiled_specs):
         raise _error("customer-deposit caller and embedded compiled specs differ")
     if not same_typed_json_v1(checked_sweep["trials"], trials) or not same_typed_json_v1(
@@ -632,6 +748,7 @@ def validate_customer_deposit_experimental_audit_replay_v1(
         trials=checked_sweep["trials"],
         compiled_specs=embedded,
         spec_refs=spec_refs,
+        source_repair_authentication=source_repair_authentication,
     )
     validate_customer_deposit_experimental_audit_content_v1(value)
     if not same_typed_json_v1(value, expected):
@@ -646,7 +763,12 @@ def _assert_release_pins(
     sweep: Mapping[str, Any],
     indexed: Mapping[str, Any],
     audit: Mapping[str, Any],
+    run_kind: str,
 ) -> None:
+    if index.get("corpus_manifest_index_id") != PINNED_CORPUS_MANIFEST_INDEX_ID:
+        if run_kind == "EXPERIMENTAL":
+            return
+        raise _error("official customer-deposit run requires the frozen release corpus")
     actual = {
         "audit_metrics": audit.get("audit_metrics"),
         "axis_counts": audit.get("axis_counts"),
@@ -666,7 +788,12 @@ def _assert_release_pins(
         mismatches.append("sweep_metrics")
     if not same_typed_json_v1(actual["audit_metrics"], PINNED_RELEASE_AUDIT_METRICS):
         mismatches.append("audit_metrics")
-    expected_axis_counts = {"clusters": 140, "historical_comparator": 159, "mappings": 2206}
+    expected_axis_counts = {
+        "clusters": 140,
+        "historical_comparator": 159,
+        "mappings": 2189,
+        "source_repairs": 6,
+    }
     if any(
         actual["axis_counts"].get(name) != count for name, count in expected_axis_counts.items()
     ):
@@ -791,6 +918,56 @@ def _load_selected_pages_by_document(
     return result
 
 
+def replay_customer_deposit_trials_from_source_v1(
+    *,
+    source_page_database: Path,
+    selected_page_json_version_ids: tuple[str, ...],
+    compiled_specs: dict[str, Any],
+    indexed_query_evidence: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Re-query, overlay, evaluate, and replay the complete Family-15 axis."""
+
+    source_repairs = _json(SOURCE_REPAIR_SPEC_PATH)
+    family_compiled = bind_gemini_json_customer_deposit_source_repairs_v1(
+        compiled_specs, source_repairs
+    )
+    indexed = query_selected_customer_deposit_family_regions_v1(
+        source_page_database,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=family_compiled,
+    )
+    if not same_typed_json_v1(indexed, indexed_query_evidence):
+        raise _error("customer-deposit source replay rebuilt different query evidence")
+    page_json_by_document = _load_selected_pages_by_document(
+        source_page_database,
+        selected_ids=selected_page_json_version_ids,
+        selected_page_axis=indexed["selected_page_axis"],
+    )
+    candidates_by_ordinal = {}
+    for cluster in indexed["accepted_clusters"]:
+        ordinal = cluster["document_ordinal"]
+        regions = cluster["component_regions"]
+        candidates_by_ordinal[ordinal] = (
+            evaluate_gemini_json_customer_deposit_family_cluster_v1(
+                regions=regions,
+                page_json_by_version=page_json_by_document[ordinal],
+                compiled_specs=family_compiled,
+                query_receipt=(
+                    build_gemini_json_customer_deposit_region_query_receipt_v1(regions)
+                ),
+            )
+        )
+    trials = _trials(indexed=indexed, candidates_by_ordinal=candidates_by_ordinal)
+    validate_selected_customer_deposit_family_candidate_replays_v1(
+        source_page_database,
+        selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=family_compiled,
+        indexed_query_evidence=indexed,
+        trials=trials,
+    )
+    return trials
+
+
 def _run_with_authenticated_database(
     args: argparse.Namespace,
     *,
@@ -802,6 +979,8 @@ def _run_with_authenticated_database(
     schema: dict[str, Any],
     compiled: dict[str, Any],
     spec_refs: dict[str, Any],
+    source_repair_spec: dict[str, Any],
+    source_repair_authentication: list[dict[str, Any]],
 ) -> dict[str, Any]:
     database = database_guard.path
     indexed = query_selected_customer_deposit_family_regions_v1(
@@ -839,6 +1018,7 @@ def _run_with_authenticated_database(
         indexed_query_evidence=indexed,
     )
     validate_gemini_json_flat_family_sweep_v1(sweep)
+    validate_source_observation_mapping_contract_v1(sweep)
     validate_selected_customer_deposit_family_candidate_replays_v1(
         database,
         selected_page_json_version_ids=selected_ids,
@@ -854,6 +1034,7 @@ def _run_with_authenticated_database(
         trials=trials,
         compiled_specs=compiled,
         spec_refs=spec_refs,
+        source_repair_authentication=source_repair_authentication,
     )
     validate_customer_deposit_experimental_audit_replay_v1(
         audit,
@@ -865,6 +1046,8 @@ def _run_with_authenticated_database(
         trials=trials,
         compiled_specs=compiled,
         spec_refs=spec_refs,
+        source_repair_spec=source_repair_spec,
+        source_repair_authentication=source_repair_authentication,
     )
     _assert_release_pins(
         index=index,
@@ -872,6 +1055,7 @@ def _run_with_authenticated_database(
         sweep=sweep,
         indexed=indexed,
         audit=audit,
+        run_kind=args.run_kind,
     )
     database_guard.validate()
     audit_output = args.output.with_suffix(".audit.json")
@@ -882,18 +1066,29 @@ def _run_with_authenticated_database(
         ROOT / "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_customer_deposit_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_first_page_render_v1.py",
+        ROOT / "src/bctc_ai/evaluation/source_observation_lane_math_v1.py",
+        ROOT / "src/bctc_ai/evaluation/source_observation_mapping_contract_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
+        SOURCE_REPAIR_SPEC_PATH,
+    )
+    implementation_refs = [_file_ref(path, root=ROOT) for path in implementation_paths]
+    runner_ref = _file_ref(
+        ROOT / "scripts/experiments/run_gemini_json_customer_deposit_accounting_family_v1.py",
+        root=ROOT,
     )
     stored = ingest_gemini_accounting_family_sweep_v1(
         args.results_database,
         sweep=sweep,
         corpus_index_ref=_file_ref(args.corpus_index),
-        implementation_refs=[_file_ref(path, root=ROOT) for path in implementation_paths],
+        implementation_refs=implementation_refs,
         run_kind=args.run_kind,
         source_page_database=database,
         selected_page_json_version_ids=selected_ids,
         corpus_artifact_root=args.artifact_root.resolve(),
+        source_replay_adapter=replay_customer_deposit_trials_from_source_v1,
+        source_replay_adapter_ref=runner_ref,
     )
     stored_sweep = load_gemini_accounting_family_sweep_v1(
         args.results_database, stored["family_run_id"]
@@ -928,12 +1123,23 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     topology = _json(args.topology_spec)
     evaluation = _json(args.evaluation_spec)
     schema = _json(args.schema_binding_spec)
-    compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    if args.source_repair_spec.resolve() != SOURCE_REPAIR_SPEC_PATH.resolve():
+        raise _error("customer-deposit runner requires its registered source-repair path")
+    source_repair_spec = _json(args.source_repair_spec)
+    compiled = bind_gemini_json_customer_deposit_source_repairs_v1(
+        compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
+        source_repair_spec,
+    )
     spec_refs = {
         "evaluation": _file_ref(args.evaluation_spec, root=ROOT),
         "schema_binding": _file_ref(args.schema_binding_spec, root=ROOT),
+        "source_repair": _file_ref(args.source_repair_spec, root=ROOT),
         "topology": _file_ref(args.topology_spec, root=ROOT),
     }
+    source_repair_authentication = _authenticate_source_repairs_v1(
+        repairs=compiled["customer_deposit_source_repairs"],
+        source_pdf_root=args.source_pdf_root,
+    )
     with _authenticated_sqlite_snapshot(
         source_database, reference=index["database_ref"]
     ) as database_guard:
@@ -947,6 +1153,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             schema=schema,
             compiled=compiled,
             spec_refs=spec_refs,
+            source_repair_spec=source_repair_spec,
+            source_repair_authentication=source_repair_authentication,
         )
 
 
@@ -957,6 +1165,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--topology-spec", type=Path, required=True)
     parser.add_argument("--evaluation-spec", type=Path, required=True)
     parser.add_argument("--schema-binding-spec", type=Path, required=True)
+    parser.add_argument("--source-repair-spec", type=Path, required=True)
+    parser.add_argument("--source-pdf-root", type=Path, required=True)
     parser.add_argument("--results-database", type=Path, required=True)
     parser.add_argument("--run-kind", choices=("EXPERIMENTAL", "OFFICIAL"), required=True)
     parser.add_argument("--output", type=Path, required=True)

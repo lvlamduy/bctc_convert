@@ -44,6 +44,19 @@ def family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
         for ordinal in range(1, len(tokens))
         for separator in ("-", "–", "—", "•")
     }
+    # Numbered accounting grades are also commonly printed with the separator
+    # attached to the ordinal (for example ``Nhóm 1- Nợ đủ tiêu chuẩn``).
+    # The public matcher already treats that punctuation as a token boundary;
+    # keep the immutable indexed shortlist representation-equivalent by
+    # enumerating the exact left-attached form as well.
+    internal_separator_forms |= {
+        " ".join(tokens[:ordinal]) + f"{separator} " + " ".join(tokens[ordinal:])
+        for alias in folded
+        for tokens in [alias.split()]
+        for ordinal in range(1, len(tokens))
+        if tokens[ordinal - 1].isdigit()
+        for separator in ("-", "–", "—", "•")
+    }
     punctuation_forms = (
         set(folded)
         | {alias + ":" for alias in folded}
@@ -74,6 +87,13 @@ def family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
         if " tctd " in alias
         for marker in (' ("tctd") ', " (“tctd”) ", " (tctd) ")
     }
+    # A provider can occasionally serialize a visible line wrap as the two
+    # literal characters ``\\n``.  The immutable search index necessarily
+    # preserves that exact surface, while the public evaluator treats it as
+    # whitespace.  Query the equivalent one-wrap forms so the indexed
+    # shortlist and evaluator use the same representation semantics.  Exact
+    # whole-label equality is retained; this does not introduce substring or
+    # fuzzy matching.
     for alias in folded:
         stem, separator, suffix = alias.rpartition(" ")
         if separator and (suffix.isdigit() or suffix in {"i", "ii", "iii", "iv", "v"}):
@@ -101,10 +121,38 @@ def family_anchor_lookup_forms_v1(aliases: Sequence[str]) -> list[str]:
         "xiv",
         "xv",
     }
+    escaped_line_wrap_forms = {
+        escaped
+        for alias in folded
+        for tokens in [alias.split()]
+        for ordinal in range(1, len(tokens))
+        for escaped in (
+            " ".join(tokens[:ordinal]) + "\\n" + " ".join(tokens[ordinal:]),
+            *(
+                [
+                    " ".join(tokens[:ordinal])
+                    + "\\n"
+                    + " ".join([tokens[ordinal][1:], *tokens[ordinal + 1 :]])
+                ]
+                if tokens[ordinal].startswith("n") and len(tokens[ordinal]) > 1
+                else []
+            ),
+        )
+    }
     return sorted(
         punctuation_forms
         | combined_comma_footnote_forms
-        | {marker + alias for alias in punctuation_forms for marker in ("- ", "– ", "— ", "• ")}
+        | escaped_line_wrap_forms
+        | {
+            marker + alias
+            for alias in escaped_line_wrap_forms
+            for marker in ("- ", "– ", "— ", "• ", "▪ ")
+        }
+        | {
+            marker + alias
+            for alias in punctuation_forms
+            for marker in ("- ", "– ", "— ", "• ", "▪ ")
+        }
         | {prefix + " " + alias for alias in punctuation_forms for prefix in ordinal_prefixes}
         | {prefix + ". " + alias for alias in punctuation_forms for prefix in ordinal_prefixes}
     )
@@ -115,11 +163,22 @@ def declared_surface_alias_match_v1(value: Any, aliases: Sequence[str]) -> str |
 
     if type(value) is not str or not value.strip():
         return None
-    folded = normalize_search_text_v1(value)["text_ascii_folded"]
+
+    def surface_tokens(source: str) -> str:
+        # Provider payloads occasionally preserve visible layout separators as
+        # the literal JSON escape spellings ``\\n``/``\\t``.  Titles also
+        # routinely terminate a declared caption with punctuation.  Both are
+        # representation details, so compare exact alphanumeric token phrases
+        # rather than making punctuation part of the semantic token.
+        source = source.replace("\\n", " ").replace("\\t", " ")
+        folded_source = normalize_search_text_v1(source)["text_ascii_folded"]
+        return " ".join(re.sub(r"[^a-z0-9%]+", " ", folded_source).split())
+
+    folded = surface_tokens(value)
     padded = f" {folded} "
     matches = []
     for alias in aliases:
-        normalized = normalize_search_text_v1(alias)["text_ascii_folded"]
+        normalized = surface_tokens(alias)
         if normalized and f" {normalized} " in padded:
             matches.append((len(normalized.split()), len(normalized), normalized, alias))
     if not matches:
@@ -139,6 +198,7 @@ def _table_surfaces_v1(
     section_id: str,
     table_id: str,
     include_narratives: bool,
+    include_group_rows: bool,
 ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     try:
         section_ordinal = int(section_id[1:])
@@ -176,6 +236,21 @@ def _table_surfaces_v1(
             for ordinal, value in enumerate(narratives, start=1)
             if value
         )
+    rows = table.get("rows")
+    if type(rows) is not list or any(type(row) is not dict for row in rows):
+        raise _error("selected title-axis row axis is invalid")
+    if include_group_rows:
+        surfaces.extend(
+            {
+                "source_kind": "ROW_LABEL",
+                "source_exact": row["label_exact"],
+                "row_id": f"r{ordinal}",
+            }
+            for ordinal, row in enumerate(rows, start=1)
+            if row.get("row_kind") == "GROUP"
+            and type(row.get("label_exact")) is str
+            and row["label_exact"]
+        )
     return section, table, surfaces
 
 
@@ -198,6 +273,7 @@ def resolve_candidate_structural_context_v1(
     hard_negative_aliases: Sequence[str],
     owner_reset_aliases: Sequence[str],
     adjacent_page_radius: int,
+    structural_branch_fallback_group_aliases: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Resolve one row-qualified table's local branch and bounded owner."""
 
@@ -222,9 +298,19 @@ def resolve_candidate_structural_context_v1(
         or not context_page_records
         or type(structural_branch_role) is not str
         or not structural_branch_role
+        or type(structural_branch_fallback_group_aliases) not in {list, tuple}
+        or any(
+            type(alias) is not str or not alias.strip()
+            for alias in structural_branch_fallback_group_aliases
+        )
         or type(explicit_parent_role) is not str
         or not explicit_parent_role
-        or tuple(structural_surface_kinds) not in {("TITLE",), ("TITLE", "SECTION_NARRATIVE")}
+        or tuple(structural_surface_kinds)
+        not in {
+            ("TITLE",),
+            ("TITLE", "SECTION_NARRATIVE"),
+            ("TITLE", "SECTION_NARRATIVE", "GROUP_ROW"),
+        }
         or type(adjacent_page_radius) is not int
         or not 0 <= adjacent_page_radius <= 2
         or any(
@@ -273,11 +359,13 @@ def resolve_candidate_structural_context_v1(
         raise _error("selected title-axis candidate page is absent")
     page_json = candidate_page_json
     include_narratives = "SECTION_NARRATIVE" in structural_surface_kinds
+    include_group_rows = "GROUP_ROW" in structural_surface_kinds
     _section, table, local_surfaces = _table_surfaces_v1(
         page_json,
         section_id=candidate_section_id,
         table_id=candidate_table_id,
         include_narratives=include_narratives,
+        include_group_rows=include_group_rows,
     )
 
     def first_evidence(
@@ -312,6 +400,13 @@ def resolve_candidate_structural_context_v1(
 
     local_negative = located(first_evidence(local_surfaces, hard_negative_aliases))
     branch = located(first_evidence(local_surfaces, structural_branch_aliases))
+    if branch is None and structural_branch_fallback_group_aliases:
+        fallback_group_evidence = all_evidence(
+            [surface for surface in local_surfaces if surface["source_kind"] == "ROW_LABEL"],
+            structural_branch_fallback_group_aliases,
+        )
+        if len(fallback_group_evidence) == 1:
+            branch = located(fallback_group_evidence[0])
     base = {
         "branch_evidence": branch,
         "format_version": FORMAT_VERSION,
@@ -448,6 +543,7 @@ def resolve_candidate_structural_context_v1(
                 section_id=prior_section_id,
                 table_id=prior_table_id,
                 include_narratives=False,
+                include_group_rows=False,
             )
             reset = first_evidence(prior_surfaces, owner_reset_aliases)
             if reset is not None:

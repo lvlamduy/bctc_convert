@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 from hashlib import sha256
@@ -541,6 +542,60 @@ def _selected_ready_candidate(
         return None
     if len(set(signatures)) != 1:
         return _net_adjusted_presentation_bundle(ready, compiled_specs=compiled_specs)
+
+    # A primary-statement summary and its titled note can contain the exact
+    # same schema/value axis.  When both candidates carry full provenance,
+    # prefer the uniquely titled note; this removes representation duplication
+    # without choosing between different populations or amounts.
+    exact_duplicate_fields = {
+        "candidate_id",
+        "closure_receipt",
+        "mappings",
+        "page_json_version_id",
+        "parent_binding_kind",
+        "physical_page",
+        "reasons",
+        "section_id",
+        "status",
+        "table_id",
+    }
+
+    def semantic_mapping_axis(candidate: dict[str, Any]) -> str:
+        mappings = []
+        for mapping in candidate["mappings"]:
+            normalized_axis = _normalized_column_axis(mapping)
+            mappings.append(
+                {
+                    "columns": (
+                        [list(column) for column in normalized_axis]
+                        if normalized_axis is not None
+                        else mapping["columns"]
+                    ),
+                    "report_norm_id": mapping["report_norm_id"],
+                    "role": mapping["role"],
+                    "values": [value["coefficient"] for value in mapping["values"]],
+                }
+            )
+        mappings.sort(key=lambda item: (item["report_norm_id"], item["role"]))
+        return canonical_json_sha256_v1(mappings)
+
+    if (
+        all(exact_duplicate_fields <= set(candidate) for candidate in ready)
+        and len({semantic_mapping_axis(candidate) for candidate in ready}) == 1
+    ):
+        titled = [
+            candidate
+            for candidate in ready
+            if candidate["parent_binding_kind"] == "EXPLICIT_SECTION_OR_TABLE_TITLE"
+        ]
+        row_bound = [
+            candidate
+            for candidate in ready
+            if candidate["parent_binding_kind"] == "EXPLICIT_PARENT_ROW"
+        ]
+        if len(titled) == 1 and len(titled) + len(row_bound) == len(ready):
+            return titled[0]
+
     structural_roles = {
         compiled_specs["topology"]["parent"]["role"],
         *(
@@ -720,6 +775,39 @@ def _candidate_is_decisive_hard_negative(candidate: dict[str, Any]) -> bool:
     )
 
 
+def _candidate_is_unowned_explicit_parent_cluster_v1(
+    candidate: dict[str, Any],
+    *,
+    compiled_specs: dict[str, Any],
+    source_has_near_parent_evidence: bool,
+) -> bool:
+    """Exclude a generic anchor collision with no family-parent evidence.
+
+    The V2 recursive-direct-frontier evaluator requires an explicit parent
+    cluster. Generic labels such as ``Bằng VND`` and ``Bằng ngoại tệ``
+    also occur in unrelated notes. A titleless table remains unresolved when
+    its selected document has bounded near-parent evidence; without that
+    evidence it is out-of-family, rather than evidence that this family was
+    observed.
+
+    Later contextual engines have their own owner-resolution receipts, so the
+    rule is deliberately limited to the legacy V2 hierarchical engine.
+    """
+
+    topology = compiled_specs.get("topology")
+    reasons = candidate.get("reasons")
+    return (
+        compiled_specs.get("engine_format_version")
+        == "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V2"
+        and type(topology) is dict
+        and topology.get("presence_evidence_mode") == "WITHIN_EXPLICIT_PARENT_CLUSTER"
+        and candidate.get("status") == UNRESOLVED
+        and type(reasons) is list
+        and "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_OR_TABLE_TITLE" in reasons
+        and not source_has_near_parent_evidence
+    )
+
+
 def _page_title_axis_v1(page_json: Any) -> list[str]:
     """Return the exact nonempty section/table titles in source order."""
 
@@ -737,6 +825,128 @@ def _page_title_axis_v1(page_json: Any) -> list[str]:
             if type(table.get("title_exact")) is str and table["title_exact"]:
                 titles.append(table["title_exact"])
     return titles
+
+
+_REPORTING_PERIOD_TITLE_V1 = re.compile(
+    r"(?:^| )cho giai doan tu(?: ngay)? .*? den(?: ngay)?(?: |$)"
+)
+
+
+def _with_reporting_endpoint_conflict_v1(
+    candidate: dict[str, Any],
+    *,
+    region: dict[str, Any],
+    page_by_version: dict[str, dict[str, Any]],
+    compiled_specs: dict[str, Any],
+) -> dict[str, Any]:
+    """Reject one exact balance date that conflicts with the report period.
+
+    This guard consumes only typed section/table titles on the candidate page
+    or its selected adjacent context pages.  It never derives a date from a
+    filename, a bare year, or a relative header.  Multiple distinct reporting
+    endpoints are ambiguous context and therefore do not change the candidate.
+    """
+
+    closure_receipt = candidate.get("closure_receipt")
+    period_axis = (
+        closure_receipt.get("period_value_column_axis")
+        if type(closure_receipt) is dict
+        else None
+    )
+    signatures = period_axis.get("period_signatures") if type(period_axis) is dict else None
+    if (
+        candidate.get("status") != READY
+        or compiled_specs.get("topology", {}).get("family_id")
+        != "LOAN_MATURITY_BUCKETS"
+        or compiled_specs.get("evaluation", {}).get("period_semantics")
+        != "BALANCE_COMPARATIVE"
+        or type(signatures) is not list
+        or len(signatures) != 2
+        or type(signatures[0]) is not list
+        or signatures[0][:1] != ["DATE"]
+        or len(signatures[0]) != 2
+        or type(signatures[0][1]) is not str
+        or type(region.get("context_pages")) is not list
+    ):
+        return candidate
+
+    from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+        _ordered_exact_date_surfaces,
+    )
+
+    matches = []
+    for context in sorted(
+        region["context_pages"],
+        key=lambda item: (
+            item.get("physical_page") if type(item) is dict else -1,
+            item.get("page_json_version_id") if type(item) is dict else "",
+        ),
+    ):
+        if (
+            type(context) is not dict
+            or set(context) != {"physical_page", "page_json_version_id"}
+            or type(context.get("physical_page")) is not int
+            or type(context.get("page_json_version_id")) is not str
+            or abs(context["physical_page"] - region["physical_page"]) > 1
+        ):
+            raise _error("Gemini JSON reporting-period context reference is invalid")
+        page = page_by_version.get(context["page_json_version_id"])
+        if page is None:
+            raise _error("Gemini JSON reporting-period context page is absent")
+        for title_ordinal, title in enumerate(
+            _page_title_axis_v1(page["page_json"]), start=1
+        ):
+            folded = normalize_vietnamese_anchor_v1(title)
+            if _REPORTING_PERIOD_TITLE_V1.search(folded) is None:
+                continue
+            dates = _ordered_exact_date_surfaces(title)
+            if len(dates) != 2 or dates[0]["date"] >= dates[1]["date"]:
+                continue
+            matches.append(
+                {
+                    "date_axis": [
+                        {
+                            "date": item["date"].isoformat(),
+                            "source_span": item["source_span"],
+                            "source_text": item["source_text"],
+                        }
+                        for item in dates
+                    ],
+                    "page_json_version_id": context["page_json_version_id"],
+                    "physical_page": context["physical_page"],
+                    "reporting_endpoint": dates[1]["date"].isoformat(),
+                    "source_title_exact": title,
+                    "title_ordinal": title_ordinal,
+                }
+            )
+    endpoints = {match["reporting_endpoint"] for match in matches}
+    if len(endpoints) != 1:
+        return candidate
+    reporting_endpoint = next(iter(endpoints))
+    current_period = signatures[0][1]
+    if reporting_endpoint == current_period:
+        return candidate
+
+    result = canonical_clone_v1(candidate)
+    superseded_candidate_id = result["candidate_id"]
+    result["mappings"] = []
+    result["reasons"] = sorted(
+        {
+            *result.get("reasons", []),
+            "CURRENT_PERIOD_CONFLICTS_WITH_TYPED_REPORTING_ENDPOINT",
+        }
+    )
+    result["reporting_endpoint_conflict_receipt"] = {
+        "candidate_current_period_signature": canonical_clone_v1(signatures[0]),
+        "context_matches": matches,
+        "reporting_endpoint": reporting_endpoint,
+        "rule": "UNIQUE_TYPED_LOCAL_REPORTING_ENDPOINT_CONFLICTS_WITH_EXACT_BALANCE_DATE",
+        "superseded_candidate_id": superseded_candidate_id,
+    }
+    result["status"] = UNRESOLVED
+    material = {key: value for key, value in result.items() if key != "candidate_id"}
+    result["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(material)
+    return result
 
 
 def _with_adjacent_continuation_hard_negative_v1(
@@ -852,6 +1062,403 @@ def _region_table(page_json: dict[str, Any], region: dict[str, Any]) -> dict[str
     return table
 
 
+def _continuation_unit_signature_v1(value: Any) -> str | None:
+    """Return a conservative canonical unit class for continuation pairing."""
+
+    if type(value) is not str or not value.strip():
+        return None
+    folded = normalize_vietnamese_anchor_v1(value)
+    if "trieu" in folded and ("dong" in folded or "vnd" in folded):
+        return "MILLION_VND"
+    if "nghin" in folded and ("dong" in folded or "vnd" in folded):
+        return "THOUSAND_VND"
+    if folded in {"dong", "vnd", "viet nam dong"}:
+        return "VND"
+    return "EXACT:" + folded
+
+
+def _nonempty_column_header_v1(column: Any) -> tuple[str, list[Any]] | None:
+    if type(column) is not dict or type(column.get("header_path_exact")) is not list:
+        return None
+    source = canonical_clone_v1(column["header_path_exact"])
+    surface = " ".join(value for value in source if type(value) is str and value.strip())
+    return (normalize_vietnamese_anchor_v1(surface), source) if surface else ("", source)
+
+
+def _parent_table_evidence_v1(
+    *,
+    section: dict[str, Any],
+    table: dict[str, Any],
+    parent_aliases: list[str],
+) -> tuple[bool, list[int]]:
+    parent_row_ordinals = [
+        ordinal
+        for ordinal, row in enumerate(table.get("rows", []), start=1)
+        if type(row) is dict and _anchor_label_matches_v1(row.get("label_exact"), parent_aliases)
+    ]
+    normalized_aliases = [normalize_vietnamese_anchor_v1(alias) for alias in parent_aliases]
+    title = " ".join(
+        value
+        for value in (section.get("title_exact"), table.get("title_exact"))
+        if type(value) is str and value
+    )
+    normalized_title = normalize_vietnamese_anchor_v1(title)
+    return (
+        bool(parent_row_ordinals)
+        or any(alias and alias in normalized_title for alias in normalized_aliases),
+        parent_row_ordinals,
+    )
+
+
+def _adjacent_continuation_candidate_v1(
+    *,
+    base_candidate: dict[str, Any],
+    region: dict[str, Any],
+    page_by_version: dict[str, dict[str, Any]],
+    compiled_specs: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Re-evaluate one exact two-page table after a bounded row stitch.
+
+    This adapter is deliberately narrower than general table concatenation:
+    one adjacent page, one family owner on the earlier table, a directional
+    continuation marker on either boundary, identical value-kind axes,
+    compatible units/headers, and one trailing total are all mandatory.  The
+    original page/table/row provenance is sealed into the candidate receipt.
+    """
+
+    base_reasons = base_candidate.get("reasons")
+    receiver_fragment_reasons = {
+        "FAMILY_PARENT_NOT_VISIBLE_IN_SECTION_TABLE_OR_UNIQUE_ROW",
+        "PERIOD_VALUE_COLUMN_HEADER_OR_MONEY_LANE_COUNT_IS_NOT_EXACT",
+    }
+    receiver_fragment_only = (
+        type(base_reasons) is list and set(base_reasons) == receiver_fragment_reasons
+    )
+    incomplete_family_population = type(base_reasons) is list and any(
+        reason == "FAMILY_ROOT_IS_NOT_HIERARCHICALLY_RESOLVED"
+        or reason.startswith("REQUIRED_ROLE_POOL_COUNT_BELOW_MINIMUM:")
+        for reason in base_reasons
+    )
+    if (
+        base_candidate.get("status") != UNRESOLVED
+        or not (incomplete_family_population or receiver_fragment_only)
+        or compiled_specs.get("engine_format_version")
+        != "GEMINI_JSON_HIERARCHICAL_ACCOUNTING_FAMILY_SWEEP_V3"
+        or compiled_specs.get("topology", {}).get("limits", {}).get("max_continuation_pages") != 1
+        or type(region.get("context_pages")) is not list
+    ):
+        return None
+    current_record = page_by_version.get(region.get("page_json_version_id"))
+    if current_record is None:
+        raise _error("continuation candidate root page is absent")
+    current_page = current_record["page_json"]
+    current_table = _region_table(current_page, region)
+    parent_aliases = compiled_specs["topology"]["parent"]["aliases"]
+    hard_negative_aliases = [
+        normalize_vietnamese_anchor_v1(alias)
+        for alias in compiled_specs["topology"].get("hard_negative_aliases", [])
+    ]
+
+    table_refs = [
+        {
+            "page_json_version_id": region["page_json_version_id"],
+            "physical_page": region["physical_page"],
+            "section_id": region["section_id"],
+            "table_id": region["table_id"],
+            "section": current_page["sections"][
+                _node_index(region["section_id"], "s", len(current_page["sections"]))
+            ],
+            "table": current_table,
+        }
+    ]
+    for context in region["context_pages"]:
+        if (
+            type(context) is not dict
+            or type(context.get("physical_page")) is not int
+            or type(context.get("page_json_version_id")) is not str
+            or abs(context["physical_page"] - region["physical_page"]) != 1
+        ):
+            continue
+        record = page_by_version.get(context["page_json_version_id"])
+        if record is None:
+            raise _error("continuation context page is absent")
+        page_json = record["page_json"]
+        sections = page_json.get("sections")
+        if type(sections) is not list:
+            raise _error("continuation context section axis is invalid")
+        for section_ordinal, section in enumerate(sections, start=1):
+            if type(section) is not dict or type(section.get("tables")) is not list:
+                raise _error("continuation context table axis is invalid")
+            for table_ordinal, table in enumerate(section["tables"], start=1):
+                if type(table) is not dict:
+                    raise _error("continuation context table is invalid")
+                table_refs.append(
+                    {
+                        "page_json_version_id": context["page_json_version_id"],
+                        "physical_page": context["physical_page"],
+                        "section_id": f"s{section_ordinal}",
+                        "table_id": f"t{table_ordinal}",
+                        "section": section,
+                        "table": table,
+                    }
+                )
+
+    possible: dict[str, dict[str, Any]] = {}
+    for other in table_refs[1:]:
+        pair = sorted(
+            [table_refs[0], other],
+            key=lambda item: (
+                item["physical_page"],
+                item["section_id"],
+                item["table_id"],
+                item["page_json_version_id"],
+            ),
+        )
+        earlier, later = pair
+        if later["physical_page"] - earlier["physical_page"] != 1:
+            continue
+        # The second fragment must identify itself as a continuation.  This
+        # selects the exact receiving table when the next page also contains
+        # unrelated schedules; the earlier marker may be absent in otherwise
+        # valid provider JSON.
+        if later["table"].get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE":
+            continue
+        if (
+            earlier["table"].get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE"
+            or later["table"].get("continuation") == "CONTINUES_ON_NEXT_PAGE"
+        ):
+            continue
+        earlier_parent, parent_ordinals = _parent_table_evidence_v1(
+            section=earlier["section"],
+            table=earlier["table"],
+            parent_aliases=parent_aliases,
+        )
+        later_parent, later_parent_ordinals = _parent_table_evidence_v1(
+            section=later["section"],
+            table=later["table"],
+            parent_aliases=parent_aliases,
+        )
+        later_title = " ".join(
+            value
+            for value in (
+                later["section"].get("title_exact"),
+                later["table"].get("title_exact"),
+            )
+            if type(value) is str and value
+        )
+        repeated_continuation_title = (
+            later_parent
+            and not later_parent_ordinals
+            and "tiep theo" in normalize_vietnamese_anchor_v1(later_title)
+        )
+        if (
+            not earlier_parent
+            or later_parent
+            and not repeated_continuation_title
+            or len(parent_ordinals) > 1
+        ):
+            continue
+        earlier_rows = earlier["table"].get("rows")
+        later_rows = later["table"].get("rows")
+        if (
+            type(earlier_rows) is not list
+            or not earlier_rows
+            or type(later_rows) is not list
+            or not later_rows
+        ):
+            continue
+        selected_earlier_rows = (
+            earlier_rows[parent_ordinals[0] - 1 :] if parent_ordinals else earlier_rows
+        )
+        selected_rows = [*selected_earlier_rows, *later_rows]
+        if any(type(row) is not dict for row in selected_rows):
+            continue
+        if any(
+            row.get("row_kind") == "GROUP"
+            and any(
+                alias and alias in normalize_vietnamese_anchor_v1(row.get("label_exact") or "")
+                for alias in hard_negative_aliases
+            )
+            for row in selected_rows
+        ):
+            continue
+        trailing_totals = [
+            index
+            for index, row in enumerate(later_rows)
+            if row.get("row_kind") == "TOTAL"
+            and normalize_vietnamese_anchor_v1(row.get("label_exact") or "")
+            in {"", "cong", "tong", "tong cong"}
+        ]
+        if trailing_totals != [len(later_rows) - 1] or any(
+            row.get("row_kind") == "TOTAL"
+            and normalize_vietnamese_anchor_v1(row.get("label_exact") or "")
+            in {"", "cong", "tong", "tong cong"}
+            for row in selected_earlier_rows
+        ):
+            continue
+        earlier_columns = earlier["table"].get("columns")
+        later_columns = later["table"].get("columns")
+        if (
+            type(earlier_columns) is not list
+            or type(later_columns) is not list
+            or not earlier_columns
+            or len(earlier_columns) != len(later_columns)
+            or [column.get("value_kind") for column in earlier_columns]
+            != [column.get("value_kind") for column in later_columns]
+        ):
+            continue
+        merged_columns = []
+        header_axis = []
+        compatible_headers = True
+        for earlier_column, later_column in zip(earlier_columns, later_columns, strict=True):
+            earlier_header = _nonempty_column_header_v1(earlier_column)
+            later_header = _nonempty_column_header_v1(later_column)
+            if earlier_header is None or later_header is None:
+                compatible_headers = False
+                break
+            if earlier_header[0] and later_header[0] and earlier_header[0] != later_header[0]:
+                compatible_headers = False
+                break
+            selected_column = canonical_clone_v1(
+                earlier_column if earlier_header[0] else later_column
+            )
+            merged_columns.append(selected_column)
+            header_axis.append(
+                {
+                    "earlier_header_path_exact": earlier_header[1],
+                    "later_header_path_exact": later_header[1],
+                    "selected_header_path_exact": canonical_clone_v1(
+                        selected_column["header_path_exact"]
+                    ),
+                }
+            )
+        if not compatible_headers:
+            continue
+        earlier_unit = _continuation_unit_signature_v1(earlier["table"].get("unit_exact"))
+        later_unit = _continuation_unit_signature_v1(later["table"].get("unit_exact"))
+        if earlier_unit is not None and later_unit is not None and earlier_unit != later_unit:
+            continue
+        selected_unit = (
+            earlier["table"].get("unit_exact")
+            if earlier_unit is not None
+            else later["table"].get("unit_exact")
+        )
+        parent_surface = (
+            earlier_rows[parent_ordinals[0] - 1].get("label_exact") if parent_ordinals else None
+        )
+        synthetic_rows = []
+        row_provenance = []
+        for component, component_rows, start_ordinal in (
+            (
+                earlier,
+                selected_earlier_rows,
+                parent_ordinals[0] if parent_ordinals else 1,
+            ),
+            (later, later_rows, 1),
+        ):
+            for offset, source_row in enumerate(component_rows):
+                row = canonical_clone_v1(source_row)
+                prefix_added = False
+                if component is later and parent_surface is not None:
+                    path = [
+                        value for value in row.get("hierarchy_path_exact", []) if value is not None
+                    ]
+                    if not any(_anchor_label_matches_v1(value, parent_aliases) for value in path):
+                        row["hierarchy_path_exact"] = [parent_surface, *path]
+                        prefix_added = True
+                synthetic_rows.append(row)
+                row_provenance.append(
+                    {
+                        "hierarchy_parent_prefix_added": prefix_added,
+                        "original_row_id": f"r{start_ordinal + offset}",
+                        "page_json_version_id": component["page_json_version_id"],
+                        "physical_page": component["physical_page"],
+                        "section_id": component["section_id"],
+                        "synthetic_row_id": f"r{len(synthetic_rows)}",
+                        "table_id": component["table_id"],
+                    }
+                )
+        synthetic_table = canonical_clone_v1(earlier["table"])
+        synthetic_table["columns"] = merged_columns
+        synthetic_table["continuation"] = "NONE"
+        synthetic_table["rows"] = synthetic_rows
+        synthetic_table["unit_exact"] = selected_unit
+        synthetic_page = {
+            "completion": {
+                "all_relevant_content_transcribed": True,
+                "uncertainty_exact": [],
+            },
+            "sections": [
+                {
+                    "content_kind": earlier["section"].get("content_kind", "FINANCIAL_NOTE"),
+                    "narratives_exact": canonical_clone_v1(
+                        earlier["section"].get("narratives_exact", [])
+                    ),
+                    "statement_type": earlier["section"].get("statement_type", "NOT_APPLICABLE"),
+                    "tables": [synthetic_table],
+                    "title_exact": earlier["section"].get("title_exact"),
+                }
+            ],
+            "status": current_page.get("status", "FINANCIAL_NOTE_CONTENT"),
+        }
+        stitched = evaluate_gemini_json_flat_family_table_v1(
+            page_json=synthetic_page,
+            page_json_version_id=earlier["page_json_version_id"],
+            physical_page=earlier["physical_page"],
+            section_id="s1",
+            table_id="t1",
+            compiled_specs=compiled_specs,
+        )
+        receipt = {
+            "column_header_binding_axis": header_axis,
+            "component_regions": [
+                {
+                    "page_json_version_id": component["page_json_version_id"],
+                    "physical_page": component["physical_page"],
+                    "section_id": component["section_id"],
+                    "table_id": component["table_id"],
+                    "table_sha256": canonical_json_sha256_v1(component["table"]),
+                }
+                for component in pair
+            ],
+            "row_provenance_axis": row_provenance,
+            "rule": "UNIQUE_ADJACENT_DIRECTIONAL_CONTINUATION_EXACT_ROW_STITCH",
+            "selected_unit_signature": earlier_unit or later_unit,
+        }
+        stitched["continuation_stitch_receipt"] = receipt
+        stitched["section_id"] = earlier["section_id"]
+        stitched["table_id"] = earlier["table_id"]
+        if type(stitched.get("closure_receipt")) is dict:
+            stitched["closure_receipt"]["continuation_stitch"] = canonical_clone_v1(receipt)
+            provenance_by_row_id = {
+                item["synthetic_row_id"]: {
+                    key: item[key]
+                    for key in (
+                        "original_row_id",
+                        "page_json_version_id",
+                        "physical_page",
+                        "section_id",
+                        "table_id",
+                    )
+                }
+                for item in row_provenance
+            }
+            for mapping in stitched.get("mappings", []):
+                source_row_ids = mapping.get("derived_from_row_ids") or [mapping.get("row_id")]
+                mapping["source_row_refs"] = [
+                    provenance_by_row_id[row_id]
+                    for row_id in source_row_ids
+                    if row_id in provenance_by_row_id
+                ]
+        material = {key: value for key, value in stitched.items() if key != "candidate_id"}
+        stitched["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(material)
+        pair_key = canonical_json_sha256_v1(receipt["component_regions"])
+        possible[pair_key] = stitched
+    if len(possible) != 1:
+        return None
+    return next(iter(possible.values()))
+
+
 def _write_once(path: Path, value: dict[str, Any]) -> None:
     payload = canonical_json_bytes_v1(value) + b"\n"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -875,6 +1482,24 @@ def _query_anchor_groups_v1(compiled: dict[str, Any]) -> Any:
     if query_anchor_groups is None:
         query_anchor_groups = compiled.get("anchor_alias_groups", [])
     return query_anchor_groups
+
+
+def _dual_axis_query_kwargs_v1(compiled: dict[str, Any]) -> dict[str, Any]:
+    """Bind the compiled dual-axis policy to its indexed query without drift."""
+
+    policy = compiled["dual_axis_projection_policy"]
+    return {
+        "adjacent_page_radius": 1,
+        "external_population_control": canonical_clone_v1(
+            policy.get("external_population_control")
+        ),
+        "metric_aliases": policy["metric_aliases"],
+        "role_aliases": {
+            role: compiled["query_aliases_by_role"][role]
+            for role in policy["projected_role_order"]
+        },
+        "unit_aliases": policy["unit_aliases"],
+    }
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -1086,6 +1711,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             minimum_distinct_child_roles=title_policy["minimum_distinct_child_roles"],
             structural_branch_role=branch_role,
             structural_branch_aliases=compiled["query_presence_aliases_by_role"][branch_role],
+            structural_branch_fallback_group_aliases=[
+                alias
+                for role in title_policy.get("structural_branch_fallback_group_roles", [])
+                for alias in compiled["query_presence_aliases_by_role"][role]
+            ],
+            unresolved_near_source_policy=title_policy.get(
+                "unresolved_near_source_policy", "ANY_UNVETOED_STRUCTURAL_AXIS"
+            ),
             structural_surface_kinds=title_policy["structural_surface_kinds"],
             explicit_parent_role=compiled["topology"]["parent"]["role"],
             explicit_parent_aliases=compiled["query_parent_aliases"],
@@ -1094,7 +1727,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             adjacent_page_radius=title_policy["owner_page_radius"],
             query_group_receipt=compiled["query_group_compilation_receipt"],
         )
-        title_axis_near_sources = set(queried["near_parent_sources"])
+        title_axis_near_sources = set(queried["unresolved_near_parent_sources"])
         title_axis_query_receipt = queried["query_receipt"]
         ordered_path_axis = [
             {
@@ -1198,17 +1831,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             indexed_query_evidence=indexed_query_evidence,
         )
     elif dual_axis_projection:
-        dual_policy = compiled["dual_axis_projection_policy"]
         queried = query_selected_dual_axis_family_regions_v1(
             database,
             selected_page_json_version_ids=selected_ids,
-            metric_aliases=dual_policy["metric_aliases"],
-            role_aliases={
-                role: compiled["query_aliases_by_role"][role]
-                for role in dual_policy["projected_role_order"]
-            },
-            unit_aliases=dual_policy["unit_aliases"],
-            adjacent_page_radius=1,
+            **_dual_axis_query_kwargs_v1(compiled),
         )
         dual_axis_document_context = queried["document_context_by_source"]
         dual_axis_query_receipt = queried["query_receipt"]
@@ -1463,6 +2089,38 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 external_source_sha256=region["source_sha256"],
                 title_axis_query_receipt=title_axis_query_receipt,
             )
+            forward_context_pages = {
+                (
+                    disposition["physical_page"],
+                    disposition["page_json_version_id"],
+                )
+                for disposition in indexed_query_evidence["candidate_dispositions"]
+                if disposition["source_logical_name"] == region["source_logical_name"]
+                and disposition["physical_page"] == region["physical_page"] + 1
+            }
+            if len(forward_context_pages) == 1:
+                forward_physical_page, forward_version_id = next(
+                    iter(forward_context_pages)
+                )
+                continuation_region = {
+                    **region,
+                    "context_pages": [
+                        *region["context_pages"],
+                        {
+                            "page_json_version_id": forward_version_id,
+                            "physical_page": forward_physical_page,
+                        },
+                    ],
+                }
+                candidate = (
+                    _adjacent_continuation_candidate_v1(
+                        base_candidate=candidate,
+                        region=continuation_region,
+                        page_by_version=page_by_version,
+                        compiled_specs=compiled,
+                    )
+                    or candidate
+                )
             if candidate.get("closure_receipt") is not None:
                 candidate["closure_receipt"]["title_axis_query"] = canonical_clone_v1(
                     title_axis_query_receipt
@@ -1503,34 +2161,51 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             else:
                 for key in grouped_keys:
                     fallback_region = regions_by_key[key]
-                    evaluated_candidates.append(
-                        evaluate_gemini_json_flat_family_table_v1(
-                            page_json=page["page_json"],
-                            page_json_version_id=fallback_region["page_json_version_id"],
-                            physical_page=fallback_region["physical_page"],
-                            section_id=fallback_region["section_id"],
-                            table_id=fallback_region["table_id"],
-                            compiled_specs=compiled,
-                        )
+                    base_candidate = evaluate_gemini_json_flat_family_table_v1(
+                        page_json=page["page_json"],
+                        page_json_version_id=fallback_region["page_json_version_id"],
+                        physical_page=fallback_region["physical_page"],
+                        section_id=fallback_region["section_id"],
+                        table_id=fallback_region["table_id"],
+                        compiled_specs=compiled,
                     )
+                    stitched_candidate = _adjacent_continuation_candidate_v1(
+                        base_candidate=base_candidate,
+                        region=fallback_region,
+                        page_by_version=page_by_version,
+                        compiled_specs=compiled,
+                    )
+                    evaluated_candidates.append(stitched_candidate or base_candidate)
         else:
-            evaluated_candidates.append(
-                evaluate_gemini_json_flat_family_table_v1(
-                    page_json=page["page_json"],
-                    page_json_version_id=region["page_json_version_id"],
-                    physical_page=region["physical_page"],
-                    section_id=region["section_id"],
-                    table_id=region["table_id"],
-                    compiled_specs=compiled,
-                )
+            base_candidate = evaluate_gemini_json_flat_family_table_v1(
+                page_json=page["page_json"],
+                page_json_version_id=region["page_json_version_id"],
+                physical_page=region["physical_page"],
+                section_id=region["section_id"],
+                table_id=region["table_id"],
+                compiled_specs=compiled,
             )
+            stitched_candidate = _adjacent_continuation_candidate_v1(
+                base_candidate=base_candidate,
+                region=region,
+                page_by_version=page_by_version,
+                compiled_specs=compiled,
+            )
+            evaluated_candidates.append(stitched_candidate or base_candidate)
+        evaluated_candidates = [
+            _with_reporting_endpoint_conflict_v1(
+                candidate,
+                region=region,
+                page_by_version=page_by_version,
+                compiled_specs=compiled,
+            )
+            for candidate in evaluated_candidates
+        ]
         # Keep a two/three-anchor table whose explicit title was omitted by the
         # selected JSON as an unresolved candidate. It cannot map while the
         # parent is absent, but its exact identity can drive bounded title OCR.
-        if rollforward_projection or dual_axis_projection or title_axis_projection:
-            candidates_by_path[region["source_logical_name"]].extend(evaluated_candidates)
-        else:
-            candidates_by_path[region["source_logical_name"]].extend(
+        if not (rollforward_projection or dual_axis_projection or title_axis_projection):
+            evaluated_candidates = [
                 _with_adjacent_continuation_hard_negative_v1(
                     candidate,
                     region=region,
@@ -1539,7 +2214,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     hard_negative_aliases=compiled["topology"]["hard_negative_aliases"],
                 )
                 for candidate in evaluated_candidates
-            )
+            ]
+        existing_candidate_ids = {
+            candidate["candidate_id"]
+            for candidate in candidates_by_path[region["source_logical_name"]]
+        }
+        candidates_by_path[region["source_logical_name"]].extend(
+            candidate
+            for candidate in evaluated_candidates
+            if candidate["candidate_id"] not in existing_candidate_ids
+        )
 
     trials = []
     for document in index["documents"]:
@@ -1549,6 +2233,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             candidate
             for candidate in candidates
             if not _candidate_is_decisive_hard_negative(candidate)
+            and not _candidate_is_unowned_explicit_parent_cluster_v1(
+                candidate,
+                compiled_specs=compiled,
+                source_has_near_parent_evidence=path in near_paths,
+            )
         ]
         ready = [candidate for candidate in active_candidates if candidate["status"] == READY]
         unresolved_candidates = [

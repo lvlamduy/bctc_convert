@@ -58,8 +58,14 @@
       "role_kind": "ADDITIVE_CHILD"
     },
     {
+      "matchers": [{"aliases": ["Các khoản nợ chờ xử lý đã có tài sản xiết nợ, gán nợ và nợ tồn đọng có tài sản bảo đảm", "Các khoản nợ chờ xử lý đã có tài sản xiết nợ, gán nợ và nợ tồn đọng có tài sản đảm bảo", "Các khoản nợ chờ xử lý đã có tài sản gán xiết nợ, gán nợ và nợ tồn đọng có tài sản bảo đảm"], "presence_anchor": false, "within_role": null}],
+      "presence": "OPTIONAL",
+      "role": "PENDING_PROCESSING_SECURED_DEBT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
       "matchers": [
-        {"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại MBS - Nợ đủ tiêu chuẩn"], "within_role": null},
+        {"aliases": ["Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "Các khoản cho vay margin chứng khoán và ứng trước khách hàng", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại VPBankS", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán - Nợ đủ tiêu chuẩn", "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán tại MBS - Nợ đủ tiêu chuẩn", "Các khoản cho vay hoạt động ký quỹ và cho vay hoạt động ứng trước tiền bán của khách hàng"], "within_role": null},
         {"aliases": ["cho vay giao dịch ký quỹ", "ứng trước"], "match_mode": "CONTAINS_ORDERED_NORMALIZED_PHRASES", "presence_anchor": false, "within_role": null}
       ],
       "presence": "OPTIONAL",
@@ -69,7 +75,7 @@
   ],
   "family_id": "LOAN_QUALITY_CLASSIFICATION",
   "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V4",
-  "hard_negative_aliases": ["Phân tích chất lượng tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng dư nợ tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng hoạt động mua nợ", "Phân tích chất lượng chứng khoán đầu tư", "Phân tích chất lượng dư nợ chứng khoán kinh doanh", "Phân tích chất lượng chứng khoán được phân loại là tài sản có rủi ro tín dụng"],
+  "hard_negative_aliases": ["Phân tích chất lượng tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng dư nợ tiền gửi và cho vay các TCTD khác", "Phân tích chất lượng hoạt động mua nợ", "Phân tích chất lượng chứng khoán đầu tư", "Phân tích chất lượng dư nợ chứng khoán kinh doanh", "Phân tích chất lượng chứng khoán được phân loại là tài sản có rủi ro tín dụng", "Phân tích chất lượng nợ cho vay (theo TT31/2024/TT NHNN)"],
   "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 40, "max_label_line_span": 4},
   "parent": {
     "aliases": ["Phân tích chất lượng nợ cho vay", "Phân tích chất lượng dư nợ cho vay khách hàng", "Phân tích chất lượng dư nợ cho vay", "Phân tích dư nợ cho vay theo chất lượng nợ", "Phân tích dư nợ theo chất lượng nợ cho vay", "Phân tích dư nợ theo chất lượng nợ", "Theo chất lượng nợ cho vay", "Theo chất lượng dư nợ cho vay", "Phân loại chất lượng tài sản có rủi ro tín dụng", "Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng như sau", "Cho vay khách hàng"],

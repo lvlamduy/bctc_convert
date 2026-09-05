@@ -1,0 +1,20 @@
+{
+  "corpus_manifest_index_id": "gjfccmiv1:index:8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a",
+  "family_id": "INVESTMENT_SECURITIES_ACTIVITY",
+  "format_version": "INVESTMENT_SECURITIES_ACTIVITY_PDF_RESIDUAL_AUDIT_SPEC_V1",
+  "residuals": [],
+  "review_contract": {
+    "render_contract": {
+      "alpha": false,
+      "colorspace": "RGB",
+      "format": "PNG",
+      "matrix": [
+        1,
+        1
+      ],
+      "renderer": "PyMuPDF"
+    },
+    "scope": "EVERY_SELECTED_PRIMARY_INCOME_STATEMENT_PAGE_FOR_EVERY_NOT_OBSERVED_OR_UNRESOLVED_DOCUMENT",
+    "visual_disposition_rule": "DIRECT_SOURCE_PRESENTATION_ONLY_BLANK_PRESERVED_ABSENT_OMITTED_GENUINE_SOURCE_CONFLICT_UNRESOLVED"
+  }
+}

@@ -18,6 +18,7 @@ from test_gemini_json_fixed_asset_rollforward_family_v1 import (
     _investment_property_table,
     _investment_summary_table,
     _leased_page,
+    _nab_single_asset_leased_table,
     _page,
     _supplemental_table,
 )
@@ -32,6 +33,9 @@ from bctc_ai.evaluation.gemini_json_fixed_asset_rollforward_family_v1 import (
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     build_gemini_json_flat_family_sweep_v1,
     validate_gemini_json_flat_family_sweep_v1,
+)
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    validate_source_observation_mapping_contract_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 from bctc_ai.storage.gemini_financial_page_store_v1 import (
@@ -323,6 +327,125 @@ def test_indexed_query_replays_two_branch_leased_variant_and_tangible_negative(
         )
         == trials
     )
+
+
+def test_indexed_nab_single_asset_leased_positive_and_sgb_absence_replay(
+    tmp_path,
+) -> None:
+    database = tmp_path / "leased-single-asset-pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    nab_page = _leased_page()
+    nab_page["sections"][0]["tables"] = [_nab_single_asset_leased_table()]
+    nab_page["sections"][0]["title_exact"] = (
+        "THUYẾT MINH BÁO CÁO TÀI CHÍNH tại ngày 31 tháng 12 năm 2025\n"
+        "13.2 Tài sản cố định thuê tài chính"
+    )
+    nab = _ingest(database, page_json=nab_page)
+
+    sgb_page = _intangible_page(
+        tables=[_intangible_table(), _intangible_table(current_year=2024)],
+        narratives=[
+            "11. Tài sản cố định thuê tài chính: Không phát sinh.",
+            "12. Tài sản cố định vô hình",
+        ],
+    )
+    sgb_page["sections"][0]["title_exact"] = "THUYẾT MINH BÁO CÁO TÀI CHÍNH"
+    sgb = _ingest(
+        database,
+        image_sha256="a" * 64,
+        physical_page=2,
+        prompt_sha256="b" * 64,
+        source_logical_name="sgb-no-leased-assets.pdf",
+        source_sha256="c" * 64,
+        page_json=sgb_page,
+    )
+    selected = [nab["page_json_version_id"], sgb["page_json_version_id"]]
+    compiled = _compiled_leased()
+
+    evidence = query_selected_fixed_asset_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=selected,
+        compiled_specs=compiled,
+    )
+
+    assert evidence["query_receipt"]["disposition_counts"] == {
+        NOT_OBSERVED: 1,
+        READY: 1,
+        "UNRESOLVED_GEMINI_JSON_FAMILY": 0,
+    }
+    cluster = evidence["accepted_clusters"][0]
+    candidate = evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
+        regions=cluster["component_regions"],
+        control_regions=cluster["control_regions"],
+        page_json_by_version={nab["page_json_version_id"]: nab_page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_fixed_asset_rollforward_region_query_receipt_v1(
+            cluster["component_regions"], control_regions=cluster["control_regions"]
+        ),
+    )
+    assert candidate["status"] == READY
+    assert len(candidate["mappings"]) == 8
+    assert validate_source_observation_mapping_contract_v1(candidate)["status"] == "PASS"
+    trials = [
+        _trial(evidence["selected_document_axis"][0], candidate, READY),
+        _trial(evidence["selected_document_axis"][1], None, NOT_OBSERVED),
+    ]
+    assert (
+        validate_selected_fixed_asset_rollforward_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected,
+            compiled_specs=compiled,
+            indexed_query_evidence=evidence,
+            trials=trials,
+        )
+        == trials
+    )
+
+
+def test_indexed_leased_query_rejects_ownerless_tangible_continuation(
+    tmp_path,
+) -> None:
+    database = tmp_path / "leased-tangible-continuation.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    page = _leased_page(owner="Thuyết minh báo cáo tài chính giữa niên độ (tiếp theo)")
+    section = page["sections"][0]
+    section["narratives_exact"] = ["Năm kết thúc ngày 31 tháng 12 năm 2024"]
+    table = section["tables"][0]
+    table["title_exact"] = None
+    table["columns"] = [
+        {"header_path_exact": ["Nhà cửa, vật kiến trúc", "Triệu VND"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Máy móc thiết bị", "Triệu VND"], "value_kind": "MONEY"},
+        {
+            "header_path_exact": ["Phương tiện vận tải, truyền dẫn", "Triệu VND"],
+            "value_kind": "MONEY",
+        },
+        {"header_path_exact": ["Thiết bị dụng cụ quản lý", "Triệu VND"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Tài sản cố định khác", "Triệu VND"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Tổng cộng", "Triệu VND"], "value_kind": "MONEY"},
+    ]
+    for row in table["rows"]:
+        values = row["values_exact"]
+        if all(value is None for value in values):
+            row["values_exact"] = [None] * 6
+        else:
+            row["values_exact"] = [values[0], values[1], values[0], values[1], "1", values[-1]]
+
+    ingested = _ingest(database, page_json=page)
+    compiled = _compiled_leased()
+    assert "tai san co dinh khac" in compiled["evaluation"]["header_hard_negative_aliases"]
+    evidence = query_selected_fixed_asset_rollforward_family_regions_v1(
+        database,
+        selected_page_json_version_ids=[ingested["page_json_version_id"]],
+        compiled_specs=compiled,
+    )
+
+    assert evidence["accepted_clusters"] == []
+    assert evidence["query_receipt"]["disposition_counts"] == {
+        NOT_OBSERVED: 1,
+        READY: 0,
+        "UNRESOLVED_GEMINI_JSON_FAMILY": 0,
+    }
+    assert evidence["candidate_dispositions"][0]["cluster"]["family_table_inventory"] == []
 
 
 def test_zero_accepted_leased_frontier_rejects_foreign_ready_candidate(tmp_path) -> None:

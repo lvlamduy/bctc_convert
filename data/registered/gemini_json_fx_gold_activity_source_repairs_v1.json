@@ -1,0 +1,329 @@
+{
+  "family_id": "FX_GOLD_ACTIVITY",
+  "format_version": "GEMINI_JSON_FX_GOLD_ACTIVITY_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "overlay_id": "gjfgaasrv1:overlay:1884ea4794e734989fb819b24a75143da063dbf98bc74b2204f5d59b40b9e398",
+  "repairs": [
+    {
+      "base_page_json_sha256": "ee01e1a3197fdc65504d360a60c463f1157d41db775cc95b87697370eeddf086",
+      "base_page_json_version_id": "gfpstorev1:json:277d7449c8651bda451ef64ff871d61cc1a6f084b36c7435169d93f6c4e001b5",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Từ ngày 01/01/2025 đến ngày 31/03/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1950,
+            760,
+            2350,
+            910
+          ],
+          "crop_rgb_sha256": "c2e9c4e8dd03b3a0f05efcb427da75f61f12cddbdb7e1e183e46f7384dce92ee",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động kinh doanh ngoại hối"
+          ],
+          "row_label_exact": "Chi phí hoạt động kinh doanh ngoại hối",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Từ ngày 01/01/2025 đến ngày 31/03/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1950,
+            850,
+            2350,
+            990
+          ],
+          "crop_rgb_sha256": "c9f381a9d4afb8e6a3f8754a13e9663148ea5811c16298f27968f92881999017",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động kinh doanh ngoại hối",
+            "Chi về kinh doanh ngoại tệ giao ngay"
+          ],
+          "row_label_exact": "Chi về kinh doanh ngoại tệ giao ngay",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c1",
+          "column_header_path_exact": [
+            "Từ ngày 01/01/2026 đến ngày 31/03/2026"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1600,
+            930,
+            2000,
+            1060
+          ],
+          "crop_rgb_sha256": "a83aa3f2829ff6a1302244397d5e1f00d8b21cfff1d1645cc209b7a073e6f42a",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động kinh doanh ngoại hối",
+            "Chi về các công cụ tài chính phái sinh tiền tệ"
+          ],
+          "row_label_exact": "Chi về các công cụ tài chính phái sinh tiền tệ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "Từ ngày 01/01/2025 đến ngày 31/03/2025"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1950,
+            930,
+            2350,
+            1060
+          ],
+          "crop_rgb_sha256": "e5ed959b5afea46b3b11efd4cb274ae0e18dc52a89d519ebadcdeeeee8eb5bdd",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động kinh doanh ngoại hối",
+            "Chi về các công cụ tài chính phái sinh tiền tệ"
+          ],
+          "row_label_exact": "Chi về các công cụ tài chính phái sinh tiền tệ",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "4fc8d7773981177553c8066d227c3901002d4b1a295a3a007e9e7fcc6dcf8f51",
+      "extraction_run_id": "gfpstorev1:run:a4aa3157d1fb2912de3fb376d4446dfd51a8ad42c2d355047e1a503574ed2650",
+      "repair_id": "gjfgaasrv1:repair:3c9000d34798a2b860fe4557189014fa3ac62f283326e570e3fe3436a5351584",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:9808c1c828627e5af35fd3ae25891dbc344690d6616562843bd630115aa1f004",
+        "image_sha256": "3d7841dc170ac65430a1ef65c4c63a21796674bc7f8087e57f60f1fdaf716c56",
+        "image_size_bytes": 3275557,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:9f6ec4958d3d77e1d452640aac92a246129b2009197100e47731da3ca86e3229",
+        "physical_page": 34,
+        "pixel_height": 3488,
+        "pixel_width": 2467,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SGB/2026/BCTC-HN-quy-1---2026_VIE_0001.pdf",
+        "source_sha256": "077a51aaa61b25250172040eaecb7b09c8ca691c7e92359b44a18e9d55d0f55f",
+        "source_size_bytes": 15949655
+      },
+      "stored_canonical_json_sha256": "4e6859370eb7821c4cdedc93606d3ef7f91be35d58ce4a4f50f875b42684e9f5",
+      "table_ref": {
+        "base_table_sha256": "f6637467d3b8bc2e1386d8d142da36a38671ed1d7703b6249f1ef1fbc5f33e7f",
+        "effective_table_sha256": "a84b5e2c69f1ca209d50abf4c1ea34f4feddc9664bda724e6a3c721d0fca143f",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT_RGB",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          280,
+          380,
+          2350,
+          1160
+        ],
+        "table_crop_rgb_sha256": "6b9940c23d60cf0d518b67814308c075017f2764a207d4d47e6b5be755f1a81f"
+      }
+    },
+    {
+      "base_page_json_sha256": "6748b3a68a5f25b9b8ba3ac6ab434d41675af9216cd7adfbb0251271408d1602",
+      "base_page_json_version_id": "gfpstorev1:json:9af6360ea69fc4f54e59137bd64c884d77ee3197267a1304d975cf7e614c0da5",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r8:c1",
+          "column_header_path_exact": [
+            "Năm tài chính kết thúc ngày",
+            "31.12.2025",
+            "Triệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1500,
+            1760,
+            2100,
+            1910
+          ],
+          "crop_rgb_sha256": "68fa909969dc44b613f586c52d702027cea37de7543cbb47093bcac00d6677c3",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động kinh doanh ngoại hối",
+            "-     Chi về kinh doanh vàng"
+          ],
+          "row_label_exact": "-     Chi về kinh doanh vàng",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "6628c818a3e4318b2cf47ef850826059655471d1a24b9a0fe90773c343e16c41",
+      "extraction_run_id": "gfpstorev1:run:cf393ec8601e424268abf87c73de3a01dd570b0d41a09ed7ba4ee666e01a8123",
+      "repair_id": "gjfgaasrv1:repair:40496fc39f93cfd4ac772329c494ba15692dcd5ad08e3b91798df16acaae0c25",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:0803d018743b011d455cf87ea16fd9e5c20197521e8d842221216d4706af8597",
+        "image_sha256": "51806b7ca2ddc738387b2908d909b45414cca39a489da86ac3353cca03cdcd98",
+        "image_size_bytes": 408324,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:8f152b94647eae3a5c2400b0e028cca4bf6c92a171ba2388c83e195f5b7aec5c",
+        "physical_page": 52,
+        "pixel_height": 3507,
+        "pixel_width": 2479,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+        "source_sha256": "4899c93035ade7e1fce34b1f787c9008dd63b4690c651e79cdee30c1d1cb7e13",
+        "source_size_bytes": 8899790
+      },
+      "stored_canonical_json_sha256": "25560a6aa80f4d922c12ea991eb3eca91c0f54202f70de852e6f6791f4d13f6a",
+      "table_ref": {
+        "base_table_sha256": "5062730b6320749dea2e7141d1ec86c4f961503ff944f5daa3fcc18e66f11b4d",
+        "effective_table_sha256": "88983faa93994e16b1cf93fef4d1548266ba3549a9551e5f80a859c19e2cf453",
+        "section_id": "s1",
+        "table_id": "t2"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT_RGB",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          330,
+          1050,
+          2350,
+          2200
+        ],
+        "table_crop_rgb_sha256": "6da75207f9ae9d3d6036b9eab79922738fcede7fb5675b3b42c6b89ee9d79570"
+      }
+    },
+    {
+      "base_page_json_sha256": "c616e28e05671a3a45c937fbd261386c30da8147b01d9555d7a4b65f9c059d7a",
+      "base_page_json_version_id": "gfpstorev1:json:feaed8163cfdfd3d2cfeda24940fe0d66c01a71458d17109b0f188dbc7948ed1",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r8:c1",
+          "column_header_path_exact": [
+            "Năm 2025\nTriệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1600,
+            900,
+            2020,
+            1130
+          ],
+          "crop_rgb_sha256": "ef65c9b60f9d7283662d55ecc7b32b8945d2880c29878c229445955f1088c40b",
+          "row_hierarchy_path_exact": [
+            "Chi phí hoạt động kinh doanh ngoại hối",
+            "Chi về kinh doanh vàng"
+          ],
+          "row_label_exact": "Chi về kinh doanh vàng",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "22e0c13e1c7becab08b77460f7b0f62ad8fdec9474d6fb6022d73db122aff096",
+      "extraction_run_id": "gfpstorev1:run:6636e3af951e8713350055a98e37942134d277f51e0cd32d55ee9f572754d888",
+      "repair_id": "gjfgaasrv1:repair:e3a9153100b635f457003a472019256eabf35bea36f1ccc405b20cb107715907",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:1516fdbeb4bdfa84cb0609f3282a56ec86c242621764a6bb11d0e0b70f81445f",
+        "image_sha256": "1947b13676888fc05082e56961a300ec2a4cb41ebf951706cc63a7c20af66915",
+        "image_size_bytes": 363872,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:66a9dd731eff6d15f6973dad6146bbed8d16e4549bf010f20076b78084bb26f4",
+        "physical_page": 48,
+        "pixel_height": 3507,
+        "pixel_width": 2479,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+        "source_sha256": "2450429e3bb63499172dfe06b7c23e45db4ffea43c5d6c0e753ded0064127fa3",
+        "source_size_bytes": 6813654
+      },
+      "stored_canonical_json_sha256": "39d024ffd3bf1ae5caf4d0f958291aa79fa066843da512fbc67d752b108079d9",
+      "table_ref": {
+        "base_table_sha256": "1ee60d8b546ff3130bd3881695f207e12c8afdfef6d90cf755fe33b1a69547c2",
+        "effective_table_sha256": "084a79c28e2b0e379face9b6e70fe10657e5d6c47ac9b1bb4e4e9dc1d0ac9a39",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT_RGB",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          330,
+          370,
+          2350,
+          1430
+        ],
+        "table_crop_rgb_sha256": "80ee395600f06a394f3b802f76f067224eefb6b176540cd003e7af95167891d8"
+      }
+    },
+    {
+      "base_page_json_sha256": "e063f61d5a85bb51a2c28d15de77c9ca86995e0a03d0307fa83848aa62abf879",
+      "base_page_json_version_id": "gfpstorev1:json:34cc156cff7831afa7aa9256e43b11629f20e486ddeee971160f1fdedd3a085b",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "2024",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1800,
+            840,
+            2240,
+            1080
+          ],
+          "crop_rgb_sha256": "3c48069ccb7c22387f9ebb8c60456a63cd25e113e4e92406386925ca71562952",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ hoạt động kinh doanh ngoại hối",
+            "Lãi từ việc đánh giá lại ngoại tệ, vàng và các công cụ tài chính"
+          ],
+          "row_label_exact": "Lãi từ việc đánh giá lại ngoại tệ, vàng và các công cụ tài chính",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "ffbbfd56c635f058af8df2b1a0a070ccd3f4e031f56551304b19182acad00a48",
+      "extraction_run_id": "gfpstorev1:run:854093785b6f3a3c2e4febd6ed9657e33830cf0c8788e4e7ea0f47a4ade7682e",
+      "repair_id": "gjfgaasrv1:repair:10f3b5110570208c60f387f610a263ef2a1e715502733bf41c8ac329add1fda4",
+      "repair_reason": "VISIBLE_PDF_TRANSCRIPTION_MISMATCH",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:0c57e5f0c2ed975fc41dce3b29f51cef8971c2453ebce84649cd0736ed353bcc",
+        "image_sha256": "3f24adc2ca0a8373838f70ae7b55fa726cc3979ba3fed9192dea799213a11b56",
+        "image_size_bytes": 193570,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:a20a6929ae5fce00a2403f7eecfa534d096a8d8545fe8fbe315eccac5158e05e",
+        "physical_page": 67,
+        "pixel_height": 3384,
+        "pixel_width": 2442,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/STB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+        "source_sha256": "557b255998a46c8f94be83401d3c25ea45e13811b006ca968606800f13e06902",
+        "source_size_bytes": 3972213
+      },
+      "stored_canonical_json_sha256": "6c17a14a98a0bbdbd2c07de403ecce3574255d2952a207833a7baa8b343fb4f0",
+      "table_ref": {
+        "base_table_sha256": "bf7a2a5d22d0574cf611babc0320a8bfa9c5629c4ae8a9a8f6befcd2cc72827e",
+        "effective_table_sha256": "2af14f9e5dbcb53b888e4584a8b01a1e6e933fdf00785d7169a69d6b79855231",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT_RGB",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          260,
+          470,
+          2250,
+          1740
+        ],
+        "table_crop_rgb_sha256": "b8f8f59425c47d40571f2539fe34eb277f1ba9232e15455512784559da0073d4"
+      }
+    }
+  ],
+  "review_policy": "TRANSCRIBE_ONLY_AUTHENTICATED_PDF_VISIBLE_DASH_NO_EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO_NO_PROVIDER"
+}

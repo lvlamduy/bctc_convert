@@ -1,0 +1,477 @@
+{
+  "family_id": "INTANGIBLE_FIXED_ASSETS_ROLLFORWARD",
+  "format_version": "GEMINI_JSON_FIXED_ASSET_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "overlay_id": "gjffasrv1:overlay:8dfbc74f811967922e4ea906158e9e4fce0479c9f714a409b8a0034be0beb2d1",
+  "repairs": [
+    {
+      "base_page_json_sha256": "0ec3ec07c53ba6e41bc78073fd1f32126a15126fac846a849bb8b85c1ae59db6",
+      "base_page_json_version_id": "gfpstorev1:json:ef0c95603f9b547913d2d1c72997baca97579c3d5c81cd5862999a8d70c7e31a",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "-Single-dash-placeholder-or-hyphen-",
+          "cell_id": "r3:c1",
+          "column_header_path_exact": [
+            "Quyền sử\ndụng đất"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1340,
+            995,
+            1510,
+            1080
+          ],
+          "crop_rgb_sha256": "f10636ee7f29d5e268bafaa174305f70a8927c758b608e6f19ed8953e12a226b",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ vô hình",
+            "Tăng trong kỳ"
+          ],
+          "row_label_exact": "Tăng trong kỳ",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "ef22310453c44e62afaf303e56a725f01eb8d3ba737f8ebcabec07097fa454be",
+      "extraction_run_id": "gfpstorev1:run:eb56b0f50f3916286b52558f80bb8f8be1299252b3fe4c328668cd25879d45da",
+      "repair_id": "gjffasrv1:repair:2e61cdc9cdfa88f9d20a4ef32384a033cd5542a0a564f9b41af8a2a8e81c47d8",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:9cc188aba2ecbe3c621a6c9794907a618b794604826664b1c7169b35f240f24e",
+        "image_sha256": "2370c56a96629dc221b70428f87ce29a62225a9ed98c5bb7687166c0015ad6fc",
+        "image_size_bytes": 2501116,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:3861d5a2f2abf238cce1fdacb4e4b3db2a0be7f76be9ce5018e4e2d3976edb22",
+        "physical_page": 29,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/KLB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "source_sha256": "91a030b2dcf82adee0ef5db4ef924f24287d08d72e9ec16ee116e5539c2c0f50",
+        "source_size_bytes": 11588444
+      },
+      "stored_canonical_json_sha256": "56af917f91100086f12cbab80efdffce3b4beb07b33b6fecbea020ac9057fad6",
+      "table_ref": {
+        "base_table_sha256": "4933e08e8ed03c9ee77c099123806d6407e888fbe91b1afb7482fbe68019cc8d",
+        "effective_table_sha256": "f87ed58cc237d309621aea090c574f3f448f5e1b6279c116b0ba7ce9a9bb9c7a",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          150,
+          650,
+          2350,
+          1900
+        ],
+        "table_crop_rgb_sha256": "04091328e0c6d08509a49b2775cfe229c36e4ba915f8ee29ab9cfb255b1e0bee"
+      }
+    },
+    {
+      "base_page_json_sha256": "ca98f3998479b4797a15232fdf635888081869eb25a5ee25753a553567fadc94",
+      "base_page_json_version_id": "gfpstorev1:json:06e6bd2556079bb881ad3a632a0b24d64329e31a4ede935b89be792f5c1eece3",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": ".",
+          "cell_id": "r10:c4",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2020,
+            1510,
+            2190,
+            1610
+          ],
+          "crop_rgb_sha256": "bdef97d7ce12f415391f35683c550ea522b9cf94fe48386a5e6203904fe5c298",
+          "row_hierarchy_path_exact": [
+            "Hao mòn lũy kế",
+            "Tăng/ (Giảm) khác"
+          ],
+          "row_label_exact": "Tăng/ (Giảm) khác",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "a3954c4a31b80ea2e0ffff5fff8e094d9782b4e0840779f90ebedfea098c6435",
+      "extraction_run_id": "gfpstorev1:run:bffac8f588e2916d795da0ffc62988c96487b05e92ad82b0ff27806acfb2b2ba",
+      "repair_id": "gjffasrv1:repair:c1b0683db0da1ce7e581ecdc8cfd7c3fe28ea84055153815d0cbfb30bd849411",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:3664779b38471fdb85cd9347ef52da718faffdd1fa60853107db7cfb276c4b18",
+        "image_sha256": "cd4f5945602b9e8256fe2347ca1ce0181d6b65cf103df918013482f0e5dcfdde",
+        "image_size_bytes": 130362,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:0c03f28f9c1695e3984cd093628ffa752a301162af0ee6fbb7b03a9aedd8163c",
+        "physical_page": 37,
+        "pixel_height": 3534,
+        "pixel_width": 2467,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/NVB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+        "source_sha256": "6a10fc0ff127c752b99969039e76c4baf35f068b27934023c83551667eb114da",
+        "source_size_bytes": 4821090
+      },
+      "stored_canonical_json_sha256": "38a01ed8564ca5b7430508445d6618e14b7e2715256c5c4eeb675798b0a2acdf",
+      "table_ref": {
+        "base_table_sha256": "cb23eff7d16d0cf625ba3944ddb813c3fdcbe77158ae6f4b95da7871757f8156",
+        "effective_table_sha256": "85fd9e760a9d79a64b2fc22581139c4da8ead5070ea35367c87649243203a509",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          450,
+          780,
+          2200,
+          1960
+        ],
+        "table_crop_rgb_sha256": "fe609e2ea3cd8d6fb02e4913744a14a99995450bd386fa6331d763d249fc826a"
+      }
+    },
+    {
+      "base_page_json_sha256": "260457604c82bf4b434821f3dd389b15363524ee73f7f39c9380a08dbe2ea783",
+      "base_page_json_version_id": "gfpstorev1:json:cab29f051cb33ab32adaa9f74ade3b4bfd1974ccdf99be966a47590bce7618e3",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "--M",
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Phần mềm máy vi tính"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1800,
+            1020,
+            1940,
+            1120
+          ],
+          "crop_rgb_sha256": "f7263a50e02d073ad77294b4960737b2cdfb0a8c50147c4473445e21a7bb357a",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ vô hình",
+            "Số dư đầu năm- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--M",
+          "cell_id": "r4:c3",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2160,
+            1020,
+            2310,
+            1120
+          ],
+          "crop_rgb_sha256": "8901d83588fd3c0e01f5e589bf457c54fb5f20a220f0dea0c846b03df33dea6b",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ vô hình",
+            "Số dư đầu năm- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--M",
+          "cell_id": "r9:c2",
+          "column_header_path_exact": [
+            "Phần mềm máy vi tính"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1800,
+            1410,
+            1940,
+            1510
+          ],
+          "crop_rgb_sha256": "a0b9e94a5ca189eba746101813cafc130d66166de436c82a20db3c0720ece594",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn lũy kế",
+            "Số dư đầu năm- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--M",
+          "cell_id": "r9:c3",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2160,
+            1410,
+            2310,
+            1510
+          ],
+          "crop_rgb_sha256": "86889550f81b51d36ae5d3cc51a34a94235477d23c21ae6faef671e6a6dd1919",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn lũy kế",
+            "Số dư đầu năm- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "eac402038a373b28d3dca0134667fbdea51f0e16ddb950c17d2d1416f15875ed",
+      "extraction_run_id": "gfpstorev1:run:884d902bba7d8c3bb86b8fb3d6868ab38327da6863765022ea58ad35183a9a83",
+      "repair_id": "gjffasrv1:repair:34780e42636d24424168c02304070422d39f8179108f7898c76810263574eeb2",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:f72e8c2920a59531e29060ea6a823917f1b34fc34d4d7dd0344613e6ef5f95f7",
+        "image_sha256": "c0a6113817670fb5e4e4f18365e14e9402ab3020d404fdd6ebfd10783c2e00f3",
+        "image_size_bytes": 3035502,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:7dc57a22cbb956921dd200f125122d07ab54e0419498aaade086d4eb17adf109",
+        "physical_page": 30,
+        "pixel_height": 3488,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SGB/2026/7_sgb_2026_7_27_a0f7e4f_vi__bao_cao_tai_chinh_q22026_daky.pdf",
+        "source_sha256": "cbff3d2bd30c6487a3be7f0942e65a19ec52f0711838eb89cf332cba517f2f3b",
+        "source_size_bytes": 17356164
+      },
+      "stored_canonical_json_sha256": "2a4c916e6318b3ac39fb95f9a81adf82788c605e04dbdcb8a57615ee8964dd06",
+      "table_ref": {
+        "base_table_sha256": "772915817c20d7bb87404a54f6a5d85a3461ea555e055885928993c95c47a3d1",
+        "effective_table_sha256": "188dfc32e89cadb704c2cdcd1ca96905a8d74b707909778f890df345a08507b4",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          350,
+          600,
+          2330,
+          1800
+        ],
+        "table_crop_rgb_sha256": "883f6501d51dc15c1916889402ea07cdfa0e41e0bcf4c5ba40bb16b4eee8ff08"
+      }
+    },
+    {
+      "base_page_json_sha256": "44a193462b4aadb8c70aa445eee45aa3887cb39edab5e9ddc2dfe70057158d90",
+      "base_page_json_version_id": "gfpstorev1:json:189107a43e671d15dec4073014c7feff1ce5387b4e6b4fae54165f29044b1819",
+      "cell_repairs": [
+        {
+          "after_exact": "(6.378)",
+          "before_exact": "-",
+          "cell_id": "r4:c1",
+          "column_header_path_exact": [
+            "Quyền sử dụng đất không thời hạn Triệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1035,
+            1740,
+            1085,
+            1960
+          ],
+          "crop_rgb_sha256": "14e639e03d619455aa8b0560686227e935162642853d919a01b47e1b76f7976b",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(6.378)",
+          "cell_id": "r5:c1",
+          "column_header_path_exact": [
+            "Quyền sử dụng đất không thời hạn Triệu đồng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1085,
+            1760,
+            1135,
+            1860
+          ],
+          "crop_rgb_sha256": "f02149ddb6e87226c87e900a31713d634ddf78015e36f7c06cd5bf26f4da4e8e",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Giảm do thanh lý công ty con"
+          ],
+          "row_label_exact": "Giảm do thanh lý công ty con",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "f60e37fefec72b03f2f7bb2ce24727426c1b88b274452af60f9685554f820c98",
+      "extraction_run_id": "gfpstorev1:run:bf971b64c31058a536a05f2b2b24ccaf4d44d36c824ce0f16abe658a0ce100ce",
+      "repair_id": "gjffasrv1:repair:c62b411be7ae0417cf644cba917a4a4d62b195eb4fb0776ad96a2c54586183f0",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:4a263b2f0d9dc1bf1a290f6932b2d71256eeff2a976e8f0b0174896ac5c95362",
+        "image_sha256": "50b10730f0648509a651f606a1cd0bff52a72f7ac8eec98dd0102068d56018b8",
+        "image_size_bytes": 1809843,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:2814c1442bd8b1ca759ca84d60a69be1a34d1b5c5bcafec96e54310a416f4cbd",
+        "physical_page": 40,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Hợp nhất quý 4 năm 2025.pdf",
+        "source_sha256": "bcd5937e4fc889ee5eb0ac0d4d89de7b06c9198d30d39b7313e4891a6c4f1366",
+        "source_size_bytes": 15840772
+      },
+      "stored_canonical_json_sha256": "d217c154277f9fdb1e321b07d9e70ace0c194145fa13ebbe49f7b159aa8e336c",
+      "table_ref": {
+        "base_table_sha256": "da2137647eff019a9237661ac6de17ea1c20330f9a0dabbcac8395540708c2a1",
+        "effective_table_sha256": "c7fecb333d8cc8ca94da0a51189d69ddbcf957d2ea93b456fcb02654ab2d9499",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          500,
+          159,
+          2200,
+          3159
+        ],
+        "table_crop_rgb_sha256": "d77e1be5249f2260ec07cd5ba5bb56b68dd758c92279dd9a8f148db2bf8fa6d7"
+      }
+    },
+    {
+      "base_page_json_sha256": "6443e7a8b273ccd85e97b185a11f9d1b0f902cf0bd359d1677bd8b7b3c025789",
+      "base_page_json_version_id": "gfpstorev1:json:67e637420aa5eeba3c9288923caf5b94c2066b9821f933ea3f40a51bd8ec0c5d",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "-带有null",
+          "cell_id": "r5:c1",
+          "column_header_path_exact": [
+            "Phần mềm máy tính"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1670,
+            775,
+            1850,
+            855
+          ],
+          "crop_rgb_sha256": "7d26ca5d6404362488484cda6ec53029b0c6e3952978189ee4878c8c716b3be5",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ"
+          ],
+          "row_label_exact": "Số giảm trong kỳ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-带有null",
+          "cell_id": "r6:c1",
+          "column_header_path_exact": [
+            "Phần mềm máy tính"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1670,
+            845,
+            1850,
+            925
+          ],
+          "crop_rgb_sha256": "2da2760d0b0d0b0fa7babfb4e2bd25dec4fdbf43a334d4f86e6f0afa31781ae6",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ带有null",
+            "- Thanh lý"
+          ],
+          "row_label_exact": "- Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-带有null",
+          "cell_id": "r12:c1",
+          "column_header_path_exact": [
+            "Phần mềm máy tính"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1670,
+            1255,
+            1850,
+            1335
+          ],
+          "crop_rgb_sha256": "9445a4d848aba483de7c3ee5b300f75521062086ce7ab5fb2dc2561cd741180a",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ"
+          ],
+          "row_label_exact": "Số giảm trong kỳ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "-带有null",
+          "cell_id": "r13:c1",
+          "column_header_path_exact": [
+            "Phần mềm máy tính"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1670,
+            1325,
+            1850,
+            1405
+          ],
+          "crop_rgb_sha256": "f4d6aa2e3f1b0d580077901f26d7c23f34c6fda2938a3e780439002fa0806ba5",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ带有null",
+            "- Thanh lý"
+          ],
+          "row_label_exact": "- Thanh lý",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "ca65cfa235a53f1490569dc440317481bb8b44ce126dcbab1c980ea439646303",
+      "extraction_run_id": "gfpstorev1:run:4357d916d622a475bf1ce984aa7f413ec54f4fbedb1bcd192ae1533ba9c95e5a",
+      "repair_id": "gjffasrv1:repair:df3c4f65027d107127170c74429ba60cc228426d51944eb9e657c4065bd8a4ba",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:10ed212fa58757d7893cd0241534f0371687a55179c96ec2abd2bbe65c4b92ff",
+        "image_sha256": "6c7b0ef6c9e670dbaae900070871ecccb282f9a0cbc7e8d93ee113e429d25b52",
+        "image_size_bytes": 884214,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:11e1ee760e926b9d4672e05ce688496df15ccda82a36fa04d534cf79d3f42f11",
+        "physical_page": 40,
+        "pixel_height": 3517,
+        "pixel_width": 2463,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TPB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "source_sha256": "d6481fddd606aa38e8dda6f6614e81e38d6e0882d6c7512a3d5f601ae718e450",
+        "source_size_bytes": 14899712
+      },
+      "stored_canonical_json_sha256": "531c465bb06572dee8368a1b09f5f0ad820723c66c0aad28dc5fd61b240ef338",
+      "table_ref": {
+        "base_table_sha256": "760cd6ad89e89b30cc25f04dc66cab8063a12f3d01201f7c13563d415c971657",
+        "effective_table_sha256": "c0ff99c520e5a918a240a59b99bc7e3f8db4b68534309b72f70b94e7b6980db0",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          250,
+          250,
+          2320,
+          1700
+        ],
+        "table_crop_rgb_sha256": "9831cab3520f5fba4871e904b0f8c20a0bcd5ed44e87acef98f805d323b0163b"
+      }
+    }
+  ],
+  "review_policy": "TRANSCRIBE_ONLY_PDF_VISIBLE_CELL_TOKENS_NO_EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO_NO_PROVIDER"
+}

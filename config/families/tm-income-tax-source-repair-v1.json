@@ -1,0 +1,695 @@
+{
+  "family_id": "INCOME_TAX",
+  "format_version": "INCOME_TAX_AUTHENTICATED_SOURCE_REPAIR_SPEC_V1",
+  "render_contract": {
+    "alpha": false,
+    "colorspace": "RGB",
+    "format": "PNG",
+    "matrix": [
+      2,
+      2
+    ],
+    "renderer": "PyMuPDF"
+  },
+  "repairs": [
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "8- Chi phí thuế TNDN hoãn lại"
+        ],
+        "label_exact": "8- Chi phí thuế TNDN hoãn lại",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          "-",
+          "-",
+          "-"
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "8- Chi phí thuế TNDN hoãn lại"
+        ],
+        "label_exact": "8- Chi phí thuế TNDN hoãn lại",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          "(45,000)",
+          "(60,000)",
+          "(45,000)"
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:27d47366a59e29b0722c00f1d46d14991da48caf994b0f47afa258190761cd29",
+        "physical_page": 6,
+        "row_ordinal": 19,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/VAB/2025/2_vab_2025_4_15_527ed46_vi_baocaotaichinh_q1_2025.pdf",
+        "sha256": "067ddd883bf49ab6706bd19d1d5b2004829d1463fd1a5ea4b079df80382db53e",
+        "size_bytes": 13565037
+      },
+      "repair_id": "gjitfav1:repair:194bbd486716331f15277a244aa4a5a55f549b8f7f4d61a19aac75d3817415fa",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          100,
+          500,
+          1150,
+          1450
+        ],
+        "crop_rgb_sha256": "e16213a817a7e92d2350ce775a0b1c896f244292f47d9048594156235f9b4396",
+        "page_render": {
+          "height_pixels": 1584,
+          "sha256": "b549b7457879ff4d3712be6b234c76a21f9fa11eb4f846813c6b3dca4fe0cd63",
+          "width_pixels": 1224
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "XII- CHI PHÍ THUẾ TNDN"
+        ],
+        "label_exact": "XII- CHI PHÍ THUẾ TNDN",
+        "row_kind": "SUBTOTAL",
+        "values_exact": [
+          "(60,000)",
+          "(45,000)",
+          "(60,000)",
+          "(45,000)"
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "XII- CHI PHÍ THUẾ TNDN"
+        ],
+        "label_exact": "XII- CHI PHÍ THUẾ TNDN",
+        "row_kind": "SUBTOTAL",
+        "values_exact": [
+          "(60,000)",
+          null,
+          null,
+          null
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:27d47366a59e29b0722c00f1d46d14991da48caf994b0f47afa258190761cd29",
+        "physical_page": 6,
+        "row_ordinal": 20,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/VAB/2025/2_vab_2025_4_15_527ed46_vi_baocaotaichinh_q1_2025.pdf",
+        "sha256": "067ddd883bf49ab6706bd19d1d5b2004829d1463fd1a5ea4b079df80382db53e",
+        "size_bytes": 13565037
+      },
+      "repair_id": "gjitfav1:repair:f3301a62e2a9b3652bd79ca6856106d3f5fcc3cbd3d42169aed216ee576d8baf",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          100,
+          500,
+          1150,
+          1450
+        ],
+        "crop_rgb_sha256": "e16213a817a7e92d2350ce775a0b1c896f244292f47d9048594156235f9b4396",
+        "page_render": {
+          "height_pixels": 1584,
+          "sha256": "b549b7457879ff4d3712be6b234c76a21f9fa11eb4f846813c6b3dca4fe0cd63",
+          "width_pixels": 1224
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Chi phí thuế TNDN ghi nhận trong báo cáo kết quả hoạt động riêng giữa niên độ:",
+          "Chi phí thuế TNDN - hiện hành"
+        ],
+        "label_exact": "Chi phí thuế TNDN - hiện hành",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "1.323.614",
+          "876.249"
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Chi phí thuế TNDN ghi nhận trong báo cáo kết quả hoạt động riêng giữa niên độ:",
+          "Chi phí thuế TNDN - hiện hành"
+        ],
+        "label_exact": "Chi phí thuế TNDN ghi nhận trong báo cáo\nkết quả hoạt động riêng giữa niên độ:\nChi phí thuế TNDN - hiện hành",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "1.323.614\n1.323.614",
+          "876.249\n876.249"
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:caa47fc7a4149d9e4cf91cb03fb7d60998ae86af732b66134edccdac8ee1bed1",
+        "physical_page": 44,
+        "row_ordinal": 6,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 3 năm 2025.pdf",
+        "sha256": "110eca486ce72190827b7c59cc5968fc1b1e1631d691d277abff070555a51494",
+        "size_bytes": 15064951
+      },
+      "repair_id": "gjitfav1:repair:545c8224f1ef247c3eedc16ffa74fdfc0ad414e8d224843861aa1d99a1e75315",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          250,
+          900,
+          2350,
+          3200
+        ],
+        "crop_rgb_sha256": "aa4cf0233216ad87fc99ab0e306b23c2dd12c67e785f8c108c3e7b9aab3f6bcf",
+        "page_render": {
+          "height_pixels": 3509,
+          "sha256": "240e282d7e4d3a3e4bae29ee2cb925c8980704ecf6c6f55988ecd83e958cdb57",
+          "width_pixels": 2481
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Thu nhập từ góp vốn liên doanh mua cổ phần"
+        ],
+        "label_exact": "Thu nhập từ góp vốn liên doanh mua cổ phần",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          "-"
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Thu nhập từ góp vốn liên doanh mua cổ phần"
+        ],
+        "label_exact": "Thu nhập từ góp vốn liên doanh mua cổ phần",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-单",
+          null
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:d146427e14e8f72ff420dfe952366d2747d1f6ac5721a9b56dae7c79434fec1c",
+        "physical_page": 37,
+        "row_ordinal": 3,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+        "sha256": "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+        "size_bytes": 11320313
+      },
+      "repair_id": "gjitfav1:repair:91c128c505dc75de43b1bb11e53e15d8fa2ef49751469a38aae9363d1ff2a070",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2300,
+          2200
+        ],
+        "crop_rgb_sha256": "020363f8211a5e06e5a26d59b35b9332a83cc06031bfec32ebf56b1a1d9746be",
+        "page_render": {
+          "height_pixels": 3513,
+          "sha256": "bbc4428ac7e46776d7e8e2c1567f3341a09e4f70d3ab5d5d7bd5796aa31c4be8",
+          "width_pixels": 2480
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Cổ tức từ chứng khoán đầu tư"
+        ],
+        "label_exact": "Cổ tức từ chứng khoán đầu tư",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          "-"
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Cổ tức từ chứng khoán đầu tư"
+        ],
+        "label_exact": "Cổ tức từ chứng khoán đầu tư",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-单",
+          null
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:d146427e14e8f72ff420dfe952366d2747d1f6ac5721a9b56dae7c79434fec1c",
+        "physical_page": 37,
+        "row_ordinal": 4,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+        "sha256": "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+        "size_bytes": 11320313
+      },
+      "repair_id": "gjitfav1:repair:ef02b379319dc6911ec9c2de4299b10a3a111b96d8a945af67e8868c3e9dc455",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2300,
+          2200
+        ],
+        "crop_rgb_sha256": "020363f8211a5e06e5a26d59b35b9332a83cc06031bfec32ebf56b1a1d9746be",
+        "page_render": {
+          "height_pixels": 3513,
+          "sha256": "bbc4428ac7e46776d7e8e2c1567f3341a09e4f70d3ab5d5d7bd5796aa31c4be8",
+          "width_pixels": 2480
+        }
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "column_ordinal": 1,
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:d146427e14e8f72ff420dfe952366d2747d1f6ac5721a9b56dae7c79434fec1c",
+        "physical_page": 37,
+        "row_ordinal": 12,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+        "sha256": "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+        "size_bytes": 11320313
+      },
+      "repair_id": "gjitfav1:repair:12e4df8b978809eae669dbc9a1d0f1350f3df07854df2accf858a23d2267d903",
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_DASH",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2300,
+          2200
+        ],
+        "crop_rgb_sha256": "020363f8211a5e06e5a26d59b35b9332a83cc06031bfec32ebf56b1a1d9746be",
+        "page_render": {
+          "height_pixels": 3513,
+          "sha256": "bbc4428ac7e46776d7e8e2c1567f3341a09e4f70d3ab5d5d7bd5796aa31c4be8",
+          "width_pixels": 2480
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Thu nhập từ góp vốn liên doanh mua cổ phần"
+        ],
+        "label_exact": "Thu nhập từ góp vốn liên doanh mua cổ phần",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          " - "
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Thu nhập từ góp vốn liên doanh mua cổ phần"
+        ],
+        "label_exact": "Thu nhập từ góp vốn liên doanh mua cổ phần",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-带有-或者-",
+          " - "
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:385a5b548560727b8638fe82fb5a68c43330a9477efd774d05d0f3e61c17e54d",
+        "physical_page": 37,
+        "row_ordinal": 3,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2026/2_bvb_2026_4_29_66c0e1c_vi_baocaotaichinhriengle_q1_2026.pdf",
+        "sha256": "97225e710ecb384f13cbc52eb8ee79add0a890c191bb43a9d61ded6e21fa86d8",
+        "size_bytes": 20173683
+      },
+      "repair_id": "gjitfav1:repair:225a1fd657a415a4bc0f7639a0a0a445b211077291b9e90866eec402e0c56781",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2350,
+          2200
+        ],
+        "crop_rgb_sha256": "f0f08876c72dcdd78eb14c3ae9bc82e66e95899a89de3fd3e8b8f4c0fe1da2ec",
+        "page_render": {
+          "height_pixels": 3300,
+          "sha256": "83b5ae8f69d4d0d293ea26cc4fbe07b3040e58203a75b9f73b73b10ec2a65f15",
+          "width_pixels": 2550
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Cổ tức từ chứng khoán đầu tư"
+        ],
+        "label_exact": "Cổ tức từ chứng khoán đầu tư",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          " - "
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Cổ tức từ chứng khoán đầu tư"
+        ],
+        "label_exact": "Cổ tức từ chứng khoán đầu tư",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-带有-或者-",
+          " - "
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:385a5b548560727b8638fe82fb5a68c43330a9477efd774d05d0f3e61c17e54d",
+        "physical_page": 37,
+        "row_ordinal": 4,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2026/2_bvb_2026_4_29_66c0e1c_vi_baocaotaichinhriengle_q1_2026.pdf",
+        "sha256": "97225e710ecb384f13cbc52eb8ee79add0a890c191bb43a9d61ded6e21fa86d8",
+        "size_bytes": 20173683
+      },
+      "repair_id": "gjitfav1:repair:d8423d3c369b16f1a8e06740ced498b93537904529b3c9d458bd2120c0cc3125",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2350,
+          2200
+        ],
+        "crop_rgb_sha256": "f0f08876c72dcdd78eb14c3ae9bc82e66e95899a89de3fd3e8b8f4c0fe1da2ec",
+        "page_render": {
+          "height_pixels": 3300,
+          "sha256": "83b5ae8f69d4d0d293ea26cc4fbe07b3040e58203a75b9f73b73b10ec2a65f15",
+          "width_pixels": 2550
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Lãi từ thanh lý bất động sản"
+        ],
+        "label_exact": "Lãi từ thanh lý bất động sản",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          " - "
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh giảm:",
+          "Lãi từ thanh lý bất động sản"
+        ],
+        "label_exact": "Lãi từ thanh lý bất động sản",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-带有-或者-",
+          " - "
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:385a5b548560727b8638fe82fb5a68c43330a9477efd774d05d0f3e61c17e54d",
+        "physical_page": 37,
+        "row_ordinal": 5,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2026/2_bvb_2026_4_29_66c0e1c_vi_baocaotaichinhriengle_q1_2026.pdf",
+        "sha256": "97225e710ecb384f13cbc52eb8ee79add0a890c191bb43a9d61ded6e21fa86d8",
+        "size_bytes": 20173683
+      },
+      "repair_id": "gjitfav1:repair:b74cce9a9fdc60cbf7f8dbb5ef3103e6d94d898047a57b9081b993d406c11c75",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2350,
+          2200
+        ],
+        "crop_rgb_sha256": "f0f08876c72dcdd78eb14c3ae9bc82e66e95899a89de3fd3e8b8f4c0fe1da2ec",
+        "page_render": {
+          "height_pixels": 3300,
+          "sha256": "83b5ae8f69d4d0d293ea26cc4fbe07b3040e58203a75b9f73b73b10ec2a65f15",
+          "width_pixels": 2550
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Lỗ năm trước chuyển sang"
+        ],
+        "label_exact": "Lỗ năm trước chuyển sang",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          " - "
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Lỗ năm trước chuyển sang"
+        ],
+        "label_exact": "Lỗ năm trước chuyển sang",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-带有-或者-",
+          " - "
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:385a5b548560727b8638fe82fb5a68c43330a9477efd774d05d0f3e61c17e54d",
+        "physical_page": 37,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2026/2_bvb_2026_4_29_66c0e1c_vi_baocaotaichinhriengle_q1_2026.pdf",
+        "sha256": "97225e710ecb384f13cbc52eb8ee79add0a890c191bb43a9d61ded6e21fa86d8",
+        "size_bytes": 20173683
+      },
+      "repair_id": "gjitfav1:repair:18cc1fba6426693db8650d3e49abca008b5eed570ade8d4c254a26226adf49a6",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2350,
+          2200
+        ],
+        "crop_rgb_sha256": "f0f08876c72dcdd78eb14c3ae9bc82e66e95899a89de3fd3e8b8f4c0fe1da2ec",
+        "page_render": {
+          "height_pixels": 3300,
+          "sha256": "83b5ae8f69d4d0d293ea26cc4fbe07b3040e58203a75b9f73b73b10ec2a65f15",
+          "width_pixels": 2550
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Điều chỉnh thuế TNDN năm trước"
+        ],
+        "label_exact": "Điều chỉnh thuế TNDN năm trước",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          " - "
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Điều chỉnh thuế TNDN năm trước"
+        ],
+        "label_exact": "Điều chỉnh thuế TNDN năm trước",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-带有-或者-",
+          " - "
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:385a5b548560727b8638fe82fb5a68c43330a9477efd774d05d0f3e61c17e54d",
+        "physical_page": 37,
+        "row_ordinal": 12,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2026/2_bvb_2026_4_29_66c0e1c_vi_baocaotaichinhriengle_q1_2026.pdf",
+        "sha256": "97225e710ecb384f13cbc52eb8ee79add0a890c191bb43a9d61ded6e21fa86d8",
+        "size_bytes": 20173683
+      },
+      "repair_id": "gjitfav1:repair:d7b1abb31a8f1b6f8569a504623b68fe1a447e8187ea33b1bdf56b64fa057e5f",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2350,
+          2200
+        ],
+        "crop_rgb_sha256": "f0f08876c72dcdd78eb14c3ae9bc82e66e95899a89de3fd3e8b8f4c0fe1da2ec",
+        "page_render": {
+          "height_pixels": 3300,
+          "sha256": "83b5ae8f69d4d0d293ea26cc4fbe07b3040e58203a75b9f73b73b10ec2a65f15",
+          "width_pixels": 2550
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "CP thuế TNDN từ thanh lý Bất động sản"
+        ],
+        "label_exact": "CP thuế TNDN từ thanh lý Bất động sản",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-",
+          " - "
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "CP thuế TNDN từ thanh lý Bất động sản"
+        ],
+        "label_exact": "CP thuế TNDN từ thanh lý Bất động sản",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "-带有-或者-",
+          " - "
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:385a5b548560727b8638fe82fb5a68c43330a9477efd774d05d0f3e61c17e54d",
+        "physical_page": 37,
+        "row_ordinal": 13,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/BVB/2026/2_bvb_2026_4_29_66c0e1c_vi_baocaotaichinhriengle_q1_2026.pdf",
+        "sha256": "97225e710ecb384f13cbc52eb8ee79add0a890c191bb43a9d61ded6e21fa86d8",
+        "size_bytes": 20173683
+      },
+      "repair_id": "gjitfav1:repair:a3f6d2ca25b56d62559f19d0176c80000451e93e6605731db661ddb5be974335",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2350,
+          2200
+        ],
+        "crop_rgb_sha256": "f0f08876c72dcdd78eb14c3ae9bc82e66e95899a89de3fd3e8b8f4c0fe1da2ec",
+        "page_render": {
+          "height_pixels": 3300,
+          "sha256": "83b5ae8f69d4d0d293ea26cc4fbe07b3040e58203a75b9f73b73b10ec2a65f15",
+          "width_pixels": 2550
+        }
+      }
+    },
+    {
+      "after_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh:",
+          "Thu nhập không chịu thuế"
+        ],
+        "label_exact": "Thu nhập không chịu thuế",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "(79.729)",
+          "-"
+        ]
+      },
+      "before_exact": {
+        "hierarchy_path_exact": [
+          "Các khoản điều chỉnh:",
+          "Thu nhập không chịu thuế"
+        ],
+        "label_exact": "Thu nhập không chịu thuế",
+        "row_kind": "ITEM",
+        "values_exact": [
+          "(79.729)",
+          "‐"
+        ]
+      },
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:ddbc13de172636d7f2e3b375424b4ea8949721d0cca9a73f460a79ced9dd93c8",
+        "physical_page": 42,
+        "row_ordinal": 3,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/MSB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "sha256": "f4bc1a600409772d503b8f87479e384397e6b3e45bf2f705d5f58a47fb15f267",
+        "size_bytes": 1680160
+      },
+      "repair_id": "gjitfav1:repair:b448af1588262aca674fbe4ecfb17e2ae4180369cfe50290a019b29e8d3797ad",
+      "repair_kind": "ROW_PDF_VISIBLE_EXACT",
+      "visual_evidence": {
+        "crop_bbox_pixels": [
+          200,
+          300,
+          2300,
+          2300
+        ],
+        "crop_rgb_sha256": "bbe634f5d95bb3b206e8cddc423e71cf03957488bc68b398d21edd73149b3349",
+        "page_render": {
+          "height_pixels": 3509,
+          "sha256": "19129e9127de16eaa5df2bb743d7cc5a9d036cca9ddcaa58c70c4eecad0ad658",
+          "width_pixels": 2481
+        }
+      }
+    }
+  ]
+}

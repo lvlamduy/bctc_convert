@@ -8,6 +8,7 @@ import pytest
 from test_gemini_financial_page_store_v1 import _ingest
 from test_gemini_json_customer_deposit_family_v1 import (
     _compiled,
+    _customer,
     _ordinary_type,
     _page,
 )
@@ -15,6 +16,7 @@ from test_gemini_json_customer_deposit_family_v1 import (
 from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import (
     NOT_OBSERVED,
     READY,
+    UNRESOLVED,
     GeminiJsonCustomerDepositFamilyV1Error,
     build_gemini_json_customer_deposit_region_query_receipt_v1,
     evaluate_gemini_json_customer_deposit_family_cluster_v1,
@@ -188,4 +190,59 @@ def test_query_binding_rejects_candidate_deletion_and_frontier_drift(tmp_path: P
             selected_page_json_version_ids=list(reversed(selected)),
             compiled_specs=compiled,
             indexed_query_evidence=evidence,
+        )
+
+
+def test_indexed_query_keeps_ambiguous_selected_component_out_of_candidate_axis(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    ambiguous_customer = _customer()
+    label = "Hợp tác xã và hộ kinh doanh, cá nhân"
+    ambiguous_customer["rows"][1]["label_exact"] = label
+    ambiguous_customer["rows"][1]["hierarchy_path_exact"] = [label]
+    selected = _ingest(
+        database,
+        page_json=_page(_ordinary_type(), ambiguous_customer),
+    )
+    selected_ids = [selected["page_json_version_id"]]
+    compiled = _compiled()
+    evidence = query_selected_customer_deposit_family_regions_v1(
+        database,
+        selected_page_json_version_ids=selected_ids,
+        compiled_specs=compiled,
+    )
+
+    assert evidence["accepted_clusters"] == []
+    assert evidence["query_receipt"]["disposition_counts"] == {
+        NOT_OBSERVED: 0,
+        READY: 0,
+        UNRESOLVED: 1,
+    }
+    cluster = evidence["candidate_dispositions"][0]["cluster"]
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["component_regions"] == []
+    assert "SOURCE_ROW_ROLE_MATCH_IS_AMBIGUOUS" in cluster["reasons"]
+    assert (
+        validate_selected_customer_deposit_family_query_evidence_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            indexed_query_evidence=evidence,
+        )
+        == evidence
+    )
+
+    forged = copy.deepcopy(evidence)
+    forged["candidate_dispositions"][0]["cluster"]["status"] = READY
+    with pytest.raises(
+        GeminiJsonCustomerDepositFamilyV1Error,
+        match="disposition cluster binding drifted",
+    ):
+        validate_selected_customer_deposit_family_query_evidence_v1(
+            database,
+            selected_page_json_version_ids=selected_ids,
+            compiled_specs=compiled,
+            indexed_query_evidence=forged,
         )

@@ -74,6 +74,65 @@ def test_authenticated_snapshot_rejects_sidecar_and_path_replacement(tmp_path: P
             shutil.copyfile(original, source)
 
 
+def test_authenticated_source_repair_replays_full_page_and_crop(tmp_path: Path) -> None:
+    source = tmp_path / "fixture.pdf"
+    document = runner.fitz.open()
+    page = document.new_page(width=72, height=72)
+    page.insert_text((30, 36), "-")
+    document.save(source)
+    document.close()
+    payload = source.read_bytes()
+    source_sha256 = sha256(payload).hexdigest()
+    with runner.fitz.open(stream=payload, filetype="pdf") as opened:
+        rendered = runner.render_full_pdf_page_v1(
+            opened[0], physical_page=1, dpi=300, source_sha256=source_sha256
+        )
+    with runner.Image.open(runner.BytesIO(rendered.image)) as image:
+        image.load()
+        rgb = image.convert("RGB")
+        bbox = [0, 0, rgb.width, rgb.height]
+        crop = rgb.crop(tuple(bbox))
+    repair = {
+        "crop_evidence": {
+            "bbox_pixels_xyxy": bbox,
+            "pixel_height": crop.height,
+            "pixel_width": crop.width,
+            "rgb_sha256": sha256(crop.tobytes()).hexdigest(),
+        },
+        "locator": {"physical_page": 1},
+        "render": {
+            "image_sha256": sha256(rendered.image).hexdigest(),
+            "image_size_bytes": len(rendered.image),
+            "media_type": "image/png",
+            "physical_page": 1,
+            "pixel_height": rgb.height,
+            "pixel_width": rgb.width,
+            "render_dpi": 300,
+            "render_receipt_sha256": runner.canonical_json_sha256_v1(
+                rendered.receipt
+            ),
+        },
+        "source": {
+            "source_logical_name": source.name,
+            "source_sha256": source_sha256,
+            "source_size_bytes": len(payload),
+        },
+    }
+
+    assert runner._authenticate_source_repairs_v1(
+        repairs=[repair], source_pdf_root=tmp_path
+    ) == [repair]
+    tampered = copy.deepcopy(repair)
+    tampered["crop_evidence"]["rgb_sha256"] = "0" * 64
+    with pytest.raises(
+        runner.RunGeminiJsonCustomerDepositAccountingFamilyV1Error,
+        match="render or crop evidence drifted",
+    ):
+        runner._authenticate_source_repairs_v1(
+            repairs=[tampered], source_pdf_root=tmp_path
+        )
+
+
 def test_audit_content_rejects_changed_axis_without_matching_seals() -> None:
     axes = {
         "clusters": [],
@@ -81,6 +140,7 @@ def test_audit_content_rejects_changed_axis_without_matching_seals() -> None:
         "historical_comparator": [],
         "mappings": [],
         "optional_customer_views": [],
+        "source_repairs": [],
     }
     material = {
         "axes": axes,
@@ -108,6 +168,74 @@ def test_audit_content_rejects_changed_axis_without_matching_seals() -> None:
         match="axis seal",
     ):
         runner.validate_customer_deposit_experimental_audit_content_v1(value)
+
+
+def test_historical_comparator_allows_only_fully_disjoint_expansion_corpus(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    oracle = {
+        "metrics": {"mapping_verified_count": 0},
+        "trials": [
+            {"source_pdf_sha256": "a" * 64, "verified_mappings": []},
+            {"source_pdf_sha256": "b" * 64, "verified_mappings": []},
+        ],
+    }
+    monkeypatch.setattr(
+        runner,
+        "_historical_oracle",
+        lambda: ({"fixture": "oracle"}, oracle),
+    )
+
+    axis, oracle_ref = runner._historical_comparator_axis(
+        trials=[{"source_sha256": "c" * 64, "status": "fixture"}],
+        compiled_specs={"bindings": {}},
+    )
+
+    assert axis == []
+    assert oracle_ref == {"fixture": "oracle"}
+
+
+def test_historical_comparator_rejects_partial_oracle_source_frontier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    oracle = {
+        "metrics": {"mapping_verified_count": 0},
+        "trials": [
+            {"source_pdf_sha256": "a" * 64, "verified_mappings": []},
+            {"source_pdf_sha256": "b" * 64, "verified_mappings": []},
+        ],
+    }
+    monkeypatch.setattr(
+        runner,
+        "_historical_oracle",
+        lambda: ({"fixture": "oracle"}, oracle),
+    )
+
+    with pytest.raises(
+        runner.RunGeminiJsonCustomerDepositAccountingFamilyV1Error,
+        match="only partially present",
+    ):
+        runner._historical_comparator_axis(
+            trials=[{"source_sha256": "a" * 64, "status": "fixture"}],
+            compiled_specs={"bindings": {}},
+        )
+
+
+def test_release_pins_allow_nonrelease_corpus_only_for_experimental_run() -> None:
+    kwargs = {
+        "index": {"corpus_manifest_index_id": "gjfccmiv1:index:" + "f" * 64},
+        "selected_ids": [],
+        "sweep": {},
+        "indexed": {},
+        "audit": {},
+    }
+
+    runner._assert_release_pins(**kwargs, run_kind="EXPERIMENTAL")
+    with pytest.raises(
+        runner.RunGeminiJsonCustomerDepositAccountingFamilyV1Error,
+        match="requires the frozen release corpus",
+    ):
+        runner._assert_release_pins(**kwargs, run_kind="OFFICIAL")
 
 
 def test_audit_replay_rejects_coherent_axis_and_embedded_schema_drift(

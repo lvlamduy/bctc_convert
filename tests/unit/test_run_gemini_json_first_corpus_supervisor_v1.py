@@ -168,6 +168,7 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-low"},
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-medium"},
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-high"},
+        {"gateway": "CKEY_API", "requested_service_tier": "ckey-standard"},
         {
             "gateway": "GOOGLE_GEMINI_API",
             "requested_service_tier": "standard",
@@ -180,6 +181,7 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-low"},
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-medium"},
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-high"},
+        {"gateway": "CKEY_API", "requested_service_tier": "ckey-standard"},
         {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
         {
             "gateway": "GOOGLE_GEMINI_API",
@@ -190,6 +192,7 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-low"},
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-medium"},
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-high"},
+        {"gateway": "CKEY_API", "requested_service_tier": "ckey-standard"},
         {
             "gateway": "GOOGLE_GEMINI_API",
             "requested_service_tier": "standard",
@@ -206,6 +209,7 @@ def test_adaptive_manifest_accepts_cheapest_openrouter_standard_fallback(
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-low"},
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-medium"},
         {"gateway": "AGY_CLI", "requested_service_tier": "agy-high"},
+        {"gateway": "CKEY_API", "requested_service_tier": "ckey-standard"},
         {"gateway": "OPENROUTER", "requested_service_tier": "standard"},
         {
             "gateway": "GOOGLE_GEMINI_BATCH_API",
@@ -1851,6 +1855,349 @@ def test_exhausted_page_repair_recovers_frontier_after_local_subprocess_failure(
     )
 
 
+def test_legacy_subprocess_repair_uses_only_store_missing_pages_and_prompt_history(
+    tmp_path,
+) -> None:
+    database = tmp_path / "store.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "CREATE TABLE document(document_id TEXT,source_sha256 TEXT,source_logical_name TEXT)"
+        )
+        connection.execute("CREATE TABLE page(page_id TEXT,document_id TEXT,physical_page INTEGER)")
+        connection.execute("CREATE TABLE page_json_version(page_id TEXT)")
+        connection.execute(
+            "INSERT INTO document VALUES ('document-1',?,?)", ("b" * 64, "ABB/a.pdf")
+        )
+        connection.executemany(
+            "INSERT INTO page VALUES (?,?,?)",
+            [("page-1", "document-1", 1), ("page-2", "document-1", 2)],
+        )
+        connection.executemany(
+            "INSERT INTO page_json_version VALUES (?)",
+            [("page-1",), ("page-2",)],
+        )
+    receipt = {
+        "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+        "provider_returncode": 1,
+        "provider_stderr_bytes": 10,
+        "provider_stderr_sha256": "a" * 64,
+        "provider_stdout_bytes": 0,
+        "provider_stdout_sha256": hashlib.sha256(b"").hexdigest(),
+        "retry_allowed": False,
+    }
+    task = {
+        "artifact_relative_path": "tasks/task-1",
+        "first_physical_page": 1,
+        "last_physical_page": 4,
+        "last_receipt_json": canonical_json_bytes_v1(receipt),
+        "relative_path": "ABB/a.pdf",
+        "source_sha256": "b" * 64,
+    }
+    semantic = (
+        tmp_path
+        / "artifacts/tasks/task-1/adaptive-retry/items/page-00003/attempt-0001"
+        / "semantic-validation-failure.json"
+    )
+    semantic.parent.mkdir(parents=True)
+    semantic.write_text("{}", encoding="utf-8")
+
+    frontier = target._legacy_subprocess_store_repair_frontier_v1(
+        task=task,
+        database=database,
+        artifact_root=tmp_path / "artifacts",
+    )
+    assert frontier["failed_pages"] == [3, 4]
+    assert frontier["semantic_failed_pages"] == [3]
+    assert frontier["provider_results"] == [
+        {
+            "physical_pages": [3],
+            "prompt_variant": "items",
+            "result": {"semantic_failed_pages": [3]},
+        }
+    ]
+    promoted = target._promote_repeated_item_semantic_pages_v1(
+        target._retry_prompt_frontiers_from_receipt_v1(
+            frontier,
+            first_physical_page=1,
+            last_physical_page=4,
+        ),
+        prior=frontier,
+    )
+    assert promoted == {
+        "balanced": [3],
+        "default": [4],
+        "items": [],
+        "scope": [],
+    }
+
+
+def test_legacy_prompt_context_comes_from_unique_source_bound_store_run(tmp_path) -> None:
+    database = tmp_path / "store.sqlite3"
+    task = {
+        "first_physical_page": 1,
+        "last_physical_page": 2,
+        "relative_path": "ABB/legacy.pdf",
+        "source_sha256": "b" * 64,
+    }
+    images = {1: "1" * 64, 2: "2" * 64}
+    schema_sha256 = canonical_json_sha256_v1(target.financial_page_json_response_schema_v1())
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "CREATE TABLE document(document_id TEXT,source_sha256 TEXT,source_logical_name TEXT)"
+        )
+        connection.execute(
+            "CREATE TABLE page(page_id TEXT,document_id TEXT,physical_page INTEGER,image_sha256 TEXT)"
+        )
+        connection.execute(
+            "CREATE TABLE extraction_run(extraction_run_id TEXT,page_id TEXT,prompt_variant TEXT,"
+            "prompt_sha256 TEXT,response_schema_sha256 TEXT,requested_model TEXT)"
+        )
+        connection.execute("CREATE TABLE page_json_version(extraction_run_id TEXT)")
+        connection.execute(
+            "INSERT INTO document VALUES ('document-1',?,?)",
+            (task["source_sha256"], task["relative_path"]),
+        )
+        connection.executemany(
+            "INSERT INTO page VALUES (?,?,?,?)",
+            [
+                ("page-1", "document-1", 1, images[1]),
+                ("page-2", "document-1", 2, images[2]),
+            ],
+        )
+        for page, variant in ((1, "simple"), (2, "items")):
+            connection.execute(
+                "INSERT INTO extraction_run VALUES (?,?,?,?,?,?)",
+                (
+                    f"run-{page}",
+                    f"page-{page}",
+                    variant,
+                    hashlib.sha256(
+                        target.build_financial_page_json_prompt_v1(variant=variant).encode()
+                    ).hexdigest(),
+                    schema_sha256,
+                    target.GOOGLE_MODEL,
+                ),
+            )
+            connection.execute("INSERT INTO page_json_version VALUES (?)", (f"run-{page}",))
+
+    assert target._unique_stored_page_prompt_context_v1(
+        database=database,
+        task=task,
+        page_image_sha256s=images,
+        physical_pages=[1, 2],
+    ) == {1: "simple", 2: "items"}
+
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO extraction_run VALUES (?,?,?,?,?,?)",
+            (
+                "run-2-simple",
+                "page-2",
+                "simple",
+                hashlib.sha256(
+                    target.build_financial_page_json_prompt_v1(variant="simple").encode()
+                ).hexdigest(),
+                schema_sha256,
+                target.GOOGLE_MODEL,
+            ),
+        )
+        connection.execute("INSERT INTO page_json_version VALUES ('run-2-simple')")
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="absent or ambiguous",
+    ):
+        target._unique_stored_page_prompt_context_v1(
+            database=database,
+            task=task,
+            page_image_sha256s=images,
+            physical_pages=[2],
+        )
+
+
+def test_terminal_frontier_falls_back_to_authenticated_store_complement(
+    monkeypatch, tmp_path
+) -> None:
+    frontier = {
+        "failed_pages": [3],
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": [],
+        "unresolved_pages": [],
+    }
+    monkeypatch.setattr(
+        target,
+        "openrouter_failed_task_repair_frontier_v1",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            target.GeminiJsonFirstCorpusLedgerV1Error("invalid legacy event chain")
+        ),
+    )
+    calls = []
+
+    def recovered(**kwargs):
+        calls.append(kwargs)
+        return frontier
+
+    monkeypatch.setattr(target, "_legacy_subprocess_store_repair_frontier_v1", recovered)
+    task = {"task_id": "task-1"}
+    assert (
+        target._terminal_repair_frontier_receipt_v1(
+            task=task,
+            ledger=tmp_path / "ledger.sqlite3",
+            database=tmp_path / "store.sqlite3",
+            artifact_root=tmp_path / "artifacts",
+        )
+        == frontier
+    )
+    assert calls == [
+        {
+            "task": task,
+            "database": tmp_path / "store.sqlite3",
+            "artifact_root": tmp_path / "artifacts",
+        }
+    ]
+
+
+def test_repair_page_images_reuse_store_and_render_only_selected_pages(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "ABB/a.pdf"
+    source.parent.mkdir(parents=True)
+    document = target.fitz.open()
+    for _ in range(3):
+        document.new_page()
+    source.write_bytes(document.tobytes())
+    document.close()
+    raw = source.read_bytes()
+    database = tmp_path / "store.sqlite3"
+    database.touch()
+    task = {
+        "document_page_count": 3,
+        "relative_path": "ABB/a.pdf",
+        "source_sha256": hashlib.sha256(raw).hexdigest(),
+        "source_size_bytes": len(raw),
+    }
+    store_calls = []
+
+    def stored(_database, **kwargs):
+        store_calls.append((_database, kwargs))
+        return {1: "1" * 64, 3: "3" * 64}
+
+    rendered = []
+
+    def render(_page, *, physical_page, **_kwargs):
+        rendered.append(physical_page)
+        return Namespace(page={"image_sha256": "2" * 64})
+
+    monkeypatch.setattr(target, "document_page_image_frontier_v1", stored)
+    monkeypatch.setattr(target, "render_full_pdf_page_v1", render)
+    result = target._repair_page_image_sha256s_v1(
+        database=database,
+        task=task,
+        source_root=source_root,
+        dpi=300,
+        repair_pages=[2],
+    )
+    assert result == {1: "1" * 64, 2: "2" * 64, 3: "3" * 64}
+    assert rendered == [2]
+    assert store_calls[0][1]["expected_physical_pages"] == [1, 3]
+
+
+def test_repair_page_images_accepts_only_plan_bound_vietnamese_prefix(
+    monkeypatch, tmp_path
+) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "OCB/report.pdf"
+    source.parent.mkdir(parents=True)
+    document = target.fitz.open()
+    for _ in range(4):
+        document.new_page()
+    source.write_bytes(document.tobytes())
+    document.close()
+    raw = source.read_bytes()
+    database = tmp_path / "store.sqlite3"
+    database.touch()
+    task = {
+        "document_page_count": 2,
+        "relative_path": "OCB/report.pdf",
+        "source_sha256": hashlib.sha256(raw).hexdigest(),
+        "source_size_bytes": len(raw),
+    }
+    planned_document = {
+        **task,
+        "page_count": task["document_page_count"],
+        "source_page_count": 4,
+        "page_selection": {
+            "included_first_physical_page": 1,
+            "included_last_physical_page": 2,
+            "review_basis": "HUMAN_VISUAL_LANGUAGE_BOUNDARY",
+            "selection_kind": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+        },
+    }
+    planned_document.pop("document_page_count")
+    monkeypatch.setattr(target, "document_page_image_frontier_v1", lambda *_a, **_k: {1: "1" * 64})
+    monkeypatch.setattr(
+        target,
+        "render_full_pdf_page_v1",
+        lambda *_a, **_k: Namespace(page={"image_sha256": "2" * 64}),
+    )
+
+    assert target._repair_page_image_sha256s_v1(
+        database=database,
+        task=task,
+        source_root=source_root,
+        dpi=300,
+        repair_pages=[2],
+        planned_document=planned_document,
+    ) == {1: "1" * 64, 2: "2" * 64}
+
+
+def test_repair_page_images_rejects_unbound_extra_source_pages(monkeypatch, tmp_path) -> None:
+    source_root = tmp_path / "source"
+    source = source_root / "OCB/report.pdf"
+    source.parent.mkdir(parents=True)
+    document = target.fitz.open()
+    for _ in range(4):
+        document.new_page()
+    source.write_bytes(document.tobytes())
+    document.close()
+    raw = source.read_bytes()
+    database = tmp_path / "store.sqlite3"
+    database.touch()
+    task = {
+        "document_page_count": 2,
+        "relative_path": "OCB/report.pdf",
+        "source_sha256": hashlib.sha256(raw).hexdigest(),
+        "source_size_bytes": len(raw),
+    }
+    planned_document = {
+        "page_count": 2,
+        "page_selection": {
+            "included_first_physical_page": 1,
+            "included_last_physical_page": 2,
+            "review_basis": "HUMAN_VISUAL_LANGUAGE_BOUNDARY",
+            "selection_kind": "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX",
+        },
+        "relative_path": task["relative_path"],
+        "source_page_count": 3,
+        "source_sha256": task["source_sha256"],
+        "source_size_bytes": task["source_size_bytes"],
+    }
+    monkeypatch.setattr(target, "document_page_image_frontier_v1", lambda *_a, **_k: {1: "1" * 64})
+
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="planned source PDF page count drifted",
+    ):
+        target._repair_page_image_sha256s_v1(
+            database=database,
+            task=task,
+            source_root=source_root,
+            dpi=300,
+            repair_pages=[2],
+            planned_document=planned_document,
+        )
+
+
 def test_exhausted_page_repair_defers_later_prompt_frontiers_after_circuit(
     monkeypatch, tmp_path
 ) -> None:
@@ -2006,6 +2353,11 @@ def test_terminal_flex_repair_runs_only_after_frontier_and_cools_after_circuit(
         ]
 
     monkeypatch.setattr(target, "list_corpus_tasks_v1", listed)
+    monkeypatch.setattr(
+        target,
+        "acquire_corpus_task_execution_lock_v1",
+        lambda *_args, **_kwargs: open(tmp_path / "mock-task-lock", "a+b"),
+    )
     monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1"})
     monkeypatch.setattr(
         target,
@@ -2080,6 +2432,655 @@ def test_terminal_flex_repair_runs_only_after_frontier_and_cools_after_circuit(
     assert result["exhausted_task_ids"] == []
     assert repair_calls == [("task-2", 1), ("task-2", 2), ("task-1", 1)]
     assert sleeps == [5.0]
+
+
+def test_terminal_flex_candidate_rejects_source_render_frontier_before_provider(tmp_path) -> None:
+    task = {
+        "artifact_relative_path": "tasks/source-render",
+        "first_physical_page": 1,
+        "last_physical_page": 3,
+        "last_receipt_json": canonical_json_bytes_v1(
+            {
+                "failed_pages": [1, 2],
+                "recitation_failed_pages": [],
+                "semantic_failed_pages": [],
+                "source_failed_pages": [2],
+                "unresolved_pages": [2],
+            }
+        ),
+        "relative_path": "VBB/2025/source-render.pdf",
+        "route": target.OPENROUTER_ROUTE,
+        "state": "FAILED",
+        "task_id": "task-source-render",
+    }
+    with pytest.raises(
+        target.RunGeminiJsonFirstCorpusSupervisorV1Error,
+        match="source/render frontier is local-only",
+    ):
+        target._terminal_repair_candidate_v1(
+            task=task,
+            ledger=tmp_path / "ledger.sqlite3",
+            artifact_root=tmp_path / "artifacts",
+            database=tmp_path / "store.sqlite3",
+        )
+
+
+def test_terminal_flex_gate_allows_only_authenticated_agy_terminal_lease() -> None:
+    task = {
+        "first_physical_page": 1,
+        "last_physical_page": 44,
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": "b" * 64,
+        "state": "SUBMITTED",
+        "task_id": "gjfptaskv1:" + "c" * 64,
+    }
+
+    def bind(receipt):
+        receipt = {
+            **receipt,
+            "execution_provider": "AGY_CLI",
+            "initial_effort": "low",
+        }
+        claim_material = {
+            key: value
+            for key, value in receipt.items()
+            if key not in {"execution_provider", "initial_effort", "provider_job_ref"}
+        }
+        provider_job_ref = target.AGY_PROVIDER_JOB_PREFIX + canonical_json_sha256_v1(claim_material)
+        task["provider_job_ref"] = provider_job_ref
+        return {**receipt, "provider_job_ref": provider_job_ref}
+
+    receipt = {
+        "failed_pages": [20, 23],
+        "format_version": "GEMINI_JSON_FIRST_AGY_TERMINAL_PROVIDER_REPAIR_CLAIM_V1",
+        "source_sha256": task["source_sha256"],
+        "task_id": task["task_id"],
+    }
+    receipt = bind(receipt)
+    task["last_receipt_json"] = canonical_json_bytes_v1(receipt)
+    assert target._is_authenticated_agy_terminal_repair_lease_v1(task)
+    drifted = dict(task)
+    drifted["provider_job_ref"] = "agyjobv1:" + "d" * 64
+    assert not target._is_authenticated_agy_terminal_repair_lease_v1(drifted)
+
+    page_evidence = [
+        {
+            "failure_evidence_sha256s": ["e" * 64],
+            "failure_kind": "SEMANTIC_NO_ACCEPTED_JSON",
+            "image_sha256": "f" * 64,
+            "physical_page": 20,
+        },
+        {
+            "failure_evidence_sha256s": ["e" * 64],
+            "failure_kind": "PROVIDER_NO_ACCEPTED_JSON",
+            "image_sha256": "1" * 64,
+            "physical_page": 23,
+        },
+    ]
+    exhaustion_evidence = [
+        {"repair_attempt": 1},
+        {"repair_attempt": 2},
+    ]
+    unaccepted = bind(
+        {
+            "exhaustion_evidence": exhaustion_evidence,
+            "exhaustion_evidence_sha256": canonical_json_sha256_v1(exhaustion_evidence),
+            "failed_pages": [20, 23],
+            "format_version": "GEMINI_JSON_FIRST_AGY_EXHAUSTED_UNACCEPTED_PAGE_CLAIM_V1",
+            "page_evidence": page_evidence,
+            "page_evidence_sha256": canonical_json_sha256_v1(page_evidence),
+            "prior_failed_receipt_sha256": "e" * 64,
+            "source_sha256": task["source_sha256"],
+            "task_id": task["task_id"],
+        }
+    )
+    task["last_receipt_json"] = canonical_json_bytes_v1(unaccepted)
+    assert target._is_authenticated_agy_terminal_repair_lease_v1(task)
+
+    one_attempt_exhaustion = [
+        {
+            "balanced_semantic_failed_pages": [20],
+            "exhaustion_kind": "BALANCED_SEMANTIC_RETRY_BLOCKS_SECOND_ATTEMPT",
+            "repair_attempt": 1,
+        }
+    ]
+    one_attempt_unaccepted = bind(
+        {
+            "exhaustion_evidence": one_attempt_exhaustion,
+            "exhaustion_evidence_sha256": canonical_json_sha256_v1(one_attempt_exhaustion),
+            "failed_pages": [20, 23],
+            "format_version": "GEMINI_JSON_FIRST_AGY_EXHAUSTED_UNACCEPTED_PAGE_CLAIM_V1",
+            "page_evidence": page_evidence,
+            "page_evidence_sha256": canonical_json_sha256_v1(page_evidence),
+            "prior_failed_receipt_sha256": "e" * 64,
+            "source_sha256": task["source_sha256"],
+            "task_id": task["task_id"],
+        }
+    )
+    task["last_receipt_json"] = canonical_json_bytes_v1(one_attempt_unaccepted)
+    assert target._is_authenticated_agy_terminal_repair_lease_v1(task)
+
+    historical_prior_sha = "9" * 64
+    cross_page_evidence = [
+        {
+            **item,
+            "failure_evidence_sha256s": sorted(
+                set(item["failure_evidence_sha256s"]) | {historical_prior_sha}
+            ),
+        }
+        for item in page_evidence
+    ]
+    cross_history = {
+        "current_corpus_plan_id": "gjfpcorpusv1:" + "2" * 64,
+        "current_corpus_run_id": "gjfpcrunv1:" + "3" * 64,
+        "format_version": "GEMINI_JSON_FIRST_AGY_CROSS_CORPUS_FLEX_HISTORY_V1",
+        "historical_corpus_plan_id": "gjfpcorpusv1:" + "4" * 64,
+        "historical_corpus_run_id": "gjfpcrunv1:" + "5" * 64,
+        "historical_ledger_sha256": "6" * 64,
+        "historical_prior_failed_receipt_sha256": historical_prior_sha,
+        "historical_task_event_ordinal": 7,
+        "historical_task_identity_sha256": "7" * 64,
+    }
+    cross_unaccepted = bind(
+        {
+            "cross_corpus_history_evidence": cross_history,
+            "cross_corpus_history_evidence_sha256": canonical_json_sha256_v1(cross_history),
+            "exhaustion_evidence": exhaustion_evidence,
+            "exhaustion_evidence_sha256": canonical_json_sha256_v1(exhaustion_evidence),
+            "failed_pages": [20, 23],
+            "format_version": "GEMINI_JSON_FIRST_AGY_EXHAUSTED_UNACCEPTED_PAGE_CLAIM_V1",
+            "page_evidence": cross_page_evidence,
+            "page_evidence_sha256": canonical_json_sha256_v1(cross_page_evidence),
+            "prior_failed_receipt_sha256": "e" * 64,
+            "source_sha256": task["source_sha256"],
+            "task_id": task["task_id"],
+        }
+    )
+    task["last_receipt_json"] = canonical_json_bytes_v1(cross_unaccepted)
+    assert target._is_authenticated_agy_terminal_repair_lease_v1(task)
+    drifted_cross_history = {
+        **cross_history,
+        "historical_prior_failed_receipt_sha256": "a" * 64,
+    }
+    drifted_cross = bind(
+        {
+            **{
+                key: value
+                for key, value in cross_unaccepted.items()
+                if key
+                not in {
+                    "cross_corpus_history_evidence",
+                    "cross_corpus_history_evidence_sha256",
+                    "execution_provider",
+                    "initial_effort",
+                    "provider_job_ref",
+                }
+            },
+            "cross_corpus_history_evidence": drifted_cross_history,
+            "cross_corpus_history_evidence_sha256": canonical_json_sha256_v1(drifted_cross_history),
+        }
+    )
+    task["last_receipt_json"] = canonical_json_bytes_v1(drifted_cross)
+    assert not target._is_authenticated_agy_terminal_repair_lease_v1(task)
+
+    unaccepted["page_evidence"][0]["image_sha256"] = "2" * 64
+    task["last_receipt_json"] = canonical_json_bytes_v1(unaccepted)
+    assert not target._is_authenticated_agy_terminal_repair_lease_v1(task)
+
+    source_page_evidence = [
+        {
+            "failure_evidence_sha256s": ["d" * 64, "e" * 64],
+            "failure_kind": "LOCAL_RENDER_REPAIRED",
+            "image_sha256": "f" * 64,
+            "physical_page": 20,
+        },
+        {
+            "failure_evidence_sha256s": ["e" * 64],
+            "failure_kind": "PROVIDER_NO_ACCEPTED_JSON",
+            "image_sha256": "1" * 64,
+            "physical_page": 23,
+        },
+    ]
+    local_evidence = [
+        {
+            "image_sha256": "f" * 64,
+            "physical_page": 20,
+            "render_receipt_sha256": "d" * 64,
+        }
+    ]
+    source_claim = bind(
+        {
+            "failed_pages": [20, 23],
+            "format_version": "GEMINI_JSON_FIRST_AGY_SOURCE_RENDER_RECOVERY_CLAIM_V1",
+            "local_render_repair_evidence": local_evidence,
+            "local_render_repair_evidence_sha256": canonical_json_sha256_v1(local_evidence),
+            "page_evidence": source_page_evidence,
+            "page_evidence_sha256": canonical_json_sha256_v1(source_page_evidence),
+            "prior_failed_receipt_sha256": "e" * 64,
+            "renderer_source_sha256": "a" * 64,
+            "source_sha256": task["source_sha256"],
+            "task_id": task["task_id"],
+        }
+    )
+    task["last_receipt_json"] = canonical_json_bytes_v1(source_claim)
+    assert target._is_authenticated_agy_terminal_repair_lease_v1(task)
+    tampered = json.loads(task["last_receipt_json"])
+    tampered["local_render_repair_evidence"][0]["image_sha256"] = "2" * 64
+    tampered["local_render_repair_evidence_sha256"] = canonical_json_sha256_v1(
+        tampered["local_render_repair_evidence"]
+    )
+    task["last_receipt_json"] = canonical_json_bytes_v1(tampered)
+    assert not target._is_authenticated_agy_terminal_repair_lease_v1(task)
+
+
+def test_terminal_flex_gate_authenticates_orientation_recovery_and_rejects_drift() -> None:
+    task = {
+        "first_physical_page": 1,
+        "last_physical_page": 48,
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": "b" * 64,
+        "state": "SUBMITTED",
+        "task_id": "gjfptaskv1:" + "c" * 64,
+    }
+    page_evidence = [{"image_sha256": "2" * 64, "physical_page": 46}]
+    orientation_evidence = [
+        {
+            "clockwise_degrees": 90,
+            "corrected_image_sha256": "2" * 64,
+            "orientation_receipt_sha256": "3" * 64,
+            "original_image_sha256": "1" * 64,
+            "physical_page": 46,
+        }
+    ]
+    denial_evidence = [
+        {
+            "effort": effort,
+            "failure_sha256": "4" * 64,
+            "invocation_sha256": "5" * 64,
+            "physical_page": 46,
+            "response_sha256": "6" * 64,
+            "stderr_sha256": "7" * 64,
+        }
+        for effort in ("low", "medium", "high")
+    ]
+
+    def bind(value):
+        receipt = {
+            **value,
+            "execution_provider": "AGY_CLI",
+            "initial_effort": "low",
+        }
+        provider_job_ref = target.AGY_PROVIDER_JOB_PREFIX + canonical_json_sha256_v1(
+            {
+                key: item
+                for key, item in receipt.items()
+                if key not in {"execution_provider", "initial_effort", "provider_job_ref"}
+            }
+        )
+        task["provider_job_ref"] = provider_job_ref
+        return {**receipt, "provider_job_ref": provider_job_ref}
+
+    claim = bind(
+        {
+            "failed_pages": [46],
+            "format_version": ("GEMINI_JSON_FIRST_AGY_TOOL_DENIED_ORIENTATION_RECOVERY_CLAIM_V1"),
+            "orientation_repair_evidence": orientation_evidence,
+            "orientation_repair_evidence_sha256": canonical_json_sha256_v1(orientation_evidence),
+            "page_evidence": page_evidence,
+            "prior_failed_receipt_sha256": "8" * 64,
+            "source_sha256": task["source_sha256"],
+            "task_id": task["task_id"],
+            "tool_denial_evidence": denial_evidence,
+            "tool_denial_evidence_sha256": canonical_json_sha256_v1(denial_evidence),
+        }
+    )
+    task["last_receipt_json"] = canonical_json_bytes_v1(claim)
+    assert target._is_authenticated_agy_terminal_repair_lease_v1(task)
+    drifted_orientation = [{**orientation_evidence[0], "corrected_image_sha256": "9" * 64}]
+    drifted = bind(
+        {
+            **{
+                key: value
+                for key, value in claim.items()
+                if key not in {"execution_provider", "initial_effort", "provider_job_ref"}
+            },
+            "orientation_repair_evidence": drifted_orientation,
+            "orientation_repair_evidence_sha256": canonical_json_sha256_v1(drifted_orientation),
+        }
+    )
+    task["last_receipt_json"] = canonical_json_bytes_v1(drifted)
+    assert not target._is_authenticated_agy_terminal_repair_lease_v1(task)
+
+
+def test_terminal_flex_gate_authenticates_schema_alignment_recovery() -> None:
+    task = {
+        "first_physical_page": 1,
+        "last_physical_page": 25,
+        "route": target.OPENROUTER_ROUTE,
+        "source_sha256": "b" * 64,
+        "state": "SUBMITTED",
+        "task_id": "gjfptaskv1:" + "c" * 64,
+    }
+    page_evidence = [{"image_sha256": "1" * 64, "physical_page": 23}]
+    attempts = [
+        {
+            "effort": effort,
+            "failure_kind": ("ROW_COLUMN_ALIGNMENT" if effort == "low" else "COMMAND_TOOL_DENIED"),
+            "failure_sha256": "2" * 64,
+            "invocation_sha256": "3" * 64,
+            "physical_page": 23,
+            "response_sha256": "4" * 64,
+            "stderr_sha256": "5" * 64,
+        }
+        for effort in ("low", "medium", "high")
+    ]
+    material = {
+        "failed_pages": [23],
+        "format_version": "GEMINI_JSON_FIRST_AGY_SCHEMA_ALIGNMENT_RECOVERY_CLAIM_V1",
+        "page_evidence": page_evidence,
+        "page_evidence_sha256": canonical_json_sha256_v1(page_evidence),
+        "prior_attempt_evidence": attempts,
+        "prior_attempt_evidence_sha256": canonical_json_sha256_v1(attempts),
+        "prior_failed_receipt_sha256": "6" * 64,
+        "repair_instruction_sha256": "7" * 64,
+        "repair_registry_entry_sha256": "8" * 64,
+        "source_sha256": task["source_sha256"],
+        "task_id": task["task_id"],
+    }
+    provider_job_ref = target.AGY_PROVIDER_JOB_PREFIX + canonical_json_sha256_v1(material)
+    task["provider_job_ref"] = provider_job_ref
+    task["last_receipt_json"] = canonical_json_bytes_v1(
+        {
+            **material,
+            "execution_provider": "AGY_CLI",
+            "initial_effort": "low",
+            "provider_job_ref": provider_job_ref,
+        }
+    )
+    assert target._is_authenticated_agy_terminal_repair_lease_v1(task)
+    drifted = json.loads(task["last_receipt_json"])
+    drifted["prior_attempt_evidence"][0]["failure_kind"] = "COMMAND_TOOL_DENIED"
+    drifted["prior_attempt_evidence_sha256"] = canonical_json_sha256_v1(
+        drifted["prior_attempt_evidence"]
+    )
+    drifted_material = {
+        key: value
+        for key, value in drifted.items()
+        if key not in {"execution_provider", "initial_effort", "provider_job_ref"}
+    }
+    drifted_ref = target.AGY_PROVIDER_JOB_PREFIX + canonical_json_sha256_v1(drifted_material)
+    drifted["provider_job_ref"] = drifted_ref
+    task["provider_job_ref"] = drifted_ref
+    task["last_receipt_json"] = canonical_json_bytes_v1(drifted)
+    assert not target._is_authenticated_agy_terminal_repair_lease_v1(task)
+
+
+def test_terminal_flex_repair_skips_invalid_legacy_frontier_and_repairs_valid_task(
+    monkeypatch, tmp_path
+) -> None:
+    invalid_receipt = canonical_json_bytes_v1(
+        {
+            "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+            "retry_allowed": False,
+        }
+    )
+    valid_receipt = canonical_json_bytes_v1(
+        {
+            "failed_pages": [1],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+    )
+    tasks = [
+        {
+            "artifact_relative_path": "tasks/invalid",
+            "first_physical_page": 1,
+            "last_physical_page": 1,
+            "last_receipt_json": invalid_receipt,
+            "relative_path": "NAB/invalid.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "FAILED",
+            "task_id": "task-invalid",
+        },
+        {
+            "artifact_relative_path": "tasks/valid",
+            "first_physical_page": 1,
+            "last_physical_page": 1,
+            "last_receipt_json": valid_receipt,
+            "relative_path": "NAB/valid.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "FAILED",
+            "task_id": "task-valid",
+        },
+    ]
+
+    def listed(_ledger, *, states=None, route=None):
+        return [
+            dict(task)
+            for task in tasks
+            if (states is None or task["state"] in states)
+            and (route is None or task["route"] == route)
+        ]
+
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", listed)
+    monkeypatch.setattr(
+        target,
+        "acquire_corpus_task_execution_lock_v1",
+        lambda *_args, **_kwargs: open(tmp_path / "mock-task-lock", "a+b"),
+    )
+    monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1"})
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+
+    def invalid_frontier(_ledger, *, task_id):
+        assert task_id == "task-invalid"
+        raise target.GeminiJsonFirstCorpusLedgerV1Error("invalid event chain")
+
+    monkeypatch.setattr(target, "openrouter_failed_task_repair_frontier_v1", invalid_frontier)
+    repair_calls = []
+
+    def repair(args):
+        repair_calls.append(args.task_id)
+        assert args.task_id == "task-valid"
+        tasks[1]["state"] = "SUCCEEDED"
+        return {
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "repair_attempt": args.repair_attempt,
+            "task_id": args.task_id,
+        }
+
+    monkeypatch.setattr(target, "repair_openrouter_flex_pages_task", repair)
+    monkeypatch.setattr(target, "_exhausted_page_repair_receipt_has_circuit_v1", lambda **_: False)
+    result = target.repair_failed_openrouter_flex_tasks(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            ledger=tmp_path / "ledger.sqlite3",
+            max_repair_actions=2,
+            openrouter_circuit_cooldown_seconds=5,
+            openrouter_workers=1,
+            plan=tmp_path / "plan.json",
+        )
+    )
+    assert repair_calls == ["task-valid"]
+    assert result["disposition"] == "FAILED"
+    assert result["completed_task_ids"] == ["task-valid"]
+    assert result["repairable_task_ids"] == []
+    assert result["exhausted_task_ids"] == []
+    assert result["skipped_task_ids"] == ["task-invalid"]
+    assert result["skipped_tasks"] == [
+        {
+            "classification": "AUTHENTICATED_REPAIR_FRONTIER_UNAVAILABLE",
+            "reason": "failed OpenRouter task has no authenticated repair frontier",
+            "relative_path": "NAB/invalid.pdf",
+            "task_id": "task-invalid",
+        }
+    ]
+
+
+def test_terminal_flex_repair_reports_all_invalid_frontiers_without_provider_call(
+    monkeypatch, tmp_path
+) -> None:
+    tasks = [
+        {
+            "artifact_relative_path": f"tasks/task-{ordinal}",
+            "first_physical_page": 1,
+            "last_physical_page": 1,
+            "last_receipt_json": canonical_json_bytes_v1(
+                {
+                    "disposition": "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE",
+                    "retry_allowed": False,
+                }
+            ),
+            "relative_path": f"NAB/invalid-{ordinal}.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "FAILED",
+            "task_id": f"task-invalid-{ordinal}",
+        }
+        for ordinal in (1, 2)
+    ]
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", lambda *_args, **_kwargs: tasks)
+    monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1"})
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    monkeypatch.setattr(
+        target,
+        "openrouter_failed_task_repair_frontier_v1",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            target.GeminiJsonFirstCorpusLedgerV1Error("invalid event chain")
+        ),
+    )
+    provider_calls = []
+    monkeypatch.setattr(
+        target,
+        "repair_openrouter_flex_pages_task",
+        lambda args: provider_calls.append(args) or {},
+    )
+    result = target.repair_failed_openrouter_flex_tasks(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            ledger=tmp_path / "ledger.sqlite3",
+            max_repair_actions=2,
+            openrouter_circuit_cooldown_seconds=5,
+            openrouter_workers=1,
+            plan=tmp_path / "plan.json",
+        )
+    )
+    assert provider_calls == []
+    assert result["disposition"] == "FAILED"
+    assert result["repairable_task_ids"] == []
+    assert result["exhausted_task_ids"] == []
+    assert result["skipped_task_ids"] == ["task-invalid-1", "task-invalid-2"]
+    assert [item["relative_path"] for item in result["skipped_tasks"]] == [
+        "NAB/invalid-1.pdf",
+        "NAB/invalid-2.pdf",
+    ]
+
+
+def test_terminal_flex_repair_skips_exhausted_balanced_frontier(monkeypatch, tmp_path) -> None:
+    exhausted_receipt = canonical_json_bytes_v1(
+        {
+            "failed_pages": [1],
+            "provider_results": [
+                {
+                    "physical_pages": [1],
+                    "prompt_variant": "balanced",
+                    "result": {"semantic_failed_pages": [1]},
+                }
+            ],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [1],
+            "unresolved_pages": [],
+        }
+    )
+    valid_receipt = canonical_json_bytes_v1(
+        {
+            "failed_pages": [1],
+            "recitation_failed_pages": [],
+            "semantic_failed_pages": [],
+            "unresolved_pages": [],
+        }
+    )
+    tasks = [
+        {
+            "artifact_relative_path": "tasks/exhausted",
+            "first_physical_page": 1,
+            "last_physical_page": 1,
+            "last_receipt_json": exhausted_receipt,
+            "relative_path": "TPB/exhausted.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "FAILED",
+            "task_id": "task-exhausted",
+        },
+        {
+            "artifact_relative_path": "tasks/valid",
+            "first_physical_page": 1,
+            "last_physical_page": 1,
+            "last_receipt_json": valid_receipt,
+            "relative_path": "TPB/valid.pdf",
+            "route": target.OPENROUTER_ROUTE,
+            "state": "FAILED",
+            "task_id": "task-valid",
+        },
+    ]
+
+    def listed(_ledger, *, states=None, route=None):
+        return [
+            dict(task)
+            for task in tasks
+            if (states is None or task["state"] in states)
+            and (route is None or task["route"] == route)
+        ]
+
+    monkeypatch.setattr(target, "list_corpus_tasks_v1", listed)
+    monkeypatch.setattr(
+        target,
+        "acquire_corpus_task_execution_lock_v1",
+        lambda *_args, **_kwargs: open(tmp_path / "mock-task-lock", "a+b"),
+    )
+    monkeypatch.setattr(target, "_plan", lambda _path: {"corpus_plan_id": "plan-1"})
+    monkeypatch.setattr(
+        target,
+        "corpus_ledger_summary_v1",
+        lambda _ledger: {"corpus_plan_id": "plan-1"},
+    )
+    repair_calls = []
+
+    def repair(args):
+        repair_calls.append(args.task_id)
+        tasks[1]["state"] = "SUCCEEDED"
+        return {
+            "disposition": "SUCCEEDED",
+            "failed_pages": [],
+            "repair_attempt": args.repair_attempt,
+            "task_id": args.task_id,
+        }
+
+    monkeypatch.setattr(target, "repair_openrouter_flex_pages_task", repair)
+    monkeypatch.setattr(target, "_exhausted_page_repair_receipt_has_circuit_v1", lambda **_: False)
+    result = target.repair_failed_openrouter_flex_tasks(
+        Namespace(
+            artifact_root=tmp_path / "artifacts",
+            ledger=tmp_path / "ledger.sqlite3",
+            max_repair_actions=2,
+            openrouter_circuit_cooldown_seconds=5,
+            openrouter_workers=1,
+            plan=tmp_path / "plan.json",
+        )
+    )
+    assert repair_calls == ["task-valid"]
+    assert result["completed_task_ids"] == ["task-valid"]
+    assert result["skipped_task_ids"] == ["task-exhausted"]
+    assert result["skipped_tasks"][0]["reason"] == (
+        "OpenRouter balanced semantic retry is exhausted"
+    )
 
 
 def test_terminal_flex_repair_rejects_an_unfinished_ordinary_frontier(

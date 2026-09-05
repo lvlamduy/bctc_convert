@@ -17,6 +17,7 @@
             "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp",
             "Phân tích dư nợ cho vay khách hàng theo đối tượng và loại hình doanh nghiệp",
             "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và loại hình doanh nghiệp",
+            "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng, loại hình doanh nghiệp",
             "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp",
             "Phân tích dư nợ cho vay khách hàng theo đối tượng khách hàng và theo loại hình doanh nghiệp như sau",
             "Phân tích dư nợ cho vay theo đối tượng khách hàng theo loại hình doanh nghiệp",
@@ -195,6 +196,7 @@
             "Công ty trách nhiệm hữu hạn",
             "Doanh nghiệp TNHH"
           ],
+          "allow_decorative_parenthetical_removal": true,
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
         {
@@ -203,6 +205,7 @@
             "Công ty trách nhiệm hữu hạn",
             "Doanh nghiệp TNHH"
           ],
+          "allow_decorative_parenthetical_removal": true,
           "within_role": null
         }
       ],
@@ -218,7 +221,10 @@
             "Công ty TNHH một thành viên vốn nhà nước 100%",
             "Công ty TNHH MTV do Nhà nước sở hữu 100% vốn điều lệ",
             "Công ty TNHH một thành viên do Nhà nước sở hữu 100% vốn điều lệ",
-            "Công ty TNHH 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ"
+            "Công ty TNHH 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty trách nhiệm hữu hạn một thành viên vốn Nhà nước 100%",
+            "Công ty trách nhiệm hữu hạn một thành viên do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty trách nhiệm hữu hạn 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ"
           ],
           "normalize_single_member_abbreviations": true,
           "within_role": "ENTERPRISE_TYPE_BRANCH"
@@ -229,7 +235,10 @@
             "Công ty TNHH một thành viên vốn nhà nước 100%",
             "Công ty TNHH MTV do Nhà nước sở hữu 100% vốn điều lệ",
             "Công ty TNHH một thành viên do Nhà nước sở hữu 100% vốn điều lệ",
-            "Công ty TNHH 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ"
+            "Công ty TNHH 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty trách nhiệm hữu hạn một thành viên vốn Nhà nước 100%",
+            "Công ty trách nhiệm hữu hạn một thành viên do Nhà nước sở hữu 100% vốn điều lệ",
+            "Công ty trách nhiệm hữu hạn 1 thành viên do Nhà nước sở hữu 100% vốn điều lệ"
           ],
           "normalize_single_member_abbreviations": true,
           "within_role": null
@@ -248,10 +257,13 @@
             "Công ty TNHH MTV với vốn Nhà nước trên 50%",
             "Công ty TNHH MTV trở lên có vốn nhà nước trên 50%",
             "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
+            "Công ty TNHH trên một thành viên với vốn Nhà nước trên 50%",
             "Công ty TNHH hơn MTV vốn Nhà nước trên 50%",
             "Công ty TNHH có vốn nhà nước trên 50%",
             "Công ty TNHH có trên 50% vốn điều lệ do Nhà nước sở hữu",
-            "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối"
+            "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối",
+            "Công ty TNHH hai thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối",
+            "Công ty trách nhiệm hữu hạn 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối"
           ],
           "normalize_single_member_abbreviations": true,
           "within_role": "ENTERPRISE_TYPE_BRANCH"
@@ -263,10 +275,13 @@
             "Công ty TNHH MTV với vốn Nhà nước trên 50%",
             "Công ty TNHH MTV trở lên có vốn nhà nước trên 50%",
             "Công ty TNHH trên 1 thành viên vốn nhà nước lớn hơn 50%",
+            "Công ty TNHH trên một thành viên với vốn Nhà nước trên 50%",
             "Công ty TNHH hơn MTV vốn Nhà nước trên 50%",
             "Công ty TNHH có vốn nhà nước trên 50%",
             "Công ty TNHH có trên 50% vốn điều lệ do Nhà nước sở hữu",
-            "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối"
+            "Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối",
+            "Công ty TNHH hai thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối",
+            "Công ty trách nhiệm hữu hạn 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối"
           ],
           "normalize_single_member_abbreviations": true,
           "within_role": null
@@ -310,8 +325,12 @@
             "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ",
             "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty",
             "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty tổng số cổ phần có quyền biểu quyết hoặc",
             "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ của công ty",
-            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty"
+            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước trên 50%",
+            "Công ty cổ phần có hơn 50% vốn Nhà nước (Nhà nước chiếm cổ phần chi phối)",
+            "Công ty cổ phần có vốn Nhà nước chiếm giữ trên 50%"
           ],
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
@@ -324,8 +343,12 @@
             "Công ty cổ phần do Nhà nước nắm giữ trên 50% vốn điều lệ",
             "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty",
             "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước chiếm trên 50% vốn điều lệ hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty tổng số cổ phần có quyền biểu quyết hoặc",
             "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối trong Điều lệ của công ty",
-            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty"
+            "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết, hoặc Nhà nước giữ quyền chi phối đối với công ty trong Điều lệ của công ty",
+            "Công ty cổ phần có vốn cổ phần của Nhà nước trên 50%",
+            "Công ty cổ phần có hơn 50% vốn Nhà nước (Nhà nước chiếm cổ phần chi phối)",
+            "Công ty cổ phần có vốn Nhà nước chiếm giữ trên 50%"
           ],
           "within_role": null
         }
@@ -362,7 +385,7 @@
             "Công ty cổ phần",
             "Công ty CP"
           ],
-          "presence_anchor": false,
+          "presence_anchor": true,
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
         {
@@ -370,7 +393,7 @@
             "Công ty cổ phần",
             "Công ty CP"
           ],
-          "presence_anchor": false,
+          "presence_anchor": true,
           "within_role": null
         }
       ],
@@ -532,7 +555,9 @@
             "Hộ kinh doanh, cá nhân",
             "Cá nhân và hộ kinh doanh cá thể",
             "Hộ kinh doanh và cá nhân",
-            "Hộ gia đình và cá nhân"
+            "Hộ gia đình và cá nhân",
+            "Cá nhân và hộ gia đình",
+            "Cho vay cá nhân, hộ kinh doanh"
           ],
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
@@ -541,7 +566,9 @@
             "Hộ kinh doanh, cá nhân",
             "Cá nhân và hộ kinh doanh cá thể",
             "Hộ kinh doanh và cá nhân",
-            "Hộ gia đình và cá nhân"
+            "Hộ gia đình và cá nhân",
+            "Cá nhân và hộ gia đình",
+            "Cho vay cá nhân, hộ kinh doanh"
           ],
           "within_role": null
         }
@@ -556,9 +583,10 @@
           "aliases": [
             "Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội",
             "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể và hiệp hội",
-          "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
-          "Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",
-            "Các đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
+            "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
+            "Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",
+            "Các đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội",
+            "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
           ],
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
@@ -566,9 +594,10 @@
           "aliases": [
             "Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội",
             "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể và hiệp hội",
-          "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
-          "Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",
-            "Các đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
+            "Đơn vị hành chính sự nghiệp, đoàn thể và hiệp hội",
+            "Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",
+            "Các đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội",
+            "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
           ],
           "within_role": null
         }
@@ -582,13 +611,19 @@
         {
           "aliases": [
             "Khác",
-            "Thành phần kinh tế khác"
+            "Thành phần kinh tế khác",
+            "Tổ chức khác",
+            "Tổ chức kinh tế khác",
+            "Các công ty khác"
           ],
           "within_role": "ENTERPRISE_TYPE_BRANCH"
         },
         {
           "aliases": [
-            "Thành phần kinh tế khác"
+            "Thành phần kinh tế khác",
+            "Tổ chức khác",
+            "Tổ chức kinh tế khác",
+            "Các công ty khác"
           ],
           "within_role": null
         },
@@ -651,7 +686,9 @@
           "Các khoản cho vay margin chứng khoán và ứng trước khách hàng",
           "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
           "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
-          "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng"
+          "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán của khách hàng",
+          "Các khoản cho vay hoạt động ký quỹ và cho vay hoạt động ứng trước tiền bán của khách hàng"
           ],
           "allow_trailing_organization_qualifier": true,
           "within_role": "ENTERPRISE_TYPE_BRANCH"
@@ -666,7 +703,9 @@
           "Các khoản cho vay margin chứng khoán và ứng trước khách hàng",
           "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
           "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
-          "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng"
+          "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+          "Các khoản cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán của khách hàng",
+          "Các khoản cho vay hoạt động ký quỹ và cho vay hoạt động ứng trước tiền bán của khách hàng"
           ],
           "within_role": null
         }
@@ -729,6 +768,120 @@
       ],
       "presence": "OPTIONAL",
       "role": "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Hộ kinh doanh"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Hộ kinh doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_HOUSEHOLD_BUSINESS_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty trách nhiệm hữu hạn Nhà nước"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty trách nhiệm hữu hạn Nhà nước"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_UNQUALIFIED_STATE_LLC_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công ty cổ phần có vốn cổ phần của Nhà nước"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Công ty cổ phần có vốn cổ phần của Nhà nước"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_UNQUALIFIED_STATE_JOINT_STOCK_COMPANY_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Doanh nghiệp tư nhân và công ty hợp danh"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Doanh nghiệp tư nhân và công ty hợp danh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_PRIVATE_ENTERPRISE_AND_PARTNERSHIP_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội và loại hình khác"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Đơn vị hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội và loại hình khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_PUBLIC_SERVICE_AND_OTHER_ENTERPRISE_LOANS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Cá nhân và khách hàng khác"
+          ],
+          "within_role": "ENTERPRISE_TYPE_BRANCH"
+        },
+        {
+          "aliases": [
+            "Cá nhân và khách hàng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "SOURCE_ONLY_PERSON_AND_OTHER_CUSTOMER_LOANS",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -830,7 +983,16 @@
       "Cho vay khách hàng (tiếp theo)",
       "Các khoản cho vay khách hàng",
       "Dư nợ cho vay khách hàng",
-      "Dư nợ cho vay khách hàng của Ngân hàng"
+      "Dư nợ cho vay khách hàng của Ngân hàng",
+      "Phân loại dư nợ cho vay theo loại hình doanh nghiệp",
+      "Phân tích dư nợ theo loại hình doanh nghiệp",
+      "Phân tích dư nợ theo loại hình doanh nghiệp như sau",
+      "Phân tích dư nợ cho vay theo loại hình doanh nghiệp",
+      "Phân tích dư nợ theo đối tượng khách hàng và loại hình doanh nghiệp",
+      "Phân tích dư nợ theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+      "Phân tích dư nợ theo đối tượng khách hàng, loại hình doanh nghiệp",
+      "Phân tích dư nợ cho vay theo đối tượng khách hàng và loại hình doanh nghiệp",
+      "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp"
     ],
     "resolution_mode": "EXPLICIT_ONLY",
     "role": "LOAN_ENTERPRISE_FAMILY12"
@@ -864,6 +1026,10 @@
     [
       "ENTERPRISE_TYPE_BRANCH",
       "OTHER_JOINT_STOCK_COMPANY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "JOINT_STOCK_COMPANY_LOANS_GROUP"
     ],
     [
       "ENTERPRISE_TYPE_BRANCH",
@@ -928,6 +1094,30 @@
     [
       "ENTERPRISE_TYPE_BRANCH",
       "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_HOUSEHOLD_BUSINESS_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_UNQUALIFIED_STATE_LLC_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_UNQUALIFIED_STATE_JOINT_STOCK_COMPANY_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_PRIVATE_ENTERPRISE_AND_PARTNERSHIP_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_PUBLIC_SERVICE_AND_OTHER_ENTERPRISE_LOANS"
+    ],
+    [
+      "ENTERPRISE_TYPE_BRANCH",
+      "SOURCE_ONLY_PERSON_AND_OTHER_CUSTOMER_LOANS"
     ]
   ],
   "required_role_pools": [
@@ -941,6 +1131,7 @@
         "OTHER_LLC_LOANS",
         "STATE_MAJORITY_JOINT_STOCK_COMPANY_LOANS",
         "OTHER_JOINT_STOCK_COMPANY_LOANS",
+        "JOINT_STOCK_COMPANY_LOANS_GROUP",
         "PRIVATE_ENTERPRISE_LOANS",
         "COMBINED_JOINT_STOCK_LLC_PRIVATE_ENTERPRISE_LOANS",
         "COOPERATIVE_AND_COOPERATIVE_UNION_LOANS",
@@ -956,7 +1147,13 @@
         "SOURCE_ONLY_MIXED_LEGAL_FORM_LOANS",
         "SOURCE_ONLY_UNQUALIFIED_COOPERATIVE_LOANS",
         "SOURCE_ONLY_PERSON_LOANS",
-        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS"
+        "SOURCE_ONLY_OTHER_CUSTOMER_OBJECT_LOANS",
+        "SOURCE_ONLY_HOUSEHOLD_BUSINESS_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_STATE_LLC_LOANS",
+        "SOURCE_ONLY_UNQUALIFIED_STATE_JOINT_STOCK_COMPANY_LOANS",
+        "SOURCE_ONLY_PRIVATE_ENTERPRISE_AND_PARTNERSHIP_LOANS",
+        "SOURCE_ONLY_PUBLIC_SERVICE_AND_OTHER_ENTERPRISE_LOANS",
+        "SOURCE_ONLY_PERSON_AND_OTHER_CUSTOMER_LOANS"
       ]
     }
   ],

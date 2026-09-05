@@ -165,6 +165,7 @@ def _trial(document: dict, *, candidate: dict | None) -> dict:
 def _fixture(
     tmp_path: Path,
     *,
+    asymmetric_period_blank: bool = False,
     blank_foreign: bool = False,
     metric_alias: str = "Kinh doanh và đầu tư chứng khoán",
     transposed: bool = False,
@@ -182,6 +183,22 @@ def _fixture(
         else _target_page(metric_alias=metric_alias, transposed=transposed)
     )
     target = _ingest(database, source_logical_name="a-report.pdf", page_json=page)
+    page_by_version = {target["page_json_version_id"]: page}
+    target_versions = [target["page_json_version_id"]]
+    if asymmetric_period_blank:
+        page["sections"][0]["tables"][0]["continuation"] = "CONTINUES_ON_NEXT_PAGE"
+        comparative_page = _target_page(foreign=None, include_total=False)
+        comparative_page["sections"][0]["tables"][0]["title_exact"] = "Tại ngày 31/12/2024"
+        comparative = _ingest(
+            database,
+            physical_page=8,
+            image_sha256="8" * 64,
+            prompt_sha256="9" * 64,
+            source_logical_name="a-report.pdf",
+            page_json=comparative_page,
+        )
+        page_by_version[comparative["page_json_version_id"]] = comparative_page
+        target_versions.append(comparative["page_json_version_id"])
     absent = _ingest(
         database,
         physical_page=1,
@@ -191,7 +208,7 @@ def _fixture(
         source_sha256="3" * 64,
         page_json=_empty_page(),
     )
-    selected = [target["page_json_version_id"], absent["page_json_version_id"]]
+    selected = [*target_versions, absent["page_json_version_id"]]
     topology, evaluation, schema, compiled = _specs()
     policy = compiled["dual_axis_projection_policy"]
     queried = query_selected_dual_axis_family_regions_v1(
@@ -203,10 +220,29 @@ def _fixture(
         },
         unit_aliases=policy["unit_aliases"],
     )
-    region = queried["regions"][0]
+    assert "external_population_control" not in policy
+    explicitly_disabled = query_selected_dual_axis_family_regions_v1(
+        database,
+        selected_page_json_version_ids=selected,
+        metric_aliases=policy["metric_aliases"],
+        role_aliases={
+            role: compiled["query_aliases_by_role"][role]
+            for role in policy["projected_role_order"]
+        },
+        unit_aliases=policy["unit_aliases"],
+        external_population_control=None,
+    )
+    assert canonical_json_sha256_v1(queried) == canonical_json_sha256_v1(
+        explicitly_disabled
+    )
+    regions = [
+        region
+        for region in queried["regions"]
+        if region["source_logical_name"] == "a-report.pdf"
+    ]
     candidate = evaluate_gemini_json_dual_axis_family_cluster_v1(
-        regions=[region],
-        page_json_by_version={target["page_json_version_id"]: page},
+        regions=regions,
+        page_json_by_version=page_by_version,
         document_context=queried["document_context_by_source"]["a-report.pdf"],
         compiled_specs=compiled,
         query_receipt=queried["query_receipt"],
@@ -397,6 +433,38 @@ def test_source_blank_omits_only_unproven_role_and_keeps_visible_mapping(
         "ready_count": 1,
         "unresolved_count": 0,
     }
+    assert (
+        validate_selected_dual_axis_family_candidate_replays_v1(
+            fixture["database"],
+            selected_page_json_version_ids=fixture["selected"],
+            compiled_specs=fixture["compiled"],
+            trials=fixture["sweep"]["trials"],
+        )
+        == fixture["sweep"]["trials"]
+    )
+
+
+def test_asymmetric_period_blank_mapping_replays_exactly_from_sqlite(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture(tmp_path, asymmetric_period_blank=True)
+    candidate = fixture["candidate"]
+
+    assert candidate["status"] == READY
+    assert [mapping["role"] for mapping in candidate["mappings"]] == [
+        "DOMESTIC",
+        "FOREIGN",
+    ]
+    foreign = candidate["mappings"][1]
+    assert foreign["values"] == [
+        {"coefficient": 0, "source_text": "-", "state": "DASH_ZERO"},
+        {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"},
+    ]
+    equations = candidate["dual_axis_projection_receipt"]["source_table_equations"]
+    assert equations[1]["blank_zero_equations"] == []
+    assert equations[1]["total_equation_residual"] is None
+    assert candidate["closure_receipt"]["partially_blank_mapped_roles"] == ["FOREIGN"]
+    assert candidate["closure_receipt"]["unmapped_source_blank_roles"] == []
     assert (
         validate_selected_dual_axis_family_candidate_replays_v1(
             fixture["database"],

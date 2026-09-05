@@ -30,9 +30,13 @@
         {
           "aliases": [
             "Chứng khoán Chính phủ",
+            "Chứng khoán nợ Chính phủ",
             "Chứng khoán nợ do Chính phủ phát hành",
+            "Do Chính phủ phát hành",
             "Trái phiếu Chính phủ",
             "Tín phiếu NHNN",
+            "Tín phiếu Ngân hàng Nhà nước Việt Nam",
+            "CK Chính phủ, chính quyền địa phương",
             "Chứng khoán nợ Chính phủ, chính quyền địa phương",
             "Chứng khoán Chính phủ, chính quyền địa phương",
             "Trái phiếu Chính phủ và trái phiếu Chính phủ bảo lãnh"
@@ -49,8 +53,13 @@
         {
           "aliases": [
             "Trong đó: Trái phiếu được Chính phủ bảo lãnh",
+            "Trong đó: Chứng khoán nợ được Chính phủ bảo lãnh",
             "Trái phiếu được Chính phủ bảo lãnh",
-            "Chứng khoán nợ do Chính phủ bảo lãnh"
+            "Trái phiếu được Chính phủ bảo lãnh thanh toán",
+            "Chứng khoán nợ do Chính phủ bảo lãnh",
+            "Chứng khoán nợ được Chính phủ bảo lãnh",
+            "Chứng khoán nợ của các TCTD được Chính phủ bảo lãnh",
+            "CK nợ của các TCTD được Chính phủ bảo lãnh"
           ],
           "within_role": "AFS_DEBT"
         }
@@ -64,16 +73,31 @@
         {
           "aliases": [
             "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+            "Chứng khoán nợ do TCTD khác trong nước phát hành",
             "Chứng khoán nợ do các TCTD khác trong nước",
             "Chứng khoán nợ do các TCTD khác phát hành",
             "Chứng khoán nợ do các TCTD trong nước phát hành",
             "Chứng khoán nợ do các tổ chức tín dụng khác trong nước phát hành",
             "Chứng khoán nợ do các tổ chức tín dụng trong nước phát hành",
+            "Chứng khoán nợ của các TCTD khác trong nước",
+            "Chứng khoán nợ của các TCTD khác",
+            "CK nợ của các TCTD khác",
+            "Chứng khoán do các TCTD khác trong nước phát hành",
+            "Chứng khoán do các TCTD trong nước khác phát hành",
+            "CK nợ do các TCTD khác trong nước phát hành",
+            "CK nợ do các TCTD khác trong nước",
+            "CK nợ do TCTD khác trong nước phát hành",
+            "Do các TCTD khác trong nước phát hành",
             "Trái phiếu do các TCTD khác trong nước phát hành",
             "Trái phiếu do các TCTD trong nước phát hành",
             "Trái phiếu do các TCTD khác phát hành",
+            "Trái phiếu do TCTD trong nước khác phát hành",
+            "Trái phiếu và chứng chỉ tiền gửi do các TCTD khác trong nước phát hành",
+            "Trái phiếu và chứng chỉ tiền gửi do các tổ chức tín dụng khác trong nước phát hành",
             "Chứng chỉ tiền gửi do các TCTD khác trong nước phát hành",
-            "Chứng chỉ tiền gửi do các TCTD trong nước phát hành"
+            "Chứng chỉ tiền gửi do các TCTD trong nước phát hành",
+            "Chứng chỉ tiền gửi do TCTD trong nước phát hành",
+            "Chứng chỉ tiền gửi do TCTD trong nước khác phát hành"
           ],
           "within_role": "AFS_DEBT"
         }
@@ -89,9 +113,15 @@
             "Chứng khoán nợ do các TCKT trong nước phát hành",
             "Chứng khoán nợ do TCKT trong nước phát hành",
             "Chứng khoán nợ do các tổ chức kinh tế trong nước phát hành",
+            "Chứng khoán nợ do các TCKT trong nước PH",
             "Chứng khoán nợ do các tổ chức kinh tế khác phát hành",
+            "Chứng khoán nợ của các TCKT trong nước",
+            "CK nợ do các TCKT trong nước phát hành",
+            "Do các TCKT trong nước phát hành",
             "Trái phiếu do các TCKT trong nước phát hành",
+            "Trái phiếu do TCKT trong nước phát hành",
             "Trái phiếu do các tổ chức kinh tế trong nước phát hành",
+            "Trái phiếu do DATC phát hành",
             "Trái phiếu do Công ty TNHH Mua bán nợ Việt Nam phát hành"
           ],
           "within_role": "AFS_DEBT"
@@ -146,7 +176,9 @@
           "aliases": [
             "Chứng khoán vốn do các TCTD khác trong nước phát hành",
             "Chứng khoán vốn do các TCTD trong nước phát hành",
-            "Cổ phiếu do các TCTD trong nước phát hành"
+            "Chứng khoán vốn do các tổ chức tín dụng khác trong nước phát hành",
+            "Cổ phiếu do các TCTD trong nước phát hành",
+            "Do các TCTD khác trong nước phát hành"
           ],
           "within_role": "AFS_EQUITY"
         }
@@ -160,9 +192,12 @@
         {
           "aliases": [
             "Chứng khoán vốn do các TCKT trong nước phát hành",
+            "CK vốn do các TCKT trong nước phát hành",
+            "CK vốn do các TCKT trong nước phát",
             "Chứng khoán vốn do các tổ chức kinh tế trong nước phát hành",
             "Cổ phiếu do các tổ chức kinh tế trong nước phát hành",
-            "Chứng chỉ quỹ do các tổ chức kinh tế trong nước phát hành"
+            "Chứng chỉ quỹ do các tổ chức kinh tế trong nước phát hành",
+            "Do các TCKT trong nước phát hành"
           ],
           "within_role": "AFS_EQUITY"
         }
@@ -176,7 +211,9 @@
         {
           "aliases": [
             "Chứng khoán vốn nước ngoài",
+            "CK vốn nước ngoài",
             "Chứng khoán vốn do các TCKT nước ngoài phát hành",
+            "Chứng khoán vốn do các tổ chức kinh tế nước ngoài phát hành",
             "Cổ phiếu do các tổ chức kinh tế nước ngoài phát hành"
           ],
           "within_role": "AFS_EQUITY"
@@ -188,7 +225,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Chứng khoán vốn khác", "Khác"], "within_role": "AFS_EQUITY"}
+        {"aliases": ["Chứng khoán vốn khác", "Chứng chỉ quỹ", "Chứng quyền có bảo đảm", "Khác"], "within_role": "AFS_EQUITY"}
       ],
       "presence": "OPTIONAL",
       "role": "AFS_EQUITY_OTHER",
@@ -263,6 +300,7 @@
           "aliases": [
             "Dự phòng rủi ro chứng khoán đầu tư sẵn sàng để bán",
             "Dự phòng rủi ro chứng khoán sẵn sàng để bán",
+            "Dự phòng rủi ro chứng khoán SSĐB",
             "Dự phòng rủi ro trái phiếu sẵn sàng để bán",
             "Dự phòng rủi ro chứng khoán nợ chứng khoán sẵn sàng để bán"
           ],
@@ -283,7 +321,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Dự phòng chung", "Dự phòng rủi ro tín dụng chung"], "within_role": "AFS_PROVISION"}
+        {"aliases": ["Dự phòng chung", "Dự phòng rủi ro tín dụng chung", "Dự phòng chung chứng khoán sẵn sàng để bán"], "within_role": "AFS_PROVISION"}
       ],
       "presence": "OPTIONAL",
       "role": "AFS_PROVISION_GENERAL",
@@ -319,25 +357,25 @@
       "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Chứng khoán Chính phủ", "Chứng khoán nợ do Chính phủ phát hành", "Trái phiếu Chính phủ", "Tín phiếu NHNN", "Tín phiếu do NHNN phát hành"], "within_role": "HTM_DEBT"}],
+      "matchers": [{"aliases": ["Chứng khoán Chính phủ", "Chứng khoán nợ Chính phủ", "Chứng khoán nợ do Chính phủ phát hành", "Trái phiếu Chính phủ", "Tín phiếu NHNN", "Tín phiếu do NHNN phát hành", "Tín phiếu Ngân hàng Nhà nước Việt Nam", "CK Chính phủ, chính quyền địa phương"], "within_role": "HTM_DEBT"}],
       "presence": "OPTIONAL",
       "role": "HTM_DEBT_GOVERNMENT",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chứng khoán nợ do Chính phủ bảo lãnh", "Trái phiếu được Chính phủ bảo lãnh"], "within_role": "HTM_DEBT"}],
+      "matchers": [{"aliases": ["Chứng khoán nợ do Chính phủ bảo lãnh", "Chứng khoán nợ được Chính phủ bảo lãnh", "Chứng khoán nợ của các TCTD được Chính phủ bảo lãnh", "CK nợ của các TCTD được Chính phủ bảo lãnh", "Trái phiếu được Chính phủ bảo lãnh", "Trái phiếu được Chính phủ bảo lãnh thanh toán"], "within_role": "HTM_DEBT"}],
       "presence": "OPTIONAL",
       "role": "HTM_DEBT_GOVERNMENT_GUARANTEED",
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chứng khoán nợ do các TCTD khác trong nước phát hành", "Chứng khoán nợ do các TCTD trong nước phát hành", "Chứng khoán nợ do các TCTD trong nước khác phát hành", "Chứng khoán nợ do các TCTD khác phát hành", "Trái phiếu do các TCTD trong nước phát hành", "Trái phiếu do các TCTD khác phát hành", "Trái phiếu do TCTD trong nước phát hành", "Giấy tờ có giá khác của TCTD khác trong nước phát hành"], "within_role": "HTM_DEBT"}],
+      "matchers": [{"aliases": ["Chứng khoán nợ do các TCTD khác trong nước phát hành", "Chứng khoán nợ do TCTD khác trong nước phát hành", "Chứng khoán nợ do các TCTD trong nước phát hành", "Chứng khoán nợ do các TCTD trong nước khác phát hành", "Chứng khoán nợ do các TCTD khác phát hành", "Chứng khoán nợ do các tổ chức tín dụng trong nước phát hành", "Chứng khoán nợ do các tổ chức tín dụng khác trong nước phát hành", "Chứng khoán nợ của các TCTD khác trong nước", "Chứng khoán nợ của các TCTD khác", "CK nợ của các TCTD khác", "Chứng khoán do các TCTD khác trong nước phát hành", "Chứng khoán do các TCTD trong nước khác phát hành", "CK nợ do các TCTD khác trong nước phát hành", "CK nợ do các TCTD khác trong nước", "CK nợ do TCTD khác trong nước phát hành", "Do các TCTD khác trong nước phát hành", "Trái phiếu do các TCTD khác trong nước phát hành", "Trái phiếu do các TCTD trong nước phát hành", "Trái phiếu do các TCTD khác phát hành", "Trái phiếu do TCTD trong nước phát hành", "Trái phiếu do TCTD trong nước khác phát hành", "Trái phiếu và chứng chỉ tiền gửi do các TCTD khác trong nước phát hành", "Trái phiếu và chứng chỉ tiền gửi do các tổ chức tín dụng khác trong nước phát hành", "Chứng chỉ tiền gửi do các TCTD khác trong nước phát hành", "Chứng chỉ tiền gửi do các TCTD trong nước phát hành", "Chứng chỉ tiền gửi do TCTD trong nước phát hành", "Chứng chỉ tiền gửi do TCTD trong nước khác phát hành", "Giấy tờ có giá khác của TCTD khác trong nước phát hành"], "within_role": "HTM_DEBT"}],
       "presence": "OPTIONAL",
       "role": "HTM_DEBT_CREDIT_INSTITUTIONS",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chứng khoán nợ do các TCKT trong nước phát hành", "Chứng khoán nợ do các tổ chức kinh tế trong nước phát hành", "Trái phiếu do các TCKT trong nước phát hành", "Trái phiếu do các tổ chức kinh tế trong nước phát hành", "Trái phiếu do Công ty TNHH Mua bán nợ Việt Nam phát hành"], "within_role": "HTM_DEBT"}],
+      "matchers": [{"aliases": ["Chứng khoán nợ do các TCKT trong nước phát hành", "Chứng khoán nợ do các TCKT trong nước PH", "Chứng khoán nợ do các tổ chức kinh tế trong nước phát hành", "Chứng khoán nợ của các TCKT trong nước", "CK nợ do các TCKT trong nước phát hành", "Do các TCKT trong nước phát hành", "Trái phiếu do các TCKT trong nước phát hành", "Trái phiếu do TCKT trong nước phát hành", "Trái phiếu do các tổ chức kinh tế trong nước phát hành", "Trái phiếu do DATC phát hành", "Trái phiếu do Công ty TNHH Mua bán nợ Việt Nam phát hành"], "within_role": "HTM_DEBT"}],
       "presence": "OPTIONAL",
       "role": "HTM_DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
       "role_kind": "ADDITIVE_CHILD"
@@ -451,13 +489,13 @@
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Dự phòng cụ thể"], "within_role": "HTM_PROVISION"}],
+      "matchers": [{"aliases": ["Dự phòng cụ thể", "Dự phòng cụ thể chứng khoán đầu tư giữ đến ngày đáo hạn"], "within_role": "HTM_PROVISION"}],
       "presence": "OPTIONAL",
       "role": "HTM_PROVISION_SPECIFIC",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Phân tích chất lượng chứng khoán đầu tư được phân loại là tài sản có rủi ro tín dụng", "Phân tích chất lượng chứng khoán được phân loại là tài sản có rủi ro tín dụng", "Phân tích chất lượng chứng khoán đầu tư sẵn sàng để bán"], "within_role": null}],
+      "matchers": [{"aliases": ["Phân tích chất lượng chứng khoán đầu tư được phân loại là tài sản có rủi ro tín dụng", "Phân tích chất lượng chứng khoán được phân loại là tài sản có rủi ro tín dụng", "Phân tích chất lượng chứng khoán nợ được phân loại là tài sản chịu rủi ro tín dụng", "Phân tích chất lượng chứng khoán đầu tư sẵn sàng để bán"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "QUALITY_BRANCH",
       "role_kind": "STRUCTURAL_GROUP"
@@ -493,7 +531,7 @@
       "role_kind": "NONADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trái phiếu đặc biệt do VAMC phát hành", "Chứng khoán đặc biệt do VAMC phát hành", "Trái phiếu đặc biệt VAMC", "Trái phiếu VAMC"], "within_role": null}],
+      "matchers": [{"aliases": ["Trái phiếu đặc biệt do VAMC phát hành", "Chứng khoán đặc biệt do VAMC phát hành", "Trái phiếu đặc biệt VAMC", "Trái phiếu VAMC", "Mệnh giá trái phiếu đặc biệt"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "VAMC_BRANCH",
       "role_kind": "STRUCTURAL_GROUP"

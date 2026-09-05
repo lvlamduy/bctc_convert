@@ -33,6 +33,16 @@ from bctc_ai.evaluation.gemini_json_other_long_term_investments_family_v1 import
     build_gemini_json_other_long_term_investments_region_query_receipt_v1,
     evaluate_gemini_json_other_long_term_investments_family_cluster_v1,
 )
+from bctc_ai.evaluation.historical_comparator_policy_v1 import (  # noqa: E402
+    DISJOINT_EXPANSION,
+    EXACT_HISTORICAL_COMPARISON,
+    NOT_APPLICABLE_DISJOINT_CORPUS,
+    STRICT_RELEASE,
+    audit_historical_comparator_policy_v1,
+)
+from bctc_ai.evaluation.historical_comparator_policy_v1 import (  # noqa: E402
+    FORMAT_VERSION as HISTORICAL_COMPARATOR_POLICY_FORMAT_VERSION,
+)
 from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
@@ -70,16 +80,16 @@ PINNED_SELECTED_PAGE_JSON_FRONTIER_SHA256 = (
 )
 PINNED_QUERY_RECEIPT = {
     "accepted_cluster_axis_sha256": (
-        "dbd3ba7e33a8f4d79d8ba1a85bfc2ecc83a3197a08cfbf33f0df20da62fab950"
+        "689d3511ad9c3dde89697e65d68837b3dd02c236a4b85c5ab8a1d5db6440b745"
     ),
     "accepted_cluster_count": 140,
-    "accepted_fragment_count": 292,
+    "accepted_fragment_count": 290,
     "candidate_disposition_axis_sha256": (
-        "493b8dd5401f6c5f2b3fc74ab799a9c1d5e5c0a7de1e90d5c02043c4cce62fad"
+        "78208f8a7006d93d541a316d0b79e148fc27959386675b8d390c01c00e86fdcb"
     ),
     "candidate_disposition_count": 140,
     "disposition_counts": {NOT_OBSERVED: 0, READY: 140, UNRESOLVED: 0},
-    "query_policy_sha256": "beaff45e33eb1471200b3df289acf9f9a8979e72917740d07049497ef0c977f8",
+    "query_policy_sha256": "29e686499f9f41c2c9a7009d647f0f1a420909696916fd567e70cd9a9a13d5ef",
     "selected_document_axis_sha256": (
         "54df769ecd6875cc8a7d242d46f6e57bf2a94ac349ad0109db72f3cd6af62e4c"
     ),
@@ -92,21 +102,21 @@ PINNED_QUERY_RECEIPT = {
 }
 PINNED_RELEASE_METRICS = {
     "document_count": 140,
-    "mapping_count": 429,
+    "mapping_count": 431,
     "not_observed_count": 0,
     "ready_count": 140,
     "unresolved_count": 0,
 }
 PINNED_RELEASE_AUDIT_METRICS = {
-    "equation_count": 458,
+    "equation_count": 480,
     "historical_value_match_count": 57,
-    "mapping_count": 429,
+    "mapping_count": 431,
 }
 PINNED_RELEASE_AXIS_SHA256 = {
-    "clusters": "252929f328f1a6e520860a699d79745fa85ccd226c94543c0cd21c5b32119249",
-    "equations": "0619ae4edf3546795455acc5811e9929d5dcba6ec651c383d26e30a17e9a8854",
+    "clusters": "4c928e994c385513679760b84458f88b390a7468feb22f0eed236653f70b938f",
+    "equations": "ea62e49a9ee4f3ae18b3863dd7a6dec6de079dfbf13e48953b4844b5f390ec02",
     "historical_comparator": ("07bfecaf4fc1c38b1579f61fe1d075e52c8185241aa8c58b3d61bde401402681"),
-    "mappings": "e11ec9b003201e4812da2a0ee5d62b8e50af5bf746f0d96d1018df8973674d35",
+    "mappings": "c40dc03a1030a091cee28c221c6854c566f2ec8b6a2282aac5af54257e836a41",
 }
 PINNED_HISTORICAL_ORACLES = (
     {
@@ -331,6 +341,85 @@ def _selected_page_axis(*, index: Mapping[str, Any], artifact_root: Path) -> lis
     return version_ids
 
 
+def _authenticate_source_repair_manifest_axis_v1(
+    *,
+    index: Mapping[str, Any],
+    artifact_root: Path,
+    compiled_specs: Mapping[str, Any],
+) -> list[str]:
+    """Bind every in-corpus repair to its authenticated document/page render."""
+
+    overlay = compiled_specs.get("source_repair_overlay")
+    if type(overlay) is not dict or type(overlay.get("repairs")) is not list:
+        raise _error("other-long-term-investments source-repair overlay is absent")
+    document_by_source = {}
+    for document in index["documents"]:
+        source_sha256 = document.get("source_sha256")
+        if type(source_sha256) is not str or source_sha256 in document_by_source:
+            raise _error("other-long-term-investments manifest source axis is invalid")
+        document_by_source[source_sha256] = document
+    authenticated = []
+    for repair in overlay["repairs"]:
+        document = document_by_source.get(repair["source_sha256"])
+        if document is None:
+            continue
+        if document.get("relative_path") != repair["source_logical_name"]:
+            raise _error("other-long-term-investments source-repair document path drifted")
+        manifest = _json(_content_ref(artifact_root, document["document_manifest_ref"]))
+        pages = manifest.get("pages")
+        if (
+            manifest.get("document_manifest_id") != document["document_manifest_id"]
+            or manifest.get("page_count") != document["page_count"]
+            or type(pages) is not list
+            or len(pages) != document["page_count"]
+        ):
+            raise _error("other-long-term-investments source-repair manifest drifted")
+        matches = [
+            page
+            for page in pages
+            if type(page) is dict
+            and page.get("physical_page") == repair["physical_page"]
+            and page.get("page_json_version_id") == repair["page_json_version_id"]
+        ]
+        if len(matches) != 1 or not same_typed_json_v1(
+            matches[0].get("image"), repair["page_image"]
+        ):
+            raise _error("other-long-term-investments source-repair page/image drifted")
+        authenticated.append(repair["repair_id"])
+    if authenticated != sorted(authenticated):
+        authenticated.sort()
+    if len(authenticated) != len(set(authenticated)):
+        raise _error("other-long-term-investments source-repair manifest axis is duplicate")
+    return authenticated
+
+
+def _validate_source_repair_application_axis_v1(
+    *,
+    expected_repair_ids: Sequence[str],
+    trials: Sequence[Mapping[str, Any]],
+) -> list[str]:
+    """Require every authenticated in-corpus repair to be applied exactly once."""
+
+    observed = []
+    for trial in trials:
+        for candidate in trial.get("candidates", []):
+            closure = candidate.get("closure_receipt") if type(candidate) is dict else None
+            receipts = (
+                closure.get("source_repair_overlay_receipts", []) if type(closure) is dict else []
+            )
+            if type(receipts) is not list:
+                raise _error("other-long-term-investments source-repair receipt axis is invalid")
+            for receipt in receipts:
+                repair_id = receipt.get("repair_id") if type(receipt) is dict else None
+                if type(repair_id) is not str:
+                    raise _error("other-long-term-investments source-repair receipt is invalid")
+                observed.append(repair_id)
+    observed.sort()
+    if observed != sorted(expected_repair_ids) or len(observed) != len(set(observed)):
+        raise _error("other-long-term-investments source-repair application axis is incomplete")
+    return observed
+
+
 def _historical_oracles() -> list[tuple[dict[str, Any], dict[str, Any]]]:
     result = []
     for pinned in PINNED_HISTORICAL_ORACLES:
@@ -352,116 +441,164 @@ def _historical_oracles() -> list[tuple[dict[str, Any], dict[str, Any]]]:
             != metrics["mapping_verified_count"]
         ):
             raise _error("pinned other-long-term-investments historical oracle drifted")
-        result.append((dict(pinned), value))
+        result.append(({**pinned, "expected_trial_count": len(trials)}, value))
     return result
 
 
-def _candidate_by_source(trials: Sequence[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    result = {}
-    for trial in trials:
-        candidates = trial.get("candidates")
-        if trial.get("status") != READY or type(candidates) is not list or len(candidates) != 1:
-            continue
-        source_sha256 = trial.get("source_sha256")
-        if type(source_sha256) is not str or source_sha256 in result:
-            raise _error("other-long-term-investments candidate source axis is ambiguous")
-        result[source_sha256] = candidates[0]
-    return result
+def _normalised_historical_oracle_rows() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    refs = []
+    rows = []
+    for oracle_ref_index, (oracle_ref, oracle) in enumerate(_historical_oracles()):
+        refs.append(oracle_ref)
+        for oracle_trial in oracle["trials"]:
+            source_sha256 = oracle_trial.get("source_pdf_sha256")
+            if type(source_sha256) is not str:
+                raise _error("historical other-long-term-investments source identity is invalid")
+            rows.append(
+                {
+                    "oracle_format_version": oracle["format_version"],
+                    "oracle_ref_index": oracle_ref_index,
+                    "oracle_trial": oracle_trial,
+                    "source_sha256": source_sha256,
+                }
+            )
+    return refs, rows
 
 
-def _historical_comparator_axis(
-    *, trials: Sequence[dict[str, Any]], compiled_specs: Mapping[str, Any]
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    candidates = _candidate_by_source(trials)
+def _strict_historical_compare(
+    oracle_row: Mapping[str, Any],
+    current_trial: Mapping[str, Any],
+    *,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    candidates = current_trial.get("candidates")
+    if current_trial.get("status") != READY or type(candidates) is not list or len(candidates) != 1:
+        raise _error(
+            "historical other-long-term-investments source does not join one READY candidate"
+        )
+    candidate = candidates[0]
     current_role_by_id = {
         report_norm_id: role for role, report_norm_id in compiled_specs["bindings"].items()
     }
     axis = []
-    oracle_refs = []
-    joined_sources = set()
-    expected_mapping_count = 0
-    for oracle_ref, oracle in _historical_oracles():
-        oracle_refs.append(oracle_ref)
-        expected_mapping_count += oracle["metrics"]["mapping_verified_count"]
-        for oracle_trial in oracle["trials"]:
-            source_sha256 = oracle_trial.get("source_pdf_sha256")
-            if type(source_sha256) is not str or source_sha256 in joined_sources:
-                raise _error(
-                    "historical other-long-term-investments source join is duplicate or invalid"
-                )
-            joined_sources.add(source_sha256)
-            candidate = candidates.get(source_sha256)
-            if candidate is None:
-                raise _error(
-                    "historical other-long-term-investments source does not join one READY candidate"
-                )
-            actual_by_id = {}
-            for mapping in candidate.get("mappings", []):
-                report_norm_id = mapping.get("report_norm_id")
-                values = mapping.get("values")
-                if (
-                    type(report_norm_id) is not int
-                    or report_norm_id in actual_by_id
-                    or type(values) is not list
-                    or len(values) != 2
-                    or any(
-                        type(value) is not dict or type(value.get("coefficient")) is not int
-                        for value in values
-                    )
-                ):
-                    raise _error(
-                        "current other-long-term-investments comparator mapping axis is invalid"
-                    )
-                actual_by_id[report_norm_id] = mapping
-            for historical in oracle_trial.get("verified_mappings", []):
-                binding = historical.get("schema_binding")
-                source_values = historical.get("values")
-                old_report_norm_id = (
-                    binding.get("report_norm_id") if type(binding) is dict else None
-                )
-                historical_coefficients = (
-                    [value.get("normalized_value") for value in source_values]
-                    if type(source_values) is list
-                    else None
-                )
-                current = actual_by_id.get(old_report_norm_id)
-                current_coefficients = (
-                    [value["coefficient"] for value in current["values"]]
-                    if type(current) is dict
-                    else None
-                )
-                exact = (
-                    type(old_report_norm_id) is int
-                    and type(historical_coefficients) is list
-                    and len(historical_coefficients) == 2
-                    and all(type(value) is int for value in historical_coefficients)
-                    and current is not None
-                    and current_coefficients == historical_coefficients
-                )
-                axis.append(
-                    {
-                        "bank_provenance": oracle_trial.get("document_provenance"),
-                        "canonical_name": (
-                            binding.get("canonical_name") if type(binding) is dict else None
-                        ),
-                        "current_coefficients": current_coefficients,
-                        "current_role": current.get("role") if type(current) is dict else None,
-                        "declared_role": current_role_by_id.get(old_report_norm_id),
-                        "disposition": "EXACT" if exact else "MISMATCH",
-                        "historical_coefficients": historical_coefficients,
-                        "historical_report_norm_id": old_report_norm_id,
-                        "oracle_format_version": oracle["format_version"],
-                        "source_sha256": source_sha256,
-                    }
-                )
-    if len(axis) != expected_mapping_count:
+    actual_by_id = {}
+    for mapping in candidate.get("mappings", []):
+        report_norm_id = mapping.get("report_norm_id")
+        values = mapping.get("values")
+        if (
+            type(report_norm_id) is not int
+            or report_norm_id in actual_by_id
+            or type(values) is not list
+            or len(values) != 2
+            or any(
+                type(value) is not dict or type(value.get("coefficient")) is not int
+                for value in values
+            )
+        ):
+            raise _error("current other-long-term-investments comparator mapping axis is invalid")
+        actual_by_id[report_norm_id] = mapping
+    oracle_trial = oracle_row["oracle_trial"]
+    for historical in oracle_trial.get("verified_mappings", []):
+        binding = historical.get("schema_binding")
+        source_values = historical.get("values")
+        old_report_norm_id = binding.get("report_norm_id") if type(binding) is dict else None
+        historical_coefficients = (
+            [value.get("normalized_value") for value in source_values]
+            if type(source_values) is list
+            else None
+        )
+        current = actual_by_id.get(old_report_norm_id)
+        current_coefficients = (
+            [value["coefficient"] for value in current["values"]] if type(current) is dict else None
+        )
+        exact = (
+            type(old_report_norm_id) is int
+            and type(historical_coefficients) is list
+            and len(historical_coefficients) == 2
+            and all(type(value) is int for value in historical_coefficients)
+            and current is not None
+            and current_coefficients == historical_coefficients
+        )
+        axis.append(
+            {
+                "bank_provenance": oracle_trial.get("document_provenance"),
+                "canonical_name": binding.get("canonical_name") if type(binding) is dict else None,
+                "current_coefficients": current_coefficients,
+                "current_role": current.get("role") if type(current) is dict else None,
+                "declared_role": current_role_by_id.get(old_report_norm_id),
+                "disposition": "EXACT" if exact else "MISMATCH",
+                "historical_coefficients": historical_coefficients,
+                "historical_report_norm_id": old_report_norm_id,
+                "oracle_format_version": oracle_row["oracle_format_version"],
+                "source_sha256": oracle_row["source_sha256"],
+            }
+        )
+    if not axis or any(item["disposition"] != "EXACT" for item in axis):
+        raise _error("historical other-long-term-investments comparator is not exact")
+    return {"axis": axis, "disposition": EXACT_HISTORICAL_COMPARISON}
+
+
+def _historical_comparator_axis(
+    *,
+    policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: Sequence[str],
+    current_manifest_page_json_version_ids: Sequence[str],
+    current_candidate_source_sha256s: Sequence[str],
+    current_replay_source_sha256s: Sequence[str],
+    trials: Sequence[dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    oracle_refs, oracle_rows = _normalised_historical_oracle_rows()
+    policy_receipt = audit_historical_comparator_policy_v1(
+        policy=policy,
+        pinned_oracle_refs=oracle_refs,
+        normalized_oracle_rows=oracle_rows,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
+        current_manifest_page_json_version_ids=current_manifest_page_json_version_ids,
+        current_trials=trials,
+        current_candidate_source_sha256s=current_candidate_source_sha256s,
+        current_replay_source_sha256s=current_replay_source_sha256s,
+        current_selected_page_json_version_ids=current_manifest_page_json_version_ids,
+        strict_compare=(
+            lambda oracle, current: _strict_historical_compare(
+                oracle, current, compiled_specs=compiled_specs
+            )
+        )
+        if policy == STRICT_RELEASE
+        else None,
+    )
+    if policy == DISJOINT_EXPANSION:
+        if (
+            policy_receipt["disposition"] != NOT_APPLICABLE_DISJOINT_CORPUS
+            or policy_receipt["comparison_axis"] != []
+        ):
+            raise _error("disjoint other-long-term-investments comparator receipt drifted")
+        return [], oracle_refs, policy_receipt
+    axis = [
+        row
+        for comparison in policy_receipt["comparison_axis"]
+        for row in comparison["comparison"]["axis"]
+    ]
+    expected_mapping_count = sum(
+        oracle["metrics"]["mapping_verified_count"] for _ref, oracle in _historical_oracles()
+    )
+    if len(axis) != expected_mapping_count or any(item["disposition"] != "EXACT" for item in axis):
         raise _error("historical other-long-term-investments comparator denominator drifted")
-    return axis, oracle_refs
+    return axis, oracle_refs, policy_receipt
 
 
 def _audit_axes(
-    *, trials: Sequence[dict[str, Any]], compiled_specs: Mapping[str, Any]
-) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any]]:
+    *,
+    policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: Sequence[str],
+    current_manifest_page_json_version_ids: Sequence[str],
+    indexed_query_evidence: Mapping[str, Any],
+    trials: Sequence[dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, Any]], dict[str, Any]]:
     mappings = []
     equations = []
     clusters = []
@@ -498,21 +635,48 @@ def _audit_axes(
             )
         for equation in candidate["closure_receipt"]["equations"]:
             equations.append({**document, "equation": equation})
-    comparator, oracle_refs = _historical_comparator_axis(
-        trials=trials, compiled_specs=compiled_specs
+    source_by_ordinal = {
+        document["document_ordinal"]: document["source_sha256"]
+        for document in indexed_query_evidence["selected_document_axis"]
+    }
+    candidate_sources = [
+        source_by_ordinal[cluster["document_ordinal"]]
+        for cluster in indexed_query_evidence["accepted_clusters"]
+    ]
+    replay_sources = [trial["source_sha256"] for trial in trials if trial["candidates"]]
+    if len(candidate_sources) != len(replay_sources) or set(candidate_sources) != set(
+        replay_sources
+    ):
+        raise _error("other-long-term-investments indexed candidate/replay axes drifted")
+    comparator, oracle_refs, comparator_policy_receipt = _historical_comparator_axis(
+        policy=policy,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
+        current_manifest_page_json_version_ids=current_manifest_page_json_version_ids,
+        current_candidate_source_sha256s=candidate_sources,
+        current_replay_source_sha256s=replay_sources,
+        trials=trials,
+        compiled_specs=compiled_specs,
     )
-    return {
-        "clusters": clusters,
-        "equations": equations,
-        "historical_comparator": comparator,
-        "mappings": mappings,
-    }, oracle_refs
+    return (
+        {
+            "clusters": clusters,
+            "equations": equations,
+            "historical_comparator": comparator,
+            "mappings": mappings,
+        },
+        oracle_refs,
+        comparator_policy_receipt,
+    )
 
 
 def build_other_long_term_investments_experimental_audit_v1(
     *,
     sweep: Mapping[str, Any],
     sweep_output: Path,
+    historical_comparator_policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: Sequence[str],
     selected_page_json_version_ids: Sequence[str],
     indexed_query_evidence: Mapping[str, Any],
     trials: Sequence[dict[str, Any]],
@@ -521,14 +685,26 @@ def build_other_long_term_investments_experimental_audit_v1(
 ) -> dict[str, Any]:
     """Build transparent semantic axes after the exact SQLite candidate replay."""
 
-    axes, oracle_refs = _audit_axes(trials=trials, compiled_specs=compiled_specs)
+    if sweep.get("corpus_manifest_index_id") != current_manifest_index_id:
+        raise _error("other-long-term-investments sweep/current manifest identity drifted")
+    axes, oracle_refs, comparator_policy_receipt = _audit_axes(
+        policy=historical_comparator_policy,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
+        current_manifest_page_json_version_ids=selected_page_json_version_ids,
+        indexed_query_evidence=indexed_query_evidence,
+        trials=trials,
+        compiled_specs=compiled_specs,
+    )
     axis_counts = {name: len(axis) for name, axis in axes.items()}
     axis_sha256 = {name: canonical_json_sha256_v1(axis) for name, axis in axes.items()}
     audit_metrics = {
         "equation_count": axis_counts["equations"],
         "historical_value_match_count": sum(
             item["disposition"] == "EXACT" for item in axes["historical_comparator"]
-        ),
+        )
+        if historical_comparator_policy == STRICT_RELEASE
+        else None,
         "mapping_count": axis_counts["mappings"],
     }
     sweep_payload = canonical_json_bytes_v1(sweep)
@@ -542,6 +718,7 @@ def build_other_long_term_investments_experimental_audit_v1(
             "COMPARATOR_ONLY_NO_PROVIDER_NO_GEOMETRY_NO_CANONICAL_EXPORT_AUTHORITY"
         ),
         "format_version": AUDIT_FORMAT_VERSION,
+        "historical_comparator_policy_receipt": comparator_policy_receipt,
         "historical_oracle_refs": oracle_refs,
         "query_evidence_id": indexed_query_evidence["query_evidence_id"],
         "query_receipt": indexed_query_evidence["query_receipt"],
@@ -574,6 +751,7 @@ def validate_other_long_term_investments_experimental_audit_content_v1(
         "audit_metrics",
         "claim_boundary",
         "format_version",
+        "historical_comparator_policy_receipt",
         "historical_oracle_refs",
         "query_evidence_id",
         "query_receipt",
@@ -602,6 +780,50 @@ def validate_other_long_term_investments_experimental_audit_content_v1(
     hashes = {name: canonical_json_sha256_v1(axis) for name, axis in value["axes"].items()}
     if value.get("axis_counts") != counts or value.get("axis_sha256") != hashes:
         raise _error("other-long-term-investments experimental audit axis seal drifted")
+    policy_receipt = value.get("historical_comparator_policy_receipt")
+    policy = policy_receipt.get("policy") if type(policy_receipt) is dict else None
+    disposition = policy_receipt.get("disposition") if type(policy_receipt) is dict else None
+    expected_oracle_refs = [reference for reference, _oracle in _historical_oracles()]
+    if (
+        type(policy_receipt) is not dict
+        or policy_receipt.get("format_version") != HISTORICAL_COMPARATOR_POLICY_FORMAT_VERSION
+        or policy not in {STRICT_RELEASE, DISJOINT_EXPANSION}
+        or type(policy_receipt.get("comparison_axis")) is not list
+        or type(policy_receipt.get("oracle_authentication")) is not dict
+        or type(policy_receipt.get("corpus_relation")) is not dict
+        or type(policy_receipt.get("current_axis_validation")) is not dict
+        or value.get("historical_oracle_refs") != expected_oracle_refs
+        or policy_receipt["oracle_authentication"].get("refs") != expected_oracle_refs
+        or policy_receipt["current_axis_validation"].get("manifest_document_count")
+        != value.get("query_receipt", {}).get("selected_document_count")
+        or policy_receipt["current_axis_validation"].get("trial_source_count")
+        != value.get("query_receipt", {}).get("selected_document_count")
+        or policy_receipt["current_axis_validation"].get("candidate_source_count")
+        != value.get("query_receipt", {}).get("accepted_cluster_count")
+        or policy_receipt["current_axis_validation"].get("replay_source_count")
+        != value.get("query_receipt", {}).get("accepted_cluster_count")
+        or policy_receipt["current_axis_validation"].get("selected_page_json_version_count")
+        != value.get("query_receipt", {}).get("selected_page_count")
+    ):
+        raise _error("other-long-term-investments historical comparator policy receipt drifted")
+    metrics = value.get("audit_metrics")
+    if policy == STRICT_RELEASE:
+        if (
+            disposition != EXACT_HISTORICAL_COMPARISON
+            or not value["axes"]["historical_comparator"]
+            or type(metrics) is not dict
+            or type(metrics.get("historical_value_match_count")) is not int
+        ):
+            raise _error("other-long-term-investments strict comparator audit drifted")
+    elif (
+        disposition != NOT_APPLICABLE_DISJOINT_CORPUS
+        or policy_receipt["comparison_axis"] != []
+        or policy_receipt["corpus_relation"].get("overlap_count") != 0
+        or value["axes"]["historical_comparator"] != []
+        or type(metrics) is not dict
+        or metrics.get("historical_value_match_count") is not None
+    ):
+        raise _error("other-long-term-investments disjoint comparator audit drifted")
     material = {key: value[key] for key in fields - {"audit_id"}}
     if value.get("audit_id") != "gjfoltieav1:audit:" + canonical_json_sha256_v1(material):
         raise _error("other-long-term-investments experimental audit identity drifted")
@@ -614,6 +836,9 @@ def validate_other_long_term_investments_experimental_audit_replay_v1(
     database: Path,
     sweep: Mapping[str, Any],
     sweep_output: Path,
+    historical_comparator_policy: str,
+    current_manifest_index_id: str,
+    current_manifest_source_sha256s: Sequence[str],
     selected_page_json_version_ids: Sequence[str],
     indexed_query_evidence: Mapping[str, Any],
     trials: Sequence[dict[str, Any]],
@@ -642,6 +867,9 @@ def validate_other_long_term_investments_experimental_audit_replay_v1(
     expected = build_other_long_term_investments_experimental_audit_v1(
         sweep=checked_sweep,
         sweep_output=sweep_output,
+        historical_comparator_policy=historical_comparator_policy,
+        current_manifest_index_id=current_manifest_index_id,
+        current_manifest_source_sha256s=current_manifest_source_sha256s,
         selected_page_json_version_ids=selected_page_json_version_ids,
         indexed_query_evidence=checked_sweep["indexed_query_evidence"],
         trials=checked_sweep["trials"],
@@ -656,12 +884,20 @@ def validate_other_long_term_investments_experimental_audit_replay_v1(
 
 def _assert_release_pins(
     *,
+    historical_comparator_policy: str,
+    run_kind: str,
     index: Mapping[str, Any],
     selected_ids: Sequence[str],
     sweep: Mapping[str, Any],
     indexed: Mapping[str, Any],
     audit: Mapping[str, Any],
 ) -> None:
+    if historical_comparator_policy == DISJOINT_EXPANSION:
+        if run_kind != "EXPERIMENTAL":
+            raise _error("OFFICIAL other-long-term-investments run requires STRICT_RELEASE policy")
+        return
+    if historical_comparator_policy != STRICT_RELEASE:
+        raise _error("other-long-term-investments historical comparator policy is undeclared")
     actual = {
         "audit_metrics": audit.get("audit_metrics"),
         "axis_counts": audit.get("axis_counts"),
@@ -685,9 +921,9 @@ def _assert_release_pins(
         mismatches.append("axis_sha256")
     expected_axis_counts = {
         "clusters": 140,
-        "equations": 458,
+        "equations": 480,
         "historical_comparator": 57,
-        "mappings": 429,
+        "mappings": 431,
     }
     if any(
         actual["axis_counts"].get(name) != count for name, count in expected_axis_counts.items()
@@ -827,6 +1063,7 @@ def _run_with_authenticated_database(
     evaluation: dict[str, Any],
     schema: dict[str, Any],
     compiled: dict[str, Any],
+    expected_source_repair_ids: Sequence[str],
     spec_refs: dict[str, Any],
 ) -> dict[str, Any]:
     database = database_guard.path
@@ -858,6 +1095,10 @@ def _run_with_authenticated_database(
             )
         )
     trials = _trials(indexed=indexed, candidates_by_ordinal=candidates_by_ordinal)
+    _validate_source_repair_application_axis_v1(
+        expected_repair_ids=expected_source_repair_ids,
+        trials=trials,
+    )
     sweep = build_gemini_json_flat_family_sweep_v1(
         corpus_manifest_index_id=index["corpus_manifest_index_id"],
         topology_spec=topology,
@@ -877,6 +1118,11 @@ def _run_with_authenticated_database(
     audit = build_other_long_term_investments_experimental_audit_v1(
         sweep=sweep,
         sweep_output=args.output,
+        historical_comparator_policy=args.historical_comparator_policy,
+        current_manifest_index_id=index["corpus_manifest_index_id"],
+        current_manifest_source_sha256s=[
+            document["source_sha256"] for document in index["documents"]
+        ],
         selected_page_json_version_ids=selected_ids,
         indexed_query_evidence=indexed,
         trials=trials,
@@ -888,6 +1134,11 @@ def _run_with_authenticated_database(
         database=database,
         sweep=sweep,
         sweep_output=args.output,
+        historical_comparator_policy=args.historical_comparator_policy,
+        current_manifest_index_id=index["corpus_manifest_index_id"],
+        current_manifest_source_sha256s=[
+            document["source_sha256"] for document in index["documents"]
+        ],
         selected_page_json_version_ids=selected_ids,
         indexed_query_evidence=indexed,
         trials=trials,
@@ -895,6 +1146,8 @@ def _run_with_authenticated_database(
         spec_refs=spec_refs,
     )
     _assert_release_pins(
+        historical_comparator_policy=args.historical_comparator_policy,
+        run_kind=args.run_kind,
         index=index,
         selected_ids=selected_ids,
         sweep=sweep,
@@ -911,6 +1164,7 @@ def _run_with_authenticated_database(
         ROOT / "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_other_long_term_investments_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/evaluation/historical_comparator_policy_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
     )
@@ -942,6 +1196,7 @@ def _run_with_authenticated_database(
         "axis_sha256": audit["axis_sha256"],
         "disposition": "SUCCEEDED",
         "family_run_id": stored["family_run_id"],
+        "historical_comparator_policy": args.historical_comparator_policy,
         "metrics": sweep["metrics"],
         "output": str(args.output),
         "output_ref": output_ref,
@@ -952,6 +1207,8 @@ def _run_with_authenticated_database(
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
+    if args.run_kind == "OFFICIAL" and args.historical_comparator_policy != STRICT_RELEASE:
+        raise _error("OFFICIAL other-long-term-investments run requires STRICT_RELEASE policy")
     index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
     artifact_root = args.artifact_root.resolve()
     source_database = _content_ref(artifact_root, index["database_ref"])
@@ -960,6 +1217,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     evaluation = _json(args.evaluation_spec)
     schema = _json(args.schema_binding_spec)
     compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
+    expected_source_repair_ids = _authenticate_source_repair_manifest_axis_v1(
+        index=index,
+        artifact_root=artifact_root,
+        compiled_specs=compiled,
+    )
     spec_refs = {
         "evaluation": _file_ref(args.evaluation_spec, root=ROOT),
         "schema_binding": _file_ref(args.schema_binding_spec, root=ROOT),
@@ -977,6 +1239,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             evaluation=evaluation,
             schema=schema,
             compiled=compiled,
+            expected_source_repair_ids=expected_source_repair_ids,
             spec_refs=spec_refs,
         )
 
@@ -990,6 +1253,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--schema-binding-spec", type=Path, required=True)
     parser.add_argument("--results-database", type=Path, required=True)
     parser.add_argument("--run-kind", choices=("EXPERIMENTAL", "OFFICIAL"), required=True)
+    parser.add_argument(
+        "--historical-comparator-policy",
+        choices=(STRICT_RELEASE, DISJOINT_EXPANSION),
+        required=True,
+    )
     parser.add_argument("--output", type=Path, required=True)
     return parser
 

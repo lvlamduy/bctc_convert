@@ -11,6 +11,7 @@ from test_gemini_json_equity_matrix_accounting_family_v1 import (
     _component_column_table,
     _json,
     _page,
+    _primary_and_supplemental_fund_tables,
     _section,
 )
 from test_gemini_json_state_budget_obligations_family_v1 import (
@@ -145,6 +146,137 @@ def test_indexed_query_sweep_and_sqlite_candidate_replay(tmp_path) -> None:
         )
         == trials
     )
+
+
+def test_sqlite_replay_accepts_source_local_supplemental_movement_axis(
+    tmp_path,
+) -> None:
+    database = tmp_path / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(database)
+    primary, supplemental = _primary_and_supplemental_fund_tables()
+    supplemental_labels = [
+        "Số dư đầu kỳ",
+        "Trích lập các quỹ",
+        "Trích quỹ khen thưởng, phúc lợi",
+        "Số dư cuối kỳ",
+    ]
+    for row, label in zip(supplemental["rows"], supplemental_labels, strict=True):
+        row["label_exact"] = label
+        row["hierarchy_path_exact"] = [label]
+    target_page = _page(_section("Vốn chủ sở hữu", primary, supplemental))
+    target = _ingest(database, page_json=target_page)
+    selected = [target["page_json_version_id"]]
+    compiled = _compiled()
+    evidence = query_selected_equity_matrix_family_regions_v1(
+        database,
+        selected_page_json_version_ids=selected,
+        compiled_specs=compiled,
+    )
+    cluster = evidence["accepted_clusters"][0]
+    candidate = evaluate_gemini_json_equity_matrix_family_cluster_v1(
+        regions=cluster["component_regions"],
+        page_json_by_version={target["page_json_version_id"]: target_page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_equity_matrix_region_query_receipt_v1(
+            cluster["component_regions"], owner_receipt=cluster["owner_receipt"]
+        ),
+        document_unit_context_evidence=cluster["document_unit_context_evidence"],
+    )
+    supplemental_mappings = [
+        mapping
+        for mapping in candidate["mappings"]
+        if mapping.get("component_axis", {}).get("kind")
+        == "MAPPED_SUPPLEMENTAL_COMPONENT"
+    ]
+    assert supplemental_mappings
+    assert {
+        tuple(value["axis_role"] for value in mapping["values"])
+        for mapping in supplemental_mappings
+    } == {("OPENING", "CLOSING")}
+    trials = [_trial(evidence["selected_document_axis"][0], candidate, READY)]
+    assert (
+        validate_selected_equity_matrix_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected,
+            compiled_specs=compiled,
+            indexed_query_evidence=evidence,
+            trials=trials,
+        )
+        == trials
+    )
+
+    forged = copy.deepcopy(trials)
+    forged_candidate = forged[0]["candidates"][0]
+    forged_mapping = next(
+        mapping
+        for mapping in forged_candidate["mappings"]
+        if mapping.get("component_axis", {}).get("kind")
+        == "MAPPED_SUPPLEMENTAL_COMPONENT"
+    )
+    forged_mapping["values"].pop()
+    forged_mapping["item_mapping_id"] = "gjeqmfv1:item:" + canonical_json_sha256_v1(
+        {
+            key: value
+            for key, value in forged_mapping.items()
+            if key != "item_mapping_id"
+        }
+    )
+    forged_candidate["candidate_id"] = "gjeqmfv1:candidate:" + canonical_json_sha256_v1(
+        {
+            key: value
+            for key, value in forged_candidate.items()
+            if key != "candidate_id"
+        }
+    )
+    forged[0]["mappings"] = copy.deepcopy(forged_candidate["mappings"])
+    forged[0]["selected_candidate_id"] = forged_candidate["candidate_id"]
+    with pytest.raises(
+        GeminiJsonEquityMatrixAccountingFamilyV1Error,
+        match="mapping movement axis drifted",
+    ):
+        validate_selected_equity_matrix_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected,
+            compiled_specs=compiled,
+            indexed_query_evidence=evidence,
+            trials=forged,
+        )
+
+    receipt_forged = copy.deepcopy(trials)
+    receipt_candidate = receipt_forged[0]["candidates"][0]
+    supplemental_receipt = next(
+        item
+        for item in receipt_candidate["closure_receipt"]["alignment_receipts"]
+        if "supplemental_equations" in item
+    )
+    horizontal = [
+        equation
+        for equation in supplemental_receipt["supplemental_equations"]
+        if equation["equation_kind"] == "VISIBLE_GRAND_HORIZONTAL_TOTAL"
+    ]
+    horizontal[1]["axis_role"] = horizontal[0]["axis_role"]
+    receipt_candidate["candidate_id"] = (
+        "gjeqmfv1:candidate:"
+        + canonical_json_sha256_v1(
+            {
+                key: value
+                for key, value in receipt_candidate.items()
+                if key != "candidate_id"
+            }
+        )
+    )
+    receipt_forged[0]["selected_candidate_id"] = receipt_candidate["candidate_id"]
+    with pytest.raises(
+        GeminiJsonEquityMatrixAccountingFamilyV1Error,
+        match="supplemental movement axis drifted",
+    ):
+        validate_selected_equity_matrix_family_candidate_replays_v1(
+            database,
+            selected_page_json_version_ids=selected,
+            compiled_specs=compiled,
+            indexed_query_evidence=evidence,
+            trials=receipt_forged,
+        )
 
 
 def test_sqlite_replay_rejects_coherently_rehashed_candidate_source_drift(tmp_path) -> None:

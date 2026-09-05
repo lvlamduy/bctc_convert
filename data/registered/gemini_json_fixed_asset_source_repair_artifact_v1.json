@@ -1,0 +1,4324 @@
+{
+  "family_id": "TANGIBLE_FIXED_ASSETS_ROLLFORWARD",
+  "format_version": "GEMINI_JSON_FIXED_ASSET_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "overlay_id": "gjffasrv1:overlay:e6d835cbc922af5359b4a84f421a359754aeaf935c13d7d0f1a7367ea93dff5c",
+  "repairs": [
+    {
+      "base_page_json_sha256": "c11d67ab4cda54fbe4dd2ca2390ecc1a3ed1129434823097fe84afa3d0788ef9",
+      "base_page_json_version_id": "gfpstorev1:json:11bf56b736947d9b283e8f34a2d17845d77438fb20ef869d1593447309aa8a38",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "211",
+          "cell_id": "r5:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            980,
+            533,
+            1040,
+            763
+          ],
+          "crop_rgb_sha256": "faaefb553257f557eace4931ca3af5e9200f8d7587c041133c80e4fad6c4e525",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "211",
+          "cell_id": "r5:c6",
+          "column_header_path_exact": [
+            "Tổng",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            980,
+            203,
+            1040,
+            433
+          ],
+          "crop_rgb_sha256": "016695bc45cc11045e70ebb6a3c340f42e9a47cebf8b5c1066bfd05b958214f0",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "211",
+          "before_exact": " -",
+          "cell_id": "r6:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1030,
+            533,
+            1090,
+            763
+          ],
+          "crop_rgb_sha256": "94922a5c62743a31f05d62c6288b3d496d61a21921c42b53819b0720f8a6a450",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "211",
+          "before_exact": " -",
+          "cell_id": "r6:c6",
+          "column_header_path_exact": [
+            "Tổng",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1030,
+            203,
+            1090,
+            433
+          ],
+          "crop_rgb_sha256": "c696e0d5278cc8029f991a8a80c7ecea7fa000cccaa82fd5bfed485ce4b296d9",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "PRINTED_MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "4385c719decfcbf4d1a9945056468528c00774a078d62f69d9661b03c0700c67",
+      "extraction_run_id": "gfpstorev1:run:bd0620b48c492dd22c5494978d333a0084822acd1f773799472833a864c937d1",
+      "repair_id": "gjffasrv1:repair:d2411869c9c624513d2370f23ed8c4dcd3d183d1e262e2bc83a4b6f8f9916ff5",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:83f2a1947c7969b9b7c6ab11fa8df6b6045a419da162bc7b45bfdb558b099365",
+        "image_sha256": "4e5c24c827b0ae938853e1786aece6d1be7366e30f57cc534231000c98fbaa8d",
+        "image_size_bytes": 926925,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:0da3f20c8bf4eba38b8f953f3fe7cead0df254b5ae9dd5a1ede87dd5f7d52fcf",
+        "physical_page": 27,
+        "pixel_height": 3508,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Q3_2025.pdf",
+        "source_sha256": "f70f321296d8b9da75ee8bbf5e5566b3a64e03c17eaf719ed2579e2043feab48",
+        "source_size_bytes": 9546319
+      },
+      "stored_canonical_json_sha256": "7a646e52aa062911842861bea3d29e9b05d8011bbf395f8121f83edbc0afb920",
+      "table_ref": {
+        "base_table_sha256": "02a8413ca25700fdb01b2d9614efb925710d9563248451907ecb91080844fe1d",
+        "effective_table_sha256": "cb5815a3a939102743e6ed8abd751b149b5d10d70f23b53a90d5c2e3dfb078df",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          550,
+          158,
+          1800,
+          3108
+        ],
+        "table_crop_rgb_sha256": "17acfd80ae4c15fc5aae683d1c6bc49df0e016e442c94aca695178591eb8e84e"
+      }
+    },
+    {
+      "base_page_json_sha256": "ba2a005ec0b149bf4f88c39f73f362ab45d60939b2ff4182e8d5d124ac01683f",
+      "base_page_json_version_id": "gfpstorev1:json:d7fd0cfeb60d7ea7f6e255aa236ea3bf02a6d974f401e3fb0b53ebd6fcd131a2",
+      "cell_repairs": [
+        {
+          "after_exact": "(12.534)",
+          "before_exact": "(12.460)",
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            960,
+            1505,
+            1020
+          ],
+          "crop_rgb_sha256": "228be2aaa78b2accdf21f12b893eb695e4d5b11a279fd7f906e549bac4a1aae5",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Phân loại lại"
+          ],
+          "row_label_exact": "Phân loại lại",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "13.813",
+          "before_exact": "13.713",
+          "cell_id": "r5:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ quản lý và TSCĐ hữu hình khác",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1795,
+            960,
+            2025,
+            1020
+          ],
+          "crop_rgb_sha256": "b82dea42085ca67f55c8fe22df7773756d6683a0eff48e252bd285081e739abd",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Phân loại lại"
+          ],
+          "row_label_exact": "Phân loại lại",
+          "visual_state": "PRINTED_MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "e4c54e30c1c98301a3ba31a11f330548caad0185367e288dd7234150476a345f",
+      "extraction_run_id": "gfpstorev1:run:d7a9cd531b1c4b5e09566978b67c03a4bec51b10e48035c1861950f34b1a6d31",
+      "repair_id": "gjffasrv1:repair:cbbd184ff6019e07b085c3298c3a9cc12c58f2eece670e6fddbe4df60367ac4a",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:d1cd3f89e609b86e8b0a65f765f3607d94dac8821501c4cc7aa002909d8a01b7",
+        "image_sha256": "df9ad351cf51cc862eb9091596d2b1ad0f2478c8c7bf79433995ae9f835a0394",
+        "image_size_bytes": 2323904,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:4e0fc5e81329acc330396d0db58bb9c6d9ac7a77a39945ce181ff139561379c6",
+        "physical_page": 35,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+        "source_sha256": "ca19e5491e9cb188dfb702cec49b22739205e50514f42f1f8345ee98383d110f",
+        "source_size_bytes": 15033183
+      },
+      "stored_canonical_json_sha256": "912cdc55cdbd3ff762fdf1742d0e407687d8cc0912200c92bb2384d404512039",
+      "table_ref": {
+        "base_table_sha256": "0eaf1089a3be0b47dc9e57d5fe42ff240b8db803c7d910903a470807064ea262",
+        "effective_table_sha256": "a22dfd2b3dde0070ea888840dbe3d2f918c71de327618fcbf948484385c10108",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          900,
+          700,
+          2320,
+          1600
+        ],
+        "table_crop_rgb_sha256": "9027fff3c1251dabdb0164bfa3e885e577d77fada8967bb8cec1b825195db4aa"
+      }
+    },
+    {
+      "base_page_json_sha256": "210387bc7a27641b9730604bf23fcd89aeb5029f87eb13cd41bf0bbbe332f6d3",
+      "base_page_json_version_id": "gfpstorev1:json:1612b250de125e354ad14ff072e5634bd238f28a34d6f4ff7c60f7b3f080265a",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "17.756",
+          "cell_id": "r3:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận tải\ntruyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2185,
+            880,
+            2415,
+            940
+          ],
+          "crop_rgb_sha256": "88275588999bb8c29e7cca7fc0d4d434a5aab6904cc1ded3693313e8304fa3d9",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng trong kỳ"
+          ],
+          "row_label_exact": "Tăng trong kỳ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "17.756",
+          "before_exact": "117",
+          "cell_id": "r3:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2485,
+            880,
+            2715,
+            940
+          ],
+          "crop_rgb_sha256": "8574d856d05799dc7103ee0420a0f3f9450eb278e8d0b310e37d1000a5a88c3f",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng trong kỳ"
+          ],
+          "row_label_exact": "Tăng trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "117",
+          "before_exact": "18.233",
+          "cell_id": "r3:c5",
+          "column_header_path_exact": [
+            "Tài sản cố\nđịnh khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2785,
+            880,
+            3015,
+            940
+          ],
+          "crop_rgb_sha256": "771de72dbe415fcb1ce29057b2ec076a36b342e4d5d764a5777c460e95ccf777",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng trong kỳ"
+          ],
+          "row_label_exact": "Tăng trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "18.233",
+          "before_exact": null,
+          "cell_id": "r3:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3085,
+            880,
+            3315,
+            940
+          ],
+          "crop_rgb_sha256": "64fbd7697d40f35c5c67d13e521e7ba4dc0ecbda787cf59bbfd5006bb5abd4c1",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng trong kỳ"
+          ],
+          "row_label_exact": "Tăng trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Máy móc thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1825,
+            955,
+            2055,
+            1015
+          ],
+          "crop_rgb_sha256": "16a44717412c05bb96b922ac4820c1968eca7784be0b0d70d647078699e27bf1",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển từ mua sắm, XDCB dở dang"
+          ],
+          "row_label_exact": "Chuyển từ mua sắm, XDCB dở dang",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2485,
+            955,
+            2715,
+            1015
+          ],
+          "crop_rgb_sha256": "ffd5b9c6ae2d0178eb662248e6b9c0f6852beff0c0260f1799b211cf4883f47f",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển từ mua sắm, XDCB dở dang"
+          ],
+          "row_label_exact": "Chuyển từ mua sắm, XDCB dở dang",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3085,
+            955,
+            3315,
+            1015
+          ],
+          "crop_rgb_sha256": "30277f768f330fe5d8299f7b72563e7cfc37271522f6be9c65eb629e72a794ce",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển từ mua sắm, XDCB dở dang"
+          ],
+          "row_label_exact": "Chuyển từ mua sắm, XDCB dở dang",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(102)",
+          "cell_id": "r5:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1395,
+            1025,
+            1625,
+            1085
+          ],
+          "crop_rgb_sha256": "9728ebb73248f2065ed0bc33503f3659dfd125559537c2caab6f46cb38d6f11e",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(102)",
+          "before_exact": null,
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Máy móc thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1825,
+            1025,
+            2055,
+            1085
+          ],
+          "crop_rgb_sha256": "553a21a41aed2bf051a0ccd594e251dddf542e77fc5b009775454a07625a5c38",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận tải\ntruyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2185,
+            1025,
+            2415,
+            1085
+          ],
+          "crop_rgb_sha256": "6b34f36a9ded9a0e52625a3fd1cc417f64193cc165b7cc008eee603d394041fe",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2485,
+            1025,
+            2715,
+            1085
+          ],
+          "crop_rgb_sha256": "e8f373ee54019e77c253d0b7db9c8e45e59eeca4ad2ecdb79098a8e79c702743",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(102)",
+          "cell_id": "r5:c5",
+          "column_header_path_exact": [
+            "Tài sản cố\nđịnh khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2785,
+            1025,
+            3015,
+            1085
+          ],
+          "crop_rgb_sha256": "6fffee43b2278691ffb51b1c66886c656ada780d64d88da03c3bae01fc6364c7",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(102)",
+          "before_exact": null,
+          "cell_id": "r5:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3085,
+            1025,
+            3315,
+            1085
+          ],
+          "crop_rgb_sha256": "a146a6f8aba1ffaf51bb5c08848482a3dfa6191546edd9ec6d7daa537cb84456",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(102)",
+          "cell_id": "r10:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1395,
+            1380,
+            1625,
+            1440
+          ],
+          "crop_rgb_sha256": "b9a5d2a35f5ce85e2e6e89a7f621186583b32c080041c3b2e344f7a5ffe4e4b8",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn lũy kế",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(102)",
+          "before_exact": null,
+          "cell_id": "r10:c2",
+          "column_header_path_exact": [
+            "Máy móc thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1825,
+            1380,
+            2055,
+            1440
+          ],
+          "crop_rgb_sha256": "fab377f64e0d8a2bb9134103e86a8947a196e0b30578d3c605a9de912ae3e587",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn lũy kế",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận tải\ntruyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2185,
+            1380,
+            2415,
+            1440
+          ],
+          "crop_rgb_sha256": "738c0029755f0da56a9e69bebfef7485c802be5eff496fa43bb196349338d9c4",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn lũy kế",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r10:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2485,
+            1380,
+            2715,
+            1440
+          ],
+          "crop_rgb_sha256": "d1adc0b366886e0f57354df7ad8b344a97a5966eab4b271c074fe1849301dd4a",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn lũy kế",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(102)",
+          "cell_id": "r10:c5",
+          "column_header_path_exact": [
+            "Tài sản cố\nđịnh khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2785,
+            1380,
+            3015,
+            1440
+          ],
+          "crop_rgb_sha256": "dddda343cc164624c21b5931b8f8c168c79b89c54820ff8ecad57d014c9bde13",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn lũy kế",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(102)",
+          "before_exact": null,
+          "cell_id": "r10:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3085,
+            1380,
+            3315,
+            1440
+          ],
+          "crop_rgb_sha256": "de660db500fdaf14087f5cbb4a139da2317d52415e73e785f3d7c2bcf2ef2766",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn lũy kế",
+            "Thanh lý"
+          ],
+          "row_label_exact": "Thanh lý",
+          "visual_state": "PRINTED_MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "393a2248c547624c0a1b02b16692bd7bdf2fb0a2f68c22c072c49658155e652a",
+      "extraction_run_id": "gfpstorev1:run:050e3f1c54d991f296f71d558fbcc82cdace45a80d5e56e37cca9a50993b4639",
+      "repair_id": "gjffasrv1:repair:b075e144370ae1affce28069f3669a894dd4bc4b197a9153b0e8edf6ee62fe27",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:ce41cb076472ee1ea2b288525eac245c20c89c2d3e03710c2ac43c5fe6cf1e2e",
+        "image_sha256": "d908a7ae71ec31169d046036f7c3956fa8a30000d948b2e5c2b8423155e3fd1e",
+        "image_size_bytes": 2147204,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:a0c18fbf45ce695216512388940a1f30cee83682b9b8072d20945c704c05eaf7",
+        "physical_page": 23,
+        "pixel_height": 2450,
+        "pixel_width": 3509,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/KLB/2025/BCTC Hợp nhất quý 2 năm 2025.pdf",
+        "source_sha256": "bc2b4ee54e8f722322d72cb2ffd375ac61e8fe446ee12cd2865934b9fe8e15ae",
+        "source_size_bytes": 13865130
+      },
+      "stored_canonical_json_sha256": "e19fadadfeba076434f03cb7d1981342e53a2c361ab9fefc15cf57af939d4134",
+      "table_ref": {
+        "base_table_sha256": "8819f847323965ee6307994110f9ac6ce4a6d00adc6308e1200f1ac2286a8b27",
+        "effective_table_sha256": "dba1cdfcbd0a212b53df7df8cd3f28914c19329b8bae073a858dbc9905d1b630",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1350,
+          600,
+          3400,
+          1700
+        ],
+        "table_crop_rgb_sha256": "0df349d6a4df7ccfb756f92bcc23f01824e8476d03a22942bb91873a04539926"
+      }
+    },
+    {
+      "base_page_json_sha256": "181b09138b175c5a18f5e5896fdbe243d2b0141b9ee4cb92904380c066bda9eb",
+      "base_page_json_version_id": "gfpstorev1:json:9ac87fcf75a88bb164082ce2e83e44529b63d043fca7d40be54a268e1fbfe4c2",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "12.306",
+          "cell_id": "r5:c3",
+          "column_header_path_exact": [
+            "Phương\ntiện vận tải,\ntruyền dẫn\nTriệu\nVND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1295,
+            1290,
+            1525,
+            1350
+          ],
+          "crop_rgb_sha256": "a3f30fa4b4a0ddc4a314ebe7ebb25f6c3e45869d5d1c305ca13b88b94f938448",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Biến động khác"
+          ],
+          "row_label_exact": "Biến động khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "12.306",
+          "before_exact": "(12.747)",
+          "cell_id": "r5:c4",
+          "column_header_path_exact": [
+            "Thiết bị\ndụng cụ\nquản lý\nTriệu\nVND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1555,
+            1290,
+            1785,
+            1350
+          ],
+          "crop_rgb_sha256": "f939c665f1f659f12edad6ef28d5eb8c95b6d19fb86479f9b827ebd28a6f8920",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Biến động khác"
+          ],
+          "row_label_exact": "Biến động khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(12.747)",
+          "cell_id": "r5:c6",
+          "column_header_path_exact": [
+            "Tổng cộng\nTriệu\nVND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2055,
+            1290,
+            2285,
+            1350
+          ],
+          "crop_rgb_sha256": "8b319ac37e4b90df97406c33fcabb3d4ceff61a677d5ccfe699c2e44a40063c4",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Biến động khác"
+          ],
+          "row_label_exact": "Biến động khác",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "27013e3675a42f82585027033dd86f530064b51041faa9ef41af9d43bad0506b",
+      "extraction_run_id": "gfpstorev1:run:34ac4c5d5b61c85ca7e333b92e547fa8dff0aadfb668152aacc55f3dac507e47",
+      "repair_id": "gjffasrv1:repair:c4c7f4ce3ece2da39017b71b249b3b8c78c298a942eb6aa14945c6657c0d98de",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:fcf853b43519d031fbbb25cab86fbb31827aecdcea4328d6bcd2b7839097195d",
+        "image_sha256": "66458169cbd304cdf68b47c2d10eef084d5e396faba56a829fdbd535d7e7a6ea",
+        "image_size_bytes": 559100,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:ed76217cde2d5f8b807630f1f1c433759911e65ddc43f501829dd6d2e4aefd69",
+        "physical_page": 43,
+        "pixel_height": 3475,
+        "pixel_width": 2471,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/LPB/2026/BCTC quý 2 năm 2026.pdf",
+        "source_sha256": "47d3b2d6b5a4ab6855ad1568127928204e7097f490748c07274e2ed9704f5fe3",
+        "source_size_bytes": 7640633
+      },
+      "stored_canonical_json_sha256": "691b3c6271ad889d6f2049b0201214188f26257548bbca17779f418a071c9d40",
+      "table_ref": {
+        "base_table_sha256": "274759354313fc4d51fff37f718017429e455ed1941f28fba153cc1a9e3c65a8",
+        "effective_table_sha256": "8fce02912bbe4b262f8e9608ebc33e3afdb28cb41647b4adf457fdfbede06ae9",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          750,
+          750,
+          2320,
+          2250
+        ],
+        "table_crop_rgb_sha256": "adaa589bd2c6be617661c150fbf9d775b579a96ef2f6fd69af7a6c1751292f7d"
+      }
+    },
+    {
+      "base_page_json_sha256": "ec12e1a6f449ced849c28f6c40f7de4f47d367acc8f6df0c2fe0d011caa2f0a7",
+      "base_page_json_version_id": "gfpstorev1:json:1cd07cfbce7674159af83d9707b295cf33a61b3d8139d467340de65342fb8b40",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "385",
+          "cell_id": "r3:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            725,
+            1464,
+            785,
+            1694
+          ],
+          "crop_rgb_sha256": "f4380e0521b72726b924d4958204e448c180f80375d0acde6e4eb8940f4db597",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Mua trong kỳ"
+          ],
+          "row_label_exact": "Mua trong kỳ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "385",
+          "before_exact": "1.057",
+          "cell_id": "r3:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            725,
+            1124,
+            785,
+            1354
+          ],
+          "crop_rgb_sha256": "4c28ca6a5b26908661309594cee51af0c4da7f78573808291dd5aaa82aceecc5",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Mua trong kỳ"
+          ],
+          "row_label_exact": "Mua trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "1.057",
+          "before_exact": "1.442",
+          "cell_id": "r3:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            725,
+            734,
+            785,
+            964
+          ],
+          "crop_rgb_sha256": "c94265b5761ab1f15ca6ffe51750a5954ed5ea1b69c80666a321c852ea458d2d",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Mua trong kỳ"
+          ],
+          "row_label_exact": "Mua trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "1.442",
+          "before_exact": null,
+          "cell_id": "r3:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            725,
+            334,
+            785,
+            564
+          ],
+          "crop_rgb_sha256": "d96fad0c9fe6a01673331535b874294508e23913309dc417f7fa53a3c7904a48",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Mua trong kỳ"
+          ],
+          "row_label_exact": "Mua trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--",
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            770,
+            1824,
+            830,
+            2054
+          ],
+          "crop_rgb_sha256": "964bae7f88b9300ce11ea20acd1c06fb3d7fbf383431b501b0977863b3fe1c29",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Đầu tư XDCB hoàn thành"
+          ],
+          "row_label_exact": "Đầu tư XDCB hoàn thành",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            770,
+            1464,
+            830,
+            1694
+          ],
+          "crop_rgb_sha256": "7a9aec5efe53d94fb7e55fa2dd2678be5dcb70b611fc580fcea82de47cd82090",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Đầu tư XDCB hoàn thành"
+          ],
+          "row_label_exact": "Đầu tư XDCB hoàn thành",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            770,
+            1124,
+            830,
+            1354
+          ],
+          "crop_rgb_sha256": "804b10cf17cd8834e4a91a5bdc5c5dd1fb01d566d75690a96f2372b2aa26953a",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Đầu tư XDCB hoàn thành"
+          ],
+          "row_label_exact": "Đầu tư XDCB hoàn thành",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            770,
+            734,
+            830,
+            964
+          ],
+          "crop_rgb_sha256": "14022ff1736ccb7d9b0e268dae33c446912de7c112e8990c67a0fa25d00d71b7",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Đầu tư XDCB hoàn thành"
+          ],
+          "row_label_exact": "Đầu tư XDCB hoàn thành",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r4:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            770,
+            334,
+            830,
+            564
+          ],
+          "crop_rgb_sha256": "1019a172f99df423d8ce33945ce18b26f203bdb5882e8ac609709a0773f7ff16",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Đầu tư XDCB hoàn thành"
+          ],
+          "row_label_exact": "Đầu tư XDCB hoàn thành",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--",
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            815,
+            1824,
+            875,
+            2054
+          ],
+          "crop_rgb_sha256": "a21732d0ac1a2d182e6b37a4e17ee7119afb14d154b1594d98eb604ba5f798ef",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng xuất kho"
+          ],
+          "row_label_exact": "Tăng xuất kho",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            815,
+            1464,
+            875,
+            1694
+          ],
+          "crop_rgb_sha256": "9dc191bb95c2834b71e7b0682b8f50b51200c81f0d0d1b01bfd560e3504b044e",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng xuất kho"
+          ],
+          "row_label_exact": "Tăng xuất kho",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            815,
+            1124,
+            875,
+            1354
+          ],
+          "crop_rgb_sha256": "6a660259aee6eabb5ff09d7717cb04c3bb61028eb92a1e4f7c0676e5b1bf1f33",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng xuất kho"
+          ],
+          "row_label_exact": "Tăng xuất kho",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            815,
+            734,
+            875,
+            964
+          ],
+          "crop_rgb_sha256": "607217ecb158b5ae292f8a917b67098549c8398a10fde21f41db96fe49636c6a",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng xuất kho"
+          ],
+          "row_label_exact": "Tăng xuất kho",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            815,
+            334,
+            875,
+            564
+          ],
+          "crop_rgb_sha256": "5ed2c5aa1c204a7fc9bbf47f31668aabc6b62736e67e03b37a01f6d0a9fd5005",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng xuất kho"
+          ],
+          "row_label_exact": "Tăng xuất kho",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--",
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            860,
+            1824,
+            920,
+            2054
+          ],
+          "crop_rgb_sha256": "1ec36d9ff7adfe34847d9b1c987ba5086c16705f880c84c4fba054f4aaa8ac75",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            860,
+            1464,
+            920,
+            1694
+          ],
+          "crop_rgb_sha256": "12369ca13cf78264ee40eace540f57042e7f2c705f29fb974e384f8eaa4b40bf",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            860,
+            1124,
+            920,
+            1354
+          ],
+          "crop_rgb_sha256": "0068c79c647c0343ee4d21703fddad5aeab8fd654fecfd98df10021da4260dbc",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            860,
+            734,
+            920,
+            964
+          ],
+          "crop_rgb_sha256": "b353ed2c3486d78d5fe2a83f8c703e8bfec1a0ec9696f6c3b83104bdfa467e51",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            860,
+            334,
+            920,
+            564
+          ],
+          "crop_rgb_sha256": "28562b900a3d82dd335c28be18e5712f8fe53cc9454beda27abc2aa3e67b55cc",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "44",
+          "before_exact": "-",
+          "cell_id": "r7:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            905,
+            2184,
+            965,
+            2414
+          ],
+          "crop_rgb_sha256": "c0815de8071cd94a3dd8bceb1863396eac66fef72d8dc2bb15f1aefebc936b7e",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "37.021",
+          "cell_id": "r7:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            905,
+            1824,
+            965,
+            2054
+          ],
+          "crop_rgb_sha256": "c593e0b0a7e516cd0d956f224e2ee9d27c84450d92b03856111d09871b9582d8",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "37.021",
+          "before_exact": "254",
+          "cell_id": "r7:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            905,
+            1464,
+            965,
+            1694
+          ],
+          "crop_rgb_sha256": "a6107de789fffa6a3e540b812111adf782e04367df03296e3e6225a18b6ea6a2",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "254",
+          "before_exact": "37.319",
+          "cell_id": "r7:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            905,
+            1124,
+            965,
+            1354
+          ],
+          "crop_rgb_sha256": "eb967da31923b3b91682527bd5c35f5536d2e293f54d66ec8ac378147a78c87f",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r7:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            905,
+            734,
+            965,
+            964
+          ],
+          "crop_rgb_sha256": "8975390f56eab4bceec5a373c720edf76e37ed609a48f44b1a0a07bddbb7ab80",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "37.319",
+          "before_exact": null,
+          "cell_id": "r7:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            905,
+            334,
+            965,
+            564
+          ],
+          "crop_rgb_sha256": "f74a2c58d86fb20f830add15f8b405f87f315b210be7610e6147d828d2c0f34c",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--",
+          "cell_id": "r8:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            1824,
+            1010,
+            2054
+          ],
+          "crop_rgb_sha256": "f09671849850089da450f2a920d927d393fb1a0cfad0c03349c9fdf336995511",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r8:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            1464,
+            1010,
+            1694
+          ],
+          "crop_rgb_sha256": "b978ebbb44663b6ffecc078f81ba4546c7f3c70baf1449d75b5e4e79df95cb22",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r8:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            1124,
+            1010,
+            1354
+          ],
+          "crop_rgb_sha256": "aeed0f167e0d82af92f08db1c2bc8c56be6f8a9cf9def2616ef7cf9dabe4d39f",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r8:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            734,
+            1010,
+            964
+          ],
+          "crop_rgb_sha256": "ee4888b987e38031a6922df93bf8494c95f930156f2f2e32e006ab5a60059466",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r8:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            334,
+            1010,
+            564
+          ],
+          "crop_rgb_sha256": "3690b7747a505b24b9ee1ea87f2854446ba88d063b46113ed8de268e2580f470",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "44",
+          "cell_id": "r9:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            2184,
+            1055,
+            2414
+          ],
+          "crop_rgb_sha256": "421228ed7c19315a945c29ee937d4de77a6037c7e04df6d35a48ee0c34da3cf9",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--",
+          "cell_id": "r9:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            1824,
+            1055,
+            2054
+          ],
+          "crop_rgb_sha256": "da991c84bfa5407b7ff210262096637232d15d0df72d149b29d7980ff285d858",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r9:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            1464,
+            1055,
+            1694
+          ],
+          "crop_rgb_sha256": "d819f7e5d03d972640e50e2de969e5b710b23db32cee224189d4364cd3c9cf2a",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r9:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            1124,
+            1055,
+            1354
+          ],
+          "crop_rgb_sha256": "bf9adffbd85807bbd821bcd34660b76b4c625010a0f69c504efa973312685581",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r9:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            734,
+            1055,
+            964
+          ],
+          "crop_rgb_sha256": "de5954c8e0f299402ae96b1b2223916e6f09a4e371f136a967e8fc87cfccd905",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r9:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            334,
+            1055,
+            564
+          ],
+          "crop_rgb_sha256": "8995d34838b5747d75e3b3f91631f768a0cb1bbfd233b7a56bc5afc87a1cc268",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--",
+          "cell_id": "r14:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            1824,
+            1290,
+            2054
+          ],
+          "crop_rgb_sha256": "a01f7c30c5f2250cbfdac10149d1c7626d7eff19d7906e04d9d129ac77e340ee",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r14:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            1464,
+            1290,
+            1694
+          ],
+          "crop_rgb_sha256": "f4e558931dcf8ee3c2fdb059124e67b06f49a18b3105bd18ce7f157eb6213e01",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r14:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            1124,
+            1290,
+            1354
+          ],
+          "crop_rgb_sha256": "6f9e9a86c70a58691778b2ac85f4f4f64b68c6f1d676e8dcb60d45d9f4eaff1d",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r14:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            734,
+            1290,
+            964
+          ],
+          "crop_rgb_sha256": "e6edf9aab1740ff65c5d5df2cce27e1175847f355889648781c43ed103211729",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r14:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            334,
+            1290,
+            564
+          ],
+          "crop_rgb_sha256": "a6496dec5eb2cd8a531e795ed23d6d6896d85982cd5f93366801f9a12a23b7c1",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "44",
+          "before_exact": "-",
+          "cell_id": "r15:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            2184,
+            1335,
+            2414
+          ],
+          "crop_rgb_sha256": "8b39ec66a888033cc8d373e4768e7d6bcb3e2d6404c9b5b2d3e293e492462077",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "6.983",
+          "cell_id": "r15:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            1824,
+            1335,
+            2054
+          ],
+          "crop_rgb_sha256": "99c0de9abe5f50487e0efdb3a6c46c98b3f27f18b3235195dc09106f06f3bfb1",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "6.983",
+          "before_exact": "256",
+          "cell_id": "r15:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            1464,
+            1335,
+            1694
+          ],
+          "crop_rgb_sha256": "ba9fbeba0679014f64acd0aa36f0a5369a362d769dce86126926c9dc008c1f56",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "256",
+          "before_exact": "7.283",
+          "cell_id": "r15:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            1124,
+            1335,
+            1354
+          ],
+          "crop_rgb_sha256": "da439d8650c9dddb28b38ac4f597fe1e1b8ce719ed5c4addff61755b3f629efa",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r15:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            734,
+            1335,
+            964
+          ],
+          "crop_rgb_sha256": "0a13f7bcfb65774ef81cde5d4ef9f67f9afcb365517dba73a6d4eacf5d6b1cf3",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "7.283",
+          "before_exact": null,
+          "cell_id": "r15:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            334,
+            1335,
+            564
+          ],
+          "crop_rgb_sha256": "ff0a37267a8e269d8fcc3469714983f1b08f7e37e4d252932e39384c350f61f8",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--",
+          "cell_id": "r16:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            1824,
+            1380,
+            2054
+          ],
+          "crop_rgb_sha256": "fec060b1dfe160173e095f5f3ac38ec64135f86d9ecc36edd8436c3e72f329ef",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r16:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            1464,
+            1380,
+            1694
+          ],
+          "crop_rgb_sha256": "5fd4514b920bb44af42a4882ac08bbb456ce9d0e744dd8010eff160290550a86",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r16:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            1124,
+            1380,
+            1354
+          ],
+          "crop_rgb_sha256": "71e1bb27e784e7970f6f67a740d7fd93e707d4f92c7da3a29a80b2f19bf9bf52",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r16:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            734,
+            1380,
+            964
+          ],
+          "crop_rgb_sha256": "8b31b53e682f1a7e5e1d5f2b9e485f7eaed8c8d3d783bac1dbc07c26a2753573",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r16:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            334,
+            1380,
+            564
+          ],
+          "crop_rgb_sha256": "886baeb4159f82e06ffc73d7087f27ce8f41e8860d3ea523ac45d4eaa0b4c97f",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "44",
+          "cell_id": "r17:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            2184,
+            1425,
+            2414
+          ],
+          "crop_rgb_sha256": "7c71f2080c705751c5aee388fd251ca40d69e0cf916e4b6e3ea32cec9a6e94fe",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "--",
+          "cell_id": "r17:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            1824,
+            1425,
+            2054
+          ],
+          "crop_rgb_sha256": "4770f9f6d00c8211fbfa0d314c3c341318273e466c8dddaf831db7ae23da2be8",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r17:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            1464,
+            1425,
+            1694
+          ],
+          "crop_rgb_sha256": "88b963a1a73b42e78519897e6058eaef8ae11ea053cbf0619df55f8595a85cf6",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r17:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            1124,
+            1425,
+            1354
+          ],
+          "crop_rgb_sha256": "e79dff83bc07c1523cf781d022622b08487cd247c9c4166b499f3a00a80cb6a8",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r17:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            734,
+            1425,
+            964
+          ],
+          "crop_rgb_sha256": "e288f5e623d6a826a7638fd1177052f0f78a4e04ae428e848762c99b3a7a73dd",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r17:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            334,
+            1425,
+            564
+          ],
+          "crop_rgb_sha256": "3c96d5c190eb97cbac148ae453ff5c2c733e55fff1d9c23da31a460bae04c10c",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "901da4498ee07d69412a216bac01f97c7b196131d8e5189b7553a166791d31d0",
+      "extraction_run_id": "gfpstorev1:run:b8ae1824e0d149929d69529fd470a28abe925fe6a598b47fddd010858781010d",
+      "repair_id": "gjffasrv1:repair:6d6c5d4a2184629ae33f6450e4ce2d8091fc8cfa639a2e055d11c04a16189438",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:e3860eab958ebb3aeefa7ccc0fcbd62e65cbc45f69159bcb7fd26b57558daa89",
+        "image_sha256": "cf96daba2369ff2a7dbd612fe2d5010c515a0a4df0ac058d6c947e0e6d66ed05",
+        "image_size_bytes": 1549821,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:554b409a7c56406501e3ed067defa9dcc9815d1cedf822deb2d936aebe8a9f1e",
+        "physical_page": 31,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/PGB/2026/1_pgb_2026_4_28_15bbc70_vi_baocaotaichinh_q1_2026.pdf",
+        "source_sha256": "b44a08592b63e3d4dcdb8aeefffcee73dd65723a9cffbca2fa6daf3b02e33892",
+        "source_size_bytes": 11153380
+      },
+      "stored_canonical_json_sha256": "06d89f907600da41fe70bf467c150bfd40d68aece2e05a182bc99aef7066d1e4",
+      "table_ref": {
+        "base_table_sha256": "f24c71637101fbff6a99f39dd180bd65a4c4cee13217a7af5fd8080a900d5a2e",
+        "effective_table_sha256": "9e73f737bf7e43ac2f808118e76ce8cb8794ae02e645c65e668af40edcfcfe22",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          550,
+          259,
+          1600,
+          2909
+        ],
+        "table_crop_rgb_sha256": "e7ecf34e75d61d9ffcdd2ad41172a5de0caa90e98614c6090fabeaad38de1a9a"
+      }
+    },
+    {
+      "base_page_json_sha256": "29f3876e98f1e5b435015d07fff7ff7976c3c6f7e6270a7ab5b8bc83dac345a5",
+      "base_page_json_version_id": "gfpstorev1:json:fca75449cb418f923d2da44d4fd2fe95de727f4ed5c4666220ee8f80c9c4d242",
+      "cell_repairs": [
+        {
+          "after_exact": "44",
+          "before_exact": "-",
+          "cell_id": "r7:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            905,
+            2184,
+            965,
+            2414
+          ],
+          "crop_rgb_sha256": "f8147c4554c1ae709d4d29571a868a2bd3602522726fbc3a0a6895c0e5f6e9dc",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "15.160",
+          "cell_id": "r7:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            905,
+            734,
+            965,
+            964
+          ],
+          "crop_rgb_sha256": "e895e48f235fa865fb6a7f6d9abfadb508cb820b5335f150d3a568d7e654ecc8",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "44",
+          "cell_id": "r8:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            2184,
+            1010,
+            2414
+          ],
+          "crop_rgb_sha256": "a4eb4353ff8c67e0fb65a59fd7f35dfc4b156e2512bfea8ee6f32aca214f91ed",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "4.068",
+          "cell_id": "r8:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            1824,
+            1010,
+            2054
+          ],
+          "crop_rgb_sha256": "290b24947afc9bf91976ca6f4a420b3f3edc1c178a042d52b30a6f11ff302c4b",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "78.149",
+          "cell_id": "r8:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            1464,
+            1010,
+            1694
+          ],
+          "crop_rgb_sha256": "6321487c8f4d9d9a05c07a1de4d605372804b19a68686e3c150a69d822e0ae95",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "236.987",
+          "cell_id": "r8:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            1124,
+            1010,
+            1354
+          ],
+          "crop_rgb_sha256": "1e755627d9373534a4cd5554c23dbfd06d9d5fb6a917952125a0ff32c1b76a05",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "5.411",
+          "cell_id": "r8:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            734,
+            1010,
+            964
+          ],
+          "crop_rgb_sha256": "bec65bd197ff0f3705f9a41c9f05e7c8ac0bbe44589c151738af2b5a3f4db456",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "530.617",
+          "cell_id": "r8:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            950,
+            334,
+            1010,
+            564
+          ],
+          "crop_rgb_sha256": "d30da07c1a3f3f447069c011db3dc36280a6d245729802d71e7e85bd22e36189",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "3.979",
+          "cell_id": "r9:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            1824,
+            1055,
+            2054
+          ],
+          "crop_rgb_sha256": "2d54e2e112ffa71a1e7c60eeb0c7be593b901fcd797d3f6157d22567428e6940",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "59.820",
+          "cell_id": "r9:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            1464,
+            1055,
+            1694
+          ],
+          "crop_rgb_sha256": "88176d251874d8b113abe14794126d66d2a2e599795e49f08f8a7cd2c2bf4b66",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "187.374",
+          "cell_id": "r9:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            1124,
+            1055,
+            1354
+          ],
+          "crop_rgb_sha256": "1a4bc831c1a7cc548de60196bbe706cf5c7ad2f56de44ea8b265de2d0d61aabd",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "1.784",
+          "cell_id": "r9:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            734,
+            1055,
+            964
+          ],
+          "crop_rgb_sha256": "d074aaf4c63d72f5667b87995e5267b623898c9523b7313d193821e560b39b41",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "312.982",
+          "cell_id": "r9:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            995,
+            334,
+            1055,
+            564
+          ],
+          "crop_rgb_sha256": "93c3fa95b01f7a00e224f1ac5c786f150bae4b85ab6e20ae8f7c65e4f583ba8a",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "4.068",
+          "before_exact": "12",
+          "cell_id": "r10:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1050,
+            1824,
+            1110,
+            2054
+          ],
+          "crop_rgb_sha256": "a8e9995e846c04c4b8bcc9361b56681613aaef313710e9a282c15498313ffa8c",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Số dư cuối kỳ"
+          ],
+          "row_label_exact": "Số dư cuối kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "78.149",
+          "before_exact": "3.724",
+          "cell_id": "r10:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1050,
+            1464,
+            1110,
+            1694
+          ],
+          "crop_rgb_sha256": "394d22266fde1fc7a1358ca04ce1235c614dadbb1e11b7985e7f5b3f5d4ec0a0",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Số dư cuối kỳ"
+          ],
+          "row_label_exact": "Số dư cuối kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "236.987",
+          "before_exact": "8.326",
+          "cell_id": "r10:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1050,
+            1124,
+            1110,
+            1354
+          ],
+          "crop_rgb_sha256": "7852db0455ef5e6c814a47487cdb2ef019c45b6967d0431db53a9f96ac65968f",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Số dư cuối kỳ"
+          ],
+          "row_label_exact": "Số dư cuối kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "15.160",
+          "before_exact": "1.784",
+          "cell_id": "r10:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1050,
+            734,
+            1110,
+            964
+          ],
+          "crop_rgb_sha256": "a2f772aedf778999c39c0bc0f3ff1d0fadde20ad293db486b59df0aeba36597b",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Số dư cuối kỳ"
+          ],
+          "row_label_exact": "Số dư cuối kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "530.617",
+          "before_exact": "16.283",
+          "cell_id": "r10:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1050,
+            334,
+            1110,
+            564
+          ],
+          "crop_rgb_sha256": "7858b1f21763472467a38917bd6e25b6ff1082c61ffd22fa8c46bb800fc19ea0",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá TSCĐ hữu hình",
+            "Số dư cuối kỳ"
+          ],
+          "row_label_exact": "Số dư cuối kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "3.979",
+          "before_exact": "12",
+          "cell_id": "r12:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1140,
+            1824,
+            1200,
+            2054
+          ],
+          "crop_rgb_sha256": "d6f7f2614eb530621eb67109cd13d0845318ed205621ceb35ac3fe6dc25501ea",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số dư đầu kỳ"
+          ],
+          "row_label_exact": "Số dư đầu kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "59.820",
+          "before_exact": "3.724",
+          "cell_id": "r12:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1140,
+            1464,
+            1200,
+            1694
+          ],
+          "crop_rgb_sha256": "2da3bb8c28088eb0766d2554f1c3cfb81aa3e4276aea522e2ae1662e25474aa3",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số dư đầu kỳ"
+          ],
+          "row_label_exact": "Số dư đầu kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "187.374",
+          "before_exact": "8.326",
+          "cell_id": "r12:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1140,
+            1124,
+            1200,
+            1354
+          ],
+          "crop_rgb_sha256": "83bb9b403698d1dac84d376f3dbfb980c79c23603244f9449da9003c797a2488",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số dư đầu kỳ"
+          ],
+          "row_label_exact": "Số dư đầu kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "5.411",
+          "before_exact": "1.784",
+          "cell_id": "r12:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1140,
+            734,
+            1200,
+            964
+          ],
+          "crop_rgb_sha256": "93940757321e461e535c434a8d65069117dfe30c768d05ce49119c63edb2f712",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số dư đầu kỳ"
+          ],
+          "row_label_exact": "Số dư đầu kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "312.982",
+          "before_exact": "16.283",
+          "cell_id": "r12:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1140,
+            334,
+            1200,
+            564
+          ],
+          "crop_rgb_sha256": "e758ed500a399034c83b0608cb3d5a0ba8ba6dd00cadcd9cac40811f5fa4669e",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số dư đầu kỳ"
+          ],
+          "row_label_exact": "Số dư đầu kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "12",
+          "cell_id": "r14:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            1824,
+            1290,
+            2054
+          ],
+          "crop_rgb_sha256": "adb219ff7c0b9a24125d75fc28c49e51e8e1620ec59ddbfbbac1a2015b98edc2",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "3.724",
+          "cell_id": "r14:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            1464,
+            1290,
+            1694
+          ],
+          "crop_rgb_sha256": "7ce2327934a881b0767316c6bdf2d055db2a67eef1f0f7f2721bd92f8897cdf1",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "8.326",
+          "cell_id": "r14:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            1124,
+            1290,
+            1354
+          ],
+          "crop_rgb_sha256": "8e3d9b8a6051ea09a1467aab3863f6fff8333aaf874e4af926c6649f0290d31e",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "1.784",
+          "cell_id": "r14:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            734,
+            1290,
+            964
+          ],
+          "crop_rgb_sha256": "e45ca317407379cdc290a1e461af0f925cf454b47ea94c5aaf652b224a103692",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "16.283",
+          "cell_id": "r14:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1230,
+            334,
+            1290,
+            564
+          ],
+          "crop_rgb_sha256": "214f158a4396f1f019c6162e6fab07f49d0f5b6226ef92f05dc480d77b3d1942",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "44",
+          "before_exact": "-",
+          "cell_id": "r15:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            2184,
+            1335,
+            2414
+          ],
+          "crop_rgb_sha256": "563462072daa13e3033060c2de0c02a032dcb9b7881b5cb6d0309b0033eafd26",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "12",
+          "cell_id": "r15:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            1824,
+            1335,
+            2054
+          ],
+          "crop_rgb_sha256": "5cc4acc02c084ab8c0c47c18a3caf2e1833d949a316abc02be331b27c74c3299",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "1.784",
+          "cell_id": "r15:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1275,
+            734,
+            1335,
+            964
+          ],
+          "crop_rgb_sha256": "5b47caa4241e6e393a5709cbbb6ad50d6d70d97a797d096a69069e7ec618ef74",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Chuyển sang BĐS đầu tư"
+          ],
+          "row_label_exact": "Chuyển sang BĐS đầu tư",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "44",
+          "cell_id": "r16:c1",
+          "column_header_path_exact": [
+            "Nhà cửa, vật kiến\ntrúc"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            2184,
+            1380,
+            2414
+          ],
+          "crop_rgb_sha256": "ec89064553ff8352d426300eb76368461fcf627ef57ef71e82dccd69f7554ebd",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "12",
+          "cell_id": "r16:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            1824,
+            1380,
+            2054
+          ],
+          "crop_rgb_sha256": "ae2d5551ddb4d511348897bb877ddb19af5bcb3326f9336af39f3f63fb1ed785",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "8.282",
+          "cell_id": "r16:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            1464,
+            1380,
+            1694
+          ],
+          "crop_rgb_sha256": "090f2a26c06b5afcf5f8eed1be419d1dfb5dc4811c55cfabc01e649a879f2d71",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "256",
+          "cell_id": "r16:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            1124,
+            1380,
+            1354
+          ],
+          "crop_rgb_sha256": "046a11bfcb234e6202017a51dbb1438a934d7a9f4da3ba002761cb001197b8ac",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "1.784",
+          "cell_id": "r16:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            734,
+            1380,
+            964
+          ],
+          "crop_rgb_sha256": "0b70fedb94f0fd6b72e4eed6946ff5fb5a5e98ce5e869ecd80da4b8b3cb924c6",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "8.582",
+          "cell_id": "r16:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1320,
+            334,
+            1380,
+            564
+          ],
+          "crop_rgb_sha256": "c999d4f101bd1c1e1a545d546a2b3bb70ae1e515d83fcf3705c66181a881bf82",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "12",
+          "cell_id": "r17:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            1824,
+            1425,
+            2054
+          ],
+          "crop_rgb_sha256": "caf10f6b9cc5269e19d50f0ae86f7eb21aa141e3af76162d494895ded81ab637",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "8.282",
+          "cell_id": "r17:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận\ntải truyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            1464,
+            1425,
+            1694
+          ],
+          "crop_rgb_sha256": "1115e9f5f67286414f82e9ec17c5d09a06530b22e9a36f4a1356853204b63527",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "256",
+          "cell_id": "r17:c4",
+          "column_header_path_exact": [
+            "Thiết bị dụng cụ\nquản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            1124,
+            1425,
+            1354
+          ],
+          "crop_rgb_sha256": "574d6e552f6f5d9ec7dc3140a2b3fbe505f82e0886d80227b7e146a1d8df7dd2",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "1.784",
+          "cell_id": "r17:c5",
+          "column_header_path_exact": [
+            "TSCĐ khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            734,
+            1425,
+            964
+          ],
+          "crop_rgb_sha256": "39223f496b71bad0a2ce66e7e980c025e98b0031d7009c27665e9a010f82d8bb",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "8.582",
+          "cell_id": "r17:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1365,
+            334,
+            1425,
+            564
+          ],
+          "crop_rgb_sha256": "a82b9b26c70c154b099165500df9df34873117b68e12e0e7bb362dedf6c0313a",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Giảm khác"
+          ],
+          "row_label_exact": "Giảm khác",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "51bc1af1c0107d2b8198f90c7dd5decc1f4eb3f16333295035b5fcf7ccf3badd",
+      "extraction_run_id": "gfpstorev1:run:7be43d6edec11b249606e973008bdac810471284e0025ea533c2687c16e9c431",
+      "repair_id": "gjffasrv1:repair:850104ff7723b89b2e6d2d9cf4b47710efa5c13c87874f3fdbad834399ec38a6",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:4646965a56e4a0467c983635093c1e6de04fea2ee42b5fcb82bdde461931d6aa",
+        "image_sha256": "813aa89bba2d66c29ca89a7228f649c405026bf4fb6068c7a2ed1b9e3049f82a",
+        "image_size_bytes": 1944576,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:adb6b7c5e825b8411420ef3f9419887131c6331afba94ca6c6385d2d83f57f68",
+        "physical_page": 31,
+        "pixel_height": 3509,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/PGB/2026/2_pgb_2026_7_22_3a0f521_vi_baocaotaichinh_q2_2026.pdf",
+        "source_sha256": "031a48ab510b901bef9b418fd70f6b10bc4c98d846f242d30b324d21ac9fd604",
+        "source_size_bytes": 11686004
+      },
+      "stored_canonical_json_sha256": "8b9d3f4c497686ac1a547a5d32705f1a1336022485e14c4c00a744cc6298e309",
+      "table_ref": {
+        "base_table_sha256": "71667999ad4d924dbc72b1146a75e3e55ed97c043c547b2827980dc8510a2d99",
+        "effective_table_sha256": "de98fa7975cd18d332047b5d8113126eba83a85560add51059979f1368522cd2",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          550,
+          259,
+          1600,
+          2909
+        ],
+        "table_crop_rgb_sha256": "385badf81068083399f0e11b01cd103d0a6cbd3c3e3895a0cb514b2b9b8a5d82"
+      }
+    },
+    {
+      "base_page_json_sha256": "8e6882d5120032acf3cc20468c2e9a2bc619a96c436609554853acf3849b787f",
+      "base_page_json_version_id": "gfpstorev1:json:7361bc84e724a655adb893712516e88c0315dfac9aaca5ef168fbf30dcf79449",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "5.155",
+          "cell_id": "r5:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận tải,\ntruyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2025,
+            1060,
+            2255,
+            1120
+          ],
+          "crop_rgb_sha256": "3226c049b6cea407ef743fefca93884530ffe36ceea7263a7b5c190e52347ca3",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Mua trong kỳ"
+          ],
+          "row_label_exact": "- Mua trong kỳ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "5.155",
+          "before_exact": "7.648",
+          "cell_id": "r5:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1060,
+            2635,
+            1120
+          ],
+          "crop_rgb_sha256": "ea11fd77eb5a447e57ea3a7410f9d8001b46c186c9ee933f80476a14b0084cf6",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Mua trong kỳ"
+          ],
+          "row_label_exact": "- Mua trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1060,
+            3035,
+            1120
+          ],
+          "crop_rgb_sha256": "6b01d3db21f5badca095e8b843496db9bc2c3d137c309e3aadf93cc3d1bd16ad",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Mua trong kỳ"
+          ],
+          "row_label_exact": "- Mua trong kỳ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "7.648",
+          "before_exact": null,
+          "cell_id": "r5:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1060,
+            3355,
+            1120
+          ],
+          "crop_rgb_sha256": "7b3ef401e7a39ce06725ba6043a9b43d4666ff933dcc2299797c9eac7cd4b900",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Mua trong kỳ"
+          ],
+          "row_label_exact": "- Mua trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "1.278",
+          "cell_id": "r6:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1615,
+            1115,
+            1845,
+            1175
+          ],
+          "crop_rgb_sha256": "b3021b172ba1643bad16a0c3af0e19a0a8d809e3a9df0d6bbc8457bf924fe495",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "1.278",
+          "cell_id": "r6:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận tải,\ntruyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2025,
+            1115,
+            2255,
+            1175
+          ],
+          "crop_rgb_sha256": "9233c7abd77f7275f84d42b59822758bf1af7e2d7636b4749250195c4641b829",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "1.278",
+          "before_exact": null,
+          "cell_id": "r6:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1115,
+            2635,
+            1175
+          ],
+          "crop_rgb_sha256": "53237a69961f08ed3a535c31269f341472b531deb3f6f78ea82fa35cdcd7e603",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r6:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1115,
+            3035,
+            1175
+          ],
+          "crop_rgb_sha256": "68b3812f0a86f4e5448bb412fd58882507e94c066e6c9cd3013fd57d99a79631",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "1.278",
+          "before_exact": null,
+          "cell_id": "r6:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1115,
+            3355,
+            1175
+          ],
+          "crop_rgb_sha256": "49c528b46a64f302ca9e9f03b57e83a801e4593edb4af315512b88a67c27d878",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(174)",
+          "cell_id": "r7:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1170,
+            2635,
+            1230
+          ],
+          "crop_rgb_sha256": "a963d725a2ce0db8a50d1b98d83a3b6a137e5c07a6e6c58a52c22d86e5fa5488",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ"
+          ],
+          "row_label_exact": "Số giảm trong kỳ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(174)",
+          "before_exact": "(6.724)",
+          "cell_id": "r7:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1170,
+            3035,
+            1230
+          ],
+          "crop_rgb_sha256": "be7afb5765c5231d33e88102f86ba64bd026e7e7d622f53c74eb2589d8679243",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ"
+          ],
+          "row_label_exact": "Số giảm trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "(6.724)",
+          "before_exact": null,
+          "cell_id": "r7:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1170,
+            3355,
+            1230
+          ],
+          "crop_rgb_sha256": "92424b95ff96958d5c3adced9fb3921294dcf60350eaf2e501adfff384d01023",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ"
+          ],
+          "row_label_exact": "Số giảm trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(5.134)",
+          "cell_id": "r8:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1615,
+            1220,
+            1845,
+            1280
+          ],
+          "crop_rgb_sha256": "2d4d9c63710482892af823cbccc30ca640a1e7c01bc48bf87b028cb311921e58",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ\n- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r8:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1220,
+            2635,
+            1280
+          ],
+          "crop_rgb_sha256": "556f5f4e63180e6a34946e5b7dd1377023f9315641c27e14903455c2f1d54555",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ\n- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r8:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1220,
+            3035,
+            1280
+          ],
+          "crop_rgb_sha256": "5a5a1cc48477689584394fa59226e29eba7a4b9479ab882e51b07ad0778690be",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ\n- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(5.134)",
+          "before_exact": null,
+          "cell_id": "r8:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1220,
+            3355,
+            1280
+          ],
+          "crop_rgb_sha256": "46b311d73a073d5b5dafdb56d6ce9299ba0165a5345ac32579953f3e8c6b598a",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ\n- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(174)",
+          "cell_id": "r9:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận tải,\ntruyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2025,
+            1270,
+            2255,
+            1330
+          ],
+          "crop_rgb_sha256": "ffddcf94f056ad91af70af93b76e8d7ea9f5b6c04426f3ad76449e131792ceb8",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ\n-Giảm khác"
+          ],
+          "row_label_exact": "-Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(1.590)",
+          "cell_id": "r9:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1270,
+            2635,
+            1330
+          ],
+          "crop_rgb_sha256": "6ff7b81afd92443649cc68757b72c1e9b5e9a52de89ebaa96075e5c8c8659d0e",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ\n-Giảm khác"
+          ],
+          "row_label_exact": "-Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(174)",
+          "before_exact": null,
+          "cell_id": "r9:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1270,
+            3035,
+            1330
+          ],
+          "crop_rgb_sha256": "c0323d596d041d6b535c03dab24a42838706e7a881283e9e7e97173f502faec4",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ\n-Giảm khác"
+          ],
+          "row_label_exact": "-Giảm khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "(1.590)",
+          "before_exact": null,
+          "cell_id": "r9:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1270,
+            3355,
+            1330
+          ],
+          "crop_rgb_sha256": "08674e848bfa77f488d46860e694d0298ea849fe884e0b9f969aa22f8b943c28",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Số giảm trong kỳ\n-Giảm khác"
+          ],
+          "row_label_exact": "-Giảm khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "336",
+          "cell_id": "r16:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1615,
+            1670,
+            1845,
+            1730
+          ],
+          "crop_rgb_sha256": "65609447b470aa8c62776f34e093444d7be7ff43adbc67a1f487c47a879282c3",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "336",
+          "cell_id": "r16:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận tải,\ntruyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2025,
+            1670,
+            2255,
+            1730
+          ],
+          "crop_rgb_sha256": "698ebb65378f6ab59eba8d8b470d1010772e48ed1d8bbd7753eeed12721e6b70",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "336",
+          "before_exact": null,
+          "cell_id": "r16:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1670,
+            2635,
+            1730
+          ],
+          "crop_rgb_sha256": "c655761ecd25135ec360b628e656322adf29c679a3ce95a65d9a75af8f51e702",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r16:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1670,
+            3035,
+            1730
+          ],
+          "crop_rgb_sha256": "5d59659ebb1edf3ac2d0cf7af0ab568f15d42b4ba0fc084ceb27857e2a627436",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "336",
+          "before_exact": null,
+          "cell_id": "r16:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1670,
+            3355,
+            1730
+          ],
+          "crop_rgb_sha256": "724fc78a228b6221fbb48e3e400d974bbc80ddd30dbd3bb66744f3b980d080a1",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số tăng trong kỳ\n- Tăng khác"
+          ],
+          "row_label_exact": "- Tăng khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(15)",
+          "cell_id": "r17:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1725,
+            2635,
+            1785
+          ],
+          "crop_rgb_sha256": "20f9b011ebd43f02ff627dc69c4e316d93eb8a9488277d0be366422db36837aa",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ"
+          ],
+          "row_label_exact": "Số giảm trong kỳ",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(15)",
+          "before_exact": "(5.324)",
+          "cell_id": "r17:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1725,
+            3035,
+            1785
+          ],
+          "crop_rgb_sha256": "9784f74cb4ee8438742ecd1ba4b90a5888db4b73520baabcbacd68617a4bf4b1",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ"
+          ],
+          "row_label_exact": "Số giảm trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "(5.324)",
+          "before_exact": null,
+          "cell_id": "r17:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1725,
+            3355,
+            1785
+          ],
+          "crop_rgb_sha256": "8520dfce0cf65bb2139626b9a281b78eedc702f1a200eebf4feec83d397739a1",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ"
+          ],
+          "row_label_exact": "Số giảm trong kỳ",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(5.134)",
+          "cell_id": "r18:c2",
+          "column_header_path_exact": [
+            "Máy móc, thiết bị"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1615,
+            1780,
+            1845,
+            1840
+          ],
+          "crop_rgb_sha256": "25a557653864f46a963788addc6997a48bbdc56af117dbd67e4f317edc5d43fb",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ\n- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r18:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1780,
+            2635,
+            1840
+          ],
+          "crop_rgb_sha256": "7454c8e1107644e8ff1faf3045c807754b356710230c902cc53d5c27a77ea977",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ\n- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r18:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1780,
+            3035,
+            1840
+          ],
+          "crop_rgb_sha256": "a1406cfdcfa186341591e26021774c1e327a7161ed6df9ae39fbebdc76fc3872",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ\n- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(5.134)",
+          "before_exact": null,
+          "cell_id": "r18:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1780,
+            3355,
+            1840
+          ],
+          "crop_rgb_sha256": "69b8b2eae29facf65de447e296b38f3c92fcd9ee9c4c640d654c112f57b41835",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ\n- Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "- Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(15)",
+          "cell_id": "r19:c3",
+          "column_header_path_exact": [
+            "Phương tiện vận tải,\ntruyền dẫn"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2025,
+            1835,
+            2255,
+            1895
+          ],
+          "crop_rgb_sha256": "cc473961643b9284196faeda35f88ef916763d7fbb3c75262f46bed6423a77e6",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ\n- Giảm khác"
+          ],
+          "row_label_exact": "- Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(190)",
+          "cell_id": "r19:c4",
+          "column_header_path_exact": [
+            "Dụng cụ quản lý"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2405,
+            1835,
+            2635,
+            1895
+          ],
+          "crop_rgb_sha256": "d4bc604fe0573f8d34a2393127ffd179f8cb988627b7ed48baa51b3ea65e41d3",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ\n- Giảm khác"
+          ],
+          "row_label_exact": "- Giảm khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(15)",
+          "before_exact": null,
+          "cell_id": "r19:c5",
+          "column_header_path_exact": [
+            "Tài sản cố định khác"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2805,
+            1835,
+            3035,
+            1895
+          ],
+          "crop_rgb_sha256": "b01742c647dea14ce004bb785c5e5c6d96a084d15aee8f89a3edf3219d5fd251",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ\n- Giảm khác"
+          ],
+          "row_label_exact": "- Giảm khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "(190)",
+          "before_exact": null,
+          "cell_id": "r19:c6",
+          "column_header_path_exact": [
+            "Tổng cộng"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            3125,
+            1835,
+            3355,
+            1895
+          ],
+          "crop_rgb_sha256": "68e1bde82336a2bdd79c47509aec8d300ab4c963464015b5b92725c3a69a39cc",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số giảm trong kỳ\n- Giảm khác"
+          ],
+          "row_label_exact": "- Giảm khác",
+          "visual_state": "PRINTED_MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "4eb8d6f8c2335dce9bdfef48c262d8ef398b7f065bc486961429148815999f53",
+      "extraction_run_id": "gfpstorev1:run:76bd1ffe6fb22d4aa4f8ef0019279c3ebfca35cb437079251355242758df3981",
+      "repair_id": "gjffasrv1:repair:a8b55171d5e106007664ec8cfa1d4d2d3f119bd607176e19dc4a63920a82643c",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:6088e0da31bed671f54704f39a0a33f4ba49c1c751c2da1967e09aff1885b07a",
+        "image_sha256": "496351211de70eb2aecbae6938610a4b57f291ad93b6907346a4efab0fbb663b",
+        "image_size_bytes": 894216,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:6d2bff3e4399838082185066d68a56b782ccb4260a997d7ed534ffd80b3f38a9",
+        "physical_page": 29,
+        "pixel_height": 2460,
+        "pixel_width": 3518,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/SHB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+        "source_sha256": "e43e50a17cd71ce393475b2bc53b47d6502b5b966f2d46d17da4dc1eac4cda6f",
+        "source_size_bytes": 6218212
+      },
+      "stored_canonical_json_sha256": "1dfec63ec7463784412e447dfbf70cc9bae55174414b54e928a28b2d744cbed4",
+      "table_ref": {
+        "base_table_sha256": "d7aa6a461d8c8a2a83f3d265e78b0e58d20653183997b82b833541a1368e47f2",
+        "effective_table_sha256": "c81c8229a979854d96091ffc58333ebcf741468eaea52bef5c17fb2ccd7c3d09",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          1150,
+          650,
+          3400,
+          2150
+        ],
+        "table_crop_rgb_sha256": "3c0705f7df6a432279546d49444a3bff9fc98473892a342d269544727e517e0c"
+      }
+    },
+    {
+      "base_page_json_sha256": "8fdf83bb86dcb8ae1b5abcd0031899085ed65888865e85c874a85920531614da",
+      "base_page_json_version_id": "gfpstorev1:json:20da63ff1611fa095648d52a38db3a94026e4116c7d88a1156273a90b97222af",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "382",
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Phương tiện vận tải, truyền dẫn Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1165,
+            1048,
+            1395,
+            1108
+          ],
+          "crop_rgb_sha256": "6c635e44d10ede53e5715a6a1905ffecabb3ebe9dcff008c204f8659586e0401",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "382",
+          "cell_id": "r4:c4",
+          "column_header_path_exact": [
+            "Tài sản cố định khác Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1785,
+            1048,
+            2015,
+            1108
+          ],
+          "crop_rgb_sha256": "faf48688141135252d639dcbc343a882a157690a801f6ab386fdf42161d29a69",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "382",
+          "cell_id": "r10:c2",
+          "column_header_path_exact": [
+            "Phương tiện vận tải, truyền dẫn Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1165,
+            1485,
+            1395,
+            1545
+          ],
+          "crop_rgb_sha256": "cc8eb2a5c47cdb20608ec225f427627555732618713412fde1a063f1db70b860",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "382",
+          "cell_id": "r10:c4",
+          "column_header_path_exact": [
+            "Tài sản cố định khác Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1785,
+            1485,
+            2015,
+            1545
+          ],
+          "crop_rgb_sha256": "7638b1450493b5d37d75ed06cee8cd79f68b03d50d3f815ac4af200fd4a39e2f",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        }
+      ],
+      "effective_page_json_sha256": "dee094c7dd27c8a8e23869fefd51cfab861df602258b6a2f511d1bbc3d715735",
+      "extraction_run_id": "gfpstorev1:run:3daeae1c4cb63ba8e7b8926c238d4c87bdac73e344a718e031a818186a035ddb",
+      "repair_id": "gjffasrv1:repair:90bcde65f4c7fbf61d436f0200adbf2308c3524ac500b1a7cd55f8684b2d5245",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:bdbcfa488a16a9934f326b076fd3bdb6da5b4942811af7b41419af0030b99377",
+        "image_sha256": "5a768106a9fc44f1eb85a15c8b8c26c76994d6764d6c4743e63840b1433c297f",
+        "image_size_bytes": 368640,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:f58090db5d40dbb3871c6eccabe2a555019872fd27388bca7d66977ce49d7b25",
+        "physical_page": 48,
+        "pixel_height": 3510,
+        "pixel_width": 2482,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+        "source_sha256": "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+        "source_size_bytes": 8082455
+      },
+      "stored_canonical_json_sha256": "896e2e640a23ac86f816536721f29b9ed8512319530b4b52ae240b67aafe7c1e",
+      "table_ref": {
+        "base_table_sha256": "4e1042fa0b94f2d651b2d81f3da3b88b0309faec1ac2b714149237f2d22f94ff",
+        "effective_table_sha256": "e2cbe9735cda35cfb5314e2211b7373a7272a5464dfc80586a565c8c8919f6d6",
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          750,
+          650,
+          2350,
+          2000
+        ],
+        "table_crop_rgb_sha256": "c424b6c3a9db6f5debe1210c172449e817acbc40694b5b3e726071a96a224386"
+      }
+    },
+    {
+      "base_page_json_sha256": "042d6f471433e48ed1cd5b6d7202bf298a22b2c267e29fa40a8cd79c1fdc0815",
+      "base_page_json_version_id": "gfpstorev1:json:0628e59e8be9bd81d8ee996fb437fe2daf590a9b0ee2ffca925c82b824fd32a2",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "382",
+          "cell_id": "r5:c2",
+          "column_header_path_exact": [
+            "Phương tiện vận tải, truyền dẫn",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1165,
+            1810,
+            1395,
+            1870
+          ],
+          "crop_rgb_sha256": "38d83b6660c4fbffc31d00d65988087c4530d1ad3adb7443966a8fc71e86d7a3",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r5:c4",
+          "column_header_path_exact": [
+            "Tài sản cố định khác",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1785,
+            1810,
+            2015,
+            1870
+          ],
+          "crop_rgb_sha256": "9df853e76e8e6ba6db78a072626b48923f1b9e0bb1b6794ce07c948cd3d6922d",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "382",
+          "before_exact": null,
+          "cell_id": "r5:c5",
+          "column_header_path_exact": [
+            "Tổng cộng",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2085,
+            1810,
+            2315,
+            1870
+          ],
+          "crop_rgb_sha256": "6608a075099a81fcdc7dd0268a7411f2fb862fc6b3f1de6a6e4f70f8b1c451f0",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "16.801",
+          "cell_id": "r11:c4",
+          "column_header_path_exact": [
+            "Tài sản cố định khác",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1785,
+            2320,
+            2015,
+            2380
+          ],
+          "crop_rgb_sha256": "26625a95a29281b4602c63eb4980009cdce93a731d5c2ccd0052631824b0a89d",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số tăng do hợp nhất kinh doanh trong năm"
+          ],
+          "row_label_exact": "Số tăng do hợp nhất kinh doanh trong năm",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "16.801",
+          "before_exact": null,
+          "cell_id": "r11:c5",
+          "column_header_path_exact": [
+            "Tổng cộng",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2085,
+            2320,
+            2315,
+            2380
+          ],
+          "crop_rgb_sha256": "132ce780ab3e9ce1d67344a3a81bc8bb8cc1f99d2a7ae2c091a14bed1d86c3a8",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Số tăng do hợp nhất kinh doanh trong năm"
+          ],
+          "row_label_exact": "Số tăng do hợp nhất kinh doanh trong năm",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "382",
+          "cell_id": "r12:c2",
+          "column_header_path_exact": [
+            "Phương tiện vận tải, truyền dẫn",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1165,
+            2390,
+            1395,
+            2450
+          ],
+          "crop_rgb_sha256": "78ba67f4cd26849438132d7dfd30e984f9a3bf660a76478e2238034a455730e3",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": null,
+          "cell_id": "r12:c4",
+          "column_header_path_exact": [
+            "Tài sản cố định khác",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1785,
+            2390,
+            2015,
+            2450
+          ],
+          "crop_rgb_sha256": "6e67ab2d5f3d32a5e461847a2fb84d8d2e26b9213393ccebcd8a15e6e0b868cd",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "382",
+          "before_exact": null,
+          "cell_id": "r12:c5",
+          "column_header_path_exact": [
+            "Tổng cộng",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2085,
+            2390,
+            2315,
+            2450
+          ],
+          "crop_rgb_sha256": "9ca9d3383d732e2679269fd0c99216adfe046f7c1ef1cb70d57a6fe9b89b298e",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Tăng khác"
+          ],
+          "row_label_exact": "Tăng khác",
+          "visual_state": "PRINTED_MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "d880872643f49e429fe2f936980a1545131e765a8ef3f2259603fdab88569810",
+      "extraction_run_id": "gfpstorev1:run:d1219c541008979081a6beebccae4661809f56a5c9da3564bbc5e35ad06e6fa8",
+      "repair_id": "gjffasrv1:repair:941db0d5fb12bb4b125a5d26a35ec0f8f0c986b01d6c7b7dd69a01aff11e847c",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:c2a6d57dae2280f21ec24b3276814e69e0e71768e5ef7bfbe590932432b276ba",
+        "image_sha256": "b990aa03be6fab28cc81b831285553d2fc3c40ae7653823dff3c03152c5bfbe9",
+        "image_size_bytes": 432535,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:7a0c49ac0f66f1c0ffc3bea5be293f50a08d1a4d78b4bf3e15492ec746de8a83",
+        "physical_page": 54,
+        "pixel_height": 3510,
+        "pixel_width": 2481,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "source_sha256": "0659a1f3944534200d0f1fd83f47b24c97a00d13d748cefbad9ec15921f59a6f",
+        "source_size_bytes": 9382896
+      },
+      "stored_canonical_json_sha256": "87b4a2cd79ee457fedef6eea9cbcf214a7c6b7cbe9e6e0c83967432e4ca86cf3",
+      "table_ref": {
+        "base_table_sha256": "ddae742a1251f1a0c30bd7b7964e6210bf82266d6b7fe49f46e7c2a83e039cdb",
+        "effective_table_sha256": "79fd1008df8bb4e634b4e27377d67686583a71b6c6e7eec7873309c4be323e6e",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          750,
+          1300,
+          2350,
+          2850
+        ],
+        "table_crop_rgb_sha256": "01c9fe3c0a3b111effde8630be3065fee2b8165c21d1b77fd40295c52528a352"
+      }
+    },
+    {
+      "base_page_json_sha256": "fe1610ac79f02c49cd61472386c1e58c6affbafe5e5867e88f6c0fca6a5d6bc9",
+      "base_page_json_version_id": "gfpstorev1:json:85f6b82d8cd8895687ff2acde51337e535bd3d1ac534ab5af4a8dd68ebd339ce",
+      "cell_repairs": [
+        {
+          "after_exact": "-",
+          "before_exact": "(5.265)",
+          "cell_id": "r4:c2",
+          "column_header_path_exact": [
+            "Phương tiện vận tải, truyền dẫn",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1165,
+            1805,
+            1395,
+            1865
+          ],
+          "crop_rgb_sha256": "435cefb105f1d3b05fb71f4935af5e9b1d3add96dd3a941b08da3c056f5f082b",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(5.265)",
+          "before_exact": "(180)",
+          "cell_id": "r4:c3",
+          "column_header_path_exact": [
+            "Thiết bị, dụng cụ quản lý",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1475,
+            1805,
+            1705,
+            1865
+          ],
+          "crop_rgb_sha256": "60daec03ecfa09c9d1812ce37288670c21a0642092199eb11bb548dc5d940efb",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "(180)",
+          "before_exact": "(7.173)",
+          "cell_id": "r4:c4",
+          "column_header_path_exact": [
+            "Tài sản cố định khác",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1785,
+            1805,
+            2015,
+            1865
+          ],
+          "crop_rgb_sha256": "910b7742284b1371592daf006782c072784cc54650ef034b83d3298e4de5f763",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "(7.173)",
+          "before_exact": "0",
+          "cell_id": "r4:c5",
+          "column_header_path_exact": [
+            "Tổng cộng",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2085,
+            1805,
+            2315,
+            1865
+          ],
+          "crop_rgb_sha256": "43076f413e1a2814224f0a27caff477701d9a9645a0afe910ea30018e8b1326d",
+          "row_hierarchy_path_exact": [
+            "Nguyên giá",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "-",
+          "before_exact": "(5.221)",
+          "cell_id": "r9:c2",
+          "column_header_path_exact": [
+            "Phương tiện vận tải, truyền dẫn",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1165,
+            2195,
+            1395,
+            2255
+          ],
+          "crop_rgb_sha256": "a752e03c090d4867892db8baac9aa8eebef564c46d56f0c0708555258f0b9168",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "DASH"
+        },
+        {
+          "after_exact": "(5.221)",
+          "before_exact": "(180)",
+          "cell_id": "r9:c3",
+          "column_header_path_exact": [
+            "Thiết bị, dụng cụ quản lý",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1475,
+            2195,
+            1705,
+            2255
+          ],
+          "crop_rgb_sha256": "0de6e7b68060e0a57d572d28e4e130e7092887fbce573aa4901b7a60cf6be025",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "(180)",
+          "before_exact": "(7.121)",
+          "cell_id": "r9:c4",
+          "column_header_path_exact": [
+            "Tài sản cố định khác",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            1785,
+            2195,
+            2015,
+            2255
+          ],
+          "crop_rgb_sha256": "dfae8522fa1e1fe4423c6506453fb82bbdefc43c4b8d5f355f8ffd1f0c22a24f",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        },
+        {
+          "after_exact": "(7.121)",
+          "before_exact": "0",
+          "cell_id": "r9:c5",
+          "column_header_path_exact": [
+            "Tổng cộng",
+            "Triệu VND"
+          ],
+          "crop_bbox_pixels_xyxy": [
+            2085,
+            2195,
+            2315,
+            2255
+          ],
+          "crop_rgb_sha256": "e4a75b2a2a4a197236f4437fc1e74080bf2f873bbbfc417382fc6d42f801a212",
+          "row_hierarchy_path_exact": [
+            "Giá trị hao mòn luỹ kế",
+            "Thanh lý, nhượng bán"
+          ],
+          "row_label_exact": "Thanh lý, nhượng bán",
+          "visual_state": "PRINTED_MONEY"
+        }
+      ],
+      "effective_page_json_sha256": "07547f9d35c2deec0ab43a786a25dbf267110f58071390d4d7a231870b10e533",
+      "extraction_run_id": "gfpstorev1:run:687ec8af10c401c76edcde1a65ceaf1ef6fe329f6febdde5453b4296b6d1d1be",
+      "repair_id": "gjffasrv1:repair:b566d3e5eb4c550e4bd6b0030469646f585073ea30edb0df59b4938642ca74fa",
+      "repair_reason": "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON",
+      "source_binding": {
+        "document_id": "gfpstorev1:document:6eb5c21cde836a115db7ee2886b76b3791e6718e654e0d47dfac69955c9d6c28",
+        "image_sha256": "3dccbf1e8790083c74c80a49331af329b6ee064006228df9536f19ba253fd579",
+        "image_size_bytes": 2644066,
+        "media_type": "image/png",
+        "page_id": "gfpstorev1:page:a02f456285b6172b061c8ac8136d9c0701714040dea943f4a35c54842e47344c",
+        "physical_page": 47,
+        "pixel_height": 3510,
+        "pixel_width": 2482,
+        "render_dpi": 300,
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+        "source_sha256": "742dbc45b1f5f7612100fd6e078977e206f700693a1f132e3373b81386934b8c",
+        "source_size_bytes": 8825841
+      },
+      "stored_canonical_json_sha256": "01f7b9444705050e04e5eca26d16b8f02704a2aa249a6d417f86ee2c826c7847",
+      "table_ref": {
+        "base_table_sha256": "ddf3bf4e4b1a02d2aa36add648880da77132915eb4c540044c4d5a87ef5a330a",
+        "effective_table_sha256": "651035e9dcd91977f6216cd6a71b3e7dae48033eff8905361ab422cf4aba2270",
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "visual_evidence": {
+        "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION",
+        "render_mode": "PDF_PAGE_GET_PIXMAP_DPI_EXACT",
+        "reviewed_utc_date": "2026-09-04",
+        "table_crop_bbox_pixels_xyxy": [
+          750,
+          1350,
+          2350,
+          2600
+        ],
+        "table_crop_rgb_sha256": "47d9a256df25fd47abf22daf78a55d4e7d360bb6f589391044f2f42afe1c32fc"
+      }
+    }
+  ],
+  "review_policy": "TRANSCRIBE_ONLY_PDF_VISIBLE_CELL_TOKENS_NO_EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO_NO_PROVIDER"
+}

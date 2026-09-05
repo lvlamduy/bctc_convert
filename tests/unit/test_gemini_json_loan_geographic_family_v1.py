@@ -150,6 +150,48 @@ def _column_page(
     }
 
 
+def _stacked_period_row_page() -> dict:
+    page = _row_page()
+    table = page["sections"][0]["tables"][0]
+    table["title_exact"] = None
+    table["columns"][0]["header_path_exact"] = ["Cho vay\nkhách hàng\n(*)", "Triệu đồng"]
+    table["rows"] = []
+    for period, values in (
+        ("Tại ngày 31 tháng 12 năm 2025", ("120", "20", "140")),
+        ("Tại ngày 31 tháng 12 năm 2024", ("100", "10", "110")),
+    ):
+        table["rows"].extend(
+            [
+                {
+                    "hierarchy_path_exact": [period],
+                    "label_exact": period,
+                    "row_kind": "GROUP",
+                    "values_exact": [None],
+                },
+                {
+                    "hierarchy_path_exact": [period, "Trong nước"],
+                    "label_exact": "Trong nước",
+                    "row_kind": "ITEM",
+                    "values_exact": [values[0]],
+                },
+                {
+                    "hierarchy_path_exact": [period, "Nước ngoài"],
+                    "label_exact": "Nước ngoài",
+                    "row_kind": "ITEM",
+                    "values_exact": [values[1]],
+                },
+                {
+                    "hierarchy_path_exact": [period, None],
+                    "label_exact": None,
+                    # Some providers type this group-local closing row as a subtotal.
+                    "row_kind": "SUBTOTAL",
+                    "values_exact": [values[2]],
+                },
+            ]
+        )
+    return page
+
+
 def _region(*, version: str, page: int, orientation: str) -> dict:
     return {
         "orientation": orientation,
@@ -161,7 +203,11 @@ def _region(*, version: str, page: int, orientation: str) -> dict:
     }
 
 
-def _context(*dates: str, unit_records: list[dict] | None = None) -> dict:
+def _context(
+    *dates: str,
+    unit_records: list[dict] | None = None,
+    external_population_controls: list[dict] | None = None,
+) -> dict:
     period_evidence = []
     for ordinal, text in enumerate(dates, start=1):
         # Two-page support makes each declared reporting date eligible for the
@@ -177,6 +223,7 @@ def _context(*dates: str, unit_records: list[dict] | None = None) -> dict:
                 }
             )
     return {
+        "external_population_controls": external_population_controls or [],
         "period_evidence": period_evidence,
         "unit_evidence": unit_records
         or [
@@ -218,6 +265,11 @@ def test_specs_keep_authoritative_context_only_schema_identity() -> None:
     assert compiled["schema"]["family_root_mapping_policy"] == (
         "REQUIRE_HIERARCHICALLY_RESOLVED_CONTEXT_ONLY"
     )
+    policy = compiled["dual_axis_projection_policy"]
+    assert policy["blank_role_cell_policy"] == "PRESERVE_SOURCE_BLANK_OMIT_MAPPING"
+    assert policy["blank_zero_derivable_roles"] == []
+    assert policy["source_blank_mapping_policy"] == "PRESERVE_BLANK_OMIT_MAPPING"
+    assert policy["external_population_control"]["control_report_norm_id"] == 716
 
 
 def test_row_orientation_two_periods_closes_and_maps_only_two_children() -> None:
@@ -253,6 +305,42 @@ def test_row_orientation_two_periods_closes_and_maps_only_two_children() -> None
     ]
 
 
+def test_one_table_stacked_period_groups_project_two_exact_lanes() -> None:
+    version = _version("7")
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=58, orientation="ROW_ROLES_METRIC_COLUMN"),
+                _stacked_period_row_page(),
+            )
+        ],
+        _context("31/12/2025", "31/12/2024"),
+    )
+
+    assert result["status"] == READY
+    mappings = {mapping["role"]: mapping for mapping in result["mappings"]}
+    assert [value["coefficient"] for value in mappings["DOMESTIC_TOTAL"]["values"]] == [
+        120,
+        100,
+    ]
+    assert [value["coefficient"] for value in mappings["FOREIGN_TOTAL"]["values"]] == [20, 10]
+    receipt = result["dual_axis_projection_receipt"]
+    assert receipt["period_axis"]["periods"] == ["2025-12-31", "2024-12-31"]
+    assert [item["source_ref"]["row_group_id"] for item in receipt["source_table_equations"]] == [
+        "g1",
+        "g2",
+    ]
+    assert [
+        item["source_ref"]["row_group_path_exact"] for item in receipt["source_table_equations"]
+    ] == [
+        ["Tại ngày 31 tháng 12 năm 2025"],
+        ["Tại ngày 31 tháng 12 năm 2024"],
+    ]
+    assert [
+        item["source_evidence"]["source_kind"] for item in receipt["period_axis"]["sources"]
+    ] == ["ROW_GROUP_PATH", "ROW_GROUP_PATH"]
+
+
 def test_one_period_exhaustive_table_uses_document_period_and_unit_context() -> None:
     version = _version("b")
     page = _row_page(include_total=False)
@@ -286,6 +374,71 @@ def test_one_period_exhaustive_table_uses_document_period_and_unit_context() -> 
     assert result["dual_axis_projection_receipt"]["period_axis"]["periods"] == ["2025-12-31"]
 
 
+def test_row_orientation_ignores_structural_text_column_but_requires_money_metric() -> None:
+    version = _version("4")
+    page = _row_page()
+    table = page["sections"][0]["tables"][0]
+    table["columns"].insert(
+        0,
+        {"header_path_exact": [None], "value_kind": "TEXT"},
+    )
+    for row in table["rows"]:
+        row["values_exact"].insert(0, row["label_exact"])
+
+    ready = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="ROW_ROLES_METRIC_COLUMN"),
+                page,
+            )
+        ],
+        _context("31/12/2025"),
+    )
+    assert ready["status"] == READY
+    assert [mapping["values"][0]["coefficient"] for mapping in ready["mappings"]] == [
+        120,
+        20,
+    ]
+
+    table["columns"][1]["value_kind"] = "TEXT"
+    rejected = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="ROW_ROLES_METRIC_COLUMN"),
+                page,
+            )
+        ],
+        _context("31/12/2025"),
+    )
+    assert rejected["status"] == UNRESOLVED
+    assert "DUAL_AXIS_BOUND_VALUE_COLUMN_IS_NOT_MONEY" in rejected["reasons"]
+
+
+def test_metric_orientation_ignores_exact_text_row_label_carrier() -> None:
+    version = _version("5")
+    page = _column_page(current=True)
+    table = page["sections"][0]["tables"][0]
+    metric_row = table["rows"][0]
+    table["columns"].insert(0, {"header_path_exact": [None], "value_kind": "TEXT"})
+    metric_row["values_exact"].insert(0, metric_row["label_exact"])
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026"),
+    )
+
+    assert result["status"] == READY
+    assert [mapping["values"][0]["coefficient"] for mapping in result["mappings"]] == [
+        200,
+        0,
+    ]
+
+
 def test_repeated_visible_dash_is_canonical_zero_without_changing_raw_source() -> None:
     version = _version("9")
     page = _row_page()
@@ -308,7 +461,208 @@ def test_repeated_visible_dash_is_canonical_zero_without_changing_raw_source() -
     assert foreign["values"] == [{"coefficient": 0, "source_text": "--", "state": "DASH_ZERO"}]
 
 
-def test_column_orientation_adjacent_pair_preserves_dash_and_derives_only_foreign_blank() -> None:
+@pytest.mark.parametrize(
+    "metric_label",
+    [
+        "Cho vay khách hàng – gộp",
+        "Tổng dư nợ cho vay các TCKT và cá nhân",
+        "Cho vay và cho thuê tài chính khách hàng (*)",
+    ],
+)
+def test_exact_customer_population_metric_variants_keep_local_equation(
+    metric_label: str,
+) -> None:
+    version = _version("b")
+    page = _column_page(current=True)
+    metric_row = page["sections"][0]["tables"][0]["rows"][0]
+    metric_row["label_exact"] = metric_label
+    metric_row["hierarchy_path_exact"] = [metric_label]
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026"),
+    )
+
+    assert result["status"] == READY
+    assert [mapping["role"] for mapping in result["mappings"]] == [
+        "DOMESTIC_TOTAL",
+        "FOREIGN_TOTAL",
+    ]
+
+
+def test_broad_total_loan_metric_requires_declared_external_control() -> None:
+    version = _version("a")
+    page = _column_page(current=True)
+    metric_row = page["sections"][0]["tables"][0]["rows"][0]
+    metric_row["label_exact"] = "Tổng dư nợ cho vay"
+    metric_row["hierarchy_path_exact"] = ["Tổng dư nợ cho vay"]
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026"),
+    )
+
+    assert result["status"] == UNRESOLVED
+    assert "EXTERNAL_POPULATION_CONTROL_IS_ABSENT" in result["reasons"]
+
+    control = {
+        "coefficient": 200,
+        "control_report_norm_id": 716,
+        "period": "2026-06-30",
+        "source_ref": {
+            "column_id": "c2",
+            "page_json_version_id": _version("f"),
+            "physical_page": 3,
+            "row_id": "r2",
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+        "source_text": "200",
+        "unit_exact": "Triệu VND",
+    }
+    matched = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026", external_population_controls=[control]),
+    )
+    assert matched["status"] == READY
+    receipt = matched["dual_axis_projection_receipt"][
+        "external_population_control"
+    ]["sources"][0]
+    assert receipt["disposition"] == "EXACT_EXTERNAL_POPULATION_CONTROL_MATCH"
+    assert receipt["control_report_norm_id"] == 716
+
+    mismatched_control = deepcopy(control)
+    mismatched_control["coefficient"] = 199
+    mismatched = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026", external_population_controls=[mismatched_control]),
+    )
+    assert mismatched["status"] == UNRESOLVED
+    assert "EXTERNAL_POPULATION_CONTROL_CONFLICT" in mismatched["reasons"]
+
+    wrong_identity = deepcopy(control)
+    wrong_identity["control_report_norm_id"] = 717
+    tampered = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026", external_population_controls=[wrong_identity]),
+    )
+    assert tampered["status"] == UNRESOLVED
+    assert "EXTERNAL_POPULATION_CONTROL_IS_ABSENT" in tampered["reasons"]
+
+
+def test_absent_foreign_axis_role_is_omitted_without_zero_inference() -> None:
+    version = _version("a")
+    page = _column_page(current=True)
+    table = page["sections"][0]["tables"][0]
+    del table["columns"][1]
+    del table["rows"][0]["values_exact"][1]
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026"),
+    )
+
+    assert result["status"] == READY
+    assert [mapping["role"] for mapping in result["mappings"]] == ["DOMESTIC_TOTAL"]
+    equation = result["dual_axis_projection_receipt"]["source_table_equations"][0]
+    foreign = next(cell for cell in equation["role_cells"] if cell["role"] == "FOREIGN_TOTAL")
+    assert foreign["raw_value_exact"] is None
+    assert foreign["source_value_state"] == "ABSENT_SOURCE_AXIS_ROLE"
+    assert foreign["value_disposition"] == "UNMAPPED_ABSENT_SOURCE_AXIS_ROLE"
+    assert equation["mode"] == "VISIBLE_TOTAL_RETAINED_WITH_ABSENT_SOURCE_AXIS_ROLE_NO_INFERENCE"
+    assert equation["blank_zero_equations"] == []
+
+
+def test_one_money_unit_total_rounding_residual_keeps_visible_role_values() -> None:
+    version = _version("b")
+    page = _column_page(current=True)
+    page["sections"][0]["tables"][0]["rows"][0]["values_exact"][-1] = "201"
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026"),
+    )
+
+    assert result["status"] == READY
+    equation = result["dual_axis_projection_receipt"]["source_table_equations"][0]
+    assert equation["mode"] == "VISIBLE_TOTAL_WITH_MONEY_UNIT_DISPLAY_ROUNDING_RESIDUAL"
+    assert equation["total_equation_residual"] == 1
+    assert equation["total_rounding_policy"] == {
+        "format_version": "GEMINI_JSON_DUAL_AXIS_VISIBLE_TOTAL_ROUNDING_POLICY_V1",
+        "maximum_absolute_display_residual": 1,
+        "minimum_unit_decimal_magnitude": 3,
+        "unit_decimal_magnitude": 6,
+    }
+
+
+def test_visible_total_rounding_is_disabled_for_base_vnd_unit() -> None:
+    version = _version("6")
+    page = _column_page(current=True)
+    table = page["sections"][0]["tables"][0]
+    table["unit_exact"] = "VND"
+    for column in table["columns"]:
+        column["header_path_exact"][-1] = "VND"
+    table["rows"][0]["values_exact"][-1] = "201"
+    unit_context = [
+        {
+            "physical_page": 20,
+            "section_id": "s1",
+            "source_kind": "TABLE_UNIT",
+            "table_id": "t1",
+            "text_exact": "VND",
+        }
+    ]
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026", unit_records=unit_context),
+    )
+
+    assert result["status"] == UNRESOLVED
+    assert "DUAL_AXIS_VISIBLE_TOTAL_EQUATION_FAILED" in result["reasons"]
+
+
+def test_column_orientation_adjacent_pair_preserves_blank_without_deriving_zero() -> None:
     current_version = _version("c")
     prior_version = _version("d")
     current = _column_page(current=True, continuation="CONTINUES_ON_NEXT_PAGE")
@@ -345,16 +699,107 @@ def test_column_orientation_adjacent_pair_preserves_dash_and_derives_only_foreig
     )
 
     assert result["status"] == READY
-    foreign = next(mapping for mapping in result["mappings"] if mapping["role"] == "FOREIGN_TOTAL")
-    assert [value["state"] for value in foreign["values"]] == [
-        "DASH_ZERO",
-        "DERIVED_ZERO_FROM_EXACT_VISIBLE_TOTAL_AND_OTHER_ROLE",
+    assert [mapping["role"] for mapping in result["mappings"]] == [
+        "DOMESTIC_TOTAL",
+        "FOREIGN_TOTAL",
     ]
-    binding = next(
-        item for item in result["mapping_lane_source_bindings"] if item["role"] == "FOREIGN_TOTAL"
+    foreign_mapping = result["mappings"][1]
+    assert foreign_mapping["values"] == [
+        {"coefficient": 0, "source_text": "-", "state": "DASH_ZERO"},
+        {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"},
+    ]
+    assert [binding["role"] for binding in result["mapping_lane_source_bindings"]] == [
+        "DOMESTIC_TOTAL",
+        "FOREIGN_TOTAL",
+    ]
+    foreign_binding = result["mapping_lane_source_bindings"][1]
+    assert foreign_binding["lanes"][1]["mapping_value"] == {
+        "coefficient": None,
+        "source_text": None,
+        "state": "BLANK_SOURCE_CELL",
+    }
+    assert "blank_zero_equation" not in foreign_binding["lanes"][1]
+    prior_equation = result["dual_axis_projection_receipt"]["source_table_equations"][1]
+    assert prior_equation["mode"] == (
+        "VISIBLE_TOTAL_RETAINED_WITH_TYPED_UNMAPPED_SOURCE_BLANK_NO_EXHAUSTIVE_EQUATION"
     )
-    assert binding["lanes"][1]["axis_source"]["column_id"] in {"c1", "c2"}
-    assert binding["lanes"][1]["blank_zero_equation"]["total_cell"]["raw_value_exact"] == "180"
+    foreign_cell = next(
+        cell for cell in prior_equation["role_cells"] if cell["role"] == "FOREIGN_TOTAL"
+    )
+    assert foreign_cell["coefficient"] is None
+    assert foreign_cell["raw_value_exact"] is None
+    assert foreign_cell["source_value_state"] == "BLANK_SOURCE_CELL"
+    assert foreign_cell["value_disposition"] == "UNMAPPED_SOURCE_BLANK"
+    assert prior_equation["blank_zero_equations"] == []
+    assert result["closure_receipt"]["partially_blank_mapped_roles"] == [
+        "FOREIGN_TOTAL"
+    ]
+    assert result["closure_receipt"]["unmapped_source_blank_roles"] == []
+
+
+@pytest.mark.parametrize(
+    ("include_total", "printed_total"),
+    [(True, "200"), (True, "205"), (False, None)],
+)
+def test_foreign_source_blank_is_never_zero_even_when_total_would_make_zero(
+    include_total: bool, printed_total: str | None
+) -> None:
+    version = _version("8")
+    page = _column_page(
+        current=True,
+        blank_role="FOREIGN_TOTAL",
+        include_total=include_total,
+    )
+    if printed_total is not None:
+        page["sections"][0]["tables"][0]["rows"][0]["values_exact"][-1] = printed_total
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026"),
+    )
+
+    assert result["status"] == READY
+    assert [mapping["role"] for mapping in result["mappings"]] == ["DOMESTIC_TOTAL"]
+    assert result["mappings"][0]["values"] == [
+        {"coefficient": 200, "source_text": "200", "state": "RAW_SIGNED_INTEGER"}
+    ]
+    equation = result["dual_axis_projection_receipt"]["source_table_equations"][0]
+    foreign_cell = next(cell for cell in equation["role_cells"] if cell["role"] == "FOREIGN_TOTAL")
+    assert foreign_cell["coefficient"] is None
+    assert foreign_cell["raw_value_exact"] is None
+    assert foreign_cell["source_value_state"] == "BLANK_SOURCE_CELL"
+    assert foreign_cell["value_disposition"] == "UNMAPPED_SOURCE_BLANK"
+    assert equation["blank_zero_equations"] == []
+
+
+def test_blank_domestic_without_total_keeps_only_observed_foreign_dash_mapping() -> None:
+    version = _version("0")
+    page = _column_page(
+        current=True,
+        blank_role="DOMESTIC_TOTAL",
+        include_total=False,
+    )
+
+    result = _evaluate(
+        [
+            (
+                _region(version=version, page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+                page,
+            )
+        ],
+        _context("30/06/2026"),
+    )
+
+    assert result["status"] == READY
+    assert [mapping["role"] for mapping in result["mappings"]] == ["FOREIGN_TOTAL"]
+    assert result["mappings"][0]["values"] == [
+        {"coefficient": 0, "source_text": "-", "state": "DASH_ZERO"}
+    ]
 
 
 def test_adjacent_period_complement_ignores_repeated_section_date_and_spurious_dates() -> None:
@@ -414,7 +859,7 @@ def test_adjacent_period_complement_ignores_repeated_section_date_and_spurious_d
     assert "SOURCE_TABLE_LOCAL_BALANCE_PERIOD_AXIS_IS_NOT_EXACT" in conflict["reasons"]
 
 
-def test_adjacent_period_cluster_requires_explicit_continuation_binding() -> None:
+def test_adjacent_period_cluster_accepts_two_complete_local_balance_dates() -> None:
     pages = [
         (
             _region(
@@ -436,6 +881,30 @@ def test_adjacent_period_cluster_requires_explicit_continuation_binding() -> Non
 
     result = _evaluate(pages, _context("30/06/2026", "31/12/2025"))
 
+    assert result["status"] == READY
+    assert result["dual_axis_projection_receipt"]["period_axis"]["periods"] == [
+        "2026-06-30",
+        "2025-12-31",
+    ]
+
+
+def test_adjacent_undated_period_cluster_still_requires_continuation_binding() -> None:
+    pages = [
+        (
+            _region(version=_version("4"), page=20, orientation="METRIC_ROW_ROLE_COLUMNS"),
+            _column_page(current=True),
+        ),
+        (
+            _region(version=_version("5"), page=21, orientation="METRIC_ROW_ROLE_COLUMNS"),
+            _column_page(current=False),
+        ),
+    ]
+    for _region_value, page in pages:
+        page["sections"][0]["tables"][0]["title_exact"] = None
+        page["sections"][0]["title_exact"] = "Mức độ tập trung theo khu vực địa lý"
+
+    result = _evaluate(pages, _context("30/06/2026", "31/12/2025"))
+
     assert result["status"] == UNRESOLVED
     assert "ADJACENT_PERIOD_TABLE_CLUSTER_HAS_NO_CONTINUATION_BINDING" in result["reasons"]
 
@@ -448,8 +917,6 @@ def test_adjacent_period_cluster_requires_explicit_continuation_binding() -> Non
         ("DUPLICATE_ROLE", "METRIC_ROW_ROLE_COLUMN_EXACT_ASSIGNMENT_COUNT_NOT_ONE"),
         ("HARD_NEGATIVE", "HARD_NEGATIVE_FAMILY_TITLE_PRESENT"),
         ("STRUCTURAL_RESET", "STRUCTURAL_RESET_FAMILY_TITLE_PRESENT"),
-        ("BLANK_DOMESTIC", "BLANK_ROLE_CELL_IS_NOT_DECLARED_ZERO_DERIVABLE:DOMESTIC_TOTAL"),
-        ("BLANK_FOREIGN_NO_TOTAL", "BLANK_ROLE_CELL_HAS_NO_EXACT_TOTAL_EQUATION:FOREIGN_TOTAL"),
         ("TOTAL_MISMATCH", "DUAL_AXIS_VISIBLE_TOTAL_EQUATION_FAILED"),
         ("UNIT_SCALE_CONFLICT", "DUAL_AXIS_SOURCE_TABLE_MONEY_UNIT_SCALE_CONFLICT"),
     ],
@@ -471,10 +938,6 @@ def test_dual_axis_adversarial_cells_and_context_fail_closed(mutation: str, reas
         page["sections"][0]["title_exact"] = "Báo cáo bộ phận theo khu vực địa lý"
     elif mutation == "STRUCTURAL_RESET":
         page["sections"][0]["title_exact"] = "Phân tích theo loại hình doanh nghiệp"
-    elif mutation == "BLANK_DOMESTIC":
-        page = _column_page(current=True, blank_role="DOMESTIC_TOTAL")
-    elif mutation == "BLANK_FOREIGN_NO_TOTAL":
-        page = _column_page(current=True, blank_role="FOREIGN_TOTAL", include_total=False)
     elif mutation == "TOTAL_MISMATCH":
         table["rows"][0]["values_exact"][-1] = "999"
     elif mutation == "UNIT_SCALE_CONFLICT":
@@ -575,6 +1038,33 @@ def test_mixed_orientation_and_duplicate_period_clusters_fail_closed() -> None:
     )
     assert duplicate["status"] == UNRESOLVED
     assert "SOURCE_TABLE_PERIODS_ARE_NOT_DISTINCT" in duplicate["reasons"]
+
+
+@pytest.mark.parametrize(
+    ("path", "value", "message"),
+    [
+        (("external_population_control", "control_report_norm_id"), True, "external"),
+        (("external_population_control", "match_rule"), "COINCIDENTAL", "external"),
+        (
+            ("external_population_control", "query_gate_metric_aliases"),
+            ["Tiền gửi khách hàng"],
+            "external",
+        ),
+        (
+            ("visible_total_rounding_policy", "minimum_unit_decimal_magnitude"),
+            2,
+            "rounding",
+        ),
+    ],
+)
+def test_dual_axis_declarative_control_and_rounding_policy_reject_tamper(
+    path: tuple[str, str], value: object, message: str
+) -> None:
+    topology, evaluation, schema = deepcopy(_specs())
+    evaluation["dual_axis_projection_policy"][path[0]][path[1]] = value
+
+    with pytest.raises(GeminiJsonFlatAccountingFamilyV1Error, match=message):
+        compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
 
 
 @pytest.mark.parametrize(

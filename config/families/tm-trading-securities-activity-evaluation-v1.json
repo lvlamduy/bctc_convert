@@ -5,6 +5,8 @@
     "PROVISION_TRADING_SECURITIES"
   ],
   "blank_zero_policy": "ZERO_ONLY_AFTER_COMPLETE_EQUATION_EXACT",
+  "source_presentation_rounding_policy": "INDEPENDENT_DISPLAY_UNIT_ROUNDING_INTERVAL_ALL_EQUATIONS",
+  "source_total_blank_lane_control_policy": "OBSERVED_LANES_EXACT_REMAINDER_BLANK",
   "closure_policy": "EXACT_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_AND_CONFIGURED_ROOT_ALL_LANES",
   "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
   "corroboration_pairs": [],
@@ -14,10 +16,11 @@
   "direct_frontier_policy": "CANONICAL_PROVEN_TOP_LEVEL_DIRECT_FRONTIER",
   "duplicate_role_aggregation_policy": "ALL_SOURCE_ROWS_CONSUMED_BY_EXACT_TABLE_FRONTIER",
   "duplicate_complete_table_population_policy": "UNRESOLVED_EXACT_REPEATED_POPULATION",
+  "duration_header_path_scope_policy": "DISTINCT_SUFFIX_AFTER_EXACT_COMMON_PREFIX",
   "equation_consumed_unmatched_residual_role": null,
   "family_id": "TRADING_SECURITIES_ACTIVITY",
   "family_root_population_policy": "EXPLICIT_SOURCE_ROOT_SUBTREE_ONLY",
-  "family_root_requirement": "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT",
+  "family_root_requirement": "OPTIONAL",
   "format_version": "ACCOUNTING_MULTITABLE_HIERARCHICAL_FAMILY_EVALUATION_SPEC_V1",
   "hierarchy_role_scope_policy": "PATH_DECLARED_ROLES_FIRST",
   "label_only_structural_group_policy": "DISABLED",
@@ -43,7 +46,7 @@
       "magnitude_power10": 9
     },
     {
-      "accepted": false,
+      "accepted": true,
       "aliases": ["VND", "Đồng"],
       "canonical_unit": "VND",
       "magnitude_power10": 0
@@ -52,6 +55,8 @@
   "owner_surface_kinds": ["SECTION_TITLE", "TABLE_TITLE"],
   "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
   "period_semantics": "CURRENT_AND_COMPARATIVE_DURATION",
+  "role_anchored_owner_fallback_policy": "UNIQUE_REQUIRED_ROLE_TABLE_PLUS_SAME_PAGE_DECLARED_SUPPLEMENTAL_TABLES",
+  "role_anchored_supplemental_roles": [],
   "root_component_equation_policy": "UNIQUE_DECLARED_SIGN_ORIENTATION_FIRST_COMPONENT_POSITIVE",
   "root_component_roles": [
     "INCOME_TRADING_SECURITIES",
@@ -67,5 +72,6 @@
   "supplemental_detail_residuals": [],
   "table_context_roles": [],
   "typed_control_exclusions": [],
+  "validation_only_roles": ["PROVISION_BREAKDOWN_SOURCE_ONLY"],
   "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD"
 }

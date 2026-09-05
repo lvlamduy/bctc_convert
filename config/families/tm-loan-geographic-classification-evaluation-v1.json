@@ -2,14 +2,53 @@
   "candidate_selection_policy": "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL",
   "closure_policy": "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
   "dual_axis_projection_policy": {
-    "blank_role_cell_policy": "ALLOW_ZERO_ONLY_WHEN_EXACT_TOTAL_EQUALS_OTHER_ROLE",
-    "blank_zero_derivable_roles": [
-      "FOREIGN_TOTAL"
-    ],
+    "blank_role_cell_policy": "PRESERVE_SOURCE_BLANK_OMIT_MAPPING",
+    "blank_zero_derivable_roles": [],
+    "external_population_control": {
+      "candidate_context": {
+        "hard_negative_aliases": [
+          "Báo cáo bộ phận",
+          "Bộ phận chia theo khu vực địa lý"
+        ],
+        "partial_axis_owner_aliases": [
+          "Khu vực địa lý"
+        ]
+      },
+      "control_report_norm_id": 716,
+      "control_source": {
+        "content_kind": "PRIMARY_STATEMENT",
+        "hierarchy_match_rule": "NUMBERED_LABEL_OR_REPEATED_UNNUMBERED_EXACT_LABEL",
+        "label_aliases": [
+          "Cho vay khách hàng"
+        ],
+        "label_match_rule": "EXACT_WITH_OPTIONAL_LEADING_ONE",
+        "row_kind": "ITEM",
+        "statement_type": "BALANCE_SHEET"
+      },
+      "controlled_metric_aliases": [
+        "Tổng dư nợ cho vay",
+        "Tổng dư nợ cho vay khách hàng"
+      ],
+      "format_version": "GEMINI_JSON_DUAL_AXIS_EXTERNAL_POPULATION_CONTROL_V1",
+      "match_rule": "EXACT_PERIOD_UNIT_MAGNITUDE_AND_INTEGER_EQUALITY",
+      "query_gate_metric_aliases": [
+        "Tổng dư nợ cho vay"
+      ],
+      "unit_decimal_magnitude_by_alias": {
+        "Triệu đồng": 6,
+        "Triệu đồng Việt Nam": 6,
+        "Triệu VND": 6,
+        "VND": 0
+      }
+    },
     "format_version": "GEMINI_JSON_DUAL_AXIS_PROJECTION_POLICY_V1",
     "metric_aliases": [
       "Cho vay khách hàng",
+      "Cho vay khách hàng - gộp",
+      "Cho vay và cho thuê tài chính khách hàng",
       "Tổng nợ cho vay khách hàng",
+      "Tổng dư nợ cho vay",
+      "Tổng dư nợ cho vay các TCKT và cá nhân",
       "Tổng dư nợ cho vay khách hàng"
     ],
     "orientations": [
@@ -26,14 +65,28 @@
       "DOMESTIC_TOTAL",
       "FOREIGN_TOTAL"
     ],
+    "source_blank_mapping_policy": "PRESERVE_BLANK_OMIT_MAPPING",
     "total_aliases": [
       "Tổng cộng",
       "Tổng"
     ],
     "unit_aliases": [
       "Triệu đồng",
-      "Triệu VND"
-    ]
+      "Triệu VND",
+      "Triệu đồng Việt Nam",
+      "VND"
+    ],
+    "visible_total_rounding_policy": {
+      "format_version": "GEMINI_JSON_DUAL_AXIS_VISIBLE_TOTAL_ROUNDING_POLICY_V1",
+      "maximum_absolute_display_residual": 1,
+      "minimum_unit_decimal_magnitude": 3,
+      "unit_decimal_magnitude_by_alias": {
+        "Triệu đồng": 6,
+        "Triệu đồng Việt Nam": 6,
+        "Triệu VND": 6,
+        "VND": 0
+      }
+    }
   },
   "expected_lane_unit_kind_alternatives": [
     [

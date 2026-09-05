@@ -46,7 +46,9 @@
       "matchers": [
         {
           "aliases": [
-            "Nợ gốc đã mua"
+            "Nợ gốc đã mua",
+            "Nợ gốc của khoản nợ đã mua",
+            "Nợ gốc của khoản nợ mua"
           ],
           "within_role": null
         }
@@ -60,6 +62,7 @@
         {
           "aliases": [
             "Lãi của khoản nợ đã mua",
+            "Lãi khoản nợ đã mua",
             "Lãi từ các khoản nợ đã mua",
             "Lãi của khoản nợ đã mua và chênh lệch giá mua nợ",
             "Lãi từ các khoản nợ đã mua và chênh lệch giá mua nợ"
@@ -83,13 +86,14 @@
   ],
   "limits": {
     "max_cluster_span_lines": 48,
-    "max_continuation_pages": 0,
+    "max_continuation_pages": 1,
     "max_label_line_span": 3
   },
   "parent": {
     "aliases": [
       "Hoạt động mua nợ",
-      "Hoạt động mua nợ (tiếp theo)"
+      "Hoạt động mua nợ (tiếp theo)",
+      "Mua nợ"
     ],
     "resolution_mode": "EXPLICIT_ONLY",
     "role": "PURCHASED_DEBT_ACTIVITY_ROOT"

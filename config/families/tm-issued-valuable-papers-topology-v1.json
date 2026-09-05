@@ -5,19 +5,31 @@
       "presence": "OPTIONAL", "role": "CERTIFICATE_OF_DEPOSIT", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Dưới 12 tháng", "Kỳ hạn dưới 1 năm", "Chứng chỉ tiền gửi kỳ hạn dưới một năm", "Từ 12 tháng trở xuống", "Từ 6 tháng đến dưới 12 tháng", "Ngắn hạn bằng VND", "Ngắn hạn bằng ngoại tệ"], "within_role": "CERTIFICATE_OF_DEPOSIT"}],
+      "matchers": [
+        {"aliases": ["Dưới 12 tháng", "Dưới 1 năm", "Dưới 12 tháng (Dưới 366 ngày)", "Kỳ hạn dưới 12 tháng", "Kỳ hạn dưới 1 năm", "Kỳ hạn đến 1 năm", "Kỳ hạn từ 12 tháng trở xuống", "Giấy tờ có giá có kỳ hạn đến 366 ngày", "Chứng chỉ tiền gửi kỳ hạn dưới một năm", "Từ 12 tháng trở xuống", "Từ 6 tháng đến dưới 12 tháng", "Ngắn hạn bằng VND", "Ngắn hạn bằng ngoại tệ"], "within_role": "CERTIFICATE_OF_DEPOSIT"},
+        {"aliases": ["Chứng chỉ tiền gửi dưới 1 năm", "Chứng chỉ tiền gửi dưới 12 tháng"], "within_role": null}
+      ],
       "presence": "OPTIONAL", "role": "CD_SHORT", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trên 12 tháng"], "within_role": "CERTIFICATE_OF_DEPOSIT"}],
+      "matchers": [
+        {"aliases": ["Trên 12 tháng"], "within_role": "CERTIFICATE_OF_DEPOSIT"},
+        {"aliases": ["Chứng chỉ tiền gửi từ 1 năm trở lên"], "within_role": null}
+      ],
       "presence": "OPTIONAL", "role": "CD_PRINTED_OVER_TWELVE_MONTHS", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 12 tháng đến 5 năm", "Từ 12 đến dưới 5 năm", "Kỳ hạn từ 1 năm đến 2 năm", "Chứng chỉ tiền gửi kỳ hạn từ một năm đến hai năm", "Kỳ hạn 3 năm", "Chứng chỉ tiền gửi kỳ hạn ba năm", "Kỳ hạn 5 năm", "Chứng chỉ tiền gửi kỳ hạn năm năm", "Trung bằng VND", "Trung bằng ngoại tệ", "Trung hạn bằng VND", "Trung hạn bằng ngoại tệ"], "within_role": "CERTIFICATE_OF_DEPOSIT"}],
+      "matchers": [
+        {"aliases": ["Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 12 tháng đến 5 năm", "Từ 12 tháng đến 5 năm\n(Từ 366 - 1826 ngày)", "Từ 12 đến dưới 5 năm", "Từ 1 đến 5 năm", "Từ 1 năm đến 5 năm", "Kỳ hạn từ 12 tháng đến dưới 5 năm", "Kỳ hạn trên 1 năm đến 5 năm", "Giấy tờ có giá có kỳ hạn từ 367 ngày đến 1826 ngày", "Kỳ hạn từ 1 năm đến 2 năm", "Chứng chỉ tiền gửi kỳ hạn từ một năm đến hai năm", "Kỳ hạn 3 năm", "Chứng chỉ tiền gửi kỳ hạn ba năm", "Kỳ hạn 5 năm", "Chứng chỉ tiền gửi kỳ hạn năm năm", "Trung bằng VND", "Trung bằng ngoại tệ", "Trung hạn bằng VND", "Trung hạn bằng ngoại tệ"], "within_role": "CERTIFICATE_OF_DEPOSIT"},
+        {"aliases": ["Chứng chỉ tiền gửi từ 12 tháng tới 5 năm", "Chứng chỉ tiền gửi từ 12 tháng đến 5 năm"], "within_role": null}
+      ],
       "presence": "OPTIONAL", "role": "CD_MEDIUM", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trên 5 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Kỳ hạn 10 năm", "Kỳ hạn mười năm", "Dài hạn bằng VND", "Dài hạn bằng ngoại tệ"], "within_role": "CERTIFICATE_OF_DEPOSIT"}],
+      "matchers": [
+        {"aliases": ["Trên 5 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Từ 5 năm trở lên\n(Từ 1826 ngày trở lên)", "Kỳ hạn trên 5 năm", "Kỳ hạn từ 5 năm trở lên", "Kỳ hạn 5 năm trở lên", "Giấy tờ có giá có kỳ hạn trên 1826 ngày", "Kỳ hạn 10 năm", "Kỳ hạn mười năm", "Dài hạn bằng VND", "Dài hạn bằng ngoại tệ"], "within_role": "CERTIFICATE_OF_DEPOSIT"},
+        {"aliases": ["Chứng chỉ tiền gửi trên 5 năm", "Chứng chỉ tiền gửi từ 5 năm trở lên"], "within_role": null}
+      ],
       "presence": "OPTIONAL", "role": "CD_LONG", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -25,23 +37,23 @@
       "presence": "OPTIONAL", "role": "PROMISSORY_NOTE", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Dưới 12 tháng", "Từ 12 tháng trở xuống", "Ngắn hạn bằng VND", "Ngắn hạn bằng ngoại tệ"], "within_role": "PROMISSORY_NOTE"}],
+      "matchers": [{"aliases": ["Dưới 12 tháng", "Kỳ hạn dưới 12 tháng", "Kỳ hạn đến 1 năm", "Từ 12 tháng trở xuống", "Ngắn hạn bằng VND", "Ngắn hạn bằng ngoại tệ"], "within_role": "PROMISSORY_NOTE"}],
       "presence": "OPTIONAL", "role": "PROMISSORY_SHORT", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 12 tháng đến 5 năm", "Kỳ hạn từ 1 năm đến 2 năm", "Kỳ hạn 3 năm", "Kỳ hạn 5 năm", "Trung bằng VND", "Trung bằng ngoại tệ", "Trung hạn bằng VND", "Trung hạn bằng ngoại tệ"], "within_role": "PROMISSORY_NOTE"}],
+      "matchers": [{"aliases": ["Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 12 tháng đến 5 năm", "Kỳ hạn từ 12 tháng đến dưới 5 năm", "Kỳ hạn trên 1 năm đến 5 năm", "Kỳ hạn từ 1 năm đến 2 năm", "Kỳ hạn 3 năm", "Kỳ hạn 5 năm", "Trung bằng VND", "Trung bằng ngoại tệ", "Trung hạn bằng VND", "Trung hạn bằng ngoại tệ"], "within_role": "PROMISSORY_NOTE"}],
       "presence": "OPTIONAL", "role": "PROMISSORY_MEDIUM", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trên 5 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Kỳ hạn 10 năm", "Dài hạn bằng VND", "Dài hạn bằng ngoại tệ"], "within_role": "PROMISSORY_NOTE"}],
+      "matchers": [{"aliases": ["Trên 5 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Kỳ hạn trên 5 năm", "Kỳ hạn từ 5 năm trở lên", "Kỳ hạn 10 năm", "Dài hạn bằng VND", "Dài hạn bằng ngoại tệ"], "within_role": "PROMISSORY_NOTE"}],
       "presence": "OPTIONAL", "role": "PROMISSORY_LONG", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trái phiếu", "Trái phiếu thường", "Mệnh giá trái phiếu bằng VND", "Mệnh giá trái phiếu bằng USD", "Mệnh giá trái phiếu chuyển đổi bằng USD", "Trái phiếu bằng VND", "Trái phiếu bằng USD", "Trái phiếu chuyển đổi bằng USD"], "within_role": null}],
+      "matchers": [{"aliases": ["Trái phiếu", "Trái phiếu thường", "Trái phiếu thường bằng VND", "Trái phiếu ghi sổ", "Trái phiếu ghi danh", "Trái phiếu ghi danh do TCTD phát hành", "Trái phiếu có kỳ hạn", "Trái phiếu trên 1 năm", "Trái phiếu từ 1 năm trở lên", "Phát hành trái phiếu theo thời gian", "Mệnh giá trái phiếu bằng VND", "Mệnh giá trái phiếu bằng USD", "Mệnh giá trái phiếu chuyển đổi bằng USD", "Trái phiếu bằng VND", "Trái phiếu bằng ngoại tệ", "Trái phiếu bằng USD", "Trái phiếu chuyển đổi bằng USD"], "within_role": null}],
       "presence": "OPTIONAL", "role": "BOND", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Dưới 12 tháng", "Từ 12 tháng trở xuống", "Ngắn hạn bằng VND", "Ngắn hạn bằng ngoại tệ"], "within_role": "BOND"}],
+      "matchers": [{"aliases": ["Dưới 12 tháng", "Dưới 1 năm", "Dưới 12 tháng (Dưới 366 ngày)", "Kỳ hạn dưới 12 tháng", "Kỳ hạn đến 1 năm", "Kỳ hạn từ 12 tháng trở xuống", "Giấy tờ có giá có kỳ hạn đến 366 ngày", "Từ 12 tháng trở xuống", "Ngắn hạn bằng VND", "Ngắn hạn bằng ngoại tệ"], "within_role": "BOND"}],
       "presence": "OPTIONAL", "role": "BOND_SHORT", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -49,11 +61,17 @@
       "presence": "OPTIONAL", "role": "BOND_PRINTED_BELOW_FIVE_YEARS", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 12 tháng đến 5 năm", "Từ 12 đến dưới 5 năm", "Kỳ hạn từ 1 năm đến 2 năm", "Trái phiếu kỳ hạn từ một năm đến hai năm", "Kỳ hạn 3 năm", "Trái phiếu kỳ hạn ba năm", "Kỳ hạn 5 năm", "Trái phiếu kỳ hạn năm năm", "Trung bằng VND", "Trung bằng ngoại tệ", "Trung hạn bằng VND", "Trung hạn bằng ngoại tệ"], "within_role": "BOND"}],
+      "matchers": [
+        {"aliases": ["Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 12 tháng đến 5 năm", "Từ 12 tháng đến 5 năm\n(Từ 366 - 1826 ngày)", "Từ 12 đến dưới 5 năm", "Từ 1 đến 5 năm", "Từ 1 năm đến 5 năm", "Kỳ hạn từ 12 tháng đến dưới 5 năm", "Kỳ hạn trên 1 năm đến 5 năm", "Giấy tờ có giá có kỳ hạn từ 367 ngày đến 1826 ngày", "Kỳ hạn từ 1 năm đến 2 năm", "Trái phiếu kỳ hạn từ một năm đến hai năm", "Kỳ hạn 3 năm", "Trái phiếu kỳ hạn ba năm", "Kỳ hạn 5 năm", "Trái phiếu kỳ hạn năm năm", "Trung bằng VND", "Trung bằng ngoại tệ", "Trung hạn bằng VND", "Trung hạn bằng ngoại tệ"], "within_role": "BOND"},
+        {"aliases": ["Trái phiếu từ 12 tháng tới 5 năm", "Trái phiếu từ 12 tháng đến 5 năm"], "within_role": null}
+      ],
       "presence": "OPTIONAL", "role": "BOND_MEDIUM", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trên 5 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Kỳ hạn 10 năm", "Trái phiếu kỳ hạn mười năm", "Dài hạn bằng VND", "Dài hạn bằng ngoại tệ"], "within_role": "BOND"}],
+      "matchers": [
+        {"aliases": ["Trên 5 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Từ 5 năm trở lên\n(Từ 1826 ngày trở lên)", "Kỳ hạn trên 5 năm", "Kỳ hạn từ 5 năm trở lên", "Kỳ hạn 5 năm trở lên", "Giấy tờ có giá có kỳ hạn trên 1826 ngày", "Kỳ hạn 10 năm", "Trái phiếu kỳ hạn mười năm", "Dài hạn bằng VND", "Dài hạn bằng ngoại tệ"], "within_role": "BOND"},
+        {"aliases": ["Trái phiếu trên 5 năm", "Trái phiếu từ 5 năm trở lên"], "within_role": null}
+      ],
       "presence": "OPTIONAL", "role": "BOND_LONG", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -61,25 +79,33 @@
       "presence": "OPTIONAL", "role": "PROMISSORY_AND_BOND_TOTAL", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Dưới 12 tháng", "Từ 12 tháng trở xuống", "Ngắn hạn bằng VND", "Ngắn hạn bằng ngoại tệ"], "within_role": "PROMISSORY_AND_BOND_TOTAL"}],
+      "matchers": [{"aliases": ["Dưới 12 tháng", "Kỳ hạn đến 1 năm", "Từ 12 tháng trở xuống", "Ngắn hạn bằng VND", "Ngắn hạn bằng ngoại tệ"], "within_role": "PROMISSORY_AND_BOND_TOTAL"}],
       "presence": "OPTIONAL", "role": "PROMISSORY_AND_BOND_SHORT", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 12 tháng đến 5 năm", "Từ 12 đến dưới 5 năm", "Trung bằng VND", "Trung bằng ngoại tệ", "Trung hạn bằng VND", "Trung hạn bằng ngoại tệ"], "within_role": "PROMISSORY_AND_BOND_TOTAL"}],
+      "matchers": [{"aliases": ["Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 12 tháng đến 5 năm", "Từ 12 đến dưới 5 năm", "Kỳ hạn trên 1 năm đến 5 năm", "Trung bằng VND", "Trung bằng ngoại tệ", "Trung hạn bằng VND", "Trung hạn bằng ngoại tệ"], "within_role": "PROMISSORY_AND_BOND_TOTAL"}],
       "presence": "OPTIONAL", "role": "PROMISSORY_AND_BOND_MEDIUM", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Trên 5 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Dài hạn bằng VND", "Dài hạn bằng ngoại tệ"], "within_role": "PROMISSORY_AND_BOND_TOTAL"}],
+      "matchers": [{"aliases": ["Trên 5 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Kỳ hạn trên 5 năm", "Dài hạn bằng VND", "Dài hạn bằng ngoại tệ"], "within_role": "PROMISSORY_AND_BOND_TOTAL"}],
       "presence": "OPTIONAL", "role": "PROMISSORY_AND_BOND_LONG", "role_kind": "ADDITIVE_CHILD"
     },
     {
       "matchers": [{"aliases": ["Trái phiếu tăng vốn", "Trái phiếu tăng vốn cấp 2", "Các loại giấy tờ có giá khác"], "within_role": null}],
       "presence": "OPTIONAL", "role": "OTHER_ISSUED_PAPER", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Giấy tờ có giá dưới 12 tháng", "Giấy tờ có giá có kỳ hạn từ 12 tháng đến 5 năm", "Giấy tờ có giá có kỳ hạn trên 5 năm trở lên", "Dưới 12 tháng", "Từ 12 tháng đến dưới 5 năm", "Từ 12 tháng đến dưới 05 năm", "Từ 5 năm trở lên", "Từ 05 năm trở lên", "Kỳ hạn dưới 1 năm", "Kỳ hạn 1 tới năm 5 năm", "Kỳ hạn trên 5 năm", "Bằng VND", "Bằng ngoại tệ", "Giấy tờ có giá bằng VND", "Mệnh giá", "Phụ trội", "Chiết khấu", "Phát hành GTCG theo thời gian", "Phát hành GTCG bằng VND", "Phát hành GTCG bằng USD", "Phát hành GTCG bằng vàng"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "GENERIC_ISSUED_PAPER_SOURCE", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi phí phát hành"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "ISSUANCE_COST_SOURCE", "role_kind": "ADDITIVE_CHILD"
     }
   ],
   "family_id": "ISSUED_VALUABLE_PAPERS",
   "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
-  "hard_negative_aliases": ["Báo cáo tình hình tài chính", "Báo cáo lưu chuyển tiền tệ", "Phân loại tài sản tài chính", "Quản lý rủi ro tài chính", "Rủi ro lãi suất", "Rủi ro thanh khoản", "Các khoản phải trả và công nợ khác", "Vốn và các quỹ"],
+  "hard_negative_aliases": ["Báo cáo tình hình tài chính", "Báo cáo lưu chuyển tiền tệ", "Phân loại tài sản tài chính", "Quản lý rủi ro tài chính", "Rủi ro lãi suất", "Rủi ro tiền tệ", "Rủi ro thanh khoản", "Trái phiếu đặc biệt do VAMC phát hành", "Các khoản phải trả và công nợ khác", "Vốn và các quỹ"],
   "limits": {"max_continuation_pages": 3, "max_cluster_span_lines": 2048, "max_label_line_span": 6},
   "parent": {
     "aliases": ["Phát hành giấy tờ có giá", "Phát hành giấy tờ có giá thông thường", "Phát hành giấy tờ có giá thông thường (không bao gồm công cụ tài chính phức hợp)"],
@@ -88,5 +114,5 @@
   },
   "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
   "required_role_combinations": [["CERTIFICATE_OF_DEPOSIT"], ["PROMISSORY_NOTE"], ["BOND"], ["PROMISSORY_AND_BOND_TOTAL"], ["OTHER_ISSUED_PAPER"]],
-  "structural_reset_aliases": ["Các khoản phải trả và công nợ khác", "Các khoản nợ khác", "Vốn và các quỹ", "Vốn chủ sở hữu", "Quản lý rủi ro tài chính", "Rủi ro lãi suất", "Rủi ro thanh khoản"]
+  "structural_reset_aliases": ["Các khoản phải trả và công nợ khác", "Các khoản nợ khác", "Vốn và các quỹ", "Vốn chủ sở hữu", "Quản lý rủi ro tài chính", "Rủi ro lãi suất", "Rủi ro tiền tệ", "Rủi ro thanh khoản", "Trái phiếu đặc biệt do VAMC phát hành"]
 }

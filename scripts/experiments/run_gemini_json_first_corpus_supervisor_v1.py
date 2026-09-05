@@ -31,6 +31,7 @@ from bctc_ai.evaluation.gemini_financial_page_json_v1 import (  # noqa: E402
 from bctc_ai.evaluation.gemini_json_first_corpus_ledger_v1 import (  # noqa: E402
     AGY_PROVIDER_JOB_PREFIX,
     GeminiJsonFirstCorpusLedgerV1Error,
+    acquire_corpus_task_execution_lock_v1,
     claim_google_document_for_openrouter_acceleration_v1,
     corpus_ledger_summary_v1,
     initialize_gemini_json_first_corpus_ledger_v1,
@@ -53,6 +54,8 @@ from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
     render_full_pdf_page_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_provider_v1 import (  # noqa: E402
+    CKEY_GATEWAY,
+    CKEY_SERVICE_TIER,
     GOOGLE_BATCH_SERVICE_TIER,
     GOOGLE_MODEL,
     GOOGLE_STANDARD_SERVICE_TIER,
@@ -1467,6 +1470,83 @@ def _successful_historical_prompt_context_v1(
     return successful_variants, sorted(protected_pages)
 
 
+def _unique_stored_page_prompt_context_v1(
+    *,
+    database: Path,
+    task: dict[str, Any],
+    page_image_sha256s: dict[int, str],
+    physical_pages: list[int],
+) -> dict[int, str]:
+    """Recover a unique prompt variant for legacy cached page versions.
+
+    Early wrappers could lose their child summary and therefore leave no
+    prompt-variant event receipt even though successful page versions were
+    already in the authenticated store.  The extraction run itself binds the
+    variant, prompt hash, schema, model and page image, so it is the correct
+    fallback authority.  Multiple distinct variants for one page remain
+    ambiguous and fail closed rather than choosing a version heuristically.
+    """
+
+    if not physical_pages:
+        return {}
+    expected_pages = set(range(task["first_physical_page"], task["last_physical_page"] + 1))
+    if (
+        physical_pages != sorted(set(physical_pages))
+        or not set(physical_pages).issubset(expected_pages)
+        or not set(physical_pages).issubset(page_image_sha256s)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "stored prompt recovery page frontier is invalid"
+        )
+    placeholders = ",".join("?" for _ in physical_pages)
+    uri = f"file:{database.resolve()}?mode=ro"
+    connection = sqlite3.connect(uri, uri=True)
+    try:
+        rows = connection.execute(
+            f"""
+            SELECT p.physical_page,p.image_sha256,r.prompt_variant,r.prompt_sha256
+            FROM document AS d
+            JOIN page AS p USING(document_id)
+            JOIN extraction_run AS r USING(page_id)
+            JOIN page_json_version AS j USING(extraction_run_id)
+            WHERE d.source_sha256=? AND d.source_logical_name=?
+              AND p.physical_page IN ({placeholders})
+              AND r.response_schema_sha256=? AND r.requested_model=?
+            ORDER BY p.physical_page,r.extraction_run_id
+            """,
+            (
+                task["source_sha256"],
+                task["relative_path"],
+                *physical_pages,
+                canonical_json_sha256_v1(financial_page_json_response_schema_v1()),
+                GOOGLE_MODEL,
+            ),
+        ).fetchall()
+    finally:
+        connection.close()
+    allowed_variants = {"balanced", "compact", "items", "scope", "simple"}
+    variants_by_page: dict[int, set[str]] = {page: set() for page in physical_pages}
+    for page, image_sha256, variant, prompt_sha256 in rows:
+        if image_sha256 != page_image_sha256s[page]:
+            continue
+        if (
+            variant not in allowed_variants
+            or prompt_sha256
+            != sha256(
+                build_financial_page_json_prompt_v1(variant=variant).encode("utf-8")
+            ).hexdigest()
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "stored prompt recovery extraction contract drifted"
+            )
+        variants_by_page[page].add(variant)
+    if any(len(variants) != 1 for variants in variants_by_page.values()):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "stored prompt recovery is absent or ambiguous"
+        )
+    return {page: next(iter(variants_by_page[page])) for page in physical_pages}
+
+
 def _page_variant_manifest_v1(
     *,
     task: dict[str, Any],
@@ -1515,6 +1595,7 @@ def _page_variant_manifest_v1(
                 {"gateway": AGY_GATEWAY, "requested_service_tier": tier}
                 for tier in AGY_SERVICE_TIERS
             ),
+            {"gateway": CKEY_GATEWAY, "requested_service_tier": CKEY_SERVICE_TIER},
             {
                 "gateway": "GOOGLE_GEMINI_API",
                 "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
@@ -1537,6 +1618,7 @@ def _page_variant_manifest_v1(
                 {"gateway": AGY_GATEWAY, "requested_service_tier": tier}
                 for tier in AGY_SERVICE_TIERS
             ),
+            {"gateway": CKEY_GATEWAY, "requested_service_tier": CKEY_SERVICE_TIER},
             {
                 "gateway": "OPENROUTER",
                 "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
@@ -1748,12 +1830,17 @@ def _current_page_image_sha256s_v1(
     task: dict[str, Any],
     source_root: Path,
     dpi: int,
+    expected_source_page_count: int | None = None,
 ) -> dict[int, str]:
     source = _source(task, source_root)
     expected_pages = list(range(1, task["document_page_count"] + 1))
     result: dict[int, str] = {}
     with fitz.open(source) as document:
-        if document.page_count < task["document_page_count"]:
+        if (
+            document.page_count < task["document_page_count"]
+            if expected_source_page_count is None
+            else document.page_count != expected_source_page_count
+        ):
             raise RunGeminiJsonFirstCorpusSupervisorV1Error("planned source PDF page count drifted")
         for physical_page in expected_pages:
             rendered = render_full_pdf_page_v1(
@@ -1783,6 +1870,100 @@ def _stored_page_image_sha256s_v1(
         expected_physical_pages=range(1, task["document_page_count"] + 1),
         render_dpi=dpi,
     )
+
+
+def _repair_page_image_sha256s_v1(
+    *,
+    database: Path,
+    task: dict[str, Any],
+    source_root: Path,
+    dpi: int,
+    repair_pages: list[int],
+    planned_document: dict[str, Any] | None = None,
+) -> dict[int, str]:
+    """Reuse sealed page-image identities and render only the repair frontier."""
+
+    expected_pages = list(range(1, task["document_page_count"] + 1))
+    if (
+        not repair_pages
+        or repair_pages != sorted(set(repair_pages))
+        or any(page not in expected_pages for page in repair_pages)
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("repair page image frontier is invalid")
+    expected_source_pages = task["document_page_count"]
+    if planned_document is not None:
+        selection = planned_document.get("page_selection")
+        if (
+            planned_document.get("relative_path") != task["relative_path"]
+            or planned_document.get("source_sha256") != task["source_sha256"]
+            or planned_document.get("source_size_bytes") != task["source_size_bytes"]
+            or planned_document.get("page_count") != task["document_page_count"]
+        ):
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "repair source differs from its corpus-plan document"
+            )
+        if selection is not None:
+            if (
+                type(selection) is not dict
+                or selection.get("included_first_physical_page") != 1
+                or selection.get("included_last_physical_page") != task["document_page_count"]
+                or selection.get("review_basis") != "HUMAN_VISUAL_LANGUAGE_BOUNDARY"
+                or selection.get("selection_kind")
+                != "VIETNAMESE_PREFIX_EXCLUDES_NON_VIETNAMESE_APPENDIX"
+                or type(planned_document.get("source_page_count")) is not int
+                or planned_document["source_page_count"] <= task["document_page_count"]
+            ):
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "repair Vietnamese page-prefix authority is invalid"
+                )
+            expected_source_pages = planned_document["source_page_count"]
+        elif "source_page_count" in planned_document:
+            if planned_document["source_page_count"] != task["document_page_count"]:
+                raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                    "repair full-document source page count is invalid"
+                )
+    if not database.is_file():
+        return _current_page_image_sha256s_v1(
+            task=task,
+            source_root=source_root,
+            dpi=dpi,
+            expected_source_page_count=expected_source_pages,
+        )
+    source = _source(task, source_root)
+    stored_pages = sorted(set(expected_pages) - set(repair_pages))
+    try:
+        result = (
+            {}
+            if not stored_pages
+            else document_page_image_frontier_v1(
+                database,
+                source_sha256=task["source_sha256"],
+                source_logical_name=task["relative_path"],
+                expected_physical_pages=stored_pages,
+                render_dpi=dpi,
+            )
+        )
+    except GeminiFinancialPageStoreV1Error:
+        return _current_page_image_sha256s_v1(
+            task=task,
+            source_root=source_root,
+            dpi=dpi,
+            expected_source_page_count=expected_source_pages,
+        )
+    with fitz.open(source) as document:
+        if document.page_count != expected_source_pages:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error("planned source PDF page count drifted")
+        for physical_page in repair_pages:
+            rendered = render_full_pdf_page_v1(
+                document[physical_page - 1],
+                physical_page=physical_page,
+                dpi=dpi,
+                source_sha256=task["source_sha256"],
+            )
+            result[physical_page] = rendered.page["image_sha256"]
+    if sorted(result) != expected_pages:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error("repair page image frontier is incomplete")
+    return dict(sorted(result.items()))
 
 
 def _page_prompt_variants_v1(
@@ -1820,6 +2001,7 @@ def _page_prompt_variants_v1(
 def _allowed_gateway_service_tiers_v1() -> list[dict[str, str]]:
     return [
         *({"gateway": AGY_GATEWAY, "requested_service_tier": tier} for tier in AGY_SERVICE_TIERS),
+        {"gateway": CKEY_GATEWAY, "requested_service_tier": CKEY_SERVICE_TIER},
         {
             "gateway": "GOOGLE_GEMINI_API",
             "requested_service_tier": GOOGLE_STANDARD_SERVICE_TIER,
@@ -1848,6 +2030,7 @@ def _preferred_gateway_service_tiers_v1() -> list[dict[str, str]]:
             "requested_service_tier": OPENROUTER_SERVICE_TIER,
         },
         *({"gateway": AGY_GATEWAY, "requested_service_tier": tier} for tier in AGY_SERVICE_TIERS),
+        {"gateway": CKEY_GATEWAY, "requested_service_tier": CKEY_SERVICE_TIER},
         {
             "gateway": "OPENROUTER",
             "requested_service_tier": OPENROUTER_STANDARD_FALLBACK_SERVICE_TIER,
@@ -4005,7 +4188,7 @@ def run_corpus(args: argparse.Namespace) -> dict[str, Any]:
                 polled = _poll_google(
                     task=active_google[0],
                     ledger=args.ledger,
-                    database=args.database,
+                    database=getattr(args, "database", None),
                     artifact_root=args.artifact_root,
                     google_key_file=args.google_key_file,
                     provider_timeout_seconds=args.provider_timeout_seconds,
@@ -4673,6 +4856,8 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         frontier_receipt = _terminal_repair_frontier_receipt_v1(
             task=task,
             ledger=args.ledger,
+            database=args.database,
+            artifact_root=args.artifact_root,
         )
     else:
         prior_path = receipts_root / "attempt-01.json"
@@ -4707,8 +4892,17 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         prior=frontier_receipt,
     )
     repair_pages = sorted(page for pages in frontiers.values() for page in pages)
-    current_images = _current_page_image_sha256s_v1(
-        task=task, source_root=args.source_root, dpi=plan["policy"]["dpi"]
+    current_images = _repair_page_image_sha256s_v1(
+        database=args.database,
+        task=task,
+        source_root=args.source_root,
+        dpi=plan["policy"]["dpi"],
+        repair_pages=repair_pages,
+        planned_document=(
+            _task_index(plan)[task["task_id"]]["planned_document"]["document"]
+            if "documents" in plan and task["task_id"] in _task_index(plan)
+            else None
+        ),
     )
     attempt_root = repair_root / f"attempt-{args.repair_attempt:02d}"
     offline_replay_results = list(prior_offline_replay_results)
@@ -4892,7 +5086,24 @@ def repair_openrouter_flex_pages_task(args: argparse.Namespace) -> dict[str, Any
         repaired_variants, repaired_protected = _repair_successful_prompt_context_v1(
             [*provider_results, *offline_replay_results]
         )
+        known_variants = {
+            **historical_variants,
+            **repaired_variants,
+            **current_prompt_variants,
+        }
+        expected_pages = list(range(task["first_physical_page"], task["last_physical_page"] + 1))
+        stored_variants = (
+            _unique_stored_page_prompt_context_v1(
+                database=args.database,
+                task=task,
+                page_image_sha256s=current_images,
+                physical_pages=[page for page in expected_pages if page not in known_variants],
+            )
+            if _has_strict_legacy_subprocess_failure_v1(task)
+            else {}
+        )
         complete_variants = {
+            **stored_variants,
             **historical_variants,
             **repaired_variants,
             **current_prompt_variants,
@@ -5020,10 +5231,144 @@ def _exhausted_page_repair_receipt_has_circuit_v1(
     )
 
 
+def _has_strict_legacy_subprocess_failure_v1(task: dict[str, Any]) -> bool:
+    """Return whether a task retains the exact early-wrapper failure receipt."""
+
+    raw = task.get("last_receipt_json")
+    try:
+        receipt = json.loads(raw) if type(raw) is bytes else None
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return False
+    fields = {
+        "disposition",
+        "provider_returncode",
+        "provider_stderr_bytes",
+        "provider_stderr_sha256",
+        "provider_stdout_bytes",
+        "provider_stdout_sha256",
+        "retry_allowed",
+    }
+    return bool(
+        type(receipt) is dict
+        and set(receipt) == fields
+        and receipt["disposition"] == "OPENROUTER_PROVIDER_SUBPROCESS_FAILURE"
+        and type(receipt["provider_returncode"]) is int
+        and receipt["provider_returncode"] == 1
+        and type(receipt["provider_stderr_bytes"]) is int
+        and receipt["provider_stderr_bytes"] > 0
+        and type(receipt["provider_stdout_bytes"]) is int
+        and receipt["provider_stdout_bytes"] == 0
+        and receipt["provider_stdout_sha256"] == sha256(b"").hexdigest()
+        and receipt["retry_allowed"] is False
+        and all(
+            type(receipt[field]) is str
+            and len(receipt[field]) == 64
+            and all(character in "0123456789abcdef" for character in receipt[field])
+            for field in ("provider_stderr_sha256", "provider_stdout_sha256")
+        )
+    )
+
+
+def _legacy_subprocess_store_repair_frontier_v1(
+    *,
+    task: dict[str, Any],
+    database: Path,
+    artifact_root: Path,
+) -> dict[str, Any]:
+    """Recover only store-missing pages after an old local wrapper crash.
+
+    Early corpus wrappers could discard the child's typed page summary when the
+    child exited nonzero after already ingesting its successful pages.  The
+    terminal task then retained only a strictly shaped local-subprocess failure.
+    Reconstructing the complement of the exact source-bound store frontier is
+    safer than rerunning the whole PDF and never treats an existing page version
+    as provider work.  Existing semantic-failure artifacts influence only the
+    bounded retry prompt; the repair runner re-renders and authenticates every
+    selected page before any request.
+    """
+
+    if not _has_strict_legacy_subprocess_failure_v1(task):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "legacy OpenRouter subprocess receipt is invalid"
+        )
+    raw = task["last_receipt_json"]
+
+    expected_pages = list(range(task["first_physical_page"], task["last_physical_page"] + 1))
+    with sqlite3.connect(f"file:{database}?mode=ro", uri=True) as connection:
+        documents = connection.execute(
+            "SELECT document_id FROM document WHERE source_sha256=? AND source_logical_name=? "
+            "ORDER BY document_id",
+            (task["source_sha256"], task["relative_path"]),
+        ).fetchall()
+        if len(documents) > 1:
+            raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+                "legacy OpenRouter store document identity is ambiguous"
+            )
+        stored_pages = []
+        if documents:
+            stored_pages = [
+                row[0]
+                for row in connection.execute(
+                    "SELECT DISTINCT p.physical_page FROM page AS p "
+                    "JOIN page_json_version AS v USING(page_id) "
+                    "WHERE p.document_id=? ORDER BY p.physical_page",
+                    (documents[0][0],),
+                )
+            ]
+    if any(type(page) is not int or page not in expected_pages for page in stored_pages):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "legacy OpenRouter store page frontier is invalid"
+        )
+    failed_pages = sorted(set(expected_pages) - set(stored_pages))
+    if not failed_pages:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "legacy OpenRouter task has no store-missing page"
+        )
+
+    task_root = _task_root(task, artifact_root)
+    semantic_pages: list[int] = []
+    prior_item_failures: list[int] = []
+    prior_balanced_failures: list[int] = []
+    for page in failed_pages:
+        failures = list(task_root.glob(f"**/page-{page:05d}/**/semantic-validation-failure.json"))
+        if not failures:
+            continue
+        semantic_pages.append(page)
+        relative_parts = [path.relative_to(task_root).parts for path in failures]
+        if any("items" in parts for parts in relative_parts):
+            prior_item_failures.append(page)
+        if any("balanced" in parts for parts in relative_parts):
+            prior_balanced_failures.append(page)
+    provider_results = []
+    for variant, pages in (
+        ("items", prior_item_failures),
+        ("balanced", prior_balanced_failures),
+    ):
+        if pages:
+            provider_results.append(
+                {
+                    "physical_pages": pages,
+                    "prompt_variant": variant,
+                    "result": {"semantic_failed_pages": pages},
+                }
+            )
+    return {
+        "failed_pages": failed_pages,
+        "format_version": "GEMINI_JSON_FIRST_LEGACY_SUBPROCESS_STORE_FRONTIER_V1",
+        "prior_failed_receipt_sha256": sha256(raw).hexdigest(),
+        "provider_results": provider_results,
+        "recitation_failed_pages": [],
+        "semantic_failed_pages": semantic_pages,
+        "unresolved_pages": [],
+    }
+
+
 def _terminal_repair_frontier_receipt_v1(
     *,
     task: dict[str, Any],
     ledger: Path,
+    database: Path | None = None,
+    artifact_root: Path | None = None,
 ) -> dict[str, Any]:
     """Read a direct frontier, or recover it from the ledger event chain."""
 
@@ -5042,13 +5387,27 @@ def _terminal_repair_frontier_receipt_v1(
             task_id=task["task_id"],
         )
     except GeminiJsonFirstCorpusLedgerV1Error as exc:
+        if database is not None and artifact_root is not None:
+            try:
+                return _legacy_subprocess_store_repair_frontier_v1(
+                    task=task,
+                    database=database,
+                    artifact_root=artifact_root,
+                )
+            except RunGeminiJsonFirstCorpusSupervisorV1Error:
+                pass
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "failed OpenRouter task has no authenticated repair frontier"
         ) from exc
 
 
 def _exhausted_page_repair_remaining_page_count_v1(
-    *, task: dict[str, Any], ledger: Path, artifact_root: Path, repair_attempt: int
+    *,
+    task: dict[str, Any],
+    ledger: Path,
+    artifact_root: Path,
+    repair_attempt: int,
+    database: Path | None = None,
 ) -> int:
     """Count only the exact pages still named by the next immutable receipt."""
 
@@ -5064,15 +5423,400 @@ def _exhausted_page_repair_remaining_page_count_v1(
         frontier_receipt = _terminal_repair_frontier_receipt_v1(
             task=task,
             ledger=ledger,
+            database=database,
+            artifact_root=artifact_root,
         )
     else:
         frontier_receipt = _canonical_repair_receipt_v1(receipts_root / "attempt-01.json")
-    frontiers = _retry_prompt_frontiers_from_receipt_v1(
-        frontier_receipt,
-        first_physical_page=task["first_physical_page"],
-        last_physical_page=task["last_physical_page"],
+    frontiers = _promote_repeated_item_semantic_pages_v1(
+        _retry_prompt_frontiers_from_receipt_v1(
+            frontier_receipt,
+            first_physical_page=task["first_physical_page"],
+            last_physical_page=task["last_physical_page"],
+        ),
+        prior=frontier_receipt,
     )
     return sum(len(pages) for pages in frontiers.values())
+
+
+def _terminal_repair_candidate_v1(
+    *,
+    task: dict[str, Any],
+    ledger: Path,
+    artifact_root: Path,
+    database: Path | None = None,
+) -> tuple[int, int] | None:
+    """Return one authenticated ``(remaining pages, attempt)`` repair candidate."""
+
+    raw = task.get("last_receipt_json")
+    try:
+        receipt = json.loads(raw) if type(raw) is bytes else None
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter task receipt is invalid"
+        ) from exc
+    source_failed = receipt.get("source_failed_pages", []) if type(receipt) is dict else []
+    if (
+        type(source_failed) is not list
+        or source_failed != sorted(set(source_failed))
+        or any(
+            type(page) is not int
+            or page < task["first_physical_page"]
+            or page > task["last_physical_page"]
+            for page in source_failed
+        )
+    ):
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter source/render frontier is invalid"
+        )
+    if source_failed:
+        raise RunGeminiJsonFirstCorpusSupervisorV1Error(
+            "failed OpenRouter source/render frontier is local-only"
+        )
+
+    repair_attempt = _next_exhausted_page_repair_attempt_v1(
+        task=task,
+        artifact_root=artifact_root,
+    )
+    if repair_attempt is None:
+        return None
+    remaining_page_count = _exhausted_page_repair_remaining_page_count_v1(
+        task=task,
+        ledger=ledger,
+        artifact_root=artifact_root,
+        repair_attempt=repair_attempt,
+        database=database,
+    )
+    return remaining_page_count, repair_attempt
+
+
+def _terminal_repair_skipped_task_v1(
+    *, task: dict[str, Any], error: RunGeminiJsonFirstCorpusSupervisorV1Error
+) -> dict[str, str]:
+    """Describe one fail-closed task without weakening its ledger validation."""
+
+    return {
+        "classification": "AUTHENTICATED_REPAIR_FRONTIER_UNAVAILABLE",
+        "reason": str(error),
+        "relative_path": task["relative_path"],
+        "task_id": task["task_id"],
+    }
+
+
+def _is_authenticated_agy_terminal_repair_lease_v1(task: dict[str, Any]) -> bool:
+    """Recognize the one unfinished state allowed beside terminal Flex repair."""
+
+    raw = task.get("last_receipt_json")
+    try:
+        receipt = json.loads(raw) if type(raw) is bytes else None
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return False
+    provider_job_ref = task.get("provider_job_ref")
+    failed_pages = receipt.get("failed_pages") if type(receipt) is dict else None
+    claim_format = receipt.get("format_version") if type(receipt) is dict else None
+    claim_material = (
+        {
+            key: value
+            for key, value in receipt.items()
+            if key not in {"execution_provider", "initial_effort", "provider_job_ref"}
+        }
+        if type(receipt) is dict
+        else None
+    )
+    common_valid = bool(
+        task.get("route") == OPENROUTER_ROUTE
+        and task.get("state") == "SUBMITTED"
+        and type(provider_job_ref) is str
+        and provider_job_ref.startswith(AGY_PROVIDER_JOB_PREFIX)
+        and type(receipt) is dict
+        and claim_format
+        in {
+            "GEMINI_JSON_FIRST_AGY_EXHAUSTED_UNACCEPTED_PAGE_CLAIM_V1",
+            "GEMINI_JSON_FIRST_AGY_SOURCE_RENDER_RECOVERY_CLAIM_V1",
+            "GEMINI_JSON_FIRST_AGY_SCHEMA_ALIGNMENT_RECOVERY_CLAIM_V1",
+            "GEMINI_JSON_FIRST_AGY_TERMINAL_PROVIDER_REPAIR_CLAIM_V1",
+            "GEMINI_JSON_FIRST_AGY_TOOL_DENIED_ORIENTATION_RECOVERY_CLAIM_V1",
+        }
+        and receipt.get("execution_provider") == "AGY_CLI"
+        and receipt.get("provider_job_ref") == provider_job_ref
+        and provider_job_ref == AGY_PROVIDER_JOB_PREFIX + canonical_json_sha256_v1(claim_material)
+        and receipt.get("source_sha256") == task.get("source_sha256")
+        and receipt.get("task_id") == task.get("task_id")
+        and type(failed_pages) is list
+        and bool(failed_pages)
+        and failed_pages == sorted(set(failed_pages))
+        and all(
+            type(page) is int and task["first_physical_page"] <= page <= task["last_physical_page"]
+            for page in failed_pages
+        )
+    )
+    if not common_valid:
+        return False
+    if claim_format == "GEMINI_JSON_FIRST_AGY_TERMINAL_PROVIDER_REPAIR_CLAIM_V1":
+        return True
+    if claim_format == "GEMINI_JSON_FIRST_AGY_SCHEMA_ALIGNMENT_RECOVERY_CLAIM_V1":
+        page_evidence = receipt.get("page_evidence")
+        attempt_evidence = receipt.get("prior_attempt_evidence")
+        expected_axis = [(failed_pages[0], effort) for effort in ("low", "medium", "high")]
+
+        def digest(value):
+            return bool(
+                type(value) is str
+                and len(value) == 64
+                and all(character in "0123456789abcdef" for character in value)
+            )
+
+        return bool(
+            len(failed_pages) == 1
+            and type(page_evidence) is list
+            and len(page_evidence) == 1
+            and type(page_evidence[0]) is dict
+            and set(page_evidence[0]) == {"image_sha256", "physical_page"}
+            and page_evidence[0].get("physical_page") == failed_pages[0]
+            and digest(page_evidence[0].get("image_sha256"))
+            and receipt.get("page_evidence_sha256") == canonical_json_sha256_v1(page_evidence)
+            and type(attempt_evidence) is list
+            and [
+                (item.get("physical_page"), item.get("effort"))
+                for item in attempt_evidence
+                if type(item) is dict
+            ]
+            == expected_axis
+            and [item.get("failure_kind") for item in attempt_evidence if type(item) is dict]
+            == ["ROW_COLUMN_ALIGNMENT", "COMMAND_TOOL_DENIED", "COMMAND_TOOL_DENIED"]
+            and all(
+                type(item) is dict
+                and set(item)
+                == {
+                    "effort",
+                    "failure_kind",
+                    "failure_sha256",
+                    "invocation_sha256",
+                    "physical_page",
+                    "response_sha256",
+                    "stderr_sha256",
+                }
+                and all(
+                    digest(item[field])
+                    for field in (
+                        "failure_sha256",
+                        "invocation_sha256",
+                        "response_sha256",
+                        "stderr_sha256",
+                    )
+                )
+                for item in attempt_evidence
+            )
+            and receipt.get("prior_attempt_evidence_sha256")
+            == canonical_json_sha256_v1(attempt_evidence)
+            and digest(receipt.get("prior_failed_receipt_sha256"))
+            and digest(receipt.get("repair_instruction_sha256"))
+            and digest(receipt.get("repair_registry_entry_sha256"))
+        )
+    if claim_format == "GEMINI_JSON_FIRST_AGY_TOOL_DENIED_ORIENTATION_RECOVERY_CLAIM_V1":
+        page_evidence = receipt.get("page_evidence")
+        orientation_evidence = receipt.get("orientation_repair_evidence")
+        denial_evidence = receipt.get("tool_denial_evidence")
+        expected_denial_axis = [
+            (page, effort) for page in failed_pages for effort in ("low", "medium", "high")
+        ]
+        return bool(
+            type(page_evidence) is list
+            and [item.get("physical_page") for item in page_evidence if type(item) is dict]
+            == failed_pages
+            and all(
+                type(item) is dict
+                and set(item) == {"image_sha256", "physical_page"}
+                and type(item["image_sha256"]) is str
+                and len(item["image_sha256"]) == 64
+                and all(character in "0123456789abcdef" for character in item["image_sha256"])
+                for item in page_evidence
+            )
+            and receipt.get("page_evidence_sha256")
+            in {None, canonical_json_sha256_v1(page_evidence)}
+            and type(orientation_evidence) is list
+            and [item.get("physical_page") for item in orientation_evidence if type(item) is dict]
+            == failed_pages
+            and all(
+                type(item) is dict
+                and set(item)
+                == {
+                    "clockwise_degrees",
+                    "corrected_image_sha256",
+                    "orientation_receipt_sha256",
+                    "original_image_sha256",
+                    "physical_page",
+                }
+                and item["clockwise_degrees"] in {90, 270}
+                and item["corrected_image_sha256"] == page_evidence[index]["image_sha256"]
+                for index, item in enumerate(orientation_evidence)
+            )
+            and receipt.get("orientation_repair_evidence_sha256")
+            == canonical_json_sha256_v1(orientation_evidence)
+            and type(denial_evidence) is list
+            and [
+                (item.get("physical_page"), item.get("effort"))
+                for item in denial_evidence
+                if type(item) is dict
+            ]
+            == expected_denial_axis
+            and receipt.get("tool_denial_evidence_sha256")
+            == canonical_json_sha256_v1(denial_evidence)
+        )
+    page_evidence = receipt.get("page_evidence")
+    page_evidence_valid = bool(
+        type(page_evidence) is list
+        and [item.get("physical_page") for item in page_evidence if type(item) is dict]
+        == failed_pages
+        and all(
+            type(item) is dict
+            and set(item)
+            == {
+                "failure_evidence_sha256s",
+                "failure_kind",
+                "image_sha256",
+                "physical_page",
+            }
+            and type(item.get("image_sha256")) is str
+            and len(item["image_sha256"]) == 64
+            and all(character in "0123456789abcdef" for character in item["image_sha256"])
+            and type(item.get("failure_evidence_sha256s")) is list
+            and bool(item["failure_evidence_sha256s"])
+            and item["failure_evidence_sha256s"] == sorted(set(item["failure_evidence_sha256s"]))
+            and all(
+                type(digest) is str
+                and len(digest) == 64
+                and all(character in "0123456789abcdef" for character in digest)
+                for digest in item["failure_evidence_sha256s"]
+            )
+            for item in page_evidence
+        )
+        and receipt.get("page_evidence_sha256") == canonical_json_sha256_v1(page_evidence)
+        and type(receipt.get("prior_failed_receipt_sha256")) is str
+        and len(receipt["prior_failed_receipt_sha256"]) == 64
+        and all(
+            character in "0123456789abcdef" for character in receipt["prior_failed_receipt_sha256"]
+        )
+        and all(
+            receipt["prior_failed_receipt_sha256"] in item["failure_evidence_sha256s"]
+            for item in page_evidence
+        )
+    )
+    if not page_evidence_valid:
+        return False
+    if claim_format == "GEMINI_JSON_FIRST_AGY_SOURCE_RENDER_RECOVERY_CLAIM_V1":
+        local_evidence = receipt.get("local_render_repair_evidence")
+        page_evidence_by_page = {item["physical_page"]: item for item in page_evidence}
+        local_pages = (
+            [item.get("physical_page") for item in local_evidence if type(item) is dict]
+            if type(local_evidence) is list
+            else []
+        )
+        return bool(
+            type(local_evidence) is list
+            and bool(local_evidence)
+            and local_pages == sorted(set(local_pages))
+            and all(
+                type(item) is dict
+                and set(item) == {"image_sha256", "physical_page", "render_receipt_sha256"}
+                and item.get("physical_page") in failed_pages
+                and type(item.get("image_sha256")) is str
+                and len(item["image_sha256"]) == 64
+                and all(character in "0123456789abcdef" for character in item["image_sha256"])
+                and type(item.get("render_receipt_sha256")) is str
+                and len(item["render_receipt_sha256"]) == 64
+                and all(
+                    character in "0123456789abcdef" for character in item["render_receipt_sha256"]
+                )
+                and page_evidence_by_page[item["physical_page"]]["failure_kind"]
+                == "LOCAL_RENDER_REPAIRED"
+                and page_evidence_by_page[item["physical_page"]]["image_sha256"]
+                == item["image_sha256"]
+                and item["render_receipt_sha256"]
+                in page_evidence_by_page[item["physical_page"]]["failure_evidence_sha256s"]
+                for item in local_evidence
+            )
+            and local_pages
+            == [
+                item["physical_page"]
+                for item in page_evidence
+                if item["failure_kind"] == "LOCAL_RENDER_REPAIRED"
+            ]
+            and receipt.get("local_render_repair_evidence_sha256")
+            == canonical_json_sha256_v1(local_evidence)
+            and type(receipt.get("renderer_source_sha256")) is str
+            and len(receipt["renderer_source_sha256"]) == 64
+            and all(
+                character in "0123456789abcdef" for character in receipt["renderer_source_sha256"]
+            )
+            and all(
+                item.get("failure_kind") in {"LOCAL_RENDER_REPAIRED", "PROVIDER_NO_ACCEPTED_JSON"}
+                for item in page_evidence
+            )
+        )
+    exhaustion_evidence = receipt.get("exhaustion_evidence")
+    cross_history = receipt.get("cross_corpus_history_evidence")
+    cross_fields = {
+        "current_corpus_plan_id",
+        "current_corpus_run_id",
+        "format_version",
+        "historical_corpus_plan_id",
+        "historical_corpus_run_id",
+        "historical_ledger_sha256",
+        "historical_prior_failed_receipt_sha256",
+        "historical_task_event_ordinal",
+        "historical_task_identity_sha256",
+    }
+    cross_valid = bool(
+        cross_history is None
+        or (
+            type(cross_history) is dict
+            and set(cross_history) == cross_fields
+            and cross_history.get("format_version")
+            == "GEMINI_JSON_FIRST_AGY_CROSS_CORPUS_FLEX_HISTORY_V1"
+            and type(cross_history.get("historical_task_event_ordinal")) is int
+            and cross_history["historical_task_event_ordinal"] > 0
+            and all(
+                type(cross_history.get(field)) is str
+                and len(cross_history[field]) == 64
+                and all(character in "0123456789abcdef" for character in cross_history[field])
+                for field in (
+                    "historical_ledger_sha256",
+                    "historical_prior_failed_receipt_sha256",
+                    "historical_task_identity_sha256",
+                )
+            )
+            and receipt.get("cross_corpus_history_evidence_sha256")
+            == canonical_json_sha256_v1(cross_history)
+            and all(
+                cross_history["historical_prior_failed_receipt_sha256"]
+                in item["failure_evidence_sha256s"]
+                for item in page_evidence
+            )
+        )
+    )
+    one_attempt_balanced_exhaustion = bool(
+        type(exhaustion_evidence) is list
+        and len(exhaustion_evidence) == 1
+        and type(exhaustion_evidence[0]) is dict
+        and exhaustion_evidence[0].get("exhaustion_kind")
+        == "BALANCED_SEMANTIC_RETRY_BLOCKS_SECOND_ATTEMPT"
+        and type(exhaustion_evidence[0].get("balanced_semantic_failed_pages")) is list
+        and bool(exhaustion_evidence[0]["balanced_semantic_failed_pages"])
+    )
+    return bool(
+        cross_valid
+        and type(exhaustion_evidence) is list
+        and len(exhaustion_evidence) in {1, 2}
+        and [item.get("repair_attempt") for item in exhaustion_evidence if type(item) is dict]
+        == ([1] if one_attempt_balanced_exhaustion else [1, 2])
+        and receipt.get("exhaustion_evidence_sha256")
+        == canonical_json_sha256_v1(exhaustion_evidence)
+        and all(
+            item.get("failure_kind") in {"PROVIDER_NO_ACCEPTED_JSON", "SEMANTIC_NO_ACCEPTED_JSON"}
+            for item in page_evidence
+        )
+    )
 
 
 def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, Any]:
@@ -5098,7 +5842,12 @@ def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, A
     if summary["corpus_plan_id"] != plan["corpus_plan_id"]:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error("ledger and plan identity disagree")
     initial_tasks = list_corpus_tasks_v1(args.ledger)
-    unfinished = [task for task in initial_tasks if task["state"] not in {"SUCCEEDED", "FAILED"}]
+    unfinished = [
+        task
+        for task in initial_tasks
+        if task["state"] not in {"SUCCEEDED", "FAILED"}
+        and not _is_authenticated_agy_terminal_repair_lease_v1(task)
+    ]
     if unfinished:
         raise RunGeminiJsonFirstCorpusSupervisorV1Error(
             "terminal Flex repair requires the ordinary corpus frontier to be exhausted"
@@ -5110,36 +5859,73 @@ def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, A
 
     actions: list[dict[str, Any]] = []
     completed_task_ids: list[str] = []
+    skipped_tasks_by_id: dict[str, dict[str, str]] = {}
     consecutive_circuit_trips = 0
     while len(actions) < args.max_repair_actions:
         failed = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
         candidates: list[tuple[int, str, dict[str, Any], int]] = []
         for task in failed:
-            attempt = _next_exhausted_page_repair_attempt_v1(
-                task=task, artifact_root=args.artifact_root
-            )
-            if attempt is not None:
-                candidates.append(
-                    (
-                        _exhausted_page_repair_remaining_page_count_v1(
-                            task=task,
-                            ledger=args.ledger,
-                            artifact_root=args.artifact_root,
-                            repair_attempt=attempt,
-                        ),
-                        task["relative_path"],
-                        task,
-                        attempt,
-                    )
+            if task["task_id"] in skipped_tasks_by_id:
+                continue
+            try:
+                candidate = _terminal_repair_candidate_v1(
+                    task=task,
+                    ledger=args.ledger,
+                    artifact_root=args.artifact_root,
+                    database=getattr(args, "database", None),
                 )
+            except RunGeminiJsonFirstCorpusSupervisorV1Error as exc:
+                skipped_tasks_by_id[task["task_id"]] = _terminal_repair_skipped_task_v1(
+                    task=task,
+                    error=exc,
+                )
+                continue
+            if candidate is not None:
+                remaining_page_count, attempt = candidate
+                candidates.append((remaining_page_count, task["relative_path"], task, attempt))
         if not candidates:
             break
-        _page_count, _relative_path, task, repair_attempt = min(
-            candidates, key=lambda item: (item[0], item[1])
-        )
-        result = repair_openrouter_flex_pages_task(
-            argparse.Namespace(**vars(args), task_id=task["task_id"], repair_attempt=repair_attempt)
-        )
+        selected = None
+        task_execution_lock = None
+        for candidate in sorted(candidates, key=lambda item: (item[0], item[1])):
+            _page_count, _relative_path, candidate_task, candidate_attempt = candidate
+            try:
+                candidate_lock = acquire_corpus_task_execution_lock_v1(
+                    args.ledger,
+                    task_id=candidate_task["task_id"],
+                )
+            except GeminiJsonFirstCorpusLedgerV1Error as exc:
+                if str(exc) == "corpus task execution is already owned":
+                    continue
+                raise
+            current = [
+                item
+                for item in list_corpus_tasks_v1(
+                    args.ledger,
+                    states=["FAILED"],
+                    route=OPENROUTER_ROUTE,
+                )
+                if item["task_id"] == candidate_task["task_id"]
+            ]
+            if len(current) != 1:
+                candidate_lock.close()
+                continue
+            selected = (_page_count, _relative_path, current[0], candidate_attempt)
+            task_execution_lock = candidate_lock
+            break
+        if selected is None or task_execution_lock is None:
+            break
+        _page_count, _relative_path, task, repair_attempt = selected
+        try:
+            result = repair_openrouter_flex_pages_task(
+                argparse.Namespace(
+                    **vars(args),
+                    task_id=task["task_id"],
+                    repair_attempt=repair_attempt,
+                )
+            )
+        finally:
+            task_execution_lock.close()
         circuit_tripped = _exhausted_page_repair_receipt_has_circuit_v1(
             task=task,
             artifact_root=args.artifact_root,
@@ -5162,11 +5948,27 @@ def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, A
             consecutive_circuit_trips = 0
         if circuit_tripped and len(actions) < args.max_repair_actions:
             remaining = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
-            if any(
-                _next_exhausted_page_repair_attempt_v1(task=item, artifact_root=args.artifact_root)
-                is not None
-                for item in remaining
-            ):
+            has_repairable_remaining = False
+            for item in remaining:
+                if item["task_id"] in skipped_tasks_by_id:
+                    continue
+                try:
+                    candidate = _terminal_repair_candidate_v1(
+                        task=item,
+                        ledger=args.ledger,
+                        artifact_root=args.artifact_root,
+                        database=getattr(args, "database", None),
+                    )
+                except RunGeminiJsonFirstCorpusSupervisorV1Error as exc:
+                    skipped_tasks_by_id[item["task_id"]] = _terminal_repair_skipped_task_v1(
+                        task=item,
+                        error=exc,
+                    )
+                    continue
+                if candidate is not None:
+                    has_repairable_remaining = True
+                    break
+            if has_repairable_remaining:
                 time.sleep(
                     _openrouter_circuit_cooldown_v1(
                         base_seconds=args.openrouter_circuit_cooldown_seconds,
@@ -5175,14 +5977,33 @@ def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, A
                 )
 
     remaining_failed = list_corpus_tasks_v1(args.ledger, states=["FAILED"], route=OPENROUTER_ROUTE)
-    repairable_task_ids = sorted(
-        task["task_id"]
-        for task in remaining_failed
-        if _next_exhausted_page_repair_attempt_v1(task=task, artifact_root=args.artifact_root)
-        is not None
-    )
-    exhausted_task_ids = sorted(
-        set(task["task_id"] for task in remaining_failed) - set(repairable_task_ids)
+    repairable_task_ids: list[str] = []
+    exhausted_task_ids: list[str] = []
+    for task in remaining_failed:
+        if task["task_id"] in skipped_tasks_by_id:
+            continue
+        try:
+            candidate = _terminal_repair_candidate_v1(
+                task=task,
+                ledger=args.ledger,
+                artifact_root=args.artifact_root,
+                database=getattr(args, "database", None),
+            )
+        except RunGeminiJsonFirstCorpusSupervisorV1Error as exc:
+            skipped_tasks_by_id[task["task_id"]] = _terminal_repair_skipped_task_v1(
+                task=task,
+                error=exc,
+            )
+            continue
+        if candidate is None:
+            exhausted_task_ids.append(task["task_id"])
+        else:
+            repairable_task_ids.append(task["task_id"])
+    repairable_task_ids.sort()
+    exhausted_task_ids.sort()
+    skipped_tasks = sorted(
+        skipped_tasks_by_id.values(),
+        key=lambda item: (item["relative_path"], item["task_id"]),
     )
     disposition = (
         "SUCCEEDED" if not remaining_failed else "NEEDS_REPAIR" if repairable_task_ids else "FAILED"
@@ -5194,6 +6015,8 @@ def repair_failed_openrouter_flex_tasks(args: argparse.Namespace) -> dict[str, A
         "exhausted_task_ids": exhausted_task_ids,
         "ledger": corpus_ledger_summary_v1(args.ledger),
         "repairable_task_ids": repairable_task_ids,
+        "skipped_task_ids": sorted(skipped_tasks_by_id),
+        "skipped_tasks": skipped_tasks,
     }
 
 

@@ -246,7 +246,7 @@
               "INTERBANK_LOAN_VND"
             ],
             "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
-            "derivation_policy": "VISIBLE_RESULT_CORROBORATION_ONLY"
+            "derivation_policy": "ALLOW_DERIVATION_FROM_EXHAUSTIVE_VISIBLE_COMPONENTS"
           },
           {
             "component_roles": [

@@ -135,7 +135,7 @@ def test_currency_shapes_close_but_emit_only_two_schema_children(shape: str) -> 
     )
 
 
-def test_repeated_currency_labels_are_role_scoped_and_deferred_rows_are_source_only() -> None:
+def test_short_currency_labels_require_an_explicit_family_title_or_scoped_owner() -> None:
     result = _evaluate(_page("SCOPED_CORE_AND_DEFERRED_LC"))
 
     assert result["status"] == READY
@@ -155,9 +155,115 @@ def test_repeated_currency_labels_are_role_scoped_and_deferred_rows_are_source_o
     unscoped_rows[0]["hierarchy_path_exact"] = ["Bằng VND"]
     unscoped_rows[1]["label_exact"] = "Bằng ngoại tệ"
     unscoped_rows[1]["hierarchy_path_exact"] = ["Bằng ngoại tệ"]
+    explicit_parent = _evaluate(unscoped)
+    assert explicit_parent["status"] == READY
+    assert [mapping["report_norm_id"] for mapping in explicit_parent["mappings"]] == [757, 758]
+
+    unscoped["sections"][0]["tables"][0]["title_exact"] = "Bảng thông tin khác"
     unresolved = _evaluate(unscoped)
     assert unresolved["status"] == UNRESOLVED
     assert unresolved["mappings"] == []
+
+
+def test_eib_and_pgb_parent_title_variants_are_explicit_family_evidence() -> None:
+    topology, _, _ = _specs()
+
+    assert "Phân tích dư nợ cho vay theo loại tiền tệ" in topology["parent"]["aliases"]
+    assert "Phân tích dư nợ theo đơn vị tiền tệ cho vay" in topology["parent"]["aliases"]
+
+
+def test_exact_section_narrative_can_bind_a_titleless_currency_table() -> None:
+    page = _page("QUALIFIED_CORE")
+    section = page["sections"][0]
+    section["title_exact"] = "Thuyết minh báo cáo tài chính"
+    section["narratives_exact"] = [
+        "Phân tích dư nợ cho vay khách hàng theo tiền tệ như sau:"
+    ]
+    section["tables"][0]["title_exact"] = None
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    assert result["parent_binding_kind"] == "EXPLICIT_SECTION_NARRATIVE"
+    assert result["closure_receipt"]["parent_narrative_binding"] == {
+        "alias": "phan tich du no cho vay khach hang theo tien te nhu sau",
+        "narrative_exact": "Phân tích dư nợ cho vay khách hàng theo tiền tệ như sau:",
+        "narrative_ordinal": 1,
+    }
+
+    hard_negative = deepcopy(page)
+    hard_negative["sections"][0]["narratives_exact"].append("Phân tích rủi ro tiền tệ")
+    rejected = _evaluate(hard_negative)
+    assert rejected["status"] == UNRESOLVED
+    assert rejected["mappings"] == []
+    assert "HARD_NEGATIVE_FAMILY_TITLE_PRESENT" in rejected["reasons"]
+
+
+def test_vab_split_foreign_currency_and_gold_rows_derive_one_schema_child() -> None:
+    page = _page("QUALIFIED_CORE")
+    table = page["sections"][0]["tables"][0]
+    table["title_exact"] = "Phân tích dư nợ theo đơn vị tiền tệ cho vay"
+    table["rows"] = [
+        _row("Vay bằng VND", ["100", "90"]),
+        _row("Vay bằng ngoại tệ", ["20", "10"]),
+        _row("Vay bằng vàng (do biến động tỷ giá)", ["5", "4"]),
+        _row("Tổng", ["125", "104"], row_kind="TOTAL"),
+    ]
+
+    result = _evaluate(page)
+
+    assert result["status"] == READY
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [757, 758]
+    assert [
+        [value["coefficient"] for value in mapping["values"]] for mapping in result["mappings"]
+    ] == [[100, 90], [25, 14]]
+    assert all(
+        mapping["role"] not in {"SOURCE_ONLY_FOREIGN_CURRENCY_LOANS", "SOURCE_ONLY_GOLD_LOANS"}
+        for mapping in result["mappings"]
+    )
+    derived = next(
+        equation
+        for equation in result["closure_receipt"]["equations"]
+        if equation["result_role"] == "FOREIGN_CURRENCY_AND_GOLD_LOANS"
+    )
+    assert derived["component_roles"] == [
+        "SOURCE_ONLY_FOREIGN_CURRENCY_LOANS",
+        "SOURCE_ONLY_GOLD_LOANS",
+    ]
+    assert derived["component_row_ids"] == ["r2", "r3"]
+
+    mismatched = deepcopy(page)
+    rounded = deepcopy(page)
+    rounded["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "126"
+    rounded_result = _evaluate(rounded)
+    assert rounded_result["status"] == READY
+    root_equation = rounded_result["closure_receipt"]["equations"][-1]
+    assert root_equation["source_rounding_residual_coefficients"] == [1, 0]
+
+    mismatched = deepcopy(page)
+    mismatched["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "127"
+    mismatch_result = _evaluate(mismatched)
+    assert mismatch_result["status"] == UNRESOLVED
+    assert mismatch_result["mappings"] == []
+
+    partial = deepcopy(page)
+    partial["sections"][0]["tables"][0]["rows"] = [
+        _row("Vay bằng VND", ["100", "90"]),
+        _row("Tổng", ["100", "90"], row_kind="TOTAL"),
+    ]
+    partial_result = _evaluate(partial)
+    assert partial_result["status"] == UNRESOLVED
+    assert partial_result["mappings"] == []
+
+    missing_gold = deepcopy(page)
+    missing_gold["sections"][0]["tables"][0]["rows"] = [
+        _row("Vay bằng VND", ["100", "90"]),
+        _row("Vay bằng ngoại tệ", ["20", "10"]),
+        _row("Tổng", ["120", "100"], row_kind="TOTAL"),
+    ]
+    missing_gold_result = _evaluate(missing_gold)
+    assert missing_gold_result["status"] == UNRESOLVED
+    assert missing_gold_result["mappings"] == []
 
 
 def test_hard_negative_currency_risk_title_vetoes_same_numeric_pair() -> None:
@@ -177,7 +283,7 @@ def test_context_only_family_root_is_never_mapped_but_must_close_exactly() -> No
     assert all(mapping["report_norm_id"] != 756 for mapping in good["mappings"])
 
     page = deepcopy(_page("QUALIFIED_CORE"))
-    page["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "121"
+    page["sections"][0]["tables"][0]["rows"][-1]["values_exact"][0] = "122"
     bad = _evaluate(page)
     assert bad["status"] == UNRESOLVED
     assert bad["mappings"] == []
@@ -197,10 +303,12 @@ def test_database_query_separates_qualified_rows_from_owner_scoped_short_rows() 
     compiled = _compiled()
     query_groups = compiled["query_anchor_alias_groups"]
 
-    assert len(compiled["anchor_alias_groups"]) == 1
-    assert len(query_groups) == 2
-    qualified = next(group for group in query_groups if len(group) == 2)
-    owner_scoped = next(group for group in query_groups if len(group) == 3)
+    qualified = next(
+        group for group in query_groups if len(group) == 2 and "Cho vay bằng ngoại tệ" in group[1]
+    )
+    owner_scoped = next(
+        group for group in query_groups if len(group) == 3 and "Cho vay khách hàng" in group[0]
+    )
     assert "Cho vay bằng VND" in qualified[0]
     assert "Bằng VND" not in qualified[0]
     assert "Cho vay bằng ngoại tệ" in qualified[1]
@@ -229,8 +337,13 @@ def test_scoped_only_query_stays_owner_bound_and_ignores_nonanchor_owner_aliases
 
     compiled = compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema)
 
-    assert len(compiled["query_anchor_alias_groups"]) == 1
-    owner_scoped = compiled["query_anchor_alias_groups"][0]
+    owner_scoped_groups = [
+        group
+        for group in compiled["query_anchor_alias_groups"]
+        if len(group) == 3 and "Cho vay khách hàng" in group[0]
+    ]
+    assert len(owner_scoped_groups) == 1
+    owner_scoped = owner_scoped_groups[0]
     assert len(owner_scoped) == 3
     assert "Cho vay khách hàng" in owner_scoped[0]
     assert "Không dùng làm query owner" not in owner_scoped[0]

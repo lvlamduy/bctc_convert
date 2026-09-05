@@ -16,10 +16,14 @@ algorithm or the provider prompt boundary.
 
 from __future__ import annotations
 
+import calendar
+import json
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from datetime import date
+from hashlib import sha256
+from pathlib import Path
 from typing import Any
 
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
@@ -48,21 +52,29 @@ INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = (
 )
 EVALUATION_FORMAT_VERSION = "ACCOUNTING_FIXED_ASSET_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1"
 SCHEMA_FORMAT_VERSION = "ACCOUNTING_FIXED_ASSET_ROLLFORWARD_SCHEMA_BINDING_SPEC_V1"
+SOURCE_REPAIR_ARTIFACT_FORMAT_VERSION = (
+    "GEMINI_JSON_FIXED_ASSET_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1"
+)
 READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 NOT_OBSERVED = "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_FIXED_ASSET_OWNER_HEADER_"
-    "CONFIGURED_BRANCH_CURRENT_PERIOD_TOTAL_COLUMN_ALL_ROW_HORIZONTAL_SIGNED_"
+    "CONFIGURED_BRANCH_CURRENT_PERIOD_EXPLICIT_OR_SINGLE_ASSET_IMPLICIT_TOTAL_"
+    "COLUMN_APPLICABLE_ROW_HORIZONTAL_SIGNED_"
     "BRANCH_OPTIONAL_CARRYING_CONTROL_AND_CONFIGURED_SUPPLEMENTAL_DISCLOSURE_"
     "CURRENT_PERIOD_VISIBLE_SUBTOTAL_AND_UNIQUE_ALL_EQUATION_WIDTH_SEAL_SCHEMA_"
-    "MAPPING_PROPOSAL_ONLY_NO_GEOMETRY_OCR_BANK_FILE_PAGE_NOTE_VALUE_OR_PROMPT_"
+    "MAPPING_PROPOSAL_ONLY_GENERIC_CONTENT_ADDRESSED_VISUAL_SOURCE_REPAIR_ARTIFACT_"
+    "TRANSCRIPTION_ONLY_NO_EQUATION_BACKSOLVE_PROVIDER_OR_PROMPT_ROUTING_"
     "ROUTING_CANONICAL_SQLITE_QUERY_AND_CANDIDATE_REPLAY_REQUIRED_FOR_PERSISTENCE"
 )
 
 _PAGE_VERSION = re.compile(r"gfpstorev1:json:[0-9a-f]{64}\Z")
 _DOCUMENT_ID = re.compile(r"gfpstorev1:document:[0-9a-f]{64}\Z")
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+_EXTRACTION_RUN_ID = re.compile(r"gfpstorev1:run:[0-9a-f]{64}\Z")
+_SOURCE_REPAIR_ID = re.compile(r"gjffasrv1:repair:[0-9a-f]{64}\Z")
+_SOURCE_REPAIR_OVERLAY_ID = re.compile(r"gjffasrv1:overlay:[0-9a-f]{64}\Z")
 _SECTION_ID = re.compile(r"s[1-9][0-9]*\Z")
 _TABLE_ID = re.compile(r"t[1-9][0-9]*\Z")
 _DATE_DMY = re.compile(
@@ -70,9 +82,15 @@ _DATE_DMY = re.compile(
     r"([01]?\d)(?:[./-]|\s+(?:nam\s+)?)((?:19|20)\d{2})(?!\d)"
 )
 _DASHES = {"-", "_", "–", "—", "−"}
-_DASH_ANNOTATIONS = {"带有横线"}
+_DASH_ANNOTATIONS = {"Singledashplaceholderordash", "带有横线"}
 _IGNORABLE_TRAILING_MODEL_GLYPHS = {"单"}
 _GROUPED_MONEY = re.compile(r"(?<!\d)\(?\d{1,3}(?:[.\s]\d{3})+\)?(?!\d)")
+_GROUPED_INTEGER_WITH_ZERO_DECIMALS = re.compile(
+    r"(?:\d{1,3}(?:\.\d{3})+,00|\d{1,3}(?:,\d{3})+\.00)\Z"
+)
+_VISIBLE_ACCOUNTING_MONEY = re.compile(
+    r"(?:[-_–—−]|\d+(?:[., ]\d+)*|\(\d+(?:[., ]\d+)*\))\Z"
+)
 _BRANCH_KINDS = {"SIGNED_ADDITIVE", "COST_AND_DEPRECIATION_CONTROL"}
 _CLOSURE_POLICIES = {
     "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_AND_CARRYING_EQUATIONS_EXACT",
@@ -91,7 +109,13 @@ def _error(message: str) -> GeminiJsonFixedAssetRollforwardFamilyV1Error:
 def _normalized(value: Any) -> str:
     if type(value) is not str:
         return ""
-    return normalize_vietnamese_anchor_v1(value)
+    # Gemini can preserve PDF line breaks either as real whitespace or as the
+    # two-character JSON escape spelling (``\\n``).  Treat the latter as the
+    # same source-layout whitespace before applying the shared Vietnamese
+    # normalization; otherwise a spurious ``n`` becomes part of an asset
+    # header (for example ``vật kiến\\ntrúc``).
+    surface = value.replace("\\n", " ").replace("\\r", " ").replace("\\t", " ")
+    return normalize_vietnamese_anchor_v1(surface)
 
 
 def _normalized_aliases(value: Any, *, label: str) -> list[str]:
@@ -144,6 +168,328 @@ def _compile_units(value: Any) -> tuple[list[dict[str, Any]], dict[str, dict[str
     return bindings, by_alias
 
 
+def _source_repair_bbox_v1(
+    value: Any,
+    *,
+    pixel_width: int,
+    pixel_height: int,
+    label: str,
+) -> list[int]:
+    if (
+        type(value) is not list
+        or len(value) != 4
+        or any(type(item) is not int for item in value)
+        or not (0 <= value[0] < value[2] <= pixel_width)
+        or not (0 <= value[1] < value[3] <= pixel_height)
+    ):
+        raise _error(f"fixed-asset authenticated source-repair {label} is invalid")
+    return list(value)
+
+
+def _compile_authenticated_source_repair_artifact_v1(
+    value: Any,
+    *,
+    family_id: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Load and compile one externally pinned visual cell-transcription artifact.
+
+    The family spec contains only a content reference.  Bank/file/page/value
+    exceptions live in the immutable registered artifact and are admitted only
+    after source, render, selected page JSON, table and individual cell
+    identities all replay.  The artifact may transcribe a PDF-visible money
+    token or accounting dash; it cannot create a value from an equation.
+    """
+
+    ref_fields = {
+        "artifact_format_version",
+        "overlay_id",
+        "path",
+        "sha256",
+        "size_bytes",
+    }
+    if (
+        type(value) is not dict
+        or set(value) != ref_fields
+        or value.get("artifact_format_version") != SOURCE_REPAIR_ARTIFACT_FORMAT_VERSION
+        or type(value.get("path")) is not str
+        or not value["path"]
+        or value["path"].startswith("/")
+        or ".." in value["path"].split("/")
+        or _SHA256.fullmatch(value.get("sha256", "")) is None
+        or type(value.get("size_bytes")) is not int
+        or value["size_bytes"] <= 0
+        or _SOURCE_REPAIR_OVERLAY_ID.fullmatch(value.get("overlay_id", "")) is None
+    ):
+        raise _error("fixed-asset authenticated source-repair artifact ref is invalid")
+    artifact_path = Path(__file__).resolve().parents[3] / value["path"]
+    try:
+        payload = artifact_path.read_bytes()
+    except OSError as exc:
+        raise _error("fixed-asset authenticated source-repair artifact is absent") from exc
+    if len(payload) != value["size_bytes"] or sha256(payload).hexdigest() != value["sha256"]:
+        raise _error("fixed-asset authenticated source-repair artifact bytes drifted")
+    try:
+        raw_artifact = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error("fixed-asset authenticated source-repair artifact JSON is invalid") from exc
+
+    artifact_fields = {
+        "family_id",
+        "format_version",
+        "overlay_id",
+        "repairs",
+        "review_policy",
+    }
+    review_policy = (
+        "TRANSCRIBE_ONLY_PDF_VISIBLE_CELL_TOKENS_NO_EQUATION_BACKSOLVE_"
+        "NO_BLANK_TO_ZERO_NO_PROVIDER"
+    )
+    if (
+        type(raw_artifact) is not dict
+        or set(raw_artifact) != artifact_fields
+        or raw_artifact.get("format_version") != SOURCE_REPAIR_ARTIFACT_FORMAT_VERSION
+        or raw_artifact.get("family_id") != family_id
+        or raw_artifact.get("review_policy") != review_policy
+        or type(raw_artifact.get("repairs")) is not list
+        or not raw_artifact["repairs"]
+    ):
+        raise _error("fixed-asset authenticated source-repair artifact is invalid")
+
+    repair_fields = {
+        "base_page_json_sha256",
+        "base_page_json_version_id",
+        "cell_repairs",
+        "effective_page_json_sha256",
+        "extraction_run_id",
+        "repair_id",
+        "repair_reason",
+        "source_binding",
+        "stored_canonical_json_sha256",
+        "table_ref",
+        "visual_evidence",
+    }
+    source_fields = {
+        "document_id",
+        "image_sha256",
+        "image_size_bytes",
+        "media_type",
+        "page_id",
+        "physical_page",
+        "pixel_height",
+        "pixel_width",
+        "render_dpi",
+        "source_logical_name",
+        "source_sha256",
+        "source_size_bytes",
+    }
+    table_fields = {
+        "base_table_sha256",
+        "effective_table_sha256",
+        "section_id",
+        "table_id",
+    }
+    visual_fields = {
+        "evidence_kind",
+        "render_mode",
+        "reviewed_utc_date",
+        "table_crop_bbox_pixels_xyxy",
+        "table_crop_rgb_sha256",
+    }
+    cell_fields = {
+        "after_exact",
+        "before_exact",
+        "cell_id",
+        "column_header_path_exact",
+        "crop_bbox_pixels_xyxy",
+        "crop_rgb_sha256",
+        "row_hierarchy_path_exact",
+        "row_label_exact",
+        "visual_state",
+    }
+    checked_repairs = []
+    seen_versions: set[str] = set()
+    for raw in raw_artifact["repairs"]:
+        if type(raw) is not dict or set(raw) != repair_fields:
+            raise _error("fixed-asset authenticated source-repair fields drifted")
+        repair = canonical_clone_v1(raw)
+        source = repair["source_binding"]
+        if type(source) is not dict or set(source) != source_fields:
+            raise _error("fixed-asset authenticated source-repair source binding drifted")
+        if (
+            type(source["source_logical_name"]) is not str
+            or not source["source_logical_name"].strip()
+            or _SHA256.fullmatch(source.get("source_sha256", "")) is None
+            or type(source["source_size_bytes"]) is not int
+            or source["source_size_bytes"] <= 0
+            or _DOCUMENT_ID.fullmatch(source.get("document_id", "")) is None
+            or type(source["physical_page"]) is not int
+            or source["physical_page"] <= 0
+            or _SHA256.fullmatch(source.get("image_sha256", "")) is None
+            or type(source["image_size_bytes"]) is not int
+            or source["image_size_bytes"] <= 0
+            or type(source["pixel_width"]) is not int
+            or source["pixel_width"] <= 0
+            or type(source["pixel_height"]) is not int
+            or source["pixel_height"] <= 0
+            or source["render_dpi"] not in {200, 300}
+            or source["media_type"] != "image/png"
+            or not isinstance(source.get("page_id"), str)
+        ):
+            raise _error("fixed-asset authenticated source-repair source binding is invalid")
+        expected_document_id = "gfpstorev1:document:" + canonical_json_sha256_v1(
+            {
+                "source_logical_name": source["source_logical_name"],
+                "source_sha256": source["source_sha256"],
+                "source_size_bytes": source["source_size_bytes"],
+            }
+        )
+        expected_page_id = "gfpstorev1:page:" + canonical_json_sha256_v1(
+            {
+                "document_id": expected_document_id,
+                "image_sha256": source["image_sha256"],
+                "image_size_bytes": source["image_size_bytes"],
+                "media_type": source["media_type"],
+                "physical_page": source["physical_page"],
+                "pixel_height": source["pixel_height"],
+                "pixel_width": source["pixel_width"],
+                "render_dpi": source["render_dpi"],
+            }
+        )
+        if source["document_id"] != expected_document_id or source["page_id"] != expected_page_id:
+            raise _error("fixed-asset authenticated source-repair source identity does not replay")
+        if (
+            _SHA256.fullmatch(repair.get("base_page_json_sha256", "")) is None
+            or _SHA256.fullmatch(repair.get("effective_page_json_sha256", "")) is None
+            or _SHA256.fullmatch(repair.get("stored_canonical_json_sha256", "")) is None
+            or _EXTRACTION_RUN_ID.fullmatch(repair.get("extraction_run_id", "")) is None
+            or _PAGE_VERSION.fullmatch(repair.get("base_page_json_version_id", "")) is None
+        ):
+            raise _error("fixed-asset authenticated source-repair page version is invalid")
+        expected_version_id = "gfpstorev1:json:" + canonical_json_sha256_v1(
+            {
+                "canonical_json_sha256": repair["stored_canonical_json_sha256"],
+                "extraction_run_id": repair["extraction_run_id"],
+                "page_id": source["page_id"],
+            }
+        )
+        if repair["base_page_json_version_id"] != expected_version_id:
+            raise _error("fixed-asset authenticated source-repair page version does not replay")
+        if repair["base_page_json_version_id"] in seen_versions:
+            raise _error("fixed-asset authenticated source-repair page version is duplicated")
+        seen_versions.add(repair["base_page_json_version_id"])
+
+        table_ref = repair["table_ref"]
+        if (
+            type(table_ref) is not dict
+            or set(table_ref) != table_fields
+            or _SECTION_ID.fullmatch(table_ref.get("section_id", "")) is None
+            or _TABLE_ID.fullmatch(table_ref.get("table_id", "")) is None
+            or _SHA256.fullmatch(table_ref.get("base_table_sha256", "")) is None
+            or _SHA256.fullmatch(table_ref.get("effective_table_sha256", "")) is None
+        ):
+            raise _error("fixed-asset authenticated source-repair table binding is invalid")
+        visual = repair["visual_evidence"]
+        if (
+            type(visual) is not dict
+            or set(visual) != visual_fields
+            or visual.get("evidence_kind")
+            != "AUTHENTICATED_MANUAL_VISUAL_CELL_TRANSCRIPTION"
+            or visual.get("render_mode") != "PDF_PAGE_GET_PIXMAP_DPI_EXACT"
+            or not re.fullmatch(r"20\d{2}-[01]\d-[0-3]\d", visual.get("reviewed_utc_date", ""))
+            or _SHA256.fullmatch(visual.get("table_crop_rgb_sha256", "")) is None
+        ):
+            raise _error("fixed-asset authenticated source-repair visual evidence is invalid")
+        table_bbox = _source_repair_bbox_v1(
+            visual["table_crop_bbox_pixels_xyxy"],
+            pixel_width=source["pixel_width"],
+            pixel_height=source["pixel_height"],
+            label="table crop",
+        )
+        cells = repair["cell_repairs"]
+        if type(cells) is not list or not cells:
+            raise _error("fixed-asset authenticated source-repair cell axis is empty")
+        checked_cells = []
+        seen_cells = set()
+        for raw_cell in cells:
+            if type(raw_cell) is not dict or set(raw_cell) != cell_fields:
+                raise _error("fixed-asset authenticated source-repair cell fields drifted")
+            cell = canonical_clone_v1(raw_cell)
+            match = re.fullmatch(r"r([1-9][0-9]*):c([1-9][0-9]*)", cell.get("cell_id", ""))
+            after = cell.get("after_exact")
+            expected_visual_state = "DASH" if after in _DASHES else "PRINTED_MONEY"
+            if (
+                match is None
+                or cell["cell_id"] in seen_cells
+                or type(cell.get("before_exact")) not in {str, type(None)}
+                or type(after) is not str
+                or _VISIBLE_ACCOUNTING_MONEY.fullmatch(after.strip()) is None
+                or cell["visual_state"] != expected_visual_state
+                or same_typed_json_v1(cell["before_exact"], after)
+                or type(cell.get("row_label_exact")) is not str
+                or not cell["row_label_exact"].strip()
+                or type(cell.get("row_hierarchy_path_exact")) is not list
+                or not cell["row_hierarchy_path_exact"]
+                or any(type(item) is not str or not item for item in cell["row_hierarchy_path_exact"])
+                or type(cell.get("column_header_path_exact")) is not list
+                or not cell["column_header_path_exact"]
+                or any(type(item) is not str or not item for item in cell["column_header_path_exact"])
+                or _SHA256.fullmatch(cell.get("crop_rgb_sha256", "")) is None
+            ):
+                raise _error("fixed-asset authenticated source-repair cell is invalid")
+            seen_cells.add(cell["cell_id"])
+            cell_bbox = _source_repair_bbox_v1(
+                cell["crop_bbox_pixels_xyxy"],
+                pixel_width=source["pixel_width"],
+                pixel_height=source["pixel_height"],
+                label="cell crop",
+            )
+            if not (
+                table_bbox[0] <= cell_bbox[0] < cell_bbox[2] <= table_bbox[2]
+                and table_bbox[1] <= cell_bbox[1] < cell_bbox[3] <= table_bbox[3]
+            ):
+                raise _error("fixed-asset authenticated source-repair cell leaves table crop")
+            checked_cells.append(cell)
+        checked_cells.sort(
+            key=lambda item: tuple(int(part[1:]) for part in item["cell_id"].split(":"))
+        )
+        if cells != checked_cells:
+            raise _error("fixed-asset authenticated source-repair cell axis is unordered")
+        if repair["repair_reason"] != "VISIBLE_PDF_CELL_MISALIGNED_IN_SELECTED_JSON":
+            raise _error("fixed-asset authenticated source-repair reason is invalid")
+        expected_repair_id = "gjffasrv1:repair:" + canonical_json_sha256_v1(
+            {key: repair[key] for key in repair if key != "repair_id"}
+        )
+        if (
+            _SOURCE_REPAIR_ID.fullmatch(repair.get("repair_id", "")) is None
+            or repair["repair_id"] != expected_repair_id
+        ):
+            raise _error("fixed-asset authenticated source-repair identity does not replay")
+        checked_repairs.append(repair)
+    checked_repairs.sort(
+        key=lambda item: (
+            item["source_binding"]["source_logical_name"],
+            item["source_binding"]["physical_page"],
+            int(item["table_ref"]["section_id"][1:]),
+            int(item["table_ref"]["table_id"][1:]),
+        )
+    )
+    if raw_artifact["repairs"] != checked_repairs:
+        raise _error("fixed-asset authenticated source-repair axis is unordered")
+    material = {
+        "family_id": family_id,
+        "format_version": SOURCE_REPAIR_ARTIFACT_FORMAT_VERSION,
+        "repairs": checked_repairs,
+        "review_policy": review_policy,
+    }
+    expected_overlay_id = "gjffasrv1:overlay:" + canonical_json_sha256_v1(material)
+    if (
+        raw_artifact.get("overlay_id") != expected_overlay_id
+        or value["overlay_id"] != expected_overlay_id
+    ):
+        raise _error("fixed-asset authenticated source-repair overlay identity does not replay")
+    return {**material, "overlay_id": expected_overlay_id}, canonical_clone_v1(value)
+
+
 def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
     topology_spec: Any, evaluation_spec: Any, schema_binding_spec: Any
 ) -> dict[str, Any]:
@@ -169,10 +515,30 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         "total_column_aliases",
     }
     optional_evaluation_fields = {
+        "adjacent_page_endpoint_first_continuation_policy",
+        "adjacent_owner_continuation_policy",
+        "authenticated_source_repair_artifact_ref",
+        "blank_subtotal_heading_policy",
         "component_policy",
         "direct_role_fallbacks",
+        "endpoint_first_layout",
         "equation_only_roles",
+        "leading_implicit_cost_branch_policy",
+        "immediately_preceding_table_period_policy",
+        "missing_local_unit_policy",
+        "movement_role_directions",
+        "ordered_dated_endpoint_policy",
+        "ordered_branch_scope_policy",
+        "partial_detail_total_policy",
+        "source_only_carrying_control",
+        "source_only_row_aliases",
+        "source_presentation_rounding_policy",
+        "single_asset_period_column_policy",
+        "singleton_declared_subtotal_projections",
         "supplemental_disclosure_roles",
+        "trailing_owner_heading_policy",
+        "undated_full_table_sequence_policy",
+        "undated_sibling_policy",
     }
     if (
         type(evaluation_spec) is not dict
@@ -193,6 +559,75 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         or evaluation_spec["minimum_distinct_asset_header_aliases"] < 1
     ):
         raise _error("fixed-asset evaluation spec is invalid")
+    adjacent_owner_continuation_policy = evaluation_spec.get(
+        "adjacent_owner_continuation_policy"
+    )
+    if adjacent_owner_continuation_policy not in {
+        None,
+        "IMMEDIATELY_PRECEDING_EXPLICIT_OWNER_SAME_HEADER_AXIS_WITH_CONTINUATION_HEADING",
+    }:
+        raise _error("fixed-asset adjacent owner-continuation policy drifted")
+    blank_subtotal_heading_policy = evaluation_spec.get("blank_subtotal_heading_policy")
+    if blank_subtotal_heading_policy not in {
+        None,
+        "VISIBLE_BLANK_SUBTOTAL_HEADING_CHILDREN_PROMOTE_TO_DIRECT_MOVEMENTS",
+    }:
+        raise _error("fixed-asset blank subtotal-heading policy drifted")
+    adjacent_page_endpoint_first_continuation_policy = evaluation_spec.get(
+        "adjacent_page_endpoint_first_continuation_policy"
+    )
+    if adjacent_page_endpoint_first_continuation_policy not in {
+        None,
+        "PAGE_FINAL_OWNER_PARTIAL_PLUS_NEXT_PAGE_LEADING_HEADERLESS_COMPLEMENT_EXACT_ENDPOINT_TOPOLOGY",
+    }:
+        raise _error("fixed-asset adjacent page endpoint-first policy drifted")
+    leading_implicit_cost_branch_policy = evaluation_spec.get(
+        "leading_implicit_cost_branch_policy"
+    )
+    if leading_implicit_cost_branch_policy not in {
+        None,
+        "LEADING_UNSCOPED_ROWS_BEFORE_FIRST_EXPLICIT_DEPRECIATION_BRANCH_ARE_COST",
+    }:
+        raise _error("fixed-asset leading implicit cost-branch policy drifted")
+    source_presentation_rounding_policy = evaluation_spec.get(
+        "source_presentation_rounding_policy"
+    )
+    if source_presentation_rounding_policy not in {
+        None,
+        "INDEPENDENT_DISPLAY_UNIT_ROUNDING_INTERVAL_ALL_EQUATIONS",
+    }:
+        raise _error("fixed-asset source presentation-rounding policy drifted")
+    single_asset_period_column_policy = evaluation_spec.get(
+        "single_asset_period_column_policy"
+    )
+    if single_asset_period_column_policy not in {
+        None,
+        "SAME_RECOGNIZED_ASSET_DISTINCT_PERIOD_COLUMNS_SELECT_UNIQUE_CURRENT_PERIOD",
+    }:
+        raise _error("fixed-asset single-asset period-column policy drifted")
+    immediately_preceding_table_period_policy = evaluation_spec.get(
+        "immediately_preceding_table_period_policy"
+    )
+    if immediately_preceding_table_period_policy not in {
+        None,
+        "IMMEDIATELY_PRECEDING_SIBLING_TABLE_UNIQUE_EXPLICIT_AS_AT_DATE",
+    }:
+        raise _error("fixed-asset immediately preceding-table period policy drifted")
+    source_repair_overlay = None
+    source_repair_artifact_ref = None
+    if "authenticated_source_repair_artifact_ref" in evaluation_spec:
+        source_repair_overlay, source_repair_artifact_ref = (
+            _compile_authenticated_source_repair_artifact_v1(
+                evaluation_spec["authenticated_source_repair_artifact_ref"],
+                family_id=topology["family_id"],
+            )
+        )
+    trailing_owner_heading_policy = evaluation_spec.get("trailing_owner_heading_policy")
+    if trailing_owner_heading_policy not in {
+        None,
+        "IMMEDIATELY_PRECEDING_PAGE_FINAL_EMPTY_OWNER_SECTION_BINDS_FIRST_HEADER_COMPLETE_TABLE",
+    }:
+        raise _error("fixed-asset trailing owner-heading policy drifted")
     asset_aliases = _normalized_aliases(
         evaluation_spec["asset_header_aliases"], label="asset header"
     )
@@ -229,15 +664,52 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         ):
             raise _error("fixed-asset direct-role fallback drifted")
         direct_role_fallback_by_role[raw["source_role"]] = raw["fallback_role"]
+    singleton_declared_subtotal_by_source_role = {}
+    raw_singleton_subtotal_projections = evaluation_spec.get(
+        "singleton_declared_subtotal_projections", []
+    )
+    if type(raw_singleton_subtotal_projections) is not list:
+        raise _error("fixed-asset singleton declared-subtotal projection axis is invalid")
+    for raw in raw_singleton_subtotal_projections:
+        if (
+            type(raw) is not dict
+            or set(raw) != {"source_role", "subtotal_role"}
+            or raw["source_role"] not in child_by_role
+            or raw["subtotal_role"] not in child_by_role
+            or raw["source_role"] in singleton_declared_subtotal_by_source_role
+            or raw["source_role"] == raw["subtotal_role"]
+        ):
+            raise _error("fixed-asset singleton declared-subtotal projection drifted")
+        singleton_declared_subtotal_by_source_role[raw["source_role"]] = raw[
+            "subtotal_role"
+        ]
+    movement_role_directions = {}
+    raw_movement_role_directions = evaluation_spec.get("movement_role_directions", [])
+    if type(raw_movement_role_directions) is not list:
+        raise _error("fixed-asset movement-role direction axis is invalid")
+    for raw in raw_movement_role_directions:
+        if (
+            type(raw) is not dict
+            or set(raw) != {"direction", "role"}
+            or raw["role"] not in child_by_role
+            or raw["role"] in movement_role_directions
+            or raw["direction"] not in {"INCREASE", "DECREASE", "PRESERVE_SIGN"}
+        ):
+            raise _error("fixed-asset movement-role direction drifted")
+        movement_role_directions[raw["role"]] = raw["direction"]
     supplemental_disclosure_roles = []
     supplemental_role_names = set()
     raw_supplemental_roles = evaluation_spec.get("supplemental_disclosure_roles", [])
     if type(raw_supplemental_roles) is not list:
         raise _error("fixed-asset supplemental disclosure role axis is invalid")
     for raw in raw_supplemental_roles:
+        raw_fields = (
+            {"aliases", "required_token_groups", "role", "value_header_aliases"}
+            | ({"contextual_aliases"} if type(raw) is dict and "contextual_aliases" in raw else set())
+        )
         if (
             type(raw) is not dict
-            or set(raw) != {"aliases", "required_token_groups", "role", "value_header_aliases"}
+            or set(raw) != raw_fields
             or raw.get("role") not in child_by_role
             or raw["role"] in supplemental_role_names
             or type(raw["required_token_groups"]) is not list
@@ -249,6 +721,14 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
             {
                 "aliases": _normalized_aliases(
                     raw["aliases"], label=raw["role"] + " supplemental disclosure"
+                ),
+                "contextual_aliases": (
+                    _normalized_aliases(
+                        raw["contextual_aliases"],
+                        label=raw["role"] + " contextual supplemental disclosure",
+                    )
+                    if "contextual_aliases" in raw
+                    else []
                 ),
                 "required_token_groups": [
                     _normalized_aliases(
@@ -264,6 +744,97 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
                 ),
             }
         )
+    source_only_row_aliases = (
+        _normalized_aliases(
+            evaluation_spec["source_only_row_aliases"], label="source-only row"
+        )
+        if "source_only_row_aliases" in evaluation_spec
+        else []
+    )
+    source_only_carrying_control = None
+    raw_source_only_carrying_control = evaluation_spec.get("source_only_carrying_control")
+    if raw_source_only_carrying_control is not None:
+        if (
+            type(raw_source_only_carrying_control) is not dict
+            or set(raw_source_only_carrying_control)
+            != {"control_kind", "hierarchy_aliases"}
+            or raw_source_only_carrying_control.get("control_kind")
+            != "COST_MINUS_DEPRECIATION_ENDPOINTS_EXACT_NO_SCHEMA_MAPPING"
+        ):
+            raise _error("fixed-asset source-only carrying control drifted")
+        source_only_carrying_control = {
+            **canonical_clone_v1(raw_source_only_carrying_control),
+            "hierarchy_aliases": _normalized_aliases(
+                raw_source_only_carrying_control["hierarchy_aliases"],
+                label="source-only carrying control",
+            ),
+        }
+    partial_detail_total_policy = evaluation_spec.get("partial_detail_total_policy")
+    if partial_detail_total_policy not in {
+        None,
+        "SOURCE_VISIBLE_TOTAL_CONTROLS_VERTICAL_PRESERVE_BLANK_DETAILS_NO_MAPPING_INFERENCE",
+    }:
+        raise _error("fixed-asset partial-detail total policy drifted")
+    ordered_dated_endpoint_policy = evaluation_spec.get("ordered_dated_endpoint_policy")
+    if ordered_dated_endpoint_policy not in {
+        None,
+        "EARLIEST_AND_LATEST_DISTINCT_DATED_BALANCES_BIND_OPENING_ENDING",
+    }:
+        raise _error("fixed-asset ordered dated-endpoint policy drifted")
+    ordered_branch_scope_policy = evaluation_spec.get("ordered_branch_scope_policy")
+    if ordered_branch_scope_policy not in {
+        None,
+        "PRECEDING_EXPLICIT_BRANCH_UNTIL_NEXT_GROUP_FOR_UNIQUE_ROLE_ROW",
+    }:
+        raise _error("fixed-asset ordered branch-scope policy drifted")
+    missing_local_unit_policy = evaluation_spec.get("missing_local_unit_policy")
+    if missing_local_unit_policy not in {
+        None,
+        "UNIQUE_TYPED_BALANCE_SHEET_OWNER_ENDPOINT_VECTOR_BASE_VALUE",
+    }:
+        raise _error("fixed-asset missing local-unit policy drifted")
+    undated_sibling_policy = evaluation_spec.get("undated_sibling_policy")
+    if undated_sibling_policy not in {
+        None,
+        "UNIQUE_EXACT_DOCUMENT_CURRENT_DATE_DOMINATES_UNDATED_COMPLETE_SIBLINGS_AS_SOURCE_ONLY",
+    }:
+        raise _error("fixed-asset undated sibling policy drifted")
+    undated_full_table_sequence_policy = evaluation_spec.get(
+        "undated_full_table_sequence_policy"
+    )
+    if undated_full_table_sequence_policy not in {
+        None,
+        "LEADING_EXPLICIT_OWNER_THEN_ADJACENT_CONTINUATION_TABLES_BIND_CURRENT_AS_SOURCE_ONLY_HISTORY",
+    }:
+        raise _error("fixed-asset undated full-table sequence policy drifted")
+    endpoint_first_layout = None
+    raw_endpoint_first_layout = evaluation_spec.get("endpoint_first_layout")
+    if raw_endpoint_first_layout is not None:
+        if (
+            type(raw_endpoint_first_layout) is not dict
+            or set(raw_endpoint_first_layout)
+            != {"cost_child_aliases", "depreciation_child_aliases", "layout_kind"}
+            or raw_endpoint_first_layout.get("layout_kind")
+            != "CARRYING_ENDPOINT_PARENT_WITH_COST_AND_DEPRECIATION_CHILDREN"
+            or sum(
+                raw.get("rollforward_kind") == "COST_AND_DEPRECIATION_CONTROL"
+                for raw in evaluation_spec["branch_layouts"]
+                if type(raw) is dict
+            )
+            != 1
+        ):
+            raise _error("fixed-asset endpoint-first layout drifted")
+        endpoint_first_layout = {
+            **canonical_clone_v1(raw_endpoint_first_layout),
+            "cost_child_aliases": _normalized_aliases(
+                raw_endpoint_first_layout["cost_child_aliases"],
+                label="endpoint-first cost child",
+            ),
+            "depreciation_child_aliases": _normalized_aliases(
+                raw_endpoint_first_layout["depreciation_child_aliases"],
+                label="endpoint-first depreciation child",
+            ),
+        }
     branch_layouts = []
     branch_roles: set[str] = set()
     endpoint_roles: set[str] = set()
@@ -385,6 +956,8 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         or supplemental_role_names - set(bindings)
     ):
         raise _error("fixed-asset endpoint/subtotal schema frontier is incomplete")
+    if set(movement_role_directions) & endpoint_roles:
+        raise _error("fixed-asset endpoint roles cannot carry movement directions")
     role_aliases = {role: _aliases(child) for role, child in child_by_role.items()}
     role_matchers = {
         role: [
@@ -427,6 +1000,17 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         for source_role, fallback_role in direct_role_fallback_by_role.items()
     ):
         raise _error("fixed-asset direct-role fallback crosses a branch boundary")
+    if any(
+        source_role not in role_branch
+        or subtotal_role not in role_branch
+        or role_branch[source_role] != role_branch[subtotal_role]
+        or subtotal_role not in subtotal_roles
+        or source_role in subtotal_roles | endpoint_roles
+        for source_role, subtotal_role in (
+            singleton_declared_subtotal_by_source_role.items()
+        )
+    ):
+        raise _error("fixed-asset singleton declared-subtotal projection is not structural")
     component_policy = None
     raw_component_policy = evaluation_spec.get("component_policy")
     if raw_component_policy is not None:
@@ -498,15 +1082,40 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         }
     evaluation = {
         **canonical_clone_v1(evaluation_spec),
+        "adjacent_page_endpoint_first_continuation_policy": (
+            adjacent_page_endpoint_first_continuation_policy
+        ),
+        "adjacent_owner_continuation_policy": adjacent_owner_continuation_policy,
         "asset_header_aliases": asset_aliases,
         "branch_layouts": branch_layouts,
+        "blank_subtotal_heading_policy": blank_subtotal_heading_policy,
         "component_policy": component_policy,
         "direct_role_fallback_by_role": direct_role_fallback_by_role,
         "equation_only_roles": sorted(equation_only_roles),
+        "endpoint_first_layout": endpoint_first_layout,
         "header_hard_negative_aliases": hard_negative_aliases,
+        "immediately_preceding_table_period_policy": (
+            immediately_preceding_table_period_policy
+        ),
+        "leading_implicit_cost_branch_policy": leading_implicit_cost_branch_policy,
         "money_unit_bindings": units,
+        "missing_local_unit_policy": missing_local_unit_policy,
+        "movement_role_directions": movement_role_directions,
+        "ordered_branch_scope_policy": ordered_branch_scope_policy,
+        "ordered_dated_endpoint_policy": ordered_dated_endpoint_policy,
+        "partial_detail_total_policy": partial_detail_total_policy,
+        "source_only_carrying_control": source_only_carrying_control,
+        "source_only_row_aliases": source_only_row_aliases,
+        "source_presentation_rounding_policy": source_presentation_rounding_policy,
+        "single_asset_period_column_policy": single_asset_period_column_policy,
+        "singleton_declared_subtotal_by_source_role": (
+            singleton_declared_subtotal_by_source_role
+        ),
         "supplemental_disclosure_roles": supplemental_disclosure_roles,
         "total_column_aliases": total_aliases,
+        "trailing_owner_heading_policy": trailing_owner_heading_policy,
+        "undated_full_table_sequence_policy": undated_full_table_sequence_policy,
+        "undated_sibling_policy": undated_sibling_policy,
     }
     schema = canonical_clone_v1(schema_binding_spec)
     query_policy = {
@@ -526,6 +1135,44 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         query_policy["supplemental_disclosure_roles"] = canonical_clone_v1(
             supplemental_disclosure_roles
         )
+    if source_only_carrying_control is not None:
+        query_policy["source_only_carrying_control"] = canonical_clone_v1(
+            source_only_carrying_control
+        )
+    if source_only_row_aliases:
+        query_policy["source_only_row_aliases"] = canonical_clone_v1(source_only_row_aliases)
+    if ordered_dated_endpoint_policy is not None:
+        query_policy["ordered_dated_endpoint_policy"] = ordered_dated_endpoint_policy
+    if ordered_branch_scope_policy is not None:
+        query_policy["ordered_branch_scope_policy"] = ordered_branch_scope_policy
+    if adjacent_owner_continuation_policy is not None:
+        query_policy["adjacent_owner_continuation_policy"] = (
+            adjacent_owner_continuation_policy
+        )
+    if adjacent_page_endpoint_first_continuation_policy is not None:
+        query_policy["adjacent_page_endpoint_first_continuation_policy"] = (
+            adjacent_page_endpoint_first_continuation_policy
+        )
+    if leading_implicit_cost_branch_policy is not None:
+        query_policy["leading_implicit_cost_branch_policy"] = (
+            leading_implicit_cost_branch_policy
+        )
+    if immediately_preceding_table_period_policy is not None:
+        query_policy["immediately_preceding_table_period_policy"] = (
+            immediately_preceding_table_period_policy
+        )
+    if source_repair_artifact_ref is not None:
+        query_policy["authenticated_source_repair_artifact_ref"] = canonical_clone_v1(
+            source_repair_artifact_ref
+        )
+    if undated_sibling_policy is not None:
+        query_policy["undated_sibling_policy"] = undated_sibling_policy
+    if trailing_owner_heading_policy is not None:
+        query_policy["trailing_owner_heading_policy"] = trailing_owner_heading_policy
+    if undated_full_table_sequence_policy is not None:
+        query_policy["undated_full_table_sequence_policy"] = (
+            undated_full_table_sequence_policy
+        )
     return {
         "bindings": bindings,
         "claim_boundary": CLAIM_BOUNDARY,
@@ -538,9 +1185,146 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         "role_aliases": role_aliases,
         "role_matchers": role_matchers,
         "schema": schema,
+        "source_repair_artifact_ref": source_repair_artifact_ref,
+        "source_repair_overlay": source_repair_overlay,
         "topology": topology,
         "unit_binding_by_alias": unit_by_alias,
     }
+
+
+def _authenticated_source_repair_receipt_v1(
+    *,
+    compiled_specs: Mapping[str, Any],
+    repair: Mapping[str, Any],
+) -> dict[str, Any]:
+    material = {
+        "artifact_ref": canonical_clone_v1(compiled_specs["source_repair_artifact_ref"]),
+        "base_page_json_sha256": repair["base_page_json_sha256"],
+        "base_page_json_version_id": repair["base_page_json_version_id"],
+        "cell_axis_sha256": canonical_json_sha256_v1(repair["cell_repairs"]),
+        "effective_page_json_sha256": repair["effective_page_json_sha256"],
+        "overlay_id": compiled_specs["source_repair_overlay"]["overlay_id"],
+        "repair_id": repair["repair_id"],
+        "rule": (
+            "EXACT_CONTENT_ADDRESSED_SOURCE_PAGE_IMAGE_SELECTED_JSON_TABLE_CELL_"
+            "VISIBLE_TRANSCRIPTION_ONLY_NO_EQUATION_BACKSOLVE"
+        ),
+        "status": "AUTHENTICATED_PDF_VISIBLE_CELLS_TRANSCRIBED",
+    }
+    return {
+        **material,
+        "receipt_id": "gjffasrv1:receipt:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _apply_authenticated_source_repair_artifact_v1(
+    *,
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+    page_records: Sequence[Mapping[str, Any]] | None = None,
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    """Apply exact selected-cell transcriptions to clones of pinned pages."""
+
+    overlay = compiled_specs.get("source_repair_overlay")
+    if overlay is None:
+        return dict(page_json_by_version), []
+    artifact_ref = compiled_specs.get("source_repair_artifact_ref")
+    if type(overlay) is not dict or type(artifact_ref) is not dict:
+        raise _error("fixed-asset compiled source-repair artifact is invalid")
+    record_by_version = {}
+    if page_records is not None:
+        for record in page_records:
+            version_id = record.get("page_json_version_id")
+            if type(version_id) is not str or version_id in record_by_version:
+                raise _error("fixed-asset source-repair page-record axis is invalid")
+            record_by_version[version_id] = record
+    effective_pages = dict(page_json_by_version)
+    receipts = []
+    for repair in overlay["repairs"]:
+        version_id = repair["base_page_json_version_id"]
+        if version_id not in page_json_by_version:
+            continue
+        source = repair["source_binding"]
+        if page_records is not None:
+            record = record_by_version.get(version_id)
+            if record is None or any(
+                record.get(field) != source[field]
+                for field in (
+                    "document_id",
+                    "physical_page",
+                    "source_logical_name",
+                    "source_sha256",
+                )
+            ):
+                raise _error("fixed-asset authenticated source-repair page record drifted")
+        base_page = page_json_by_version[version_id]
+        if (
+            type(base_page) is not dict
+            or canonical_json_sha256_v1(base_page) != repair["base_page_json_sha256"]
+        ):
+            raise _error("fixed-asset authenticated source-repair base page drifted")
+        table_ref = repair["table_ref"]
+        _base_section, base_table = _source_table(
+            base_page,
+            section_id=table_ref["section_id"],
+            table_id=table_ref["table_id"],
+        )
+        if canonical_json_sha256_v1(base_table) != table_ref["base_table_sha256"]:
+            raise _error("fixed-asset authenticated source-repair base table drifted")
+        effective_page = canonical_clone_v1(base_page)
+        _effective_section, effective_table = _source_table(
+            effective_page,
+            section_id=table_ref["section_id"],
+            table_id=table_ref["table_id"],
+        )
+        rows = effective_table.get("rows")
+        columns = effective_table.get("columns")
+        if type(rows) is not list or type(columns) is not list:
+            raise _error("fixed-asset authenticated source-repair table axes are invalid")
+        for cell_repair in repair["cell_repairs"]:
+            match = re.fullmatch(
+                r"r([1-9][0-9]*):c([1-9][0-9]*)", cell_repair["cell_id"]
+            )
+            if match is None:
+                raise _error("fixed-asset authenticated source-repair cell identity drifted")
+            row_index = int(match.group(1)) - 1
+            column_index = int(match.group(2)) - 1
+            if not (0 <= row_index < len(rows) and 0 <= column_index < len(columns)):
+                raise _error("fixed-asset authenticated source-repair cell is out of bounds")
+            row = rows[row_index]
+            column = columns[column_index]
+            values = row.get("values_exact") if isinstance(row, Mapping) else None
+            if (
+                type(values) is not list
+                or len(values) != len(columns)
+                or row.get("label_exact") != cell_repair["row_label_exact"]
+                or not same_typed_json_v1(
+                    row.get("hierarchy_path_exact"),
+                    cell_repair["row_hierarchy_path_exact"],
+                )
+                or not same_typed_json_v1(
+                    column.get("header_path_exact"),
+                    cell_repair["column_header_path_exact"],
+                )
+                or not same_typed_json_v1(
+                    values[column_index], cell_repair["before_exact"]
+                )
+            ):
+                raise _error("fixed-asset authenticated source-repair cell binding drifted")
+            values[column_index] = cell_repair["after_exact"]
+        if canonical_json_sha256_v1(effective_table) != table_ref["effective_table_sha256"]:
+            raise _error("fixed-asset authenticated source-repair effective table drifted")
+        if canonical_json_sha256_v1(effective_page) != repair["effective_page_json_sha256"]:
+            raise _error("fixed-asset authenticated source-repair effective page drifted")
+        effective_pages[version_id] = effective_page
+        receipts.append(
+            _authenticated_source_repair_receipt_v1(
+                compiled_specs=compiled_specs,
+                repair=repair,
+            )
+        )
+    receipts.sort(key=lambda item: item["repair_id"])
+    return effective_pages, receipts
 
 
 def _contains_alias(value: Any, alias: str) -> bool:
@@ -584,6 +1368,41 @@ def _period_header_evidence(value: Any) -> bool:
 
 def _governed_period_end_from_surface(value: Any) -> date | None:
     folded = _normalized(value)
+    fiscal_interim = re.search(
+        r"(?<![a-z0-9])(?:ky\s+)?(3|6|9|ba|sau|chin)\s+thang\s+dau\s+"
+        r"(?:cua\s+)?nam\s+tai\s+chinh\s+ket\s+thuc\s+(?:vao\s+)?"
+        r"(?:ngay\s+)?([0-3]?\d)\s+(?:thang\s+)?([01]?\d)\s+"
+        r"(?:nam\s+)?((?:19|20)\d{2})(?!\d)",
+        folded,
+    )
+    if fiscal_interim is not None:
+        months = {
+            "3": 3,
+            "6": 6,
+            "9": 9,
+            "ba": 3,
+            "sau": 6,
+            "chin": 9,
+        }[fiscal_interim.group(1)]
+        try:
+            fiscal_end = date(
+                int(fiscal_interim.group(4)),
+                int(fiscal_interim.group(3)),
+                int(fiscal_interim.group(2)),
+            )
+        except ValueError:
+            return None
+        base_month_index = fiscal_end.month - 1 + months
+        interim_year = fiscal_end.year - 1 + base_month_index // 12
+        interim_month = base_month_index % 12 + 1
+        target_month_last_day = calendar.monthrange(interim_year, interim_month)[1]
+        interim_day = (
+            target_month_last_day
+            if fiscal_end.day
+            == calendar.monthrange(fiscal_end.year, fiscal_end.month)[1]
+            else min(fiscal_end.day, target_month_last_day)
+        )
+        return date(interim_year, interim_month, interim_day)
     governed_full = re.search(
         r"(?:ky|nam|giai doan)?\s*(?:tai chinh\s*)?(?:ket thuc|ended)\s*"
         r"(?:vao\s*)?(?:ngay\s*)?([0-3]?\d)\s+(?:thang\s+)?([01]?\d)\s+"
@@ -599,6 +1418,46 @@ def _governed_period_end_from_surface(value: Any) -> date | None:
             )
         except ValueError:
             return None
+    governed_as_at = re.search(
+        r"(?<![a-z0-9])(?:tai|as at)\s+(?:ngay\s+)?([0-3]?\d)\s+"
+        r"(?:thang\s+)?([01]?\d)\s+(?:nam\s+)?((?:19|20)\d{2})(?!\d)",
+        folded,
+    )
+    if governed_as_at is not None:
+        try:
+            return date(
+                int(governed_as_at.group(3)),
+                int(governed_as_at.group(2)),
+                int(governed_as_at.group(1)),
+            )
+        except ValueError:
+            return None
+    quarter = re.search(
+        r"(?<![a-z0-9])quy\s+(i{1,3}|iv|[1-4])(?:\s*[/.-]\s*|\s+)"
+        r"((?:19|20)\d{2})(?!\d)",
+        folded,
+    )
+    if quarter is not None:
+        quarter_token = quarter.group(1)
+        quarter_ordinal = (
+            int(quarter_token)
+            if quarter_token.isdigit()
+            else {"i": 1, "ii": 2, "iii": 3, "iv": 4}[quarter_token]
+        )
+        month_day = {1: (3, 31), 2: (6, 30), 3: (9, 30), 4: (12, 31)}.get(
+            quarter_ordinal
+        )
+        if month_day is not None:
+            return date(int(quarter.group(2)), month_day[0], month_day[1])
+    interim_months = re.search(
+        r"(?<![a-z0-9])(?:giai doan\s+|ky\s+)?([369])\s+thang\s+dau\s+nam\s+"
+        r"((?:19|20)\d{2})(?!\d)",
+        folded,
+    )
+    if interim_months is not None:
+        month = int(interim_months.group(1))
+        day = {3: 31, 6: 30, 9: 30}[month]
+        return date(int(interim_months.group(2)), month, day)
     # A bare reporting year is not proof of a calendar-year end.  Exact
     # day/month comes from source-visible endpoints or the typed document
     # reporting-date receipt; this also supports non-calendar fiscal years.
@@ -619,6 +1478,8 @@ def _surface_axis(section: Mapping[str, Any], table: Mapping[str, Any]) -> list[
 def _owner_visible(
     section: Mapping[str, Any], table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> bool:
+    if type(table.get("__adjacent_owner_continuation_receipt")) is dict:
+        return True
     aliases = [_normalized(alias) for alias in compiled_specs["topology"]["parent"]["aliases"]]
     return any(
         _contains_alias(surface, alias)
@@ -661,12 +1522,28 @@ def _supplemental_disclosure_role_hits(
     surfaces = [table.get("title_exact")]
     rows = table.get("rows")
     if type(rows) is list:
-        surfaces.extend(row.get("label_exact") for row in rows if type(row) is dict)
+        for row in rows:
+            if type(row) is not dict:
+                continue
+            surfaces.append(row.get("label_exact"))
     return sorted(
         {
             disclosure["role"]
             for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
             if any(_supplemental_surface_matches(surface, disclosure) for surface in surfaces)
+            or (
+                type(rows) is list
+                and any(
+                    type(row) is dict
+                    and _supplemental_row_matches(
+                        row,
+                        disclosure,
+                        table=table,
+                        compiled_specs=compiled_specs,
+                    )
+                    for row in rows
+                )
+            )
         }
     )
 
@@ -678,13 +1555,80 @@ def _supplemental_surface_matches(value: Any, disclosure: Mapping[str, Any]) -> 
     )
 
 
+def _supplemental_row_matches(
+    row: Mapping[str, Any],
+    disclosure: Mapping[str, Any],
+    *,
+    table: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> bool:
+    """Match a disclosure row through its exact label or visible ancestor path."""
+
+    surfaces = [row.get("label_exact")]
+    path = row.get("hierarchy_path_exact")
+    if type(path) is list:
+        surfaces.extend(path)
+    if any(_supplemental_surface_matches(surface, disclosure) for surface in surfaces):
+        return True
+    contextual_aliases = disclosure.get("contextual_aliases", [])
+    columns = table.get("columns")
+    family_asset_header_visible = bool(
+        contextual_aliases
+        and type(columns) is list
+        and any(
+            type(column) is dict
+            and column.get("value_kind") == "MONEY"
+            and any(
+                _contains_alias(_header_text(column), alias)
+                for alias in compiled_specs["evaluation"]["asset_header_aliases"]
+            )
+            for column in columns
+        )
+    )
+    return bool(
+        family_asset_header_visible
+        and any(
+            _contains_alias(surface, alias)
+            for surface in surfaces
+            for alias in contextual_aliases
+        )
+    )
+
+
+def _source_only_row_matches(
+    row: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> bool:
+    path = row.get("hierarchy_path_exact")
+    surfaces = [row.get("label_exact")]
+    if type(path) is list:
+        surfaces.extend(path)
+    return any(
+        _contains_alias(surface, alias)
+        for surface in surfaces
+        for alias in compiled_specs["evaluation"].get("source_only_row_aliases", [])
+    )
+
+
+def _source_only_surface_matches(
+    value: Any, *, compiled_specs: Mapping[str, Any]
+) -> bool:
+    return any(
+        _contains_alias(value, alias)
+        for alias in compiled_specs["evaluation"].get("source_only_row_aliases", [])
+    )
+
+
 def _branch_layout_for_row(
     row: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> dict[str, Any] | None:
     path = row.get("hierarchy_path_exact")
     surfaces = []
     if type(path) is list:
-        surfaces.extend(item for item in path[:1] if type(item) is str)
+        # Extractors can retain a table-local owner above the accounting
+        # branch (owner -> branch -> row).  Every source-visible ancestor is
+        # admissible, while the unique-match requirement below still rejects
+        # paths that mention more than one configured branch.
+        surfaces.extend(item for item in path if type(item) is str)
     if not surfaces and type(row.get("label_exact")) is str:
         surfaces.append(row["label_exact"])
     matches = [
@@ -697,6 +1641,47 @@ def _branch_layout_for_row(
         )
     ]
     return matches[0] if len(matches) == 1 else None
+
+
+def _source_only_carrying_control_role(
+    row: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> str | None:
+    """Classify one configured carrying endpoint that has no schema binding.
+
+    Some fixed-asset schemas expose only cost and depreciation movements while
+    the source table also prints carrying value as an arithmetic control.  The
+    control remains source-only: it authenticates mapped endpoints but can
+    never create a schema mapping.
+    """
+
+    policy = compiled_specs["evaluation"].get("source_only_carrying_control")
+    if policy is None:
+        return None
+    path = row.get("hierarchy_path_exact")
+    surfaces = [item for item in path if type(item) is str] if type(path) is list else []
+    if not surfaces and type(row.get("label_exact")) is str:
+        surfaces.append(row["label_exact"])
+    if not any(
+        _contains_alias(surface, alias)
+        for surface in surfaces
+        for alias in policy["hierarchy_aliases"]
+    ):
+        return None
+    if row.get("row_kind") == "GROUP":
+        return "GROUP"
+    folded = _normalized(row.get("label_exact"))
+    dates = _surface_dates(row.get("label_exact"))
+    opening = any(item.month == 1 and item.day == 1 for item in dates) or any(
+        token in folded for token in ("so du dau", "so dau", "tai ngay dau ky", "tai ngay dau nam")
+    )
+    ending = any(item.month != 1 or item.day != 1 for item in dates) or any(
+        token in folded for token in ("so du cuoi", "so cuoi", "tai ngay cuoi ky", "tai ngay cuoi nam")
+    )
+    if opening and not ending:
+        return "SOURCE_ONLY_CARRY_OPENING"
+    if ending and not opening:
+        return "SOURCE_ONLY_CARRY_ENDING"
+    return None
 
 
 def _endpoint_role(
@@ -724,11 +1709,7 @@ def _endpoint_role(
 def _role_for_row(
     row: Mapping[str, Any], layout: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> str | None:
-    forced_role = (
-        row.get("__forced_role")
-        if compiled_specs["evaluation"].get("component_policy") is not None
-        else None
-    )
+    forced_role = row.get("__forced_role")
     if forced_role in compiled_specs["recognized_roles_by_branch"][layout["branch_role"]]:
         return forced_role
     endpoint = _endpoint_role(row.get("label_exact"), layout, compiled_specs=compiled_specs)
@@ -781,7 +1762,9 @@ def _visible_subtotal_ancestor_roles(
     compiled_specs: Mapping[str, Any],
 ) -> set[str]:
     path = row.get("hierarchy_path_exact")
-    ancestors = path[:-1] if type(path) is list else []
+    ancestors = list(path[:-1]) if type(path) is list else []
+    if _flattened_child(row):
+        ancestors.append(path[-1])
     return {
         subtotal_role
         for subtotal_role in layout["subtotal_roles"]
@@ -802,24 +1785,47 @@ def _table_period_receipt(
         for row in rows:
             if type(row) is not dict:
                 continue
+            if _source_only_row_matches(row, compiled_specs=compiled_specs):
+                continue
+            if any(
+                _supplemental_row_matches(
+                    row,
+                    disclosure,
+                    table=table,
+                    compiled_specs=compiled_specs,
+                )
+                for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
+            ):
+                continue
             layout = _branch_layout_for_row(row, compiled_specs=compiled_specs)
             if layout is None:
                 continue
-            if (
-                _endpoint_role(row.get("label_exact"), layout, compiled_specs=compiled_specs)
-                == layout["ending_role"]
-            ):
+            if _role_for_row(row, layout, compiled_specs=compiled_specs) == layout["ending_role"]:
                 ending_dates.update(_surface_dates(row.get("label_exact")))
+    column_header_surfaces = [
+        surface
+        for column in table.get("columns", [])
+        if type(column) is dict
+        for surface in column.get("header_path_exact", [])
+        if type(surface) is str
+    ]
     local_governed_dates = {
         item
-        for surface in [table.get("title_exact")]
+        for surface in [table.get("title_exact"), *column_header_surfaces]
         if (item := _governed_period_end_from_surface(surface)) is not None
     }
     section_context_dates = {
         item
         for surface in [section.get("title_exact"), *(section.get("narratives_exact") or [])]
+        if not _source_only_surface_matches(surface, compiled_specs=compiled_specs)
         if (item := _governed_period_end_from_surface(surface)) is not None
     }
+    adjacent_period_receipt = table.get("__immediately_preceding_table_period_receipt")
+    adjacent_period_date = (
+        adjacent_period_receipt.get("period_end_date")
+        if type(adjacent_period_receipt) is dict
+        else None
+    )
     # Table-local narratives and endpoint rows outrank a page/section report
     # heading.  This lets a comparative table retain its prior-year date when
     # it appears under a current-period report header, while still rejecting
@@ -837,15 +1843,786 @@ def _table_period_receipt(
     elif len(section_context_dates) > 1:
         status = "MULTIPLE_SECTION_CONTEXT_PERIOD_END_DATES_REQUIRE_TABLE_RELATION"
         period_end_date = None
+    elif (
+        type(adjacent_period_date) is str
+        and adjacent_period_receipt.get("status")
+        == "EXACT_IMMEDIATELY_PRECEDING_TABLE_AS_AT_DATE"
+    ):
+        status = "UNIQUE_IMMEDIATELY_PRECEDING_TABLE_PERIOD_END_DATE"
+        period_end_date = adjacent_period_date
     else:
         status = "NO_EXACT_PERIOD_END_DATE"
         period_end_date = None
     return {
         "endpoint_dates": sorted(item.isoformat() for item in ending_dates),
         "local_governed_surface_dates": sorted(item.isoformat() for item in local_governed_dates),
+        "immediately_preceding_table_period_receipt": (
+            canonical_clone_v1(adjacent_period_receipt)
+            if type(adjacent_period_receipt) is dict
+            else None
+        ),
         "period_end_date": period_end_date,
         "section_context_dates": sorted(item.isoformat() for item in section_context_dates),
         "status": status,
+    }
+
+
+def _project_immediately_preceding_table_period(
+    table: Mapping[str, Any],
+    *,
+    section: Mapping[str, Any],
+    page_json: Mapping[str, Any],
+    page_json_version_id: str,
+    physical_page: int,
+    section_ordinal: int,
+    table_ordinal: int,
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Bind a date only from the immediately preceding sibling table.
+
+    This covers a page-local note layout where one explicit ``Tại ngày`` row
+    states the report date and the very next fixed-asset section continues
+    without repeating it.  No date is guessed from filename, year, ordering,
+    or a non-adjacent table.
+    """
+
+    projected = canonical_clone_v1(table)
+    policy = compiled_specs["evaluation"].get(
+        "immediately_preceding_table_period_policy"
+    )
+    if (
+        policy is None
+        or section_ordinal <= 1
+        or table_ordinal != 1
+        or not _owner_visible(section, table, compiled_specs=compiled_specs)
+        or _table_period_receipt(section, table, compiled_specs=compiled_specs)[
+            "period_end_date"
+        ]
+        is not None
+    ):
+        return projected, None
+    sections = page_json.get("sections")
+    if type(sections) is not list or section_ordinal > len(sections):
+        return projected, None
+    preceding_section = sections[section_ordinal - 2]
+    preceding_tables = (
+        preceding_section.get("tables") if type(preceding_section) is dict else None
+    )
+    if type(preceding_tables) is not list or not preceding_tables:
+        return projected, None
+    preceding_table = preceding_tables[-1]
+    if type(preceding_table) is not dict:
+        return projected, None
+    evidence = []
+    for row_ordinal, row in enumerate(preceding_table.get("rows", []), start=1):
+        if type(row) is not dict:
+            continue
+        label = row.get("label_exact")
+        folded = _normalized(label)
+        period_end = _governed_period_end_from_surface(label)
+        if period_end is not None and (
+            folded.startswith("tai ngay ") or folded.startswith("as at ")
+        ):
+            evidence.append(
+                {
+                    "label_exact": label,
+                    "period_end_date": period_end.isoformat(),
+                    "row_id": f"r{row_ordinal}",
+                }
+            )
+    dates = {item["period_end_date"] for item in evidence}
+    if len(evidence) != 1 or len(dates) != 1:
+        return projected, None
+    material = {
+        "current_section_id": f"s{section_ordinal}",
+        "current_table_id": "t1",
+        "evidence": evidence,
+        "page_json_version_id": page_json_version_id,
+        "period_end_date": next(iter(dates)),
+        "physical_page": physical_page,
+        "policy": policy,
+        "preceding_section_id": f"s{section_ordinal - 1}",
+        "preceding_table_id": f"t{len(preceding_tables)}",
+        "preceding_table_sha256": canonical_json_sha256_v1(preceding_table),
+        "status": "EXACT_IMMEDIATELY_PRECEDING_TABLE_AS_AT_DATE",
+    }
+    receipt = {
+        **material,
+        "receipt_id": "faiptsv1:receipt:" + canonical_json_sha256_v1(material),
+    }
+    projected["__immediately_preceding_table_period_receipt"] = receipt
+    return projected, receipt
+
+
+def _required_branch_roles(compiled_specs: Mapping[str, Any]) -> set[str]:
+    configured = {
+        item["branch_role"] for item in compiled_specs["evaluation"]["branch_layouts"]
+    }
+    component_policy = compiled_specs["evaluation"].get("component_policy")
+    optional = (
+        set(component_policy["optional_absent_branch_roles"]) & configured
+        if component_policy is not None
+        else set()
+    )
+    return configured - optional
+
+
+def _endpoint_kind(value: Any) -> str | None:
+    folded = _normalized(value)
+    dates = _surface_dates(value)
+    opening = any(item.month == 1 and item.day == 1 for item in dates) or any(
+        token in folded for token in ("so du dau", "so dau", "tai ngay dau ky", "tai ngay dau nam")
+    )
+    ending = any(item.month != 1 or item.day != 1 for item in dates) or any(
+        token in folded for token in ("so du cuoi", "so cuoi", "tai ngay cuoi ky", "tai ngay cuoi nam")
+    )
+    if opening and not ending:
+        return "OPENING"
+    if ending and not opening:
+        return "ENDING"
+    return None
+
+
+def _project_endpoint_first_unknown_numeric_columns(
+    table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> tuple[dict[str, Any], list[int], dict[str, Any] | None]:
+    """Type a fully numeric endpoint table whose extractor left every column UNKNOWN.
+
+    This is deliberately narrower than general value-kind inference: every column
+    must be UNKNOWN, every header must be a configured asset or the unique
+    right-edge total, and every populated cell must parse as exact integer money.
+    The endpoint row topology is still proved separately before the projection is
+    accepted.
+    """
+
+    projected = canonical_clone_v1(table)
+    columns = projected.get("columns")
+    rows = projected.get("rows")
+    if type(columns) is not list or type(rows) is not list or not columns:
+        return projected, [], None
+    typed_money_ordinals = [
+        ordinal
+        for ordinal, column in enumerate(columns, start=1)
+        if type(column) is dict and column.get("value_kind") == "MONEY"
+    ]
+    if typed_money_ordinals:
+        return projected, typed_money_ordinals, None
+    if not all(
+        type(column) is dict and column.get("value_kind") == "UNKNOWN"
+        for column in columns
+    ):
+        return projected, [], None
+
+    family_ordinals = []
+    total_ordinals = []
+    for ordinal, column in enumerate(columns, start=1):
+        header = _header_text(column)
+        if any(
+            _contains_alias(header, alias)
+            for alias in compiled_specs["evaluation"]["header_hard_negative_aliases"]
+        ):
+            return projected, [], None
+        if any(
+            _contains_alias(header, alias)
+            for alias in compiled_specs["evaluation"]["asset_header_aliases"]
+        ):
+            family_ordinals.append(ordinal)
+        if any(
+            _contains_alias(header, alias)
+            for alias in compiled_specs["evaluation"]["total_column_aliases"]
+        ):
+            total_ordinals.append(ordinal)
+    if (
+        len(family_ordinals)
+        < compiled_specs["evaluation"]["minimum_distinct_asset_header_aliases"]
+        or total_ordinals != [len(columns)]
+        or sorted({*family_ordinals, *total_ordinals})
+        != list(range(1, len(columns) + 1))
+    ):
+        return projected, [], None
+
+    populated_by_column = [0] * len(columns)
+    for row_ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict:
+            return canonical_clone_v1(table), [], None
+        values = row.get("values_exact")
+        if type(values) is not list or len(values) != len(columns):
+            return canonical_clone_v1(table), [], None
+        for column_ordinal, value in enumerate(values, start=1):
+            if value in {None, ""}:
+                continue
+            try:
+                _money(
+                    value,
+                    source_locator={
+                        "column_ordinal": column_ordinal,
+                        "row_ordinal": row_ordinal,
+                    },
+                )
+            except GeminiJsonFixedAssetRollforwardFamilyV1Error:
+                return canonical_clone_v1(table), [], None
+            populated_by_column[column_ordinal - 1] += 1
+    if not all(populated_by_column):
+        return canonical_clone_v1(table), [], None
+
+    for column in projected["columns"]:
+        column["value_kind"] = "MONEY"
+    receipt = {
+        "column_ordinals": list(range(1, len(columns) + 1)),
+        "policy": (
+            "ALL_UNKNOWN_COLUMNS_CONFIGURED_ASSET_OR_UNIQUE_RIGHT_EDGE_TOTAL_"
+            "WITH_EXACT_INTEGER_MONEY_CELLS"
+        ),
+        "source_value_kind": "UNKNOWN",
+    }
+    return projected, list(range(1, len(columns) + 1)), receipt
+
+
+def _project_endpoint_first_table(
+    table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    policy = compiled_specs["evaluation"].get("endpoint_first_layout")
+    if policy is None:
+        return canonical_clone_v1(table), None
+    existing_receipt = table.get("__endpoint_first_layout_receipt")
+    if type(existing_receipt) is dict:
+        return canonical_clone_v1(table), canonical_clone_v1(existing_receipt)
+    rows = table.get("rows")
+    columns = table.get("columns")
+    if type(rows) is not list or type(columns) is not list:
+        return canonical_clone_v1(table), None
+    projected_source, money_ordinals, column_typing_receipt = (
+        _project_endpoint_first_unknown_numeric_columns(
+            table, compiled_specs=compiled_specs
+        )
+    )
+    rows = projected_source["rows"]
+    columns = projected_source["columns"]
+    descriptors = []
+    current_endpoint = None
+    parent_label_by_endpoint = {}
+    for source_ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict:
+            return canonical_clone_v1(table), None
+        values = row.get("values_exact")
+        has_money = type(values) is list and any(
+            ordinal <= len(values) and values[ordinal - 1] not in {None, ""}
+            for ordinal in money_ordinals
+        )
+        if not has_money:
+            continue
+        endpoint = _endpoint_kind(row.get("label_exact"))
+        cost = any(
+            _contains_alias(row.get("label_exact"), alias)
+            for alias in policy["cost_child_aliases"]
+        )
+        depreciation = any(
+            _contains_alias(row.get("label_exact"), alias)
+            for alias in policy["depreciation_child_aliases"]
+        )
+        if endpoint is not None and not cost and not depreciation:
+            current_endpoint = endpoint
+            parent_label_by_endpoint[endpoint] = row.get("label_exact")
+            descriptors.append(("CARRYING_BRANCH", endpoint, source_ordinal, row))
+        elif current_endpoint is not None and cost != depreciation:
+            descriptors.append(
+                (
+                    "COST_BRANCH" if cost else "DEPRECIATION_BRANCH",
+                    current_endpoint,
+                    source_ordinal,
+                    row,
+                )
+            )
+        else:
+            return canonical_clone_v1(table), None
+    expected = [
+        ("CARRYING_BRANCH", "OPENING"),
+        ("COST_BRANCH", "OPENING"),
+        ("DEPRECIATION_BRANCH", "OPENING"),
+        ("CARRYING_BRANCH", "ENDING"),
+        ("COST_BRANCH", "ENDING"),
+        ("DEPRECIATION_BRANCH", "ENDING"),
+    ]
+    if [(branch, endpoint) for branch, endpoint, _ordinal, _row in descriptors] != expected:
+        return canonical_clone_v1(table), None
+    by_key = {
+        (branch, endpoint): (source_ordinal, row)
+        for branch, endpoint, source_ordinal, row in descriptors
+    }
+    layout_by_branch = {
+        layout["branch_role"]: layout
+        for layout in compiled_specs["evaluation"]["branch_layouts"]
+    }
+    projected_rows = []
+    receipts = []
+    for branch_role in ("COST_BRANCH", "DEPRECIATION_BRANCH", "CARRYING_BRANCH"):
+        layout = layout_by_branch.get(branch_role)
+        if layout is None:
+            return canonical_clone_v1(table), None
+        for endpoint in ("OPENING", "ENDING"):
+            source_ordinal, source_row = by_key[(branch_role, endpoint)]
+            projected_role = layout[
+                "opening_role" if endpoint == "OPENING" else "ending_role"
+            ]
+            projected_row = canonical_clone_v1(source_row)
+            projected_row["__engine_row_id"] = "endpoint-first:" + projected_role
+            projected_row["__source_hierarchy_path_exact"] = canonical_clone_v1(
+                source_row.get(
+                    "__source_hierarchy_path_exact",
+                    source_row.get("hierarchy_path_exact"),
+                )
+            )
+            projected_row["__source_label_exact"] = source_row.get(
+                "__source_label_exact", source_row.get("label_exact")
+            )
+            projected_row["__source_ordinal"] = source_row.get(
+                "__source_ordinal", source_ordinal
+            )
+            projected_row["__source_row_id"] = source_row.get(
+                "__source_row_id", f"r{source_ordinal}"
+            )
+            projected_row["__source_row_kind"] = source_row.get("row_kind")
+            if branch_role == "CARRYING_BRANCH":
+                projected_row["row_kind"] = "TOTAL"
+            projected_row["hierarchy_path_exact"] = [
+                layout["hierarchy_aliases"][0],
+                parent_label_by_endpoint[endpoint],
+            ]
+            projected_row["label_exact"] = parent_label_by_endpoint[endpoint]
+            projected_rows.append(projected_row)
+            receipts.append(
+                {
+                    "endpoint_kind": endpoint,
+                    "projected_role": projected_role,
+                    "source_label_exact": source_row.get("label_exact"),
+                    "source_ordinal": source_ordinal,
+                }
+            )
+    receipt = {
+        "column_typing_receipt": column_typing_receipt,
+        "layout_kind": policy["layout_kind"],
+        "projection_kind": "ENDPOINT_ONLY_NO_MOVEMENT_ROLLFORWARD_EQUATION",
+        "rows": receipts,
+    }
+    projected_table = projected_source
+    projected_table["rows"] = projected_rows
+    projected_table["__endpoint_first_layout_receipt"] = receipt
+    return projected_table, receipt
+
+
+def _project_leading_implicit_cost_branch(
+    table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Bind a source-order cost prefix terminated by an explicit depreciation branch.
+
+    Some presentations print the cost rows immediately below the fixed-asset
+    owner and omit only the ``Nguyên giá`` group heading.  This projection is
+    deliberately structural: it requires an unscoped leading population, the
+    first explicit branch to be depreciation, and every projected numeric row
+    to bind one configured cost role.  Arithmetic closure remains mandatory
+    after the projection.
+    """
+
+    policy = compiled_specs["evaluation"].get("leading_implicit_cost_branch_policy")
+    projected = canonical_clone_v1(table)
+    if policy is None:
+        return projected, None
+    existing = table.get("__leading_implicit_cost_branch_receipt")
+    if type(existing) is dict:
+        return projected, canonical_clone_v1(existing)
+    rows = table.get("rows")
+    columns = table.get("columns")
+    if type(rows) is not list or type(columns) is not list:
+        return projected, None
+    money_ordinals = [
+        ordinal
+        for ordinal, column in enumerate(columns, start=1)
+        if type(column) is dict and column.get("value_kind") == "MONEY"
+    ]
+    if not money_ordinals:
+        return projected, None
+    cost_layouts = [
+        layout
+        for layout in compiled_specs["evaluation"]["branch_layouts"]
+        if layout["rollforward_kind"] == "SIGNED_ADDITIVE"
+        and layout["opening_role"].startswith("COST_")
+    ]
+    depreciation_layouts = [
+        layout
+        for layout in compiled_specs["evaluation"]["branch_layouts"]
+        if layout["rollforward_kind"] == "SIGNED_ADDITIVE"
+        and layout["opening_role"].startswith("DEP_")
+    ]
+    if len(cost_layouts) != 1 or len(depreciation_layouts) != 1:
+        return projected, None
+    cost_layout = cost_layouts[0]
+    depreciation_layout = depreciation_layouts[0]
+    first_explicit = next(
+        (
+            (ordinal, layout)
+            for ordinal, row in enumerate(rows, start=1)
+            if type(row) is dict
+            and (layout := _branch_layout_for_row(row, compiled_specs=compiled_specs))
+            is not None
+        ),
+        None,
+    )
+    if first_explicit is None or first_explicit[1] != depreciation_layout:
+        return projected, None
+    prefix_end = first_explicit[0] - 1
+    candidates = []
+    for source_ordinal, row in enumerate(rows[:prefix_end], start=1):
+        if type(row) is not dict:
+            return canonical_clone_v1(table), None
+        if row.get("row_kind") == "GROUP":
+            # A missing cost heading cannot be inferred across an unrelated
+            # source-visible group boundary.
+            return canonical_clone_v1(table), None
+        values = row.get("values_exact")
+        has_money = type(values) is list and any(
+            ordinal <= len(values) and values[ordinal - 1] not in {None, ""}
+            for ordinal in money_ordinals
+        )
+        if not has_money:
+            continue
+        synthetic = canonical_clone_v1(row)
+        source_path = row.get("hierarchy_path_exact")
+        synthetic["hierarchy_path_exact"] = [
+            cost_layout["hierarchy_aliases"][0],
+            *(
+                canonical_clone_v1(source_path)
+                if type(source_path) is list and source_path
+                else [row.get("label_exact")]
+            ),
+        ]
+        role = _role_for_row(synthetic, cost_layout, compiled_specs=compiled_specs)
+        if role is None:
+            return canonical_clone_v1(table), None
+        candidates.append((source_ordinal, role, synthetic["hierarchy_path_exact"]))
+    if not candidates:
+        return canonical_clone_v1(table), None
+    roles = [role for _ordinal, role, _path in candidates]
+    if (
+        roles.count(cost_layout["opening_role"]) != 1
+        or roles.count(cost_layout["ending_role"]) != 1
+        or roles[0] != cost_layout["opening_role"]
+        or roles[-1] != cost_layout["ending_role"]
+    ):
+        return canonical_clone_v1(table), None
+    receipts = []
+    for source_ordinal, role, hierarchy_path in candidates:
+        source_row = rows[source_ordinal - 1]
+        target = projected["rows"][source_ordinal - 1]
+        target["__source_hierarchy_path_exact"] = canonical_clone_v1(
+            source_row.get("hierarchy_path_exact")
+        )
+        target["hierarchy_path_exact"] = hierarchy_path
+        receipts.append(
+            {
+                "projected_role": role,
+                "source_ordinal": source_ordinal,
+            }
+        )
+    receipt = {
+        "branch_role": cost_layout["branch_role"],
+        "first_explicit_branch_role": depreciation_layout["branch_role"],
+        "policy": policy,
+        "projection_kind": "SOURCE_ORDER_LEADING_IMPLICIT_COST_BRANCH",
+        "rows": receipts,
+    }
+    projected["__leading_implicit_cost_branch_receipt"] = receipt
+    return projected, receipt
+
+
+def _project_ordered_dated_endpoints(
+    table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Bind two dated balance rows by their exact chronological order.
+
+    A calendar-year roll-forward can print both endpoints as 31 December
+    dates.  A row-local rule therefore cannot distinguish the prior-year
+    opening balance from the current-year ending balance.  This projection is
+    enabled declaratively and only binds a branch when it contains exactly two
+    distinct dated, non-movement money rows.
+    """
+
+    policy = compiled_specs["evaluation"].get("ordered_dated_endpoint_policy")
+    if policy is None:
+        return canonical_clone_v1(table), None
+    existing_receipt = table.get("__ordered_dated_endpoint_receipt")
+    if type(existing_receipt) is dict:
+        return canonical_clone_v1(table), canonical_clone_v1(existing_receipt)
+    rows = table.get("rows")
+    columns = table.get("columns")
+    if type(rows) is not list or type(columns) is not list:
+        return canonical_clone_v1(table), None
+    money_ordinals = [
+        ordinal
+        for ordinal, column in enumerate(columns, start=1)
+        if type(column) is dict and column.get("value_kind") == "MONEY"
+    ]
+    projected = canonical_clone_v1(table)
+    projected_rows = projected["rows"]
+    receipts = []
+    for layout in compiled_specs["evaluation"]["branch_layouts"]:
+        candidates = []
+        movement_roles = (
+            set(compiled_specs["recognized_roles_by_branch"][layout["branch_role"]])
+            - {layout["opening_role"], layout["ending_role"]}
+        )
+        for source_ordinal, row in enumerate(rows, start=1):
+            if type(row) is not dict or row.get("row_kind") == "GROUP":
+                continue
+            if _source_only_row_matches(row, compiled_specs=compiled_specs):
+                continue
+            if any(
+                _supplemental_row_matches(
+                    row,
+                    disclosure,
+                    table=table,
+                    compiled_specs=compiled_specs,
+                )
+                for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
+            ):
+                continue
+            if _branch_layout_for_row(row, compiled_specs=compiled_specs) != layout:
+                continue
+            values = row.get("values_exact")
+            if type(values) is not list or not any(
+                ordinal <= len(values) and values[ordinal - 1] not in {None, ""}
+                for ordinal in money_ordinals
+            ):
+                continue
+            dates = _surface_dates(row.get("label_exact"))
+            if len(dates) != 1:
+                continue
+            if any(
+                _contains_alias(row.get("label_exact"), alias)
+                for role in movement_roles
+                for alias in compiled_specs["role_aliases"][role]
+            ):
+                continue
+            candidates.append((source_ordinal, next(iter(dates))))
+        if len(candidates) != 2 or len({item[1] for item in candidates}) != 2:
+            continue
+        chronological = sorted(candidates, key=lambda item: item[1])
+        for (source_ordinal, parsed), role in zip(
+            chronological,
+            (layout["opening_role"], layout["ending_role"]),
+            strict=True,
+        ):
+            projected_rows[source_ordinal - 1]["__forced_role"] = role
+            receipts.append(
+                {
+                    "branch_role": layout["branch_role"],
+                    "date": parsed.isoformat(),
+                    "projected_role": role,
+                    "source_ordinal": source_ordinal,
+                }
+            )
+    if not receipts:
+        return projected, None
+    receipt = {
+        "policy": policy,
+        "projection_kind": "TWO_DISTINCT_DATED_BALANCE_ROWS_CHRONOLOGICAL_ENDPOINT_BINDING",
+        "rows": receipts,
+    }
+    projected["__ordered_dated_endpoint_receipt"] = receipt
+    return projected, receipt
+
+
+def _project_ordered_branch_scope(
+    table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Restore a uniquely typed row dropped from its visible branch path.
+
+    The projection is bounded by source order: an explicit configured branch
+    starts the scope, an unmatched group ends it, and only a numeric row whose
+    label binds exactly one role in that branch may inherit the scope.
+    """
+
+    policy = compiled_specs["evaluation"].get("ordered_branch_scope_policy")
+    if policy is None:
+        return canonical_clone_v1(table), None
+    existing_receipt = table.get("__ordered_branch_scope_receipt")
+    if type(existing_receipt) is dict:
+        return canonical_clone_v1(table), canonical_clone_v1(existing_receipt)
+    rows = table.get("rows")
+    columns = table.get("columns")
+    if type(rows) is not list or type(columns) is not list:
+        return canonical_clone_v1(table), None
+    money_ordinals = [
+        ordinal
+        for ordinal, column in enumerate(columns, start=1)
+        if type(column) is dict and column.get("value_kind") == "MONEY"
+    ]
+    projected = canonical_clone_v1(table)
+    receipts = []
+    current_layout = None
+    for source_ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict:
+            current_layout = None
+            continue
+        explicit_layout = _branch_layout_for_row(row, compiled_specs=compiled_specs)
+        if explicit_layout is not None:
+            current_layout = explicit_layout
+            continue
+        if row.get("row_kind") == "GROUP":
+            current_layout = None
+            continue
+        if current_layout is None or _source_only_row_matches(
+            row, compiled_specs=compiled_specs
+        ):
+            continue
+        values = row.get("values_exact")
+        if type(values) is not list or not any(
+            ordinal <= len(values) and values[ordinal - 1] not in {None, ""}
+            for ordinal in money_ordinals
+        ):
+            continue
+        synthetic = canonical_clone_v1(row)
+        synthetic["hierarchy_path_exact"] = [
+            current_layout["hierarchy_aliases"][0],
+            row.get("label_exact"),
+        ]
+        role = _role_for_row(synthetic, current_layout, compiled_specs=compiled_specs)
+        if role is None:
+            continue
+        projected_row = projected["rows"][source_ordinal - 1]
+        projected_row["__source_hierarchy_path_exact"] = canonical_clone_v1(
+            row.get("hierarchy_path_exact")
+        )
+        projected_row["hierarchy_path_exact"] = synthetic["hierarchy_path_exact"]
+        receipts.append(
+            {
+                "branch_role": current_layout["branch_role"],
+                "projected_role": role,
+                "source_ordinal": source_ordinal,
+            }
+        )
+    if not receipts:
+        return projected, None
+    receipt = {
+        "policy": policy,
+        "projection_kind": "PRECEDING_EXPLICIT_BRANCH_UNIQUE_ROLE_BINDING",
+        "rows": receipts,
+    }
+    projected["__ordered_branch_scope_receipt"] = receipt
+    return projected, receipt
+
+
+def _single_asset_current_period_column_binding(
+    section: Mapping[str, Any],
+    table: Mapping[str, Any],
+    *,
+    money_ordinals: Sequence[int],
+    total_ordinals: Sequence[int],
+    negative_header_hits: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Select one source-visible current column from a single-asset period axis.
+
+    Some schedules repeat the same sole asset in current and comparative
+    columns instead of printing a separate total.  The current column is
+    usable only when one exact section reporting date binds exactly one of the
+    distinct source period headers.  The comparative column remains source
+    only; no source cell or header is rewritten.
+    """
+
+    policy = compiled_specs["evaluation"].get("single_asset_period_column_policy")
+    columns = table.get("columns")
+    if (
+        policy is None
+        or type(columns) is not list
+        or len(money_ordinals) < 2
+        or total_ordinals
+        or negative_header_hits
+    ):
+        return None
+    longest_asset_aliases = []
+    period_axis = []
+    for ordinal in money_ordinals:
+        header = _header_text(columns[ordinal - 1])
+        hits = [
+            alias
+            for alias in compiled_specs["evaluation"]["asset_header_aliases"]
+            if _contains_alias(header, alias)
+        ]
+        if not hits:
+            return None
+        longest = max(map(len, hits))
+        identities = {alias for alias in hits if len(alias) == longest}
+        if len(identities) != 1:
+            return None
+        longest_asset_aliases.append(next(iter(identities)))
+        explicit_dates = _surface_dates(header)
+        if len(explicit_dates) > 1:
+            return None
+        if explicit_dates:
+            parsed = next(iter(explicit_dates))
+            period_axis.append(
+                {
+                    "column_ordinal": ordinal,
+                    "evidence_kind": "EXACT_DATE",
+                    "period_date": parsed.isoformat(),
+                    "period_year": parsed.year,
+                }
+            )
+            continue
+        years = {
+            int(match.group(0))
+            for match in re.finditer(r"(?<!\d)(?:19|20)\d{2}(?!\d)", _normalized(header))
+        }
+        if len(years) != 1:
+            return None
+        period_axis.append(
+            {
+                "column_ordinal": ordinal,
+                "evidence_kind": "EXACT_YEAR_WITH_SECTION_DATE",
+                "period_date": None,
+                "period_year": next(iter(years)),
+            }
+        )
+    if len(set(longest_asset_aliases)) != 1:
+        return None
+    identities = {
+        (item["period_date"], item["period_year"])
+        for item in period_axis
+    }
+    if len(identities) != len(period_axis):
+        return None
+    section_dates = {
+        item
+        for surface in [section.get("title_exact"), *(section.get("narratives_exact") or [])]
+        if (item := _governed_period_end_from_surface(surface)) is not None
+    }
+    if len(section_dates) != 1:
+        return None
+    current = next(iter(section_dates))
+    selected = [
+        item
+        for item in period_axis
+        if (
+            item["period_date"] == current.isoformat()
+            if item["period_date"] is not None
+            else item["period_year"] == current.year
+        )
+    ]
+    if len(selected) != 1:
+        return None
+    selected_ordinal = selected[0]["column_ordinal"]
+    material = {
+        "asset_alias": longest_asset_aliases[0],
+        "period_end_date": current.isoformat(),
+        "policy": policy,
+        "selected_current_column_ordinal": selected_ordinal,
+        "source_money_column_ordinals": list(money_ordinals),
+        "source_period_axis": period_axis,
+        "source_values_mutated": False,
+    }
+    return {
+        **material,
+        "receipt_id": "faspcrv1:receipt:" + canonical_json_sha256_v1(material),
     }
 
 
@@ -856,11 +2633,23 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
 
     if type(section) is not dict or type(table) is not dict:
         raise _error("fixed-asset section/table is invalid")
+    table, leading_implicit_cost_branch_receipt = _project_leading_implicit_cost_branch(
+        table, compiled_specs=compiled_specs
+    )
+    table, endpoint_first_layout_receipt = _project_endpoint_first_table(
+        table, compiled_specs=compiled_specs
+    )
+    table, ordered_branch_scope_receipt = _project_ordered_branch_scope(
+        table, compiled_specs=compiled_specs
+    )
+    table, ordered_dated_endpoint_receipt = _project_ordered_dated_endpoints(
+        table, compiled_specs=compiled_specs
+    )
     rows = table.get("rows")
     columns = table.get("columns")
     if type(rows) is not list or type(columns) is not list:
         raise _error("fixed-asset table axes are invalid")
-    money_ordinals = [
+    source_money_ordinals = [
         ordinal
         for ordinal, column in enumerate(columns, start=1)
         if type(column) is dict and column.get("value_kind") == "MONEY"
@@ -868,7 +2657,7 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
     family_header_ordinals = []
     negative_header_hits = []
     total_ordinals = []
-    for ordinal in money_ordinals:
+    for ordinal in source_money_ordinals:
         header = _header_text(columns[ordinal - 1])
         if any(
             _contains_alias(header, alias)
@@ -883,22 +2672,53 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
             for alias in compiled_specs["evaluation"]["total_column_aliases"]
         ):
             total_ordinals.append(ordinal)
+    single_asset_period_column_receipt = _single_asset_current_period_column_binding(
+        section,
+        table,
+        money_ordinals=source_money_ordinals,
+        total_ordinals=total_ordinals,
+        negative_header_hits=negative_header_hits,
+        compiled_specs=compiled_specs,
+    )
+    if single_asset_period_column_receipt is None:
+        money_ordinals = list(source_money_ordinals)
+    else:
+        selected_period_ordinal = single_asset_period_column_receipt[
+            "selected_current_column_ordinal"
+        ]
+        money_ordinals = [selected_period_ordinal]
+        family_header_ordinals = [selected_period_ordinal]
     branch_hits = set()
     recognized_row_count = 0
+    source_only_carrying_control_row_count = 0
     unclassified_numeric_rows = []
     for ordinal, row in enumerate(rows, start=1):
         if type(row) is not dict:
             continue
         if any(
-            _supplemental_surface_matches(row.get("label_exact"), disclosure)
+            _supplemental_row_matches(
+                row,
+                disclosure,
+                table=table,
+                compiled_specs=compiled_specs,
+            )
             for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
         ):
+            continue
+        if _source_only_row_matches(row, compiled_specs=compiled_specs):
             continue
         values = row.get("values_exact")
         has_money = type(values) is list and any(
             index - 1 < len(values) and values[index - 1] not in {None, ""}
             for index in money_ordinals
         )
+        source_only_control_role = _source_only_carrying_control_role(
+            row, compiled_specs=compiled_specs
+        )
+        if source_only_control_role is not None:
+            if source_only_control_role != "GROUP" and has_money:
+                source_only_carrying_control_row_count += 1
+            continue
         layout = _branch_layout_for_row(row, compiled_specs=compiled_specs)
         if layout is None:
             if row.get("row_kind") != "GROUP" and has_money:
@@ -912,10 +2732,16 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
             unclassified_numeric_rows.append(ordinal)
         elif role is not None:
             recognized_row_count += 1
-    required_branches = {
-        item["branch_role"] for item in compiled_specs["evaluation"]["branch_layouts"]
-    }
+    required_branches = _required_branch_roles(compiled_specs)
     owner = _owner_visible(section, table, compiled_specs=compiled_specs)
+    structural_reset_heading_hits = _structural_reset_heading_hits(
+        section, table, compiled_specs=compiled_specs
+    )
+    explicit_owner_heading_visible = any(
+        _standalone_heading_alias(surface, _normalized(alias))
+        for surface in _surface_axis(section, table)
+        for alias in compiled_specs["topology"]["parent"]["aliases"]
+    )
     variant_hard_negative_visible = any(
         _contains_alias(surface, negative_alias)
         and not any(
@@ -926,9 +2752,18 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
         for surface in _surface_axis(section, table)
         for negative_alias in compiled_specs["evaluation"]["header_hard_negative_aliases"]
     )
+    explicit_variant_hard_negative_heading_visible = any(
+        _standalone_heading_alias(surface, negative_alias)
+        for surface in _surface_axis(section, table)
+        for negative_alias in compiled_specs["evaluation"]["header_hard_negative_aliases"]
+    )
+    scoped_variant_hard_negative_visible = bool(
+        explicit_variant_hard_negative_heading_visible
+        or (variant_hard_negative_visible and not explicit_owner_heading_visible)
+    )
     two_period_non_rollforward_control = bool(
         owner
-        and branch_hits != required_branches
+        and not required_branches <= branch_hits
         and not family_header_ordinals
         and len(money_ordinals) == 2
         and all(
@@ -940,43 +2775,82 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
         table, compiled_specs=compiled_specs
     )
     supplemental_only_control = bool(
-        supplemental_disclosure_roles and branch_hits != required_branches
+        supplemental_disclosure_roles and not required_branches <= branch_hits
     )
     # A section owner can legitimately govern a two-period informational
     # control table (for example fully-depreciated assets).  Such a table is
     # not a roll-forward fragment.
     min_headers = compiled_specs["evaluation"]["minimum_distinct_asset_header_aliases"]
+    implicit_single_asset_total = bool(
+        len(money_ordinals) == 1
+        and family_header_ordinals == money_ordinals
+        and min_headers == 1
+        and single_asset_period_column_receipt is None
+        and not total_ordinals
+        and not negative_header_hits
+        and not scoped_variant_hard_negative_visible
+    )
+    single_asset_period_total = single_asset_period_column_receipt is not None
+    effective_total_ordinals = (
+        list(money_ordinals)
+        if implicit_single_asset_total or single_asset_period_total
+        else total_ordinals
+    )
     has_family_signal = bool(
         not two_period_non_rollforward_control
         and not supplemental_only_control
+        # A standalone sibling-family heading terminates owner scope when the
+        # configured owner appears only incidentally in prose.  If both owners
+        # are themselves explicit headings, retain the table as unresolved so
+        # that a real source-scope conflict cannot silently become absence.
+        and (not structural_reset_heading_hits or explicit_owner_heading_visible)
         and (
             (owner and (family_header_ordinals or branch_hits))
             or (
-                branch_hits == required_branches
+                required_branches <= branch_hits
                 and len(family_header_ordinals) >= min_headers
                 and not negative_header_hits
-                and not variant_hard_negative_visible
+                and not scoped_variant_hard_negative_visible
             )
         )
     )
-    period_receipt = _table_period_receipt(section, table, compiled_specs=compiled_specs)
+    if single_asset_period_column_receipt is None:
+        period_receipt = _table_period_receipt(section, table, compiled_specs=compiled_specs)
+    else:
+        period_receipt = {
+            "endpoint_dates": [],
+            "immediately_preceding_table_period_receipt": None,
+            "local_governed_surface_dates": [
+                single_asset_period_column_receipt["period_end_date"]
+            ],
+            "period_end_date": single_asset_period_column_receipt["period_end_date"],
+            "section_context_dates": [
+                single_asset_period_column_receipt["period_end_date"]
+            ],
+            "single_asset_period_column_receipt": canonical_clone_v1(
+                single_asset_period_column_receipt
+            ),
+            "status": "UNIQUE_SINGLE_ASSET_CURRENT_PERIOD_COLUMN",
+        }
     reasons = []
     if negative_header_hits and has_family_signal:
         reasons.append("HARD_NEGATIVE_ASSET_HEADER_VISIBLE")
-    if variant_hard_negative_visible and owner:
+    if scoped_variant_hard_negative_visible and owner:
         reasons.append("HARD_NEGATIVE_FIXED_ASSET_VARIANT_SURFACE_VISIBLE")
-    if branch_hits and branch_hits != required_branches:
+    if branch_hits and not required_branches <= branch_hits:
         reasons.append("CONFIGURED_BRANCH_SEED_FRONTIER_INCOMPLETE")
-    if branch_hits == required_branches and not owner:
+    if required_branches <= branch_hits and not owner:
         reasons.append("EXPLICIT_FIXED_ASSET_OWNER_NOT_VISIBLE")
     if (
-        branch_hits == required_branches
+        required_branches <= branch_hits
         and len(family_header_ordinals)
         < compiled_specs["evaluation"]["minimum_distinct_asset_header_aliases"]
     ):
         reasons.append("DISTINCT_ASSET_HEADER_FRONTIER_INCOMPLETE")
-    if branch_hits == required_branches and (
-        len(total_ordinals) != 1 or not money_ordinals or total_ordinals[0] != money_ordinals[-1]
+    if required_branches <= branch_hits and (
+        len(effective_total_ordinals) != 1
+        or not money_ordinals
+        or effective_total_ordinals[0] != money_ordinals[-1]
     ):
         reasons.append("UNIQUE_RIGHT_EDGE_TOTAL_COLUMN_NOT_VISIBLE")
     if unclassified_numeric_rows:
@@ -984,12 +2858,12 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
     if period_receipt["status"] == "CONFLICTING_SOURCE_VISIBLE_PERIOD_END_DATES":
         reasons.append("FIXED_ASSET_TABLE_PERIOD_EVIDENCE_CONFLICT")
     complete = (
-        branch_hits == required_branches
+        required_branches <= branch_hits
         and owner
         and len(family_header_ordinals)
         >= compiled_specs["evaluation"]["minimum_distinct_asset_header_aliases"]
-        and len(total_ordinals) == 1
-        and total_ordinals[0] == money_ordinals[-1]
+        and len(effective_total_ordinals) == 1
+        and effective_total_ordinals[0] == money_ordinals[-1]
         and not reasons
     )
     return {
@@ -998,13 +2872,30 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
         "family_header_column_ordinals": family_header_ordinals,
         "family_signal": has_family_signal,
         "hard_negative_header_hits": negative_header_hits,
+        "leading_implicit_cost_branch_receipt": leading_implicit_cost_branch_receipt,
         "money_column_ordinals": money_ordinals,
+        "source_money_column_ordinals": source_money_ordinals,
         "owner_visible": owner,
+        "endpoint_first_layout_receipt": endpoint_first_layout_receipt,
+        "ordered_dated_endpoint_receipt": ordered_dated_endpoint_receipt,
+        "ordered_branch_scope_receipt": ordered_branch_scope_receipt,
+        "single_asset_period_column_receipt": single_asset_period_column_receipt,
         "period_end_date": period_receipt["period_end_date"],
         "period_receipt": period_receipt,
         "reasons": sorted(set(reasons)),
         "recognized_row_count": recognized_row_count,
-        "total_column_ordinals": total_ordinals,
+        "source_only_carrying_control_row_count": source_only_carrying_control_row_count,
+        "structural_reset_heading_hits": structural_reset_heading_hits,
+        "total_column_binding_kind": (
+            "IMPLICIT_SINGLE_RECOGNIZED_ASSET_MONEY_COLUMN"
+            if implicit_single_asset_total
+            else (
+                "IMPLICIT_SINGLE_RECOGNIZED_ASSET_CURRENT_PERIOD_COLUMN"
+                if single_asset_period_total
+                else ("EXPLICIT_RIGHT_EDGE_TOTAL_COLUMN" if effective_total_ordinals else None)
+            )
+        ),
+        "total_column_ordinals": effective_total_ordinals,
         "unclassified_numeric_row_ordinals": unclassified_numeric_rows,
     }
 
@@ -1012,6 +2903,18 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
 def _endpoint_total_signature(
     section: Mapping[str, Any], table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> dict[str, int] | None:
+    table, _leading_implicit_cost_branch_receipt = _project_leading_implicit_cost_branch(
+        table, compiled_specs=compiled_specs
+    )
+    table, _endpoint_first_layout_receipt = _project_endpoint_first_table(
+        table, compiled_specs=compiled_specs
+    )
+    table, _ordered_branch_scope_receipt = _project_ordered_branch_scope(
+        table, compiled_specs=compiled_specs
+    )
+    table, _ordered_dated_endpoint_receipt = _project_ordered_dated_endpoints(
+        table, compiled_specs=compiled_specs
+    )
     classification = classify_gemini_json_fixed_asset_rollforward_table_v1(
         section, table, compiled_specs=compiled_specs
     )
@@ -1025,14 +2928,7 @@ def _endpoint_total_signature(
         layout = _branch_layout_for_row(row, compiled_specs=compiled_specs)
         if layout is None:
             continue
-        forced_role = (
-            row.get("__forced_role")
-            if compiled_specs["evaluation"].get("component_policy") is not None
-            else None
-        )
-        role = forced_role or _endpoint_role(
-            row.get("label_exact"), layout, compiled_specs=compiled_specs
-        )
+        role = _role_for_row(row, layout, compiled_specs=compiled_specs)
         if role not in {layout["opening_role"], layout["ending_role"]}:
             continue
         values = row.get("values_exact")
@@ -1363,11 +3259,6 @@ def _statement_carrying_control_classification(
         sorted(set(_surface_dates(_header_text(columns[ordinal - 1]))))
         for ordinal in money_ordinals
     ]
-    if any(len(axis) != 1 for axis in dates_by_column):
-        return None
-    period_dates = [axis[0] for axis in dates_by_column]
-    if len(set(period_dates)) != 2:
-        return None
     control_values = rows[control_rows[0] - 1].get("values_exact")
     if (
         type(control_values) is not list
@@ -1375,6 +3266,95 @@ def _statement_carrying_control_classification(
         or not any(control_values[index - 1] not in {None, ""} for index in money_ordinals)
     ):
         return None
+    if all(len(axis) == 1 for axis in dates_by_column):
+        period_dates = [axis[0] for axis in dates_by_column]
+        if len(set(period_dates)) != 2:
+            return None
+        return {
+            "branch_roles": [],
+            "complete": True,
+            "component_kind": "PRIMARY_STATEMENT_CARRYING_CONTROL",
+            "control_row_ordinal": control_rows[0],
+            "family_header_column_ordinals": [],
+            "family_signal": True,
+            "hard_negative_header_hits": [],
+            "money_column_ordinals": money_ordinals,
+            "owner_visible": True,
+            "period_end_date": max(period_dates).isoformat(),
+            "period_receipt": {
+                "column_period_dates": [item.isoformat() for item in period_dates],
+                "period_end_date": max(period_dates).isoformat(),
+                "status": "UNIQUE_TYPED_BALANCE_SHEET_CARRYING_PERIOD_AXIS",
+            },
+            "reasons": [],
+            "recognized_row_count": 1,
+            "total_column_ordinals": [],
+            "unclassified_numeric_row_ordinals": [],
+        }
+    # A typed balance sheet can label its two amount columns only by relative
+    # roles (for example, ``Số cuối năm`` and ``Số đầu năm``). Bind that
+    # layout only when the section supplies one exact reporting endpoint. The
+    # opening column remains a source-visible relative role; no comparative
+    # endpoint is fabricated from a year or from arithmetic.
+    if any(dates_by_column):
+        return None
+    section_surfaces = [
+        ("SECTION_TITLE", section.get("title_exact")),
+        *[
+            ("SECTION_NARRATIVE", item)
+            for item in (section.get("narratives_exact") or [])
+            if type(item) is str
+        ],
+    ]
+    governed_evidence = []
+    all_surface_dates = set()
+    for source_kind, surface in section_surfaces:
+        all_surface_dates.update(_surface_dates(surface))
+        governed = _governed_period_end_from_surface(surface)
+        if governed is not None:
+            governed_evidence.append(
+                {
+                    "period_end_date": governed.isoformat(),
+                    "source_kind": source_kind,
+                    "surface_exact": surface,
+                }
+            )
+    governed_dates = {item["period_end_date"] for item in governed_evidence}
+    if len(governed_dates) != 1:
+        return None
+    period_end_date = next(iter(governed_dates))
+    if all_surface_dates != {date.fromisoformat(period_end_date)}:
+        return None
+    summary_policy = compiled_specs["evaluation"]["component_policy"]["summary_control"]
+    relative_aliases = {
+        summary_policy["current_role"]: ("so cuoi ky", "so cuoi nam"),
+        summary_policy["opening_role"]: ("so dau ky", "so dau nam"),
+    }
+    role_by_ordinal = {}
+    for ordinal in money_ordinals:
+        header = _header_text(columns[ordinal - 1])
+        matched_roles = [
+            role
+            for role, aliases in relative_aliases.items()
+            if any(_contains_alias(header, alias) for alias in aliases)
+        ]
+        if len(matched_roles) != 1:
+            return None
+        role_by_ordinal[ordinal] = matched_roles[0]
+    if set(role_by_ordinal.values()) != set(relative_aliases):
+        return None
+    column_period_bindings = [
+        {
+            "column_header_exact": _header_text(columns[ordinal - 1]),
+            "column_ordinal": ordinal,
+            "period_date": (
+                period_end_date if role == summary_policy["current_role"] else None
+            ),
+            "period_role": role,
+            "source_kind": "TYPED_BALANCE_SHEET_RELATIVE_PERIOD_COLUMN",
+        }
+        for ordinal, role in role_by_ordinal.items()
+    ]
     return {
         "branch_roles": [],
         "complete": True,
@@ -1385,11 +3365,12 @@ def _statement_carrying_control_classification(
         "hard_negative_header_hits": [],
         "money_column_ordinals": money_ordinals,
         "owner_visible": True,
-        "period_end_date": max(period_dates).isoformat(),
+        "period_end_date": period_end_date,
         "period_receipt": {
-            "column_period_dates": [item.isoformat() for item in period_dates],
-            "period_end_date": max(period_dates).isoformat(),
-            "status": "UNIQUE_TYPED_BALANCE_SHEET_CARRYING_PERIOD_AXIS",
+            "column_period_bindings": column_period_bindings,
+            "governed_period_evidence": governed_evidence,
+            "period_end_date": period_end_date,
+            "status": "UNIQUE_TYPED_BALANCE_SHEET_RELATIVE_CARRYING_PERIOD_AXIS",
         },
         "reasons": [],
         "recognized_row_count": 1,
@@ -1403,6 +3384,18 @@ def _component_table_classification(
 ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     """Classify complete tables, configured fragments and carrying summaries."""
 
+    table, leading_implicit_cost_branch_receipt = _project_leading_implicit_cost_branch(
+        table, compiled_specs=compiled_specs
+    )
+    table, endpoint_first_layout_receipt = _project_endpoint_first_table(
+        table, compiled_specs=compiled_specs
+    )
+    table, ordered_branch_scope_receipt = _project_ordered_branch_scope(
+        table, compiled_specs=compiled_specs
+    )
+    table, ordered_dated_endpoint_receipt = _project_ordered_dated_endpoints(
+        table, compiled_specs=compiled_specs
+    )
     summary = _summary_control_classification(section, table, compiled_specs=compiled_specs)
     if summary is not None:
         return summary, canonical_clone_v1(table), []
@@ -1414,6 +3407,14 @@ def _component_table_classification(
     expanded, endpoint_receipts = _expanded_component_table(
         table, compiled_specs=compiled_specs, default_branch_role=None
     )
+    if endpoint_first_layout_receipt is not None:
+        endpoint_receipts = [endpoint_first_layout_receipt, *endpoint_receipts]
+    if leading_implicit_cost_branch_receipt is not None:
+        endpoint_receipts = [leading_implicit_cost_branch_receipt, *endpoint_receipts]
+    if ordered_dated_endpoint_receipt is not None:
+        endpoint_receipts = [ordered_dated_endpoint_receipt, *endpoint_receipts]
+    if ordered_branch_scope_receipt is not None:
+        endpoint_receipts = [ordered_branch_scope_receipt, *endpoint_receipts]
     standard = classify_gemini_json_fixed_asset_rollforward_table_v1(
         section, expanded, compiled_specs=compiled_specs
     )
@@ -1533,6 +3534,108 @@ def _continuity_selects_current(
     return True
 
 
+def _leading_undated_owner_sequence(
+    tables: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]
+) -> bool:
+    if (
+        compiled_specs["evaluation"].get("undated_full_table_sequence_policy")
+        != "LEADING_EXPLICIT_OWNER_THEN_ADJACENT_CONTINUATION_TABLES_BIND_CURRENT_AS_SOURCE_ONLY_HISTORY"
+        or len(tables) < 2
+        or any(item["classification"]["period_end_date"] is not None for item in tables)
+    ):
+        return False
+    parent_aliases = [
+        _normalized(alias) for alias in compiled_specs["topology"]["parent"]["aliases"]
+    ]
+    first = tables[0]
+    first_surfaces = _surface_axis(first["section"], first["table"])
+    if (
+        not any(
+            _standalone_heading_alias(surface, alias)
+            for surface in first_surfaces
+            for alias in parent_aliases
+        )
+        or any(_contains_alias(surface, "tiep theo") for surface in first_surfaces)
+    ):
+        return False
+    header_axis = [
+        _normalized(_header_text(column))
+        for column in first["table"].get("columns", [])
+        if type(column) is dict and column.get("value_kind") == "MONEY"
+    ]
+    if not header_axis:
+        return False
+    prior = first
+    for item in tables[1:]:
+        surfaces = _surface_axis(item["section"], item["table"])
+        current_axis = [
+            _normalized(_header_text(column))
+            for column in item["table"].get("columns", [])
+            if type(column) is dict and column.get("value_kind") == "MONEY"
+        ]
+        if (
+            item["record"]["selected_page_ordinal"]
+            != prior["record"]["selected_page_ordinal"] + 1
+            or item["record"]["physical_page"] != prior["record"]["physical_page"] + 1
+            or current_axis != header_axis
+            or not any(_contains_alias(surface, "tiep theo") for surface in surfaces)
+            or not any(
+                _contains_alias(surface, alias)
+                for surface in surfaces
+                for alias in parent_aliases
+            )
+        ):
+            return False
+        prior = item
+    return True
+
+
+def _adjacent_undated_owner_continuation_siblings(
+    current: Mapping[str, Any],
+    missing: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any],
+) -> bool:
+    """Authenticate undated historical tables by exact adjacent owner scope."""
+
+    if not missing:
+        return False
+    parent_aliases = [
+        _normalized(alias) for alias in compiled_specs["topology"]["parent"]["aliases"]
+    ]
+
+    def header_axis(item: Mapping[str, Any]) -> list[str]:
+        return [
+            _normalized(_header_text(column))
+            for column in item["table"].get("columns", [])
+            if type(column) is dict and column.get("value_kind") == "MONEY"
+        ]
+
+    expected_axis = header_axis(current)
+    if not expected_axis:
+        return False
+    ordered = sorted(missing, key=lambda item: item["position"])
+    prior = current
+    for item in ordered:
+        surfaces = _surface_axis(item["section"], item["table"])
+        if (
+            item["position"] <= current["position"]
+            or item["record"]["selected_page_ordinal"]
+            != prior["record"]["selected_page_ordinal"] + 1
+            or item["record"]["physical_page"] != prior["record"]["physical_page"] + 1
+            or header_axis(item) != expected_axis
+            or not any(_contains_alias(surface, "tiep theo") for surface in surfaces)
+            or not any(
+                _contains_alias(surface, alias)
+                for surface in surfaces
+                for alias in parent_aliases
+            )
+        ):
+            return False
+        prior = item
+    return True
+
+
 def _document_reporting_date_receipt(page_records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     evidence = []
     for record in page_records:
@@ -1541,7 +3644,7 @@ def _document_reporting_date_receipt(page_records: Sequence[Mapping[str, Any]]) 
                 continue
             if section.get("content_kind") == "PRIMARY_STATEMENT" and section.get(
                 "statement_type"
-            ) in {"INCOME_STATEMENT", "CASH_FLOW"}:
+            ) in {"BALANCE_SHEET", "INCOME_STATEMENT", "CASH_FLOW"}:
                 governed_dates = {
                     item
                     for surface in [
@@ -1560,6 +3663,7 @@ def _document_reporting_date_receipt(page_records: Sequence[Mapping[str, Any]]) 
                             "physical_page": record["physical_page"],
                             "section_id": f"s{section_ordinal}",
                             "source_kind": "TYPED_PRIMARY_STATEMENT_PERIOD_HEADING",
+                            "statement_type": section["statement_type"],
                             "table_id": None,
                         }
                     )
@@ -1593,6 +3697,7 @@ def _document_reporting_date_receipt(page_records: Sequence[Mapping[str, Any]]) 
                         "physical_page": record["physical_page"],
                         "section_id": f"s{section_ordinal}",
                         "source_kind": "TYPED_BALANCE_SHEET_DATE_COLUMNS",
+                        "statement_type": "BALANCE_SHEET",
                         "table_id": f"t{table_ordinal}",
                     }
                 )
@@ -1602,11 +3707,38 @@ def _document_reporting_date_receipt(page_records: Sequence[Mapping[str, Any]]) 
     )
     current_date = current_dates[0] if len(current_dates) == 1 else None
     comparative_date = comparative_dates[0] if len(comparative_dates) == 1 else None
+    status = "UNIQUE_TYPED_DOCUMENT_REPORTING_DATE" if current_date else "NOT_UNIQUE"
+    if current_date is None:
+        # A typed balance sheet governs point-in-time fixed-asset endpoints.
+        # A stale title on a different primary-statement type must not poison
+        # its unique reporting date, but conflicts within the balance-sheet
+        # evidence itself remain unresolved.
+        balance_sheet_evidence = [
+            item for item in evidence if item["statement_type"] == "BALANCE_SHEET"
+        ]
+        balance_sheet_current_dates = sorted(
+            {item["current_date"] for item in balance_sheet_evidence}
+        )
+        balance_sheet_comparative_dates = sorted(
+            {
+                item["comparative_date"]
+                for item in balance_sheet_evidence
+                if item["comparative_date"] is not None
+            }
+        )
+        if len(balance_sheet_current_dates) == 1:
+            current_date = balance_sheet_current_dates[0]
+            comparative_date = (
+                balance_sheet_comparative_dates[0]
+                if len(balance_sheet_comparative_dates) == 1
+                else None
+            )
+            status = "UNIQUE_TYPED_BALANCE_SHEET_DATE_DOMINATES_OTHER_STATEMENT_TYPES"
     return {
         "comparative_date": comparative_date,
         "current_date": current_date,
         "evidence": evidence,
-        "status": "UNIQUE_TYPED_DOCUMENT_REPORTING_DATE" if current_date else "NOT_UNIQUE",
+        "status": status,
     }
 
 
@@ -1688,6 +3820,295 @@ def _region(
     }
 
 
+def _bind_adjacent_owner_continuations(
+    family_tables: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    policy = compiled_specs["evaluation"].get("adjacent_owner_continuation_policy")
+    result = [canonical_clone_v1(item) for item in family_tables]
+    if policy is None:
+        return result
+
+    def header_axis(table: Mapping[str, Any]) -> list[str]:
+        return [
+            _normalized(_header_text(column))
+            for column in table.get("columns", [])
+            if type(column) is dict and column.get("value_kind") == "MONEY"
+        ]
+
+    for index, item in enumerate(result):
+        classification = item["classification"]
+        if classification["owner_visible"] or "EXPLICIT_FIXED_ASSET_OWNER_NOT_VISIBLE" not in (
+            classification["reasons"]
+        ):
+            continue
+        continuation_surfaces = _surface_axis(item["section"], item["table"])
+        if not any(_contains_alias(surface, "tiep theo") for surface in continuation_surfaces):
+            continue
+        if index == 0:
+            continue
+        prior = result[index - 1]
+        if (
+            not prior["classification"]["owner_visible"]
+            or item["record"]["selected_page_ordinal"]
+            != prior["record"]["selected_page_ordinal"] + 1
+            or item["record"]["physical_page"] != prior["record"]["physical_page"] + 1
+            or header_axis(item["table"]) != header_axis(prior["table"])
+        ):
+            continue
+        projected_table = canonical_clone_v1(item["table"])
+        receipt = {
+            "binding_kind": policy,
+            "owner_page_json_version_id": prior["record"]["page_json_version_id"],
+            "owner_physical_page": prior["record"]["physical_page"],
+            "status": "EXACT_ADJACENT_OWNER_SCOPE",
+        }
+        projected_table["__adjacent_owner_continuation_receipt"] = receipt
+        rebound = classify_gemini_json_fixed_asset_rollforward_table_v1(
+            item["section"], projected_table, compiled_specs=compiled_specs
+        )
+        if not rebound["complete"]:
+            continue
+        result[index] = {
+            **item,
+            "classification": {
+                **rebound,
+                "adjacent_owner_continuation_receipt": receipt,
+            },
+            "table": projected_table,
+        }
+    return result
+
+
+def _trailing_owner_heading_receipt(
+    prior_page_json: Mapping[str, Any],
+    section: Mapping[str, Any],
+    table: Mapping[str, Any],
+    *,
+    owner_page_json_version_id: str,
+    owner_physical_page: int,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    policy = compiled_specs["evaluation"].get("trailing_owner_heading_policy")
+    if policy is None or _owner_visible(section, table, compiled_specs=compiled_specs):
+        return None
+    sections = prior_page_json.get("sections")
+    if type(sections) is not list or not sections or type(sections[-1]) is not dict:
+        return None
+    owner_section = sections[-1]
+    if type(owner_section.get("tables")) is not list or owner_section["tables"]:
+        return None
+    title = owner_section.get("title_exact")
+    aliases = compiled_specs["topology"]["parent"]["aliases"]
+    if not any(
+        _standalone_heading_alias(title, _normalized(alias)) for alias in aliases
+    ):
+        return None
+    if _structural_reset_heading_hits(section, table, compiled_specs=compiled_specs):
+        return None
+    return {
+        "binding_kind": policy,
+        "owner_page_json_version_id": owner_page_json_version_id,
+        "owner_physical_page": owner_physical_page,
+        "owner_section_id": f"s{len(sections)}",
+        "status": "EXACT_TRAILING_OWNER_HEADING_NEXT_PAGE_SCOPE",
+    }
+
+
+def _project_trailing_owner_heading_from_page_map(
+    table: Mapping[str, Any],
+    *,
+    section: Mapping[str, Any],
+    region: Mapping[str, Any],
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    projected = canonical_clone_v1(table)
+    if (
+        compiled_specs["evaluation"].get("trailing_owner_heading_policy") is None
+        or region.get("section_id") != "s1"
+        or region.get("table_id") != "t1"
+        or type(region.get("selected_page_ordinal")) is not int
+        or region["selected_page_ordinal"] <= 1
+    ):
+        return projected, None
+    page_ids = list(page_json_by_version)
+    current_index = region["selected_page_ordinal"] - 1
+    if (
+        current_index >= len(page_ids)
+        or page_ids[current_index] != region.get("page_json_version_id")
+    ):
+        return projected, None
+    owner_page_json_version_id = page_ids[current_index - 1]
+    receipt = _trailing_owner_heading_receipt(
+        page_json_by_version[owner_page_json_version_id],
+        section,
+        table,
+        owner_page_json_version_id=owner_page_json_version_id,
+        owner_physical_page=region["physical_page"] - 1,
+        compiled_specs=compiled_specs,
+    )
+    if receipt is not None:
+        projected["__adjacent_owner_continuation_receipt"] = receipt
+    return projected, receipt
+
+
+def _project_adjacent_page_endpoint_first_continuation_from_page_map(
+    table: Mapping[str, Any],
+    *,
+    section: Mapping[str, Any],
+    region: Mapping[str, Any],
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Stitch one exact page-final endpoint table to a headerless next-page tail."""
+
+    policy = compiled_specs["evaluation"].get(
+        "adjacent_page_endpoint_first_continuation_policy"
+    )
+    projected = canonical_clone_v1(table)
+    if policy is None:
+        return projected, None
+    existing = table.get("__adjacent_page_endpoint_first_continuation_receipt")
+    if type(existing) is dict:
+        return projected, canonical_clone_v1(existing)
+    selected_ordinal = region.get("selected_page_ordinal")
+    if type(selected_ordinal) is not int or selected_ordinal < 1:
+        return projected, None
+    page_ids = list(page_json_by_version)
+    current_index = selected_ordinal - 1
+    if (
+        current_index + 1 >= len(page_ids)
+        or page_ids[current_index] != region.get("page_json_version_id")
+    ):
+        return projected, None
+    current_page = page_json_by_version[page_ids[current_index]]
+    next_page_id = page_ids[current_index + 1]
+    next_page = page_json_by_version[next_page_id]
+    current_sections = current_page.get("sections")
+    next_sections = next_page.get("sections")
+    if type(current_sections) is not list or type(next_sections) is not list or not next_sections:
+        return projected, None
+    try:
+        section_ordinal = int(region["section_id"][1:])
+        table_ordinal = int(region["table_id"][1:])
+    except (KeyError, TypeError, ValueError):
+        return projected, None
+    current_tables = (
+        current_sections[section_ordinal - 1].get("tables")
+        if 0 < section_ordinal <= len(current_sections)
+        and type(current_sections[section_ordinal - 1]) is dict
+        else None
+    )
+    if (
+        section_ordinal != len(current_sections)
+        or type(current_tables) is not list
+        or table_ordinal != len(current_tables)
+        or current_tables[table_ordinal - 1] != table
+        or not _owner_visible(section, table, compiled_specs=compiled_specs)
+    ):
+        return projected, None
+    leading_section = next_sections[0]
+    leading_tables = leading_section.get("tables") if type(leading_section) is dict else None
+    if type(leading_tables) is not list or not leading_tables or type(leading_tables[0]) is not dict:
+        return projected, None
+    continuation = leading_tables[0]
+    if any(
+        type(surface) is str and surface.strip()
+        for surface in _surface_axis(leading_section, continuation)
+    ):
+        return projected, None
+    first_columns = table.get("columns")
+    continuation_columns = continuation.get("columns")
+    first_rows = table.get("rows")
+    continuation_rows = continuation.get("rows")
+    if (
+        type(first_columns) is not list
+        or type(continuation_columns) is not list
+        or len(first_columns) < 2
+        or len(first_columns) != len(continuation_columns)
+        or type(first_rows) is not list
+        or not first_rows
+        or type(continuation_rows) is not list
+        or not continuation_rows
+        or any(
+            type(column) is not dict or column.get("value_kind") != "MONEY"
+            for column in first_columns
+        )
+        or any(
+            type(column) is not dict
+            or column.get("value_kind") != "MONEY"
+            or any(
+                type(item) is str and item.strip()
+                for item in (column.get("header_path_exact") or [])
+            )
+            for column in continuation_columns
+        )
+    ):
+        return projected, None
+    # A visible configured sibling heading immediately after the anonymous
+    # continuation authenticates its right boundary.
+    if not any(
+        _structural_reset_heading_hits(
+            later_section,
+            (later_section.get("tables") or [{}])[0],
+            compiled_specs=compiled_specs,
+        )
+        for later_section in next_sections[1:]
+        if type(later_section) is dict
+    ):
+        return projected, None
+
+    merged = canonical_clone_v1(table)
+    merged_rows = []
+    for source_page_id, source_section_id, source_table_id, source_rows in (
+        (
+            region["page_json_version_id"],
+            region["section_id"],
+            region["table_id"],
+            first_rows,
+        ),
+        (next_page_id, "s1", "t1", continuation_rows),
+    ):
+        for source_ordinal, row in enumerate(source_rows, start=1):
+            if type(row) is not dict:
+                return canonical_clone_v1(table), None
+            clone = canonical_clone_v1(row)
+            clone["__source_page_json_version_id"] = source_page_id
+            clone["__source_section_id"] = source_section_id
+            clone["__source_table_id"] = source_table_id
+            clone["__source_row_id"] = f"r{source_ordinal}"
+            clone["__source_ordinal"] = source_ordinal
+            merged_rows.append(clone)
+    merged["rows"] = merged_rows
+    endpoint_projection, endpoint_receipt = _project_endpoint_first_table(
+        merged, compiled_specs=compiled_specs
+    )
+    if endpoint_receipt is None:
+        return canonical_clone_v1(table), None
+    # Prove that the joined topology, rather than only either fragment, is the
+    # exact six-row endpoint presentation.
+    if len(endpoint_projection.get("rows", [])) != 6:
+        return canonical_clone_v1(table), None
+    receipt_material = {
+        "base_first_table_sha256": canonical_json_sha256_v1(table),
+        "base_second_table_sha256": canonical_json_sha256_v1(continuation),
+        "first_page_json_version_id": region["page_json_version_id"],
+        "first_physical_page": region["physical_page"],
+        "merged_table_sha256": canonical_json_sha256_v1(merged),
+        "policy": policy,
+        "second_page_json_version_id": next_page_id,
+        "second_physical_page": region["physical_page"] + 1,
+        "status": "EXACT_ADJACENT_PAGE_ENDPOINT_FIRST_TOPOLOGY",
+    }
+    receipt = {
+        **receipt_material,
+        "receipt_id": "faapefcv1:receipt:"
+        + canonical_json_sha256_v1(receipt_material),
+    }
+    merged["__adjacent_page_endpoint_first_continuation_receipt"] = receipt
+    return merged, receipt
+
+
 def _summary_control_signature(
     item: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -1712,26 +4133,101 @@ def _summary_control_signature(
         if type(values) is not list or len(values) != len(columns):
             reasons.append("SUMMARY_CONTROL_COMPARISON_CELL_AXIS_INVALID")
         else:
-            dates = {
-                ordinal: sorted(set(_surface_dates(_header_text(columns[ordinal - 1]))))
-                for ordinal in money_ordinals
-            }
-            if any(len(axis) != 1 for axis in dates.values()):
-                reasons.append("SUMMARY_CONTROL_COMPARISON_PERIOD_AXIS_INVALID")
-            else:
-                current_date = date.fromisoformat(classification["period_end_date"])
-                role_by_ordinal = {
-                    ordinal: (
-                        compiled_specs["evaluation"]["component_policy"]["summary_control"][
-                            "current_role"
-                        ]
-                        if axis[0] == current_date
-                        else compiled_specs["evaluation"]["component_policy"]["summary_control"][
-                            "opening_role"
-                        ]
-                    )
-                    for ordinal, axis in dates.items()
+            summary_policy = compiled_specs["evaluation"]["component_policy"][
+                "summary_control"
+            ]
+            relative_bindings = classification["period_receipt"].get(
+                "column_period_bindings"
+            )
+            relative_axis = relative_bindings is not None
+            role_by_ordinal = {}
+            period_date_by_ordinal = {}
+            source_kind_by_ordinal = {}
+            period_axis_valid = True
+            if relative_axis:
+                expected_fields = {
+                    "column_header_exact",
+                    "column_ordinal",
+                    "period_date",
+                    "period_role",
+                    "source_kind",
                 }
+                if (
+                    type(relative_bindings) is not list
+                    or len(relative_bindings) != 2
+                    or any(
+                        type(binding) is not dict
+                        or set(binding) != expected_fields
+                        or type(binding["column_ordinal"]) is not int
+                        or not (0 < binding["column_ordinal"] <= len(columns))
+                        or type(binding["column_header_exact"]) is not str
+                        or type(binding["period_role"]) is not str
+                        or binding["period_date"] is not None
+                        and type(binding["period_date"]) is not str
+                        or binding["source_kind"]
+                        != "TYPED_BALANCE_SHEET_RELATIVE_PERIOD_COLUMN"
+                        for binding in relative_bindings
+                    )
+                ):
+                    period_axis_valid = False
+                else:
+                    role_by_ordinal = {
+                        binding["column_ordinal"]: binding["period_role"]
+                        for binding in relative_bindings
+                    }
+                    period_date_by_ordinal = {
+                        binding["column_ordinal"]: binding["period_date"]
+                        for binding in relative_bindings
+                    }
+                    source_kind_by_ordinal = {
+                        binding["column_ordinal"]: binding["source_kind"]
+                        for binding in relative_bindings
+                    }
+                    binding_by_role = {
+                        binding["period_role"]: binding for binding in relative_bindings
+                    }
+                    period_axis_valid = (
+                        set(role_by_ordinal) == set(money_ordinals)
+                        and set(role_by_ordinal.values())
+                        == {summary_policy["opening_role"], summary_policy["current_role"]}
+                        and all(
+                            binding["column_header_exact"]
+                            == _header_text(columns[binding["column_ordinal"] - 1])
+                            for binding in relative_bindings
+                        )
+                        and binding_by_role[summary_policy["current_role"]]["period_date"]
+                        == classification["period_end_date"]
+                        and binding_by_role[summary_policy["opening_role"]]["period_date"]
+                        is None
+                    )
+                if not period_axis_valid:
+                    reasons.append(
+                        "SUMMARY_CONTROL_COMPARISON_RELATIVE_PERIOD_AXIS_INVALID"
+                    )
+            else:
+                dates = {
+                    ordinal: sorted(
+                        set(_surface_dates(_header_text(columns[ordinal - 1])))
+                    )
+                    for ordinal in money_ordinals
+                }
+                if any(len(axis) != 1 for axis in dates.values()):
+                    period_axis_valid = False
+                    reasons.append("SUMMARY_CONTROL_COMPARISON_PERIOD_AXIS_INVALID")
+                else:
+                    current_date = date.fromisoformat(classification["period_end_date"])
+                    role_by_ordinal = {
+                        ordinal: (
+                            summary_policy["current_role"]
+                            if axis[0] == current_date
+                            else summary_policy["opening_role"]
+                        )
+                        for ordinal, axis in dates.items()
+                    }
+                    period_date_by_ordinal = {
+                        ordinal: axis[0].isoformat() for ordinal, axis in dates.items()
+                    }
+            if period_axis_valid:
                 if len(set(role_by_ordinal.values())) != 2:
                     reasons.append("SUMMARY_CONTROL_COMPARISON_ROLE_AXIS_INVALID")
                 else:
@@ -1753,13 +4249,16 @@ def _summary_control_signature(
                         if cell["state"] == "BLANK":
                             reasons.append("SUMMARY_CONTROL_COMPARISON_CELL_IS_BLANK:" + role)
                             continue
-                        observations.append(
-                            {
-                                "cell": cell,
-                                "column_period_date": dates[ordinal][0].isoformat(),
-                                "role": role,
-                            }
-                        )
+                        observation = {
+                            "cell": cell,
+                            "column_period_date": period_date_by_ordinal[ordinal],
+                            "role": role,
+                        }
+                        if relative_axis:
+                            observation["column_period_source_kind"] = source_kind_by_ordinal[
+                                ordinal
+                            ]
+                        observations.append(observation)
     return {
         "bound_unit": unit_axis["canonical_unit"],
         "component_kind": classification["component_kind"],
@@ -2075,7 +4574,16 @@ def _coalesce_component_fixed_asset_document_v1(
         optional_absent = set(
             compiled_specs["evaluation"]["component_policy"]["optional_absent_branch_roles"]
         )
-        if (len(selected) > 1 or optional_absent - branch_roles) and not selected_summary:
+        carrying_control_roles = {
+            item["branch_role"]
+            for item in compiled_specs["evaluation"]["branch_layouts"]
+            if item["rollforward_kind"] == "COST_AND_DEPRECIATION_CONTROL"
+        }
+        embedded_carrying_control = bool(carrying_control_roles & branch_roles)
+        if (
+            len(selected) > 1
+            or (optional_absent - branch_roles and not embedded_carrying_control)
+        ) and not selected_summary:
             reasons.append("COMPONENT_AGGREGATION_REQUIRES_CARRYING_SUMMARY_CONTROL")
     control_period_bindings = []
     if selected and effective_period is not None and not reasons:
@@ -2194,14 +4702,44 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
     """Inventory all family signals and select one current table by source period."""
 
     pages = _page_record_axis(page_records)
+    base_page_json_by_version = {
+        record["page_json_version_id"]: record["page_json"] for record in pages
+    }
+    effective_page_json_by_version, source_repair_overlay_receipts = (
+        _apply_authenticated_source_repair_artifact_v1(
+            page_json_by_version=base_page_json_by_version,
+            compiled_specs=compiled_specs,
+            page_records=pages,
+        )
+    )
+    pages = [
+        {
+            **record,
+            "page_json": effective_page_json_by_version[record["page_json_version_id"]],
+        }
+        for record in pages
+    ]
     if compiled_specs["evaluation"].get("component_policy") is not None:
-        return _coalesce_component_fixed_asset_document_v1(
+        result = _coalesce_component_fixed_asset_document_v1(
             pages=pages, compiled_specs=compiled_specs
         )
+        if not source_repair_overlay_receipts:
+            return result
+        material = {
+            key: value for key, value in result.items() if key != "cluster_id"
+        }
+        material["source_repair_overlay_receipts"] = source_repair_overlay_receipts
+        return {
+            **material,
+            "cluster_id": "gjffarfcv1:cluster:" + canonical_json_sha256_v1(material),
+        }
     reporting_date_receipt = _document_reporting_date_receipt(pages)
+    page_json_by_version = {
+        record["page_json_version_id"]: record["page_json"] for record in pages
+    }
     inventory = []
     family_tables = []
-    for record in pages:
+    for record_index, record in enumerate(pages):
         sections = record["page_json"]["sections"]
         for section_ordinal, section in enumerate(sections, start=1):
             if type(section) is not dict:
@@ -2212,9 +4750,78 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
             for table_ordinal, table in enumerate(tables, start=1):
                 if type(table) is not dict:
                     continue
-                classification = classify_gemini_json_fixed_asset_rollforward_table_v1(
-                    section, table, compiled_specs=compiled_specs
+                projected_table, adjacent_page_endpoint_first_receipt = (
+                    _project_adjacent_page_endpoint_first_continuation_from_page_map(
+                        table,
+                        section=section,
+                        region={
+                            **record,
+                            "section_id": f"s{section_ordinal}",
+                            "table_id": f"t{table_ordinal}",
+                        },
+                        page_json_by_version=page_json_by_version,
+                        compiled_specs=compiled_specs,
+                    )
                 )
+                trailing_owner_receipt = None
+                if (
+                    record_index > 0
+                    and section_ordinal == 1
+                    and table_ordinal == 1
+                    and record["selected_page_ordinal"]
+                    == pages[record_index - 1]["selected_page_ordinal"] + 1
+                    and record["physical_page"]
+                    == pages[record_index - 1]["physical_page"] + 1
+                ):
+                    trailing_owner_receipt = _trailing_owner_heading_receipt(
+                        pages[record_index - 1]["page_json"],
+                        section,
+                        table,
+                        owner_page_json_version_id=pages[record_index - 1][
+                            "page_json_version_id"
+                        ],
+                        owner_physical_page=pages[record_index - 1]["physical_page"],
+                        compiled_specs=compiled_specs,
+                    )
+                    if trailing_owner_receipt is not None:
+                        projected_table = canonical_clone_v1(table)
+                        projected_table["__adjacent_owner_continuation_receipt"] = (
+                            trailing_owner_receipt
+                        )
+                projected_table, immediately_preceding_table_period_receipt = (
+                    _project_immediately_preceding_table_period(
+                        projected_table,
+                        section=section,
+                        page_json=record["page_json"],
+                        page_json_version_id=record["page_json_version_id"],
+                        physical_page=record["physical_page"],
+                        section_ordinal=section_ordinal,
+                        table_ordinal=table_ordinal,
+                        compiled_specs=compiled_specs,
+                    )
+                )
+                classification = classify_gemini_json_fixed_asset_rollforward_table_v1(
+                    section, projected_table, compiled_specs=compiled_specs
+                )
+                if trailing_owner_receipt is not None:
+                    classification = {
+                        **classification,
+                        "trailing_owner_heading_receipt": trailing_owner_receipt,
+                    }
+                if adjacent_page_endpoint_first_receipt is not None:
+                    classification = {
+                        **classification,
+                        "adjacent_page_endpoint_first_continuation_receipt": (
+                            adjacent_page_endpoint_first_receipt
+                        ),
+                    }
+                if immediately_preceding_table_period_receipt is not None:
+                    classification = {
+                        **classification,
+                        "immediately_preceding_table_period_receipt": (
+                            immediately_preceding_table_period_receipt
+                        ),
+                    }
                 if not classification["family_signal"]:
                     continue
                 item = {
@@ -2223,14 +4830,18 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
                     "record": record,
                     "section": section,
                     "section_id": f"s{section_ordinal}",
-                    "table": table,
+                    "table": projected_table,
                     "table_id": f"t{table_ordinal}",
                 }
                 family_tables.append(item)
+    family_tables = _bind_adjacent_owner_continuations(
+        family_tables, compiled_specs=compiled_specs
+    )
     complete = [item for item in family_tables if item["classification"]["complete"]]
     reasons = []
     current = None
     controls = []
+    source_only_undated = []
     if family_tables and len(complete) != len(family_tables):
         reasons.extend(
             reason
@@ -2268,7 +4879,46 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
             known = [
                 item for item in complete if item["classification"]["period_end_date"] is not None
             ]
+            exact_document_current = [
+                item
+                for item in known
+                if item["classification"]["period_end_date"] == document_date
+            ]
             if (
+                document_date is not None
+                and not known
+                and _leading_undated_owner_sequence(
+                    complete, compiled_specs=compiled_specs
+                )
+            ):
+                selected = [complete[0]]
+                source_only_undated = list(complete[1:])
+            elif (
+                compiled_specs["evaluation"].get("undated_sibling_policy")
+                == "UNIQUE_EXACT_DOCUMENT_CURRENT_DATE_DOMINATES_UNDATED_COMPLETE_SIBLINGS_AS_SOURCE_ONLY"
+                and document_date is not None
+                and missing
+                and len(exact_document_current) == 1
+                and (
+                    all(
+                        any(
+                            _source_only_surface_matches(
+                                surface, compiled_specs=compiled_specs
+                            )
+                            for surface in item["section"].get("narratives_exact", [])
+                        )
+                        for item in missing
+                    )
+                    or _adjacent_undated_owner_continuation_siblings(
+                        exact_document_current[0],
+                        missing,
+                        compiled_specs=compiled_specs,
+                    )
+                )
+            ):
+                selected = exact_document_current
+                source_only_undated = list(missing)
+            elif (
                 document_date is not None
                 and len(missing) == 1
                 and known
@@ -2291,7 +4941,11 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
                 )
             else:
                 current = selected[0]
-                controls = [item for item in complete if item is not current]
+                controls = [
+                    item
+                    for item in complete
+                    if item is not current and item not in source_only_undated
+                ]
     control_period_bindings = []
     if current is not None and not reasons:
         local_period = current["classification"]["period_end_date"]
@@ -2318,13 +4972,17 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
     if current is not None and not reasons:
         local_period = current["classification"]["period_end_date"]
         effective_period = local_period or reporting_date_receipt["current_date"]
+        current_period_status = current["classification"]["period_receipt"]["status"]
         current_region = _region(
             current,
             component_role="CURRENT_TABLE",
             fragment_ordinal=1,
             period_end_date=effective_period,
             period_selection_kind=(
-                "LOCAL_EXPLICIT_END_DATE"
+                "IMMEDIATELY_PRECEDING_TABLE_EXPLICIT_AS_AT_DATE"
+                if current_period_status
+                == "UNIQUE_IMMEDIATELY_PRECEDING_TABLE_PERIOD_END_DATE"
+                else "LOCAL_EXPLICIT_END_DATE"
                 if local_period is not None
                 else "UNIQUE_TYPED_DOCUMENT_REPORTING_DATE"
             ),
@@ -2347,6 +5005,8 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
             disposition = "SELECTED_UNIQUE_CURRENT_TABLE"
         elif item in controls:
             disposition = "TYPED_COMPARATIVE_CONTROL_TABLE"
+        elif item in source_only_undated:
+            disposition = "SOURCE_ONLY_UNDATED_NONCURRENT_TABLE"
         elif item["classification"]["complete"]:
             disposition = "UNSELECTED_COMPLETE_FAMILY_TABLE"
         else:
@@ -2378,6 +5038,8 @@ def coalesce_gemini_json_fixed_asset_rollforward_document_v1(
             else (NOT_OBSERVED if not family_tables else UNRESOLVED)
         ),
     }
+    if source_repair_overlay_receipts:
+        material["source_repair_overlay_receipts"] = source_repair_overlay_receipts
     return {
         **material,
         "cluster_id": "gjffarfcv1:cluster:" + canonical_json_sha256_v1(material),
@@ -2415,7 +5077,11 @@ def _region_axis(regions: Any, *, component_role: str, maximum: int) -> list[dic
         except ValueError:
             parsed_period_end = None
         expected_period_kinds = (
-            {"LOCAL_EXPLICIT_END_DATE", "UNIQUE_TYPED_DOCUMENT_REPORTING_DATE"}
+            {
+                "IMMEDIATELY_PRECEDING_TABLE_EXPLICIT_AS_AT_DATE",
+                "LOCAL_EXPLICIT_END_DATE",
+                "UNIQUE_TYPED_DOCUMENT_REPORTING_DATE",
+            }
             if component_role == "CURRENT_TABLE"
             else {
                 "LOCAL_EXPLICIT_COMPARATIVE_CONTROL_DATE",
@@ -2519,7 +5185,7 @@ def _money(value: Any, *, source_locator: Mapping[str, Any]) -> dict[str, Any]:
         raise _error("fixed-asset money source must be exact text or null")
     source_text = value
     text = value.strip()
-    if not text:
+    if not text or text.casefold() == "null":
         return {
             "coefficient": None,
             "source_locator": canonical_clone_v1(source_locator),
@@ -2558,6 +5224,10 @@ def _money(value: Any, *, source_locator: Mapping[str, Any]) -> dict[str, Any]:
     explicit_negative = text.startswith("-")
     if explicit_negative:
         text = text[1:].strip()
+    if _GROUPED_INTEGER_WITH_ZERO_DECIMALS.fullmatch(text):
+        text = text[:-3]
+    elif "." in text and "," in text:
+        raise _error("fixed-asset money text is not one exact signed integer")
     digits = re.sub(r"[.,\s]", "", text)
     if not digits.isdigit():
         raise _error("fixed-asset money text is not one exact signed integer")
@@ -2683,6 +5353,254 @@ def _unit_axis(table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]) -
     }
 
 
+def _resolve_missing_local_unit_from_balance_sheet_owner_vector(
+    *,
+    table: Mapping[str, Any],
+    classification: Mapping[str, Any],
+    local_unit_axis: Mapping[str, Any],
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Resolve only an otherwise absent unit through an exact two-endpoint control.
+
+    The note's carrying opening/ending totals and a typed balance-sheet owner
+    row must represent the same two base-currency values under exactly one
+    accepted magnitude.  When the configured source-presentation policy is
+    active, a coarser local display may also bind when both statement values
+    fall independently inside its half-unit rounding intervals.  Duplicate
+    statement renderings are allowed only when they identify that same unique
+    local unit.  Explicit, conflicting or undeclared local unit evidence is
+    never overridden.
+    """
+
+    policy = compiled_specs["evaluation"].get("missing_local_unit_policy")
+    if policy is None or local_unit_axis["complete"]:
+        return canonical_clone_v1(local_unit_axis)
+    if (
+        local_unit_axis["evidence"]
+        or local_unit_axis["conflicting_surfaces"]
+        or local_unit_axis["undeclared_evidence"]
+        or set(local_unit_axis["reasons"])
+        != {"MONEY_COLUMN_UNITS_ARE_NOT_UNIFORMLY_EXPLICIT"}
+    ):
+        return canonical_clone_v1(local_unit_axis)
+    total_ordinals = classification.get("total_column_ordinals")
+    if type(total_ordinals) is not list or len(total_ordinals) != 1:
+        return canonical_clone_v1(local_unit_axis)
+    total_ordinal = total_ordinals[0]
+    carrying_layouts = [
+        layout
+        for layout in compiled_specs["evaluation"]["branch_layouts"]
+        if layout["rollforward_kind"] == "COST_AND_DEPRECIATION_CONTROL"
+    ]
+    if len(carrying_layouts) != 1:
+        return canonical_clone_v1(local_unit_axis)
+    carrying_layout = carrying_layouts[0]
+    endpoint_coefficients: dict[str, list[int]] = defaultdict(list)
+    for source_ordinal, row in enumerate(table.get("rows", []), start=1):
+        if type(row) is not dict or row.get("row_kind") == "GROUP":
+            continue
+        if _branch_layout_for_row(row, compiled_specs=compiled_specs) != carrying_layout:
+            continue
+        role = _role_for_row(row, carrying_layout, compiled_specs=compiled_specs)
+        if role not in {carrying_layout["opening_role"], carrying_layout["ending_role"]}:
+            continue
+        values = row.get("values_exact")
+        if type(values) is not list or total_ordinal > len(values):
+            return canonical_clone_v1(local_unit_axis)
+        try:
+            cell = _money(
+                values[total_ordinal - 1],
+                source_locator={"cross_control_source_row_ordinal": source_ordinal},
+            )
+        except GeminiJsonFixedAssetRollforwardFamilyV1Error:
+            return canonical_clone_v1(local_unit_axis)
+        if cell["state"] == "BLANK":
+            return canonical_clone_v1(local_unit_axis)
+        endpoint_coefficients[role].append(cell["coefficient"])
+    endpoint_roles = (carrying_layout["opening_role"], carrying_layout["ending_role"])
+    if any(len(endpoint_coefficients[role]) != 1 for role in endpoint_roles):
+        return canonical_clone_v1(local_unit_axis)
+    local_vector = sorted(endpoint_coefficients[role][0] for role in endpoint_roles)
+    accepted_units = {
+        (binding["canonical_unit"], binding["magnitude_power10"])
+        for binding in compiled_specs["evaluation"]["money_unit_bindings"]
+        if binding["accepted"]
+    }
+    magnitude_by_unit = {
+        binding["canonical_unit"]: binding["magnitude_power10"]
+        for binding in compiled_specs["evaluation"]["money_unit_bindings"]
+    }
+    owner_aliases = [
+        _normalized(alias) for alias in compiled_specs["topology"]["parent"]["aliases"]
+    ]
+    hard_negatives = [
+        _normalized(alias) for alias in compiled_specs["topology"]["hard_negative_aliases"]
+    ]
+    matches_by_candidate: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(list)
+    rounded_matches_by_candidate: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(
+        list
+    )
+    for page_json_version_id, page_json in page_json_by_version.items():
+        sections = page_json.get("sections")
+        if type(sections) is not list:
+            continue
+        for section_ordinal, section in enumerate(sections, start=1):
+            if (
+                type(section) is not dict
+                or section.get("content_kind") != "PRIMARY_STATEMENT"
+                or section.get("statement_type") != "BALANCE_SHEET"
+            ):
+                continue
+            tables = section.get("tables")
+            if type(tables) is not list:
+                continue
+            for table_ordinal, statement_table in enumerate(tables, start=1):
+                if type(statement_table) is not dict:
+                    continue
+                statement_unit_axis = _unit_axis(
+                    statement_table, compiled_specs=compiled_specs
+                )
+                if not statement_unit_axis["complete"]:
+                    continue
+                statement_magnitude = magnitude_by_unit.get(
+                    statement_unit_axis["canonical_unit"]
+                )
+                if statement_magnitude is None:
+                    continue
+                columns = statement_table.get("columns")
+                rows = statement_table.get("rows")
+                if type(columns) is not list or type(rows) is not list:
+                    continue
+                money_ordinals = [
+                    ordinal
+                    for ordinal, column in enumerate(columns, start=1)
+                    if type(column) is dict and column.get("value_kind") == "MONEY"
+                ]
+                for row_ordinal, row in enumerate(rows, start=1):
+                    if type(row) is not dict:
+                        continue
+                    label = row.get("label_exact")
+                    if not any(_contains_alias(label, alias) for alias in owner_aliases) or any(
+                        _contains_alias(label, alias) for alias in hard_negatives
+                    ):
+                        continue
+                    values = row.get("values_exact")
+                    if type(values) is not list or len(values) != len(columns):
+                        continue
+                    statement_coefficients = []
+                    invalid = False
+                    for ordinal in money_ordinals:
+                        try:
+                            cell = _money(
+                                values[ordinal - 1],
+                                source_locator={
+                                    "column_id": f"c{ordinal}",
+                                    "page_json_version_id": page_json_version_id,
+                                    "row_id": f"r{row_ordinal}",
+                                    "section_id": f"s{section_ordinal}",
+                                    "table_id": f"t{table_ordinal}",
+                                },
+                            )
+                        except GeminiJsonFixedAssetRollforwardFamilyV1Error:
+                            invalid = True
+                            break
+                        if cell["state"] != "BLANK":
+                            statement_coefficients.append(cell["coefficient"])
+                    if invalid or len(statement_coefficients) != 2:
+                        continue
+                    statement_base_vector = sorted(
+                        coefficient * 10**statement_magnitude
+                        for coefficient in statement_coefficients
+                    )
+                    for candidate in accepted_units:
+                        candidate_unit, candidate_magnitude = candidate
+                        candidate_base_vector = [
+                            coefficient * 10**candidate_magnitude
+                            for coefficient in local_vector
+                        ]
+                        match = {
+                            "candidate_local_unit": candidate_unit,
+                            "page_json_version_id": page_json_version_id,
+                            "row_id": f"r{row_ordinal}",
+                            "section_id": f"s{section_ordinal}",
+                            "statement_unit": statement_unit_axis["canonical_unit"],
+                            "table_id": f"t{table_ordinal}",
+                        }
+                        if candidate_base_vector == statement_base_vector:
+                            matches_by_candidate[candidate].append(match)
+                            continue
+                        if (
+                            compiled_specs["evaluation"].get(
+                                "source_presentation_rounding_policy"
+                            )
+                            == "INDEPENDENT_DISPLAY_UNIT_ROUNDING_INTERVAL_ALL_EQUATIONS"
+                            and candidate_magnitude >= 3
+                        ):
+                            half_local_display_unit = 10**candidate_magnitude // 2
+                            half_statement_display_unit = 10**statement_magnitude // 2
+                            independent_interval_tolerance = (
+                                half_local_display_unit + half_statement_display_unit
+                            )
+                            deltas = [
+                                statement_value - candidate_value
+                                for candidate_value, statement_value in zip(
+                                    candidate_base_vector,
+                                    statement_base_vector,
+                                    strict=True,
+                                )
+                            ]
+                            if all(
+                                abs(delta) <= independent_interval_tolerance
+                                for delta in deltas
+                            ):
+                                rounded_matches_by_candidate[candidate].append(
+                                    {
+                                        **match,
+                                        "base_value_deltas": deltas,
+                                        "independent_interval_tolerance": (
+                                            independent_interval_tolerance
+                                        ),
+                                        "local_half_display_unit": half_local_display_unit,
+                                        "statement_half_display_unit": (
+                                            half_statement_display_unit
+                                        ),
+                                    }
+                                )
+    selected_matches = matches_by_candidate or rounded_matches_by_candidate
+    if len(selected_matches) != 1:
+        unresolved = canonical_clone_v1(local_unit_axis)
+        unresolved["cross_control_receipt"] = {
+            "candidate_unit_count": len(selected_matches),
+            "policy": policy,
+            "status": "NOT_UNIQUE_OR_NOT_OBSERVED",
+        }
+        return unresolved
+    (canonical_unit, magnitude_power10), matches = next(iter(selected_matches.items()))
+    return {
+        "canonical_unit": canonical_unit,
+        "complete": True,
+        "conflicting_surfaces": [],
+        "cross_control_receipt": {
+            "local_endpoint_coefficients": {
+                role: endpoint_coefficients[role][0] for role in endpoint_roles
+            },
+            "magnitude_power10": magnitude_power10,
+            "matches": matches,
+            "policy": policy,
+            "status": (
+                "EXACT_UNIQUE_LOCAL_UNIT"
+                if matches_by_candidate
+                else "UNIQUE_LOCAL_UNIT_WITHIN_INDEPENDENT_DISPLAY_ROUNDING_INTERVAL"
+            ),
+        },
+        "evidence": [],
+        "reasons": [],
+        "source": policy,
+        "undeclared_evidence": [],
+    }
+
+
 def _dated_money_pairs(value: Any) -> list[tuple[date, str]]:
     folded = _normalized(value)
     if not folded:
@@ -2706,6 +5624,35 @@ def _dated_money_pairs(value: Any) -> list[tuple[date, str]]:
         if candidates:
             result.append((parsed, candidates[0].group(0)))
     return result
+
+
+def _shared_dated_money_token(value: Any, *, current_date: date) -> str | None:
+    """Return one value explicitly shared by two dated narrative endpoints."""
+
+    folded = _normalized(value)
+    date_matches = []
+    for match in _DATE_DMY.finditer(folded):
+        try:
+            parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+        except ValueError:
+            continue
+        date_matches.append((match.start(), match.end(), parsed))
+    if (
+        len(date_matches) != 2
+        or current_date not in {item[2] for item in date_matches}
+        or " va " not in folded
+    ):
+        return None
+    money_matches = [
+        match
+        for match in _GROUPED_MONEY.finditer(folded)
+        if not any(start <= match.start() < end for start, end, _parsed in date_matches)
+    ]
+    if len(money_matches) != 1 or money_matches[0].start() <= max(
+        end for _start, end, _parsed in date_matches
+    ):
+        return None
+    return money_matches[0].group(0)
 
 
 def _surface_unit_bindings(
@@ -2788,6 +5735,14 @@ def _supplemental_disclosure_projection(
                             for parsed, token in _dated_money_pairs(narrative)
                             if parsed == current_date
                         ]
+                        source_kind = "DATED_NARRATIVE_CURRENT_VALUE"
+                        if not pairs:
+                            shared = _shared_dated_money_token(
+                                narrative, current_date=current_date
+                            )
+                            if shared is not None:
+                                pairs = [shared]
+                                source_kind = "SHARED_DATED_NARRATIVE_CURRENT_VALUE"
                         if len(pairs) != 1:
                             reasons.append(
                                 "SUPPLEMENTAL_NARRATIVE_CURRENT_VALUE_NOT_UNIQUE:"
@@ -2811,7 +5766,7 @@ def _supplemental_disclosure_projection(
                             continue
                         append_observation(
                             role=disclosure["role"],
-                            source_kind="DATED_NARRATIVE_CURRENT_VALUE",
+                            source_kind=source_kind,
                             source_locator={
                                 "narrative_ordinal": narrative_ordinal,
                                 "page_json_version_id": page_json_version_id,
@@ -2839,9 +5794,14 @@ def _supplemental_disclosure_projection(
                     title_hit = _supplemental_surface_matches(table_title, disclosure)
                     matched_rows = []
                     for row_ordinal, row in enumerate(rows, start=1):
-                        if type(row) is not dict:
+                        if type(row) is not dict or row.get("row_kind") == "GROUP":
                             continue
-                        row_hit = _supplemental_surface_matches(row.get("label_exact"), disclosure)
+                        row_hit = _supplemental_row_matches(
+                            row,
+                            disclosure,
+                            table=table,
+                            compiled_specs=compiled_specs,
+                        )
                         dated_title_row = bool(
                             title_hit and current_date in _surface_dates(row.get("label_exact"))
                         )
@@ -2851,8 +5811,23 @@ def _supplemental_disclosure_projection(
                         continue
                     unit_axis = _unit_axis(table, compiled_specs=compiled_specs)
                     if unit_axis["reasons"]:
-                        reasons.append("SUPPLEMENTAL_DISCLOSURE_UNIT_INVALID:" + disclosure["role"])
-                        continue
+                        selected_table_inherits_bound_unit = bool(
+                            bound_unit is not None
+                            and page_json_version_id == region["page_json_version_id"]
+                            and f"s{section_ordinal}" == region["section_id"]
+                            and f"t{table_ordinal}" == region["table_id"]
+                            and set(unit_axis["reasons"])
+                            == {"MONEY_COLUMN_UNITS_ARE_NOT_UNIFORMLY_EXPLICIT"}
+                            and not unit_axis["evidence"]
+                            and not unit_axis["conflicting_surfaces"]
+                            and not unit_axis["undeclared_evidence"]
+                        )
+                        if not selected_table_inherits_bound_unit:
+                            reasons.append(
+                                "SUPPLEMENTAL_DISCLOSURE_UNIT_INVALID:"
+                                + disclosure["role"]
+                            )
+                            continue
                     if (
                         unit_axis["canonical_unit"] is not None
                         and bound_unit is not None
@@ -2867,6 +5842,49 @@ def _supplemental_disclosure_projection(
                         if type(values) is not list or len(values) != len(columns):
                             reasons.append(
                                 "SUPPLEMENTAL_DISCLOSURE_CELL_AXIS_INVALID:" + disclosure["role"]
+                            )
+                            continue
+                        row_label = row.get("label_exact")
+                        label_pairs = [
+                            token
+                            for parsed, token in _dated_money_pairs(row_label)
+                            if parsed == current_date
+                        ]
+                        if len(label_pairs) == 1:
+                            label_unit_bindings = _surface_unit_bindings(
+                                row_label, compiled_specs=compiled_specs
+                            )
+                            label_unit_identities = {
+                                (item["accepted"], item["canonical_unit"])
+                                for item in label_unit_bindings
+                            }
+                            if len(label_unit_identities) != 1 or next(
+                                iter(label_unit_identities)
+                            ) != (True, bound_unit):
+                                reasons.append(
+                                    "SUPPLEMENTAL_TABLE_LABEL_UNIT_NOT_UNIQUE_OR_CONFLICTING:"
+                                    + disclosure["role"]
+                                )
+                                continue
+                            append_observation(
+                                role=disclosure["role"],
+                                source_kind="DATED_TABLE_ROW_LABEL_CURRENT_VALUE",
+                                source_locator={
+                                    "page_json_version_id": page_json_version_id,
+                                    "row_id": f"r{row_ordinal}",
+                                    "section_id": f"s{section_ordinal}",
+                                    "table_id": f"t{table_ordinal}",
+                                },
+                                source_text=label_pairs[0],
+                            )
+                            continue
+                        row_dates = _surface_dates(row_label)
+                        if row_dates and current_date not in row_dates:
+                            continue
+                        if len(row_dates) > 1:
+                            reasons.append(
+                                "SUPPLEMENTAL_TABLE_ROW_PERIOD_EVIDENCE_CONFLICT:"
+                                + disclosure["role"]
                             )
                             continue
                         date_axis_by_column = {
@@ -3016,9 +6034,394 @@ def _flattened_child(row: Mapping[str, Any]) -> bool:
         type(path) is list
         and len(path) == 2
         and type(path[-1]) is str
-        and "\n" in path[-1]
         and _normalized(row.get("label_exact")) != _normalized(path[-1])
+        and _contains_alias(path[-1], _normalized(row.get("label_exact")))
     )
+
+
+def _build_single_asset_column_vertical_seal(
+    *,
+    records: Sequence[Mapping[str, Any]],
+    equations: Sequence[Mapping[str, Any]],
+    total_id: str,
+    region: Mapping[str, Any],
+    unit_id: str,
+    binding_kind: str,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Seal a sole asset column without inventing a vacuous horizontal sum."""
+
+    rows = [
+        {
+            "cells": canonical_clone_v1(record["cells"]),
+            "row_id": record["row_id"],
+            "row_kind": "DATA",
+            "row_ordinal": ordinal,
+        }
+        for ordinal, record in enumerate(records)
+    ]
+    by_row = {row["row_id"]: row for row in rows}
+    reasons = []
+    equation_receipts = []
+    for equation in equations:
+        if equation["axis"] != "VERTICAL_ROLLFORWARD":
+            reasons.append("SINGLE_ASSET_COLUMN_HAS_NON_VERTICAL_EQUATION")
+            continue
+        refs = [equation["result"], *(equation["terms"])]
+        cells = []
+        for ref in refs:
+            row = by_row.get(ref["row_id"])
+            cell = None if row is None else row["cells"].get(ref["column_id"])
+            if cell is None or cell["state"] == "BLANK":
+                cells = []
+                break
+            cells.append(cell)
+        if not cells:
+            status = "BLANK_OR_MISSING_TERM"
+            reasons.append("SINGLE_ASSET_COLUMN_VERTICAL_EQUATION_HAS_BLANK_OR_MISSING_TERM")
+            expected = None
+            observed = None
+        else:
+            observed = cells[0]["coefficient"]
+            expected = sum(
+                term["multiplier"] * cell["coefficient"]
+                for term, cell in zip(equation["terms"], cells[1:], strict=True)
+            )
+            status = "EXACT" if observed == expected else "MISMATCH"
+            if status != "EXACT":
+                reasons.append("SINGLE_ASSET_COLUMN_VERTICAL_EQUATION_MISMATCH")
+        equation_receipts.append(
+            {
+                "equation_id": equation["equation_id"],
+                "expected_coefficient": expected,
+                "observed_coefficient": observed,
+                "status": status,
+            }
+        )
+    authority_sha256 = canonical_json_sha256_v1(compiled_specs["evaluation"])
+    columns = [{"column_id": total_id, "column_kind": "IMPLICIT_TOTAL", "column_ordinal": 0}]
+    projection = {
+        "columns": columns,
+        "equation_inventory": build_accounting_equation_inventory_manifest_v1(
+            list(equations),
+            authority_kind="PINNED_CONFIG",
+            authority_ref=(
+                compiled_specs["topology"]["family_id"] + ":" + EVALUATION_FORMAT_VERSION
+            ),
+            authority_sha256=authority_sha256,
+        ),
+        "equations": canonical_clone_v1(list(equations)),
+        "period_id": region["period_end_date"] or "CURRENT_PERIOD",
+        "rows": rows,
+        "table_id": region["table_id"],
+        "unit_id": unit_id,
+    }
+    material = {
+        "binding_kind": binding_kind,
+        "claim_boundary": (
+            "EXACTLY_ONE_RECOGNIZED_ASSET_MONEY_COLUMN_IS_THE_SOLE_IMPLICIT_TOTAL_"
+            "NO_VACUOUS_HORIZONTAL_SUM_SIGNED_VERTICAL_AND_CARRYING_CONTROLS_EXACT_"
+            "NO_BLANK_TO_ZERO_SOURCE_MUTATION_SCHEMA_OR_BANK_FILE_PAGE_ROUTING"
+        ),
+        "effective_projection": projection,
+        "equation_receipts": equation_receipts,
+        "format_version": "FIXED_ASSET_SINGLE_ASSET_COLUMN_VERTICAL_SEAL_V1",
+        "raw_table_snapshot": canonical_clone_v1(projection),
+        "safety": {
+            "blank_cell_means_zero": False,
+            "family_bank_file_or_page_routing": False,
+            "horizontal_equation_skipped_as_vacuous_identity": True,
+            "source_rows_mutated": False,
+            "vertical_equations_required_exact": True,
+        },
+        "status": (
+            "SEALED_EXACT_SINGLE_ASSET_COLUMN_VERTICAL_BINDING"
+            if not reasons
+            else "UNRESOLVED"
+        ),
+        "unresolved_reasons": sorted(set(reasons)),
+    }
+    return {**material, "seal_id": "fasacvsv1:seal:" + canonical_json_sha256_v1(material)}
+
+
+def _build_preserved_blank_explicit_total_seal(
+    *,
+    records: Sequence[Mapping[str, Any]],
+    equations: Sequence[Mapping[str, Any]],
+    money_ids: Sequence[str],
+    total_id: str,
+    omitted_horizontal_rows: Sequence[Mapping[str, Any]],
+    region: Mapping[str, Any],
+    unit_id: str,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Seal raw explicit totals while preserving unavailable detail cells."""
+
+    rows = [
+        {
+            "cells": canonical_clone_v1(record["cells"]),
+            "row_id": record["row_id"],
+            "row_kind": "DATA",
+            "row_ordinal": ordinal,
+        }
+        for ordinal, record in enumerate(records)
+    ]
+    by_row = {row["row_id"]: row for row in rows}
+    reasons = []
+    equation_receipts = []
+    for equation in equations:
+        refs = [equation["result"], *(equation["terms"])]
+        cells = []
+        for ref in refs:
+            row = by_row.get(ref["row_id"])
+            cell = None if row is None else row["cells"].get(ref["column_id"])
+            if cell is None or cell["state"] == "BLANK":
+                cells = []
+                break
+            cells.append(cell)
+        if not cells:
+            status = "BLANK_OR_MISSING_TERM"
+            reasons.append("PRESERVED_BLANK_TOTAL_LANE_EQUATION_HAS_BLANK_OR_MISSING_TERM")
+            expected = None
+            observed = None
+        else:
+            observed = cells[0]["coefficient"]
+            expected = sum(
+                term["multiplier"] * cell["coefficient"]
+                for term, cell in zip(equation["terms"], cells[1:], strict=True)
+            )
+            status = "EXACT" if observed == expected else "MISMATCH"
+            if status != "EXACT":
+                reasons.append("PRESERVED_BLANK_TOTAL_LANE_EQUATION_MISMATCH")
+        equation_receipts.append(
+            {
+                "axis": equation["axis"],
+                "equation_id": equation["equation_id"],
+                "expected_coefficient": expected,
+                "observed_coefficient": observed,
+                "status": status,
+            }
+        )
+    authority_sha256 = canonical_json_sha256_v1(compiled_specs["evaluation"])
+    columns = [
+        {
+            "column_id": column_id,
+            "column_kind": "TOTAL" if column_id == total_id else "DETAIL",
+            "column_ordinal": ordinal,
+        }
+        for ordinal, column_id in enumerate(money_ids)
+    ]
+    projection = {
+        "columns": columns,
+        "equation_inventory": build_accounting_equation_inventory_manifest_v1(
+            list(equations),
+            authority_kind="PINNED_CONFIG",
+            authority_ref=(
+                compiled_specs["topology"]["family_id"] + ":" + EVALUATION_FORMAT_VERSION
+            ),
+            authority_sha256=authority_sha256,
+        ),
+        "equations": canonical_clone_v1(list(equations)),
+        "period_id": region["period_end_date"] or "CURRENT_PERIOD",
+        "rows": rows,
+        "table_id": region["table_id"],
+        "unit_id": unit_id,
+    }
+    material = {
+        "binding_kind": "SOURCE_VISIBLE_EXPLICIT_TOTAL_WITH_PRESERVED_BLANK_DETAILS",
+        "claim_boundary": (
+            "SOURCE_VISIBLE_EXPLICIT_TOTAL_CONTROLS_VERTICAL_CLOSURE_COMPLETE_DETAIL_"
+            "ROWS_RETAIN_EXACT_HORIZONTAL_EQUATIONS_INCOMPLETE_DETAIL_ROWS_PRESERVE_"
+            "BLANKS_WITHOUT_INFERENCE_NO_RELOCATION_SOURCE_MUTATION_OR_BANK_FILE_PAGE_ROUTING"
+        ),
+        "effective_projection": projection,
+        "equation_receipts": equation_receipts,
+        "format_version": "FIXED_ASSET_PRESERVED_BLANK_EXPLICIT_TOTAL_SEAL_V1",
+        "omitted_horizontal_rows": canonical_clone_v1(list(omitted_horizontal_rows)),
+        "raw_table_snapshot": canonical_clone_v1(projection),
+        "safety": {
+            "blank_cell_means_zero": False,
+            "family_bank_file_or_page_routing": False,
+            "incomplete_detail_row_horizontal_equation_omitted": True,
+            "source_rows_mutated": False,
+            "vertical_equations_required_exact": True,
+        },
+        "status": "SEALED_EXACT_PRESERVED_BLANK_TOTAL_LANE" if not reasons else "UNRESOLVED",
+        "unresolved_reasons": sorted(set(reasons)),
+    }
+    return {**material, "seal_id": "fapbetsv1:seal:" + canonical_json_sha256_v1(material)}
+
+
+def _project_bounded_source_presentation_rounding_seal(
+    width_seal: Mapping[str, Any],
+    *,
+    unit_id: str,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Accept only equation deltas possible under independent display rounding.
+
+    Printed subtotals and their independently rounded components need not add
+    exactly in a displayed thousand/million/billion unit.  For an equation
+    with ``n`` source terms plus one result, the closed integer interval is
+    ``floor((n + 1) / 2)`` display units.  No cell is changed and every
+    equation must be either exact or inside its own interval.
+    """
+
+    policy = compiled_specs["evaluation"].get("source_presentation_rounding_policy")
+    cloned = canonical_clone_v1(width_seal)
+    if policy is None or width_seal.get("status") != "UNRESOLVED":
+        return cloned
+    unit_bindings = [
+        binding
+        for binding in compiled_specs["evaluation"]["money_unit_bindings"]
+        if binding["canonical_unit"] == unit_id
+    ]
+    if len(unit_bindings) != 1 or unit_bindings[0]["magnitude_power10"] < 3:
+        return cloned
+    raw = width_seal.get("raw_table_snapshot")
+    if type(raw) is not dict or type(raw.get("rows")) is not list or type(
+        raw.get("equations")
+    ) is not list or not raw["equations"]:
+        return cloned
+    by_row = {
+        row.get("row_id"): row.get("cells")
+        for row in raw["rows"]
+        if type(row) is dict and type(row.get("row_id")) is str
+    }
+    receipts = []
+    rounded_count = 0
+    for equation in raw["equations"]:
+        if type(equation) is not dict:
+            return cloned
+        refs = [equation.get("result"), *(equation.get("terms") or [])]
+        cells = []
+        for ref in refs:
+            if type(ref) is not dict:
+                return cloned
+            row = by_row.get(ref.get("row_id"))
+            cell = row.get(ref.get("column_id")) if type(row) is dict else None
+            if (
+                type(cell) is not dict
+                or cell.get("state") == "BLANK"
+                or type(cell.get("coefficient")) is not int
+            ):
+                return cloned
+            cells.append(cell)
+        terms = equation.get("terms")
+        if type(terms) is not list or not terms:
+            return cloned
+        observed = cells[0]["coefficient"]
+        expected = sum(
+            term.get("multiplier") * cell["coefficient"]
+            for term, cell in zip(terms, cells[1:], strict=True)
+            if type(term.get("multiplier")) is int
+        )
+        if any(type(term.get("multiplier")) is not int for term in terms):
+            return cloned
+        delta = observed - expected
+        tolerance = (len(terms) + 1) // 2
+        if abs(delta) > tolerance:
+            return cloned
+        status = "EXACT" if delta == 0 else "WITHIN_INDEPENDENT_ROUNDING_INTERVAL"
+        rounded_count += int(delta != 0)
+        receipts.append(
+            {
+                "axis": equation.get("axis"),
+                "delta_display_units": delta,
+                "equation_id": equation.get("equation_id"),
+                "expected_coefficient": expected,
+                "observed_coefficient": observed,
+                "rounding_interval_display_units": [-tolerance, tolerance],
+                "status": status,
+            }
+        )
+    if rounded_count == 0:
+        return cloned
+    material = {
+        "binding_kind": policy,
+        "claim_boundary": (
+            "SOURCE_CELLS_REMAIN_EXACT_PRINTED_VALUES_ALL_DECLARED_EQUATIONS_EXACT_"
+            "OR_WITHIN_THE_MATHEMATICALLY_BOUNDED_INDEPENDENT_DISPLAY_ROUNDING_"
+            "INTERVAL_NO_CELL_REPAIR_VALUE_INFERENCE_OR_BANK_FILE_PAGE_ROUTING"
+        ),
+        "effective_projection": canonical_clone_v1(raw),
+        "equation_receipts": receipts,
+        "format_version": "FIXED_ASSET_BOUNDED_SOURCE_PRESENTATION_ROUNDING_SEAL_V1",
+        "magnitude_power10": unit_bindings[0]["magnitude_power10"],
+        "raw_table_snapshot": canonical_clone_v1(raw),
+        "safety": {
+            "blank_cell_means_zero": False,
+            "family_bank_file_or_page_routing": False,
+            "source_cells_mutated": False,
+            "source_values_inferred": False,
+        },
+        "status": "SEALED_ALL_EQUATIONS_WITHIN_INDEPENDENT_DISPLAY_ROUNDING_INTERVAL",
+        "unit_id": unit_id,
+        "unresolved_reasons": [],
+    }
+    return {
+        **material,
+        "seal_id": "fasprsv1:seal:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _movement_equation_multiplier(
+    record: Mapping[str, Any],
+    *,
+    total_id: str,
+    branch_balance_sign: int,
+    compiled_specs: Mapping[str, Any],
+) -> tuple[int, dict[str, Any]]:
+    direction = compiled_specs["evaluation"]["movement_role_directions"].get(
+        record["role"], "PRESERVE_SIGN"
+    )
+    coefficient = record["cells"][total_id]["coefficient"]
+    if direction == "PRESERVE_SIGN" or coefficient in {None, 0}:
+        multiplier = 1
+    else:
+        observed_sign = 1 if coefficient > 0 else -1
+        economic_sign = branch_balance_sign * (1 if direction == "INCREASE" else -1)
+        multiplier = 1 if observed_sign == economic_sign else -1
+    return multiplier, {
+        "branch_balance_sign": branch_balance_sign,
+        "configured_direction": direction,
+        "equation_multiplier": multiplier,
+        "observed_coefficient": coefficient,
+        "role": record["role"],
+        "row_id": record["row_id"],
+    }
+
+
+def _equation_closes_on_fully_observed_source_cells(
+    equation: Mapping[str, Any],
+    *,
+    row_by_id: Mapping[str, Mapping[str, Any]],
+) -> bool:
+    """Return true only for literal source cells that close one equation exactly."""
+
+    result = equation.get("result")
+    terms = equation.get("terms")
+    if type(result) is not dict or type(terms) is not list or not terms:
+        return False
+    coordinates = [(result, 1), *((term, term.get("multiplier")) for term in terms)]
+    values = []
+    for coordinate, multiplier in coordinates:
+        if type(coordinate) is not dict or type(multiplier) is not int:
+            return False
+        record = row_by_id.get(coordinate.get("row_id"))
+        cell = (
+            record.get("cells", {}).get(coordinate.get("column_id"))
+            if type(record) is dict
+            else None
+        )
+        if (
+            type(cell) is not dict
+            or cell.get("state") == "BLANK"
+            or type(cell.get("coefficient")) is not int
+        ):
+            return False
+        values.append((multiplier, cell["coefficient"]))
+    return values[0][1] == sum(multiplier * value for multiplier, value in values[1:])
 
 
 def _extract_table_records(
@@ -3026,15 +6429,57 @@ def _extract_table_records(
     section: Mapping[str, Any],
     table: Mapping[str, Any],
     region: Mapping[str, Any],
+    page_json_by_version: Mapping[str, dict[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
+    table, adjacent_page_endpoint_first_receipt = (
+        _project_adjacent_page_endpoint_first_continuation_from_page_map(
+            table,
+            section=section,
+            region=region,
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+        )
+    )
+    table, trailing_owner_heading_receipt = (
+        _project_trailing_owner_heading_from_page_map(
+            table,
+            section=section,
+            region=region,
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+        )
+    )
+    table, leading_implicit_cost_branch_receipt = _project_leading_implicit_cost_branch(
+        table, compiled_specs=compiled_specs
+    )
+    table, endpoint_first_layout_receipt = _project_endpoint_first_table(
+        table, compiled_specs=compiled_specs
+    )
+    table, ordered_branch_scope_receipt = _project_ordered_branch_scope(
+        table, compiled_specs=compiled_specs
+    )
+    table, ordered_dated_endpoint_receipt = _project_ordered_dated_endpoints(
+        table, compiled_specs=compiled_specs
+    )
     classification = classify_gemini_json_fixed_asset_rollforward_table_v1(
         section, table, compiled_specs=compiled_specs
     )
+    if trailing_owner_heading_receipt is not None:
+        classification = {
+            **classification,
+            "trailing_owner_heading_receipt": trailing_owner_heading_receipt,
+        }
     reasons = list(classification["reasons"])
     if not classification["complete"]:
         reasons.append("CURRENT_TABLE_CLASSIFICATION_IS_NOT_COMPLETE")
-    unit_axis = _unit_axis(table, compiled_specs=compiled_specs)
+    unit_axis = _resolve_missing_local_unit_from_balance_sheet_owner_vector(
+        table=table,
+        classification=classification,
+        local_unit_axis=_unit_axis(table, compiled_specs=compiled_specs),
+        page_json_by_version=page_json_by_version,
+        compiled_specs=compiled_specs,
+    )
     reasons.extend(unit_axis["reasons"])
     if not unit_axis["complete"]:
         reasons.append("CURRENT_TABLE_MONEY_UNIT_IS_NOT_COMPLETE")
@@ -3061,6 +6506,8 @@ def _extract_table_records(
     money_ids = [f"c{ordinal}" for ordinal in money_ordinals]
     total_id = f"c{total_ordinal}"
     records = []
+    source_only_control_records = []
+    source_only_row_receipts = []
     branch_records: dict[str, list[dict[str, Any]]] = defaultdict(list)
     row_by_id = {}
     for order_ordinal, row in enumerate(rows, start=1):
@@ -3070,6 +6517,11 @@ def _extract_table_records(
         source_ordinal = row.get("__source_ordinal", order_ordinal)
         source_row_id = row.get("__source_row_id", f"r{source_ordinal}")
         row_id = row.get("__engine_row_id", f"r{order_ordinal}")
+        source_page_json_version_id = row.get(
+            "__source_page_json_version_id", region["page_json_version_id"]
+        )
+        source_section_id = row.get("__source_section_id", region["section_id"])
+        source_table_id = row.get("__source_table_id", region["table_id"])
         if (
             type(source_ordinal) is not int
             or source_ordinal <= 0
@@ -3077,15 +6529,77 @@ def _extract_table_records(
             or not source_row_id
             or type(row_id) is not str
             or not row_id
+            or type(source_page_json_version_id) is not str
+            or _PAGE_VERSION.fullmatch(source_page_json_version_id) is None
+            or type(source_section_id) is not str
+            or _SECTION_ID.fullmatch(source_section_id) is None
+            or type(source_table_id) is not str
+            or _TABLE_ID.fullmatch(source_table_id) is None
         ):
             reasons.append("SOURCE_ROW_PROJECTION_IDENTITY_INVALID")
             continue
         if any(
-            _supplemental_surface_matches(row.get("label_exact"), disclosure)
+            _supplemental_row_matches(
+                row,
+                disclosure,
+                table=table,
+                compiled_specs=compiled_specs,
+            )
             for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
         ):
             continue
+        if _source_only_row_matches(row, compiled_specs=compiled_specs):
+            source_only_row_receipts.append(
+                {
+                    "disposition": "SOURCE_ONLY_NO_SCHEMA_ROLE",
+                    "label_exact": row.get("label_exact"),
+                    "row_id": source_row_id,
+                    "source_ordinal": source_ordinal,
+                }
+            )
+            continue
+        source_only_control_role = _source_only_carrying_control_role(
+            row, compiled_specs=compiled_specs
+        )
+        if source_only_control_role == "GROUP":
+            continue
         layout = _branch_layout_for_row(row, compiled_specs=compiled_specs)
+        if source_only_control_role is not None:
+            values = row.get("values_exact")
+            if type(values) is not list or len(values) != len(columns):
+                reasons.append(f"SOURCE_ROW_CELL_AXIS_INVALID:r{source_ordinal}")
+                continue
+            cells = {}
+            try:
+                for ordinal in money_ordinals:
+                    column_id = f"c{ordinal}"
+                    cells[column_id] = _money(
+                        values[ordinal - 1],
+                        source_locator={
+                            "column_id": column_id,
+                            "page_json_version_id": source_page_json_version_id,
+                            "row_id": source_row_id,
+                            "section_id": source_section_id,
+                            "table_id": source_table_id,
+                        },
+                    )
+            except GeminiJsonFixedAssetRollforwardFamilyV1Error:
+                reasons.append(f"MONEY_CELL_INVALID:{row_id}")
+                continue
+            if all(cell["state"] == "BLANK" for cell in cells.values()):
+                continue
+            control_record = {
+                "cells": cells,
+                "label_exact": row.get("label_exact"),
+                "role": source_only_control_role,
+                "row_id": row_id,
+                "source_row_id": source_row_id,
+                "source_ordinal": source_ordinal,
+                "source_order_ordinal": order_ordinal,
+            }
+            source_only_control_records.append(control_record)
+            row_by_id[row_id] = control_record
+            continue
         if layout is None or row.get("row_kind") == "GROUP":
             continue
         role = _role_for_row(row, layout, compiled_specs=compiled_specs)
@@ -3104,10 +6618,10 @@ def _extract_table_records(
                     values[ordinal - 1],
                     source_locator={
                         "column_id": column_id,
-                        "page_json_version_id": region["page_json_version_id"],
+                        "page_json_version_id": source_page_json_version_id,
                         "row_id": source_row_id,
-                        "section_id": region["section_id"],
-                        "table_id": region["table_id"],
+                        "section_id": source_section_id,
+                        "table_id": source_table_id,
                     },
                 )
         except GeminiJsonFixedAssetRollforwardFamilyV1Error:
@@ -3119,8 +6633,10 @@ def _extract_table_records(
             "branch_role": layout["branch_role"],
             "cells": cells,
             "flattened_child": _flattened_child(row),
-            "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
-            "label_exact": row.get("label_exact"),
+            "hierarchy_path_exact": canonical_clone_v1(
+                row.get("__source_hierarchy_path_exact", row.get("hierarchy_path_exact"))
+            ),
+            "label_exact": row.get("__source_label_exact", row.get("label_exact")),
             "role": role,
             "row_id": row_id,
             "row_kind": row.get("row_kind"),
@@ -3166,31 +6682,165 @@ def _extract_table_records(
     block_by_subtotal: dict[str, list[str]] = {}
     parent_by_child: dict[str, str] = {}
     direct_by_branch: dict[str, list[str]] = defaultdict(list)
+    blank_subtotal_heading_receipts = []
+    same_role_subtotal_child_receipts = []
     for branch_role, branch_axis in branch_records.items():
         layout = branch_layout_by_role[branch_role]
         current_subtotal = None
         for record in branch_axis:
-            path = record["hierarchy_path_exact"]
-            is_child = bool(type(path) is list and (len(path) >= 3 or record["flattened_child"]))
-            if record["role"] in layout["subtotal_roles"] and not is_child:
+            visible_subtotal_ancestor_roles = _visible_subtotal_ancestor_roles(
+                record, layout, compiled_specs=compiled_specs
+            )
+            is_child = bool(visible_subtotal_ancestor_roles)
+            # A source-visible numeric subtotal establishes its own frontier
+            # even when a flattened hierarchy path repeats its label.  The
+            # path is structural evidence, not evidence that the subtotal is
+            # a child of itself.
+            if (
+                record["role"] in layout["subtotal_roles"]
+                and is_child
+                and current_subtotal is not None
+                and current_subtotal["role"] in visible_subtotal_ancestor_roles
+            ):
+                parent_by_child[record["row_id"]] = current_subtotal["row_id"]
+                block_by_subtotal[current_subtotal["row_id"]].append(record["row_id"])
+                same_role_subtotal_child_receipts.append(
+                    {
+                        "disposition": "SOURCE_ONLY_CHILD_CORROBORATES_VISIBLE_SUBTOTAL",
+                        "row_id": record["row_id"],
+                        "subtotal_row_id": current_subtotal["row_id"],
+                        "subtotal_role": record["role"],
+                    }
+                )
+                continue
+            if record["role"] in layout["subtotal_roles"]:
                 current_subtotal = record
                 block_by_subtotal.setdefault(record["row_id"], [])
                 direct_by_branch[branch_role].append(record["row_id"])
                 continue
             if is_child:
+                if (
+                    current_subtotal is not None
+                    and current_subtotal["role"] in visible_subtotal_ancestor_roles
+                ):
+                    parent_by_child[record["row_id"]] = current_subtotal["row_id"]
+                    block_by_subtotal[current_subtotal["row_id"]].append(record["row_id"])
+                    continue
+                if (
+                    compiled_specs["evaluation"].get("blank_subtotal_heading_policy")
+                    == "VISIBLE_BLANK_SUBTOTAL_HEADING_CHILDREN_PROMOTE_TO_DIRECT_MOVEMENTS"
+                    and len(visible_subtotal_ancestor_roles) == 1
+                ):
+                    visible_subtotal_role = next(iter(visible_subtotal_ancestor_roles))
+                    current_subtotal = None
+                    direct_by_branch[branch_role].append(record["row_id"])
+                    blank_subtotal_heading_receipts.append(
+                        {
+                            "branch_role": branch_role,
+                            "reason": (
+                                "VISIBLE_BLANK_SUBTOTAL_HEADING_HAS_NO_NUMERIC_"
+                                "SUBTOTAL_ROW"
+                            ),
+                            "row_id": record["row_id"],
+                            "visible_subtotal_role": visible_subtotal_role,
+                        }
+                    )
+                    continue
                 if current_subtotal is None:
                     reasons.append(
                         f"VISIBLE_SUBTOTAL_CHILD_HAS_NO_PRECEDING_SUBTOTAL:{record['row_id']}"
                     )
                     continue
-                parent_by_child[record["row_id"]] = current_subtotal["row_id"]
-                block_by_subtotal[current_subtotal["row_id"]].append(record["row_id"])
+                reasons.append(
+                    f"VISIBLE_SUBTOTAL_CHILD_PRECEDING_SUBTOTAL_ROLE_MISMATCH:{record['row_id']}"
+                )
                 continue
             current_subtotal = None
             if record["role"] not in {layout["opening_role"], layout["ending_role"]}:
                 direct_by_branch[branch_role].append(record["row_id"])
     equations = []
-    for record in records:
+    horizontal_records = [*records, *source_only_control_records]
+    implicit_single_asset_total = classification["total_column_binding_kind"] in {
+        "IMPLICIT_SINGLE_RECOGNIZED_ASSET_MONEY_COLUMN",
+        "IMPLICIT_SINGLE_RECOGNIZED_ASSET_CURRENT_PERIOD_COLUMN",
+    }
+    preserve_partial_details = bool(
+        compiled_specs["evaluation"].get("partial_detail_total_policy")
+    )
+    omitted_horizontal_rows = []
+    equation_only_zero_row_ids = set()
+    for record in horizontal_records:
+        if implicit_single_asset_total:
+            continue
+        detail_ids = list(money_ids[:-1])
+        blank_detail_ids = [
+            column_id
+            for column_id in detail_ids
+            if record["cells"][column_id]["state"] == "BLANK"
+        ]
+        if preserve_partial_details and record["cells"][total_id]["state"] == "BLANK":
+            numeric_details = [
+                record["cells"][column_id]["coefficient"]
+                for column_id in detail_ids
+                if record["cells"][column_id]["state"] != "BLANK"
+            ]
+            exact_visible_net_zero = bool(
+                not blank_detail_ids and numeric_details and sum(numeric_details) == 0
+            )
+            no_nonzero_visible_detail = bool(
+                blank_detail_ids
+                and numeric_details
+                and all(coefficient == 0 for coefficient in numeric_details)
+            )
+            if exact_visible_net_zero or no_nonzero_visible_detail:
+                equation_only_zero_row_ids.add(record["row_id"])
+                omitted_horizontal_rows.append(
+                    {
+                        "disposition": (
+                            "SOURCE_ONLY_DERIVED_EXACT_NET_ZERO_NO_MAPPING"
+                            if exact_visible_net_zero
+                            else (
+                                "SOURCE_ONLY_NO_TOTAL_NO_NONZERO_VISIBLE_DETAIL_"
+                                "VERTICAL_CLOSURE_REQUIRED_NO_MAPPING"
+                            )
+                        ),
+                        "preserved_blank_column_ids": (
+                            [total_id]
+                            if exact_visible_net_zero
+                            else [*blank_detail_ids, total_id]
+                        ),
+                        "row_id": record["row_id"],
+                    }
+                )
+                continue
+            # Keep the established all-equation right-edge relocation path
+            # available for non-zero rows.  That path remains fail-closed: an
+            # actual blank total is not interpreted as zero and can close only
+            # when the unique projection satisfies every exact equation.
+            legacy_right_edge_candidate = bool(
+                not blank_detail_ids
+                and len(detail_ids) >= 2
+                and record["cells"][detail_ids[-1]]["coefficient"]
+                == sum(
+                    record["cells"][column_id]["coefficient"]
+                    for column_id in detail_ids[:-1]
+                )
+            )
+            if not legacy_right_edge_candidate:
+                reasons.append(
+                    "SOURCE_TOTAL_BLANK_WITH_NONZERO_OR_INCOMPLETE_DETAILS:"
+                    + record["row_id"]
+                )
+                continue
+        if preserve_partial_details and blank_detail_ids:
+            omitted_horizontal_rows.append(
+                {
+                    "disposition": "SOURCE_VISIBLE_TOTAL_CONTROLS_VERTICAL_ONLY",
+                    "preserved_blank_column_ids": blank_detail_ids,
+                    "row_id": record["row_id"],
+                }
+            )
+            continue
         detail_numeric = [
             column_id
             for column_id in money_ids[:-1]
@@ -3205,6 +6855,7 @@ def _extract_table_records(
             rightmost_coefficient = record["cells"][rightmost]["coefficient"]
             if (
                 preceding
+                and rightmost_coefficient != 0
                 and rightmost_coefficient
                 == sum(record["cells"][column_id]["coefficient"] for column_id in preceding)
                 and all(
@@ -3239,6 +6890,13 @@ def _extract_table_records(
                 ],
             }
         )
+    if equation_only_zero_row_ids:
+        for branch_role in list(direct_by_branch):
+            direct_by_branch[branch_role] = [
+                row_id
+                for row_id in direct_by_branch[branch_role]
+                if row_id not in equation_only_zero_row_ids
+            ]
     for subtotal_id, child_ids in block_by_subtotal.items():
         if not child_ids:
             continue
@@ -3273,7 +6931,18 @@ def _extract_table_records(
     endpoint_by_role: dict[str, list[str]] = defaultdict(list)
     for record in records:
         endpoint_by_role[record["role"]].append(record["row_id"])
+    optional_absent_branch_roles = (
+        set(compiled_specs["evaluation"]["component_policy"]["optional_absent_branch_roles"])
+        if compiled_specs["evaluation"].get("component_policy") is not None
+        else set()
+    )
+    observed_branch_roles = set(branch_records)
     for layout in compiled_specs["evaluation"]["branch_layouts"]:
+        if (
+            layout["branch_role"] in optional_absent_branch_roles
+            and layout["branch_role"] not in observed_branch_roles
+        ):
+            continue
         for role in (layout["opening_role"], layout["ending_role"]):
             if len(endpoint_by_role[role]) != 1:
                 reasons.append(f"EXACT_ONE_BRANCH_ENDPOINT_REQUIRED:{role}")
@@ -3294,10 +6963,46 @@ def _extract_table_records(
                 reasons.append(
                     f"BRANCH_SOURCE_ORDER_OPENING_MOVEMENTS_ENDING_INVALID:{layout['branch_role']}"
                 )
+    movement_direction_receipts = []
     for layout in signed_layouts:
+        if endpoint_first_layout_receipt is not None:
+            continue
+        if (
+            layout["branch_role"] in optional_absent_branch_roles
+            and layout["branch_role"] not in observed_branch_roles
+        ):
+            continue
         opening_ids = endpoint_by_role[layout["opening_role"]]
         ending_ids = endpoint_by_role[layout["ending_role"]]
         if len(opening_ids) == len(ending_ids) == 1:
+            endpoint_coefficients = [
+                row_by_id[row_id]["cells"][total_id]["coefficient"]
+                for row_id in (opening_ids[0], ending_ids[0])
+            ]
+            if all(type(value) is int and value >= 0 for value in endpoint_coefficients):
+                branch_balance_sign = 1
+            elif all(type(value) is int and value <= 0 for value in endpoint_coefficients):
+                branch_balance_sign = -1
+            else:
+                branch_balance_sign = None
+                reasons.append(
+                    f"BRANCH_ENDPOINT_SIGN_CONVENTION_IS_MIXED_OR_BLANK:{layout['branch_role']}"
+                )
+            movement_terms = []
+            if branch_balance_sign is not None:
+                for row_id in direct_by_branch[layout["branch_role"]]:
+                    multiplier, direction_receipt = _movement_equation_multiplier(
+                        row_by_id[row_id],
+                        total_id=total_id,
+                        branch_balance_sign=branch_balance_sign,
+                        compiled_specs=compiled_specs,
+                    )
+                    movement_direction_receipts.append(direction_receipt)
+                    movement_terms.append(
+                        {"column_id": total_id, "multiplier": multiplier, "row_id": row_id}
+                    )
+            if branch_balance_sign is None:
+                continue
             equations.append(
                 {
                     "axis": "VERTICAL_ROLLFORWARD",
@@ -3305,16 +7010,21 @@ def _extract_table_records(
                     "result": {"column_id": total_id, "row_id": ending_ids[0]},
                     "terms": [
                         {"column_id": total_id, "multiplier": 1, "row_id": opening_ids[0]},
-                        *[
-                            {"column_id": total_id, "multiplier": 1, "row_id": row_id}
-                            for row_id in direct_by_branch[layout["branch_role"]]
-                        ],
+                        *movement_terms,
                     ],
                 }
             )
     if carrying_layout is not None and all(
         len(endpoint_by_role[layout[endpoint]]) == 1
-        for layout in [*signed_layouts, carrying_layout]
+        for layout in [
+            *[
+                item
+                for item in signed_layouts
+                if item["branch_role"] in observed_branch_roles
+                or item["branch_role"] not in optional_absent_branch_roles
+            ],
+            carrying_layout,
+        ]
         for endpoint in ("opening_role", "ending_role")
     ):
         cost_layout = next(
@@ -3323,20 +7033,30 @@ def _extract_table_records(
         depreciation_layout = next(
             layout for layout in signed_layouts if layout["opening_role"].startswith("DEP_")
         )
-        dep_values = [
-            row_by_id[endpoint_by_role[depreciation_layout[key]][0]]["cells"][total_id][
-                "coefficient"
+        depreciation_absent = bool(
+            depreciation_layout["branch_role"] in optional_absent_branch_roles
+            and depreciation_layout["branch_role"] not in observed_branch_roles
+        )
+        dep_values = (
+            [0, 0]
+            if depreciation_absent
+            else [
+                row_by_id[endpoint_by_role[depreciation_layout[key]][0]]["cells"][total_id][
+                    "coefficient"
+                ]
+                for key in ("opening_role", "ending_role")
             ]
-            for key in ("opening_role", "ending_role")
-        ]
-        if all(type(value) is int and value <= 0 for value in dep_values):
+        )
+        if depreciation_absent:
+            depreciation_multiplier = None
+        elif all(type(value) is int and value <= 0 for value in dep_values):
             depreciation_multiplier = 1
         elif all(type(value) is int and value >= 0 for value in dep_values):
             depreciation_multiplier = -1
         else:
             depreciation_multiplier = None
             reasons.append("DEPRECIATION_ENDPOINT_SIGN_CONVENTION_IS_MIXED_OR_BLANK")
-        if depreciation_multiplier is not None:
+        if depreciation_absent or depreciation_multiplier is not None:
             for endpoint in ("opening_role", "ending_role"):
                 carry_role = carrying_layout[endpoint]
                 cost_role = cost_layout[endpoint]
@@ -3355,50 +7075,150 @@ def _extract_table_records(
                                 "multiplier": 1,
                                 "row_id": endpoint_by_role[cost_role][0],
                             },
-                            {
-                                "column_id": total_id,
-                                "multiplier": depreciation_multiplier,
-                                "row_id": endpoint_by_role[depreciation_role][0],
-                            },
+                            *(
+                                []
+                                if depreciation_absent
+                                else [
+                                    {
+                                        "column_id": total_id,
+                                        "multiplier": depreciation_multiplier,
+                                        "row_id": endpoint_by_role[depreciation_role][0],
+                                    }
+                                ]
+                            ),
                         ],
                     }
                 )
+    if (
+        compiled_specs["evaluation"].get("source_only_carrying_control") is not None
+        and source_only_control_records
+    ):
+        control_by_role: dict[str, list[str]] = defaultdict(list)
+        for record in source_only_control_records:
+            control_by_role[record["role"]].append(record["row_id"])
+        for role in ("SOURCE_ONLY_CARRY_OPENING", "SOURCE_ONLY_CARRY_ENDING"):
+            if len(control_by_role[role]) != 1:
+                reasons.append(f"EXACT_ONE_SOURCE_ONLY_CARRYING_ENDPOINT_REQUIRED:{role}")
+        if all(
+            len(endpoint_by_role[layout[endpoint]]) == 1
+            for layout in signed_layouts
+            for endpoint in ("opening_role", "ending_role")
+        ) and all(
+            len(control_by_role[role]) == 1
+            for role in ("SOURCE_ONLY_CARRY_OPENING", "SOURCE_ONLY_CARRY_ENDING")
+        ):
+            cost_layout = next(
+                layout for layout in signed_layouts if layout["opening_role"].startswith("COST_")
+            )
+            depreciation_layout = next(
+                layout for layout in signed_layouts if layout["opening_role"].startswith("DEP_")
+            )
+            dep_values = [
+                row_by_id[endpoint_by_role[depreciation_layout[key]][0]]["cells"][total_id][
+                    "coefficient"
+                ]
+                for key in ("opening_role", "ending_role")
+            ]
+            if all(type(value) is int and value <= 0 for value in dep_values):
+                source_only_depreciation_multiplier = 1
+            elif all(type(value) is int and value >= 0 for value in dep_values):
+                source_only_depreciation_multiplier = -1
+            else:
+                source_only_depreciation_multiplier = None
+                reasons.append("SOURCE_ONLY_DEPRECIATION_ENDPOINT_SIGN_IS_MIXED_OR_BLANK")
+            if source_only_depreciation_multiplier is not None:
+                for endpoint, control_role in (
+                    ("opening_role", "SOURCE_ONLY_CARRY_OPENING"),
+                    ("ending_role", "SOURCE_ONLY_CARRY_ENDING"),
+                ):
+                    equations.append(
+                        {
+                            "axis": "VERTICAL_ROLLFORWARD",
+                            "equation_id": f"source-only-carrying:{control_role}",
+                            "result": {
+                                "column_id": total_id,
+                                "row_id": control_by_role[control_role][0],
+                            },
+                            "terms": [
+                                {
+                                    "column_id": total_id,
+                                    "multiplier": 1,
+                                    "row_id": endpoint_by_role[cost_layout[endpoint]][0],
+                                },
+                                {
+                                    "column_id": total_id,
+                                    "multiplier": source_only_depreciation_multiplier,
+                                    "row_id": endpoint_by_role[depreciation_layout[endpoint]][0],
+                                },
+                            ],
+                        }
+                    )
     width_input = None
     width_seal = None
     if not reasons:
-        authority_sha256 = canonical_json_sha256_v1(compiled_specs["evaluation"])
-        width_input = {
-            "columns": [
-                {
-                    "column_id": column_id,
-                    "column_kind": "TOTAL" if column_id == total_id else "DETAIL",
-                    "column_ordinal": ordinal,
-                }
-                for ordinal, column_id in enumerate(money_ids)
-            ],
-            "equation_inventory": build_accounting_equation_inventory_manifest_v1(
-                equations,
-                authority_kind="PINNED_CONFIG",
-                authority_ref=(
-                    compiled_specs["topology"]["family_id"] + ":" + EVALUATION_FORMAT_VERSION
+        seal_records = [*records, *source_only_control_records]
+        if implicit_single_asset_total:
+            width_seal = _build_single_asset_column_vertical_seal(
+                records=seal_records,
+                equations=equations,
+                total_id=total_id,
+                region=region,
+                unit_id=unit_axis["canonical_unit"],
+                binding_kind=classification["total_column_binding_kind"],
+                compiled_specs=compiled_specs,
+            )
+        elif preserve_partial_details and omitted_horizontal_rows:
+            width_seal = _build_preserved_blank_explicit_total_seal(
+                records=seal_records,
+                equations=equations,
+                money_ids=money_ids,
+                total_id=total_id,
+                omitted_horizontal_rows=omitted_horizontal_rows,
+                region=region,
+                unit_id=unit_axis["canonical_unit"],
+                compiled_specs=compiled_specs,
+            )
+        else:
+            authority_sha256 = canonical_json_sha256_v1(compiled_specs["evaluation"])
+            width_input = {
+                "columns": [
+                    {
+                        "column_id": column_id,
+                        "column_kind": "TOTAL" if column_id == total_id else "DETAIL",
+                        "column_ordinal": ordinal,
+                    }
+                    for ordinal, column_id in enumerate(money_ids)
+                ],
+                "equation_inventory": build_accounting_equation_inventory_manifest_v1(
+                    equations,
+                    authority_kind="PINNED_CONFIG",
+                    authority_ref=(
+                        compiled_specs["topology"]["family_id"]
+                        + ":"
+                        + EVALUATION_FORMAT_VERSION
+                    ),
+                    authority_sha256=authority_sha256,
                 ),
-                authority_sha256=authority_sha256,
-            ),
-            "equations": equations,
-            "period_id": region["period_end_date"] or "CURRENT_PERIOD",
-            "rows": [
-                {
-                    "cells": canonical_clone_v1(record["cells"]),
-                    "row_id": record["row_id"],
-                    "row_kind": "DATA",
-                    "row_ordinal": ordinal,
-                }
-                for ordinal, record in enumerate(records)
-            ],
-            "table_id": region["table_id"],
-            "unit_id": unit_axis["canonical_unit"],
-        }
-        width_seal = build_accounting_row_width_total_column_seal_v1(width_input)
+                "equations": equations,
+                "period_id": region["period_end_date"] or "CURRENT_PERIOD",
+                "rows": [
+                    {
+                        "cells": canonical_clone_v1(record["cells"]),
+                        "row_id": record["row_id"],
+                        "row_kind": "DATA",
+                        "row_ordinal": ordinal,
+                    }
+                    for ordinal, record in enumerate(seal_records)
+                ],
+                "table_id": region["table_id"],
+                "unit_id": unit_axis["canonical_unit"],
+            }
+            width_seal = build_accounting_row_width_total_column_seal_v1(width_input)
+        width_seal = _project_bounded_source_presentation_rounding_seal(
+            width_seal,
+            unit_id=unit_axis["canonical_unit"],
+            compiled_specs=compiled_specs,
+        )
         if width_seal["status"] == "UNRESOLVED":
             reasons.extend(width_seal["unresolved_reasons"])
     effective_by_row = {}
@@ -3524,12 +7344,87 @@ def _extract_table_records(
     records_by_role: dict[str, list[dict[str, Any]]] = defaultdict(list)
     if effective_by_row:
         for record in records:
+            parent_id = parent_by_child.get(record["row_id"])
+            if (
+                parent_id is not None
+                and row_by_id[parent_id]["role"] == record["role"]
+            ):
+                continue
             cell = _effective_blank(
                 effective_by_row[record["row_id"]].get(total_id),
                 fallback=record["cells"][total_id],
             )
             if cell["state"] != "BLANK":
                 records_by_role[record["role"]].append({"cell": cell, "record": record})
+    singleton_declared_subtotal_receipts = []
+    if effective_by_row and not reasons:
+        for source_role, subtotal_role in compiled_specs["evaluation"][
+            "singleton_declared_subtotal_by_source_role"
+        ].items():
+            source_layouts = [
+                layout
+                for layout in compiled_specs["evaluation"]["branch_layouts"]
+                if source_role
+                in compiled_specs["output_roles_by_branch"][layout["branch_role"]]
+            ]
+            if not source_layouts:
+                continue
+            if len(source_layouts) != 1:
+                raise _error("compiled singleton declared-subtotal branch is ambiguous")
+            branch_role = source_layouts[0]["branch_role"]
+            source_records = [
+                row_by_id[row_id]
+                for row_id in direct_by_branch[branch_role]
+                if row_by_id[row_id]["role"] == source_role
+            ]
+            if len(source_records) != 1 or records_by_role.get(subtotal_role):
+                continue
+            source_record = source_records[0]
+            if any(
+                source_record["cells"][column_id]["state"] == "BLANK"
+                for column_id in money_ids
+            ):
+                continue
+            branch_equations = [
+                equation
+                for equation in equations
+                if equation.get("axis") == "VERTICAL_ROLLFORWARD"
+                and equation.get("equation_id") == f"branch:{branch_role}"
+                and any(
+                    term.get("row_id") == source_record["row_id"]
+                    for term in equation.get("terms", [])
+                )
+            ]
+            if len(branch_equations) != 1 or not (
+                _equation_closes_on_fully_observed_source_cells(
+                    branch_equations[0], row_by_id=row_by_id
+                )
+            ):
+                continue
+            raw_source_cell = canonical_clone_v1(source_record["cells"][total_id])
+            records_by_role[subtotal_role].append(
+                {
+                    "cell": {
+                        "coefficient": raw_source_cell["coefficient"],
+                        "source_locator": canonical_clone_v1(raw_source_cell["source_locator"]),
+                        "source_text": None,
+                        "state": "DERIVED_EXACT_SINGLETON_DECLARED_SUBTOTAL",
+                    },
+                    "record": source_record,
+                    "source_cell": raw_source_cell,
+                }
+            )
+            singleton_declared_subtotal_receipts.append(
+                {
+                    "branch_equation_id": branch_equations[0]["equation_id"],
+                    "disposition": (
+                        "DERIVED_EXACT_SINGLETON_DIRECT_CHILD_IS_DECLARED_SUBTOTAL"
+                    ),
+                    "source_role": source_role,
+                    "source_row_id": source_record["row_id"],
+                    "subtotal_role": subtotal_role,
+                }
+            )
     mappings = []
     if not reasons:
         for role in compiled_specs["output_role_order"]:
@@ -3539,7 +7434,7 @@ def _extract_table_records(
             coefficient = sum(item["cell"]["coefficient"] for item in observations)
             source_refs = [
                 {
-                    "cell": canonical_clone_v1(item["cell"]),
+                    "cell": canonical_clone_v1(item.get("source_cell", item["cell"])),
                     "hierarchy_path_exact": canonical_clone_v1(
                         item["record"]["hierarchy_path_exact"]
                     ),
@@ -3578,8 +7473,18 @@ def _extract_table_records(
             )
     table_receipt = {
         "classification": classification,
+        "adjacent_page_endpoint_first_continuation_receipt": (
+            adjacent_page_endpoint_first_receipt
+        ),
+        "blank_subtotal_heading_receipts": blank_subtotal_heading_receipts,
         "direct_role_fallback_receipts": direct_role_fallback_receipts,
+        "endpoint_first_layout_receipt": endpoint_first_layout_receipt,
+        "leading_implicit_cost_branch_receipt": leading_implicit_cost_branch_receipt,
         "equations": equations,
+        "movement_direction_receipts": movement_direction_receipts,
+        "omitted_horizontal_rows": omitted_horizontal_rows,
+        "ordered_branch_scope_receipt": ordered_branch_scope_receipt,
+        "ordered_dated_endpoint_receipt": ordered_dated_endpoint_receipt,
         "raw_row_inventory": [
             {
                 "branch_role": record["branch_role"],
@@ -3596,6 +7501,24 @@ def _extract_table_records(
             }
             for record in records
         ],
+        "same_role_subtotal_child_receipts": same_role_subtotal_child_receipts,
+        "singleton_declared_subtotal_receipts": (
+            singleton_declared_subtotal_receipts
+        ),
+        "source_only_carrying_control": {
+            "mapping_emitted": False,
+            "policy": "SOURCE_ONLY_EXACT_ARITHMETIC_CONTROL_NO_SCHEMA_BINDING",
+            "rows": [
+                {
+                    "label_exact": record["label_exact"],
+                    "role": record["role"],
+                    "row_id": record["row_id"],
+                    "source_ordinal": record["source_ordinal"],
+                }
+                for record in source_only_control_records
+            ],
+        },
+        "source_only_rows": source_only_row_receipts,
         "unit_axis": unit_axis,
     }
     return {
@@ -3652,19 +7575,100 @@ def _summary_control_projection(
     columns = table["columns"]
     rows = table["rows"]
     money_ordinals = classification["money_column_ordinals"]
-    date_by_ordinal = {
-        ordinal: next(iter(_surface_dates(_header_text(columns[ordinal - 1]))))
-        for ordinal in money_ordinals
-    }
     current_date = date.fromisoformat(region["period_end_date"])
-    current_ordinals = [
-        ordinal for ordinal, parsed in date_by_ordinal.items() if parsed == current_date
-    ]
-    comparative_ordinals = [
-        ordinal for ordinal, parsed in date_by_ordinal.items() if parsed < current_date
-    ]
-    if len(current_ordinals) != 1 or len(comparative_ordinals) != 1:
-        reasons.append("SUMMARY_CONTROL_CURRENT_COMPARATIVE_PERIOD_AXIS_INVALID")
+    summary_policy = compiled_specs["evaluation"]["component_policy"]["summary_control"]
+    relative_bindings = classification["period_receipt"].get("column_period_bindings")
+    relative_axis = relative_bindings is not None
+    role_by_ordinal = {}
+    period_date_by_ordinal = {}
+    source_kind_by_ordinal = {}
+    period_axis_valid = True
+    if relative_axis:
+        expected_fields = {
+            "column_header_exact",
+            "column_ordinal",
+            "period_date",
+            "period_role",
+            "source_kind",
+        }
+        if (
+            type(relative_bindings) is not list
+            or len(relative_bindings) != 2
+            or any(
+                type(binding) is not dict
+                or set(binding) != expected_fields
+                or type(binding["column_ordinal"]) is not int
+                or not (0 < binding["column_ordinal"] <= len(columns))
+                or type(binding["column_header_exact"]) is not str
+                or type(binding["period_role"]) is not str
+                or binding["period_date"] is not None
+                and type(binding["period_date"]) is not str
+                or binding["source_kind"]
+                != "TYPED_BALANCE_SHEET_RELATIVE_PERIOD_COLUMN"
+                for binding in relative_bindings
+            )
+        ):
+            period_axis_valid = False
+        else:
+            role_by_ordinal = {
+                binding["column_ordinal"]: binding["period_role"]
+                for binding in relative_bindings
+            }
+            period_date_by_ordinal = {
+                binding["column_ordinal"]: binding["period_date"]
+                for binding in relative_bindings
+            }
+            source_kind_by_ordinal = {
+                binding["column_ordinal"]: binding["source_kind"]
+                for binding in relative_bindings
+            }
+            binding_by_role = {
+                binding["period_role"]: binding for binding in relative_bindings
+            }
+            period_axis_valid = (
+                set(role_by_ordinal) == set(money_ordinals)
+                and set(role_by_ordinal.values())
+                == {summary_policy["opening_role"], summary_policy["current_role"]}
+                and all(
+                    binding["column_header_exact"]
+                    == _header_text(columns[binding["column_ordinal"] - 1])
+                    for binding in relative_bindings
+                )
+                and binding_by_role[summary_policy["current_role"]]["period_date"]
+                == current_date.isoformat()
+                and binding_by_role[summary_policy["opening_role"]]["period_date"] is None
+            )
+        if not period_axis_valid:
+            reasons.append("SUMMARY_CONTROL_CURRENT_COMPARATIVE_PERIOD_AXIS_INVALID")
+    else:
+        dates_by_ordinal = {
+            ordinal: sorted(set(_surface_dates(_header_text(columns[ordinal - 1]))))
+            for ordinal in money_ordinals
+        }
+        if any(len(axis) != 1 for axis in dates_by_ordinal.values()):
+            period_axis_valid = False
+        else:
+            date_by_ordinal = {
+                ordinal: axis[0] for ordinal, axis in dates_by_ordinal.items()
+            }
+            current_ordinals = [
+                ordinal for ordinal, parsed in date_by_ordinal.items() if parsed == current_date
+            ]
+            comparative_ordinals = [
+                ordinal for ordinal, parsed in date_by_ordinal.items() if parsed < current_date
+            ]
+            if len(current_ordinals) != 1 or len(comparative_ordinals) != 1:
+                period_axis_valid = False
+            else:
+                role_by_ordinal = {
+                    comparative_ordinals[0]: summary_policy["opening_role"],
+                    current_ordinals[0]: summary_policy["current_role"],
+                }
+                period_date_by_ordinal = {
+                    ordinal: parsed.isoformat() for ordinal, parsed in date_by_ordinal.items()
+                }
+        if not period_axis_valid:
+            reasons.append("SUMMARY_CONTROL_CURRENT_COMPARATIVE_PERIOD_AXIS_INVALID")
     control_row_ordinal = classification["control_row_ordinal"]
     control_rows = [
         (control_row_ordinal, rows[control_row_ordinal - 1])
@@ -3682,14 +7686,6 @@ def _summary_control_projection(
         if type(values) is not list or len(values) != len(columns):
             reasons.append("SUMMARY_CONTROL_TOTAL_ROW_CELL_AXIS_INVALID")
         else:
-            role_by_ordinal = {
-                comparative_ordinals[0]: compiled_specs["evaluation"]["component_policy"][
-                    "summary_control"
-                ]["opening_role"],
-                current_ordinals[0]: compiled_specs["evaluation"]["component_policy"][
-                    "summary_control"
-                ]["current_role"],
-            }
             for column_ordinal, role in role_by_ordinal.items():
                 try:
                     cell = _money(
@@ -3708,15 +7704,18 @@ def _summary_control_projection(
                 if cell["state"] == "BLANK":
                     reasons.append("SUMMARY_CONTROL_TOTAL_CELL_IS_BLANK:" + role)
                     continue
-                observations.append(
-                    {
-                        "cell": cell,
-                        "column_period_date": date_by_ordinal[column_ordinal].isoformat(),
-                        "role": role,
-                        "row_id": f"r{row_ordinal}",
-                        "source_ordinal": row_ordinal,
-                    }
-                )
+                observation = {
+                    "cell": cell,
+                    "column_period_date": period_date_by_ordinal[column_ordinal],
+                    "role": role,
+                    "row_id": f"r{row_ordinal}",
+                    "source_ordinal": row_ordinal,
+                }
+                if relative_axis:
+                    observation["column_period_source_kind"] = source_kind_by_ordinal[
+                        column_ordinal
+                    ]
+                observations.append(observation)
             if classification["component_kind"] == "CARRYING_SUMMARY_CONTROL":
                 aliases = compiled_specs["evaluation"]["component_policy"]["summary_control"][
                     "row_aliases"
@@ -3776,13 +7775,16 @@ def _summary_control_projection(
                             "source_ordinal": detail_ordinal,
                         }
                         terms.append(term)
-                        detail_observations.append(
-                            {
-                                **canonical_clone_v1(term),
-                                "column_period_date": date_by_ordinal[column_ordinal].isoformat(),
-                                "role": role,
-                            }
-                        )
+                        detail_observation = {
+                            **canonical_clone_v1(term),
+                            "column_period_date": period_date_by_ordinal[column_ordinal],
+                            "role": role,
+                        }
+                        if relative_axis:
+                            detail_observation["column_period_source_kind"] = (
+                                source_kind_by_ordinal[column_ordinal]
+                            )
+                        detail_observations.append(detail_observation)
                     total = next((item for item in observations if item["role"] == role), None)
                     if total is None or len(terms) != len(declared_rows):
                         continue
@@ -3816,6 +7818,20 @@ def _summary_control_projection(
     if not reasons:
         for observation in observations:
             role = observation["role"]
+            source_ref = {
+                "cell": canonical_clone_v1(observation["cell"]),
+                "column_period_date": observation["column_period_date"],
+                "hierarchy_path_exact": canonical_clone_v1(
+                    control_rows[0][1].get("hierarchy_path_exact")
+                ),
+                "label_exact": control_rows[0][1].get("label_exact"),
+                "row_id": observation["row_id"],
+                "source_ordinal": observation["source_ordinal"],
+            }
+            if relative_axis:
+                source_ref["column_period_source_kind"] = observation[
+                    "column_period_source_kind"
+                ]
             material = {
                 "bound_unit": unit_axis["canonical_unit"],
                 "cell": {
@@ -3826,18 +7842,7 @@ def _summary_control_projection(
                 "report_norm_id": compiled_specs["bindings"][role],
                 "role": role,
                 "row_id": observation["row_id"],
-                "source_refs": [
-                    {
-                        "cell": canonical_clone_v1(observation["cell"]),
-                        "column_period_date": observation["column_period_date"],
-                        "hierarchy_path_exact": canonical_clone_v1(
-                            control_rows[0][1].get("hierarchy_path_exact")
-                        ),
-                        "label_exact": control_rows[0][1].get("label_exact"),
-                        "row_id": observation["row_id"],
-                        "source_ordinal": observation["source_ordinal"],
-                    }
-                ],
+                "source_refs": [source_ref],
             }
             mappings.append(
                 {
@@ -3964,6 +7969,7 @@ def _extract_component_population(
             section=section,
             table=projected_table,
             region=region,
+            page_json_by_version=page_json_by_version,
             compiled_specs=fragment_specs,
         )
         reasons.extend(extracted["reasons"])
@@ -4083,6 +8089,12 @@ def evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
     )
     if type(query_receipt) is not dict or not same_typed_json_v1(query_receipt, expected_receipt):
         raise _error("fixed-asset query receipt does not bind current/control regions")
+    page_json_by_version, source_repair_overlay_receipts = (
+        _apply_authenticated_source_repair_artifact_v1(
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+        )
+    )
     if component_policy is not None:
         if not current:
             raise _error("fixed-asset component evaluator needs current source tables")
@@ -4118,6 +8130,15 @@ def evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
                 "subtotal_collapse": None,
                 "table_receipt": None,
                 "width_seal": None,
+                **(
+                    {
+                        "source_repair_overlay_receipts": (
+                            source_repair_overlay_receipts
+                        )
+                    }
+                    if source_repair_overlay_receipts
+                    else {}
+                ),
             },
             "component_regions": current,
             "control_regions": controls,
@@ -4150,6 +8171,7 @@ def evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
         section=section,
         table=table,
         region=region,
+        page_json_by_version=page_json_by_version,
         compiled_specs=compiled_specs,
     )
     supplemental = _supplemental_disclosure_projection(
@@ -4175,6 +8197,11 @@ def evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
             "subtotal_collapse": extracted["subtotal_collapse"],
             "table_receipt": extracted["table_receipt"],
             "width_seal": extracted["width_seal"],
+            **(
+                {"source_repair_overlay_receipts": source_repair_overlay_receipts}
+                if source_repair_overlay_receipts
+                else {}
+            ),
         },
         "component_regions": current,
         "control_regions": controls,

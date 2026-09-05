@@ -1,4 +1,13 @@
 {
+    "adjacent_page_endpoint_first_continuation_policy": "PAGE_FINAL_OWNER_PARTIAL_PLUS_NEXT_PAGE_LEADING_HEADERLESS_COMPLEMENT_EXACT_ENDPOINT_TOPOLOGY",
+    "adjacent_owner_continuation_policy": "IMMEDIATELY_PRECEDING_EXPLICIT_OWNER_SAME_HEADER_AXIS_WITH_CONTINUATION_HEADING",
+    "authenticated_source_repair_artifact_ref": {
+        "artifact_format_version": "GEMINI_JSON_FIXED_ASSET_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+        "overlay_id": "gjffasrv1:overlay:8dfbc74f811967922e4ea906158e9e4fce0479c9f714a409b8a0034be0beb2d1",
+        "path": "data/registered/gemini_json_intangible_fixed_asset_source_repair_artifact_v1.json",
+        "sha256": "518a1e54599b0822de19367c609673c361ed2b6c2d13057aaa9e2bb55ed529cb",
+        "size_bytes": 19481
+    },
     "asset_header_aliases": [
         "Quyền sử dụng đất",
         "Quyền thuê đất",
@@ -10,6 +19,7 @@
         "TSCĐ vô hình khác",
         "Tài sản cố định vô hình khác"
     ],
+    "blank_subtotal_heading_policy": "VISIBLE_BLANK_SUBTOTAL_HEADING_CHILDREN_PROMOTE_TO_DIRECT_MOVEMENTS",
     "branch_layouts": [
         {
             "branch_role": "COST_BRANCH",
@@ -22,7 +32,13 @@
         {
             "branch_role": "DEPRECIATION_BRANCH",
             "ending_role": "DEP_ENDING",
-            "hierarchy_aliases": ["Giá trị hao mòn lũy kế", "Hao mòn lũy kế", "Khấu hao lũy kế"],
+            "hierarchy_aliases": [
+                "Giá trị hao mòn lũy kế",
+                "Giá trị khấu hao lũy kế",
+                "Giá trị hao mòn",
+                "Hao mòn lũy kế",
+                "Khấu hao lũy kế"
+            ],
             "opening_role": "DEP_OPENING",
             "rollforward_kind": "SIGNED_ADDITIVE",
             "subtotal_roles": ["DEP_TOTAL_INCREASE", "DEP_TOTAL_DECREASE"]
@@ -47,6 +63,11 @@
             "source_role": "DEP_RECLASSIFICATION"
         }
     ],
+    "endpoint_first_layout": {
+        "cost_child_aliases": ["Nguyên giá TSCĐ", "Nguyên giá tài sản cố định"],
+        "depreciation_child_aliases": ["Hao mòn TSCĐ", "Khấu hao TSCĐ"],
+        "layout_kind": "CARRYING_ENDPOINT_PARENT_WITH_COST_AND_DEPRECIATION_CHILDREN"
+    },
     "family_id": "INTANGIBLE_FIXED_ASSETS_ROLLFORWARD",
     "format_version": "ACCOUNTING_FIXED_ASSET_ROLLFORWARD_FAMILY_EVALUATION_SPEC_V1",
     "header_hard_negative_aliases": [
@@ -57,8 +78,43 @@
         "Tài sản cố định hữu hình",
         "Bất động sản đầu tư"
     ],
+    "immediately_preceding_table_period_policy": "IMMEDIATELY_PRECEDING_SIBLING_TABLE_UNIQUE_EXPLICIT_AS_AT_DATE",
     "layout_policy": "ONE_CURRENT_TOTAL_COLUMN_TABLE_WITH_OPTIONAL_TYPED_COMPARATIVE_CONTROL_TABLES",
+    "leading_implicit_cost_branch_policy": "LEADING_UNSCOPED_ROWS_BEFORE_FIRST_EXPLICIT_DEPRECIATION_BRANCH_ARE_COST",
     "minimum_distinct_asset_header_aliases": 1,
+    "missing_local_unit_policy": "UNIQUE_TYPED_BALANCE_SHEET_OWNER_ENDPOINT_VECTOR_BASE_VALUE",
+    "movement_role_directions": [
+        {"direction": "INCREASE", "role": "COST_TOTAL_INCREASE"},
+        {"direction": "INCREASE", "role": "COST_PURCHASE"},
+        {"direction": "INCREASE", "role": "COST_XDCB_COMPLETED"},
+        {"direction": "INCREASE", "role": "COST_CIP_TRANSFER"},
+        {"direction": "INCREASE", "role": "COST_BUSINESS_COMBINATION"},
+        {"direction": "INCREASE", "role": "COST_OTHER_INCREASE"},
+        {"direction": "DECREASE", "role": "COST_TOTAL_DECREASE"},
+        {"direction": "DECREASE", "role": "COST_TRANSFER_INVESTMENT_PROPERTY"},
+        {"direction": "DECREASE", "role": "COST_TRANSFER_TOOLS"},
+        {"direction": "DECREASE", "role": "COST_TRANSFER_DEFERRED_EXPENSE"},
+        {"direction": "PRESERVE_SIGN", "role": "COST_RECLASSIFICATION"},
+        {"direction": "DECREASE", "role": "COST_DISPOSAL"},
+        {"direction": "DECREASE", "role": "COST_RESERVE"},
+        {"direction": "DECREASE", "role": "COST_OTHER_DECREASE"},
+        {"direction": "PRESERVE_SIGN", "role": "COST_OTHER_NET"},
+        {"direction": "PRESERVE_SIGN", "role": "COST_FOREIGN_EXCHANGE"},
+        {"direction": "INCREASE", "role": "DEP_TOTAL_INCREASE"},
+        {"direction": "INCREASE", "role": "DEP_CHARGE"},
+        {"direction": "INCREASE", "role": "DEP_BUSINESS_COMBINATION"},
+        {"direction": "INCREASE", "role": "DEP_OTHER_INCREASE"},
+        {"direction": "DECREASE", "role": "DEP_TOTAL_DECREASE"},
+        {"direction": "DECREASE", "role": "DEP_TRANSFER_INVESTMENT_PROPERTY"},
+        {"direction": "DECREASE", "role": "DEP_TRANSFER_TOOLS"},
+        {"direction": "DECREASE", "role": "DEP_TRANSFER_DEFERRED_EXPENSE"},
+        {"direction": "PRESERVE_SIGN", "role": "DEP_RECLASSIFICATION"},
+        {"direction": "DECREASE", "role": "DEP_DISPOSAL"},
+        {"direction": "DECREASE", "role": "DEP_RESERVE"},
+        {"direction": "DECREASE", "role": "DEP_OTHER_DECREASE"},
+        {"direction": "PRESERVE_SIGN", "role": "DEP_OTHER_NET"},
+        {"direction": "PRESERVE_SIGN", "role": "DEP_FOREIGN_EXCHANGE"}
+    ],
     "money_unit_bindings": [
         {
             "accepted": true,
@@ -79,14 +135,24 @@
             "magnitude_power10": 9
         },
         {
-            "accepted": false,
+            "accepted": true,
             "aliases": ["Đồng", "VND"],
             "canonical_unit": "VND",
             "magnitude_power10": 0
         }
     ],
     "period_policy": "UNIQUE_SOURCE_VISIBLE_OR_TYPED_DOCUMENT_REPORTING_DATE_WITH_COMPARATIVE_ENDPOINT_CONTINUITY",
+    "ordered_branch_scope_policy": "PRECEDING_EXPLICIT_BRANCH_UNTIL_NEXT_GROUP_FOR_UNIQUE_ROLE_ROW",
+    "ordered_dated_endpoint_policy": "EARLIEST_AND_LATEST_DISTINCT_DATED_BALANCES_BIND_OPENING_ENDING",
+    "partial_detail_total_policy": "SOURCE_VISIBLE_TOTAL_CONTROLS_VERTICAL_PRESERVE_BLANK_DETAILS_NO_MAPPING_INFERENCE",
     "row_width_policy": "UNIQUE_RIGHT_EDGE_TOTAL_WITH_ALL_EQUATION_SEALED_RELOCATION_ONLY",
+    "source_only_row_aliases": [
+        "Tạm thời không sử dụng",
+        "Tạm thời chưa sử dụng",
+        "Đang chờ thanh lý"
+    ],
+    "source_presentation_rounding_policy": "INDEPENDENT_DISPLAY_UNIT_ROUNDING_INTERVAL_ALL_EQUATIONS",
+    "single_asset_period_column_policy": "SAME_RECOGNIZED_ASSET_DISTINCT_PERIOD_COLUMNS_SELECT_UNIQUE_CURRENT_PERIOD",
     "subtotal_policy": "VISIBLE_SUBTOTAL_AND_DIRECT_CHILDREN_COEXIST_BUT_VERTICAL_CONSUMES_EXACTLY_ONE_FRONTIER",
     "supplemental_disclosure_roles": [
         {
@@ -99,6 +165,10 @@
                 "Nguyên giá tài sản cố định vô hình đã hao mòn hết nhưng vẫn đang được sử dụng",
                 "Nguyên giá tài sản cố định vô hình đã khấu hao hết nhưng vẫn đang được sử dụng",
                 "Nguyên giá tài sản cố định vô hình đã khấu hao hết nhưng vẫn còn sử dụng"
+            ],
+            "contextual_aliases": [
+                "Đã hao mòn hết nhưng vẫn còn sử dụng",
+                "Đã khấu hao hết nhưng vẫn còn sử dụng"
             ],
             "required_token_groups": [
                 ["Nguyên giá"],
@@ -115,5 +185,8 @@
             ]
         }
     ],
-    "total_column_aliases": ["Tổng cộng", "Tổng"]
+    "total_column_aliases": ["Tổng cộng", "Tổng", "Cộng"],
+    "trailing_owner_heading_policy": "IMMEDIATELY_PRECEDING_PAGE_FINAL_EMPTY_OWNER_SECTION_BINDS_FIRST_HEADER_COMPLETE_TABLE",
+    "undated_full_table_sequence_policy": "LEADING_EXPLICIT_OWNER_THEN_ADJACENT_CONTINUATION_TABLES_BIND_CURRENT_AS_SOURCE_ONLY_HISTORY",
+    "undated_sibling_policy": "UNIQUE_EXACT_DOCUMENT_CURRENT_DATE_DOMINATES_UNDATED_COMPLETE_SIBLINGS_AS_SOURCE_ONLY"
 }

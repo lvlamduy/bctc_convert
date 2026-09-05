@@ -3,6 +3,7 @@
     {
       "aliases": [
         "Bằng VND",
+        "VND",
         "Bằng Đồng Việt Nam",
         "Bằng tiền đồng",
         "Tiền gửi bằng VND",
@@ -11,6 +12,10 @@
         "Tiền gửi tại NHNNVN bằng VND (i)",
         "Tiền gửi tại NHNNVN bằng VND (1)",
         "Tiền gửi tại NHNN Việt Nam bằng VND",
+        "Tiền gửi thanh toán tại NHNNVN bằng VND",
+        "Tiền gửi thanh toán tại Ngân hàng Nhà nước bằng VND",
+        "Tiền gửi thanh toán bằng VND",
+        "Tiền gửi thanh toán và quỹ dự trữ bắt buộc tại NHNNVN bằng VND",
         "Tiền gửi thanh toán và dự trữ bắt buộc bằng VND"
       ],
       "presence": "OPTIONAL",
@@ -20,12 +25,19 @@
     {
       "aliases": [
         "Bằng ngoại tệ",
+        "Ngoại tệ",
+        "Bằng ngoại hối",
+        "Bằng Đô la Mỹ",
         "Tiền gửi bằng ngoại tệ",
         "Tiền gửi tại NHNN bằng ngoại tệ",
         "Tiền gửi tại NHNNVN bằng ngoại tệ",
         "Tiền gửi tại NHNNVN bằng ngoại tệ (i)",
         "Tiền gửi tại NHNNVN bằng ngoại tệ (ii)",
         "Tiền gửi tại NHNN Việt Nam bằng ngoại tệ",
+        "Tiền gửi thanh toán tại NHNNVN bằng ngoại tệ",
+        "Tiền gửi thanh toán tại Ngân hàng Nhà nước bằng ngoại tệ",
+        "Tiền gửi thanh toán bằng ngoại tệ",
+        "Tiền gửi thanh toán và quỹ dự trữ bắt buộc tại NHNNVN bằng ngoại tệ",
         "Tiền gửi thanh toán và dự trữ bắt buộc bằng ngoại tệ"
       ],
       "presence": "OPTIONAL",
@@ -38,6 +50,8 @@
         "Tiền gửi tại NHNNVN",
         "Tiền gửi tại NHNNVN (i)",
         "Tiền gửi thanh toán tại NHNN Việt Nam",
+        "Tiền gửi thanh toán tại NHNN",
+        "Tiền gửi thanh toán tại Ngân hàng Nhà nước",
         "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
         "Tiền gửi tại Ngân hàng Nhà nước Việt Nam (i)"
       ],
@@ -70,7 +84,10 @@
     {
       "aliases": [
         "Tiền gửi phong tỏa",
-        "Tiền gửi bị phong tỏa"
+        "Tiền gửi phong toả (nếu có)",
+        "Tiền gửi bị phong tỏa",
+        "Tiền ký quỹ bằng VND",
+        "Tiền ký quỹ bảo lãnh bằng VND"
       ],
       "presence": "OPTIONAL",
       "role": "BLOCKED_DEPOSIT",

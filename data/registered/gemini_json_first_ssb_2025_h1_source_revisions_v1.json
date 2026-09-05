@@ -1,0 +1,61 @@
+{
+  "format_version": "GEMINI_JSON_FIRST_SOURCE_REVISION_REGISTRY_V1",
+  "policy": {
+    "old_source_bytes_are_preserved": true,
+    "replacement_json_must_use_replacement_source_identity": true,
+    "revision_selection": "OFFICIAL_COMPLETE_SOURCE_REPLACES_CROPPED_VIETSTOCK_SOURCE"
+  },
+  "registered_at": "2026-09-04T00:42:24+00:00",
+  "revisions": [
+    {
+      "bank": "SSB",
+      "damaged_original_pages": [39, 40, 46, 53, 58, 59, 60, 61, 63, 64],
+      "official_source_url": "https://cloud-cdn.seabank.com.vn/seabank-web/FS%20Separate%20SeABank_VN.pdf",
+      "original": {
+        "page_count": 65,
+        "relative_path": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+        "sha256": "bb9b732be1c9b3e93b5e650c1314c0f8b6f643f9e6a595d533e2bf092339f3c0",
+        "size_bytes": 12773308
+      },
+      "page_alignment": {
+        "original_cover_pages_not_in_replacement": [1],
+        "replacement_first_page": 1,
+        "replacement_last_page": 64,
+        "rule": "replacement_page = original_page - 1"
+      },
+      "replacement": {
+        "page_count": 64,
+        "relative_path": "vietstock_bctc/SSB/2025/source_revisions/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025 - Nguồn chính thức SeABank.pdf",
+        "sha256": "f9404f393cab65d00f7d91c375c60e441974a590428d27b73741279e6c64fa8e",
+        "size_bytes": 21461028
+      },
+      "report_scope": "CÔNG TY MẸ",
+      "reporting_period": "6 THÁNG ĐẦU NĂM 2025"
+    },
+    {
+      "bank": "SSB",
+      "damaged_original_pages": [41, 42, 48, 56, 61, 62, 63, 64, 66, 67, 69, 70],
+      "official_source_url": "https://cloud-cdn.seabank.com.vn/seabank-web/FS%20Conso%20SeABank_VN.pdf",
+      "original": {
+        "page_count": 71,
+        "relative_path": "vietstock_bctc/SSB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+        "sha256": "ca4065f067d75259763c7d2e1ce6d9d08e3f725c24fa6946986c87b98a43fc4f",
+        "size_bytes": 14111290
+      },
+      "page_alignment": {
+        "original_cover_pages_not_in_replacement": [1],
+        "replacement_first_page": 1,
+        "replacement_last_page": 70,
+        "rule": "replacement_page = original_page - 1"
+      },
+      "replacement": {
+        "page_count": 70,
+        "relative_path": "vietstock_bctc/SSB/2025/source_revisions/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025 - Nguồn chính thức SeABank.pdf",
+        "sha256": "aa681a0f1d87b739aeb543c8dcf3263c25914cbe56fa4bdc97f7b9c95c795fca",
+        "size_bytes": 23880413
+      },
+      "report_scope": "HỢP NHẤT",
+      "reporting_period": "6 THÁNG ĐẦU NĂM 2025"
+    }
+  ]
+}

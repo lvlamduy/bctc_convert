@@ -5,13 +5,22 @@
         {
           "aliases": [
             "Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được trong kỳ từ góp vốn, đầu tư mua cổ phần",
             "Cổ tức nhận được trong năm từ góp vốn, mua cổ phần",
+            "Cổ tức nhận được trong năm từ góp vốn, đầu tư mua cổ phần",
             "Cổ tức nhận được từ góp vốn, mua cổ phần",
             "Cổ tức nhận được từ các khoản góp vốn, mua cổ phần",
+            "Cổ tức nhận trong kỳ từ góp vốn, mua cổ phần",
+            "Cổ tức nhận trong năm từ góp vốn, mua cổ phần",
+            "Cổ tức bằng tiền nhận được từ góp vốn, đầu tư mua cổ phần",
             "Cổ tức nhận được và lợi nhuận được chia trong kỳ từ góp vốn, mua cổ phần",
             "Cổ tức nhận được; lãi được chia trong kỳ từ góp vốn, mua cổ phần",
             "Cổ tức nhận được; lãi được chia trong năm từ góp vốn, mua cổ phần",
             "Cổ tức bằng tiền nhận được từ góp vốn, mua cổ phần",
+            "Cổ tức, lợi nhuận nhận được từ",
+            "Cổ tức nhận được trong năm từ",
+            "Cổ tức nhận được/lợi nhuận được chia trong năm từ",
+            "Cổ tức nhận được từ các khoản góp vốn",
             "Cổ tức, lợi tức nhận được từ góp vốn mua cổ phần",
             "Thu từ cổ tức, lợi tức",
             "Thu từ cổ tức",
@@ -30,6 +39,9 @@
         {
           "aliases": [
             "Từ chứng khoán vốn kinh doanh",
+            "Từ chứng khoán Vốn kinh doanh (hạch toán trên TK 14)",
+            "Từ chứng khoán Vốn kinh doanh (hạch toán TK 14)",
+            "Cổ tức từ chứng khoán Vốn kinh doanh",
             "Cổ tức nhận trong kỳ từ chứng khoán vốn kinh doanh",
             "Cổ tức nhận được từ chứng khoán vốn kinh doanh",
             "Cổ tức từ chứng khoán vốn kinh doanh đã nhận"
@@ -46,9 +58,17 @@
         {
           "aliases": [
             "Từ chứng khoán vốn đầu tư",
-            "Cổ tức nhận được từ chứng khoán vốn đầu tư"
+            "Từ chứng khoán Vốn đầu",
+            "Từ chứng khoán Vốn đầu tư (hạch toán trên TK 15)",
+            "Cổ tức nhận được từ chứng khoán vốn đầu tư",
+            "Chứng khoán vốn đầu tư",
+            "Chứng khoán vốn đầu tư sẵn sàng để bán"
           ],
           "within_role": "DIRECT_DIVIDEND"
+        },
+        {
+          "aliases": ["Thu từ chứng khoán đầu tư"],
+          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
@@ -60,7 +80,16 @@
         {
           "aliases": [
             "Từ góp vốn, đầu tư dài hạn",
+            "Từ góp vốn, đầu tư dài hạn (hạch toán trên TK 34)",
             "Từ các khoản góp vốn, đầu tư dài hạn",
+            "Từ đầu tư dài hạn khác",
+            "Đầu tư vào công ty con",
+            "Công ty con",
+            "Đầu tư dài hạn khác",
+            "Góp vốn đầu tư dài hạn",
+            "Thu từ lợi nhuận công ty con chuyển về",
+            "Lợi nhuận được chia từ Công ty con",
+            "Thu nhập cổ tức từ các khoản đầu tư dài hạn khác",
             "Cổ tức nhận trong kỳ từ góp vốn đầu tư dài hạn",
             "Cổ tức nhận trong năm từ góp vốn, đầu tư dài hạn",
             "Cổ tức nhận được từ góp vốn, đầu tư dài hạn",
@@ -96,6 +125,8 @@
           "aliases": [
             "Phân chia lãi/lỗ theo phương pháp vốn CSH của các khoản đầu tư vào các công ty liên doanh, liên kết",
             "Phân chia lãi/lỗ theo phương pháp VCSH của các khoản đầu tư vào các công ty liên doanh, liên kết",
+            "Phân chia (lỗ)/lãi theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào công ty liên kết",
+            "Phân chia lỗ theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào công ty liên kết",
             "Phân chia lãi lỗ theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào công ty liên kết",
             "Phân chia lãi theo phương pháp vốn chủ sở hữu của các khoản đầu tư vào các công ty liên doanh, liên kết",
             "Phân chia lãi theo phương pháp vốn chủ sở hữu các khoản đầu tư vào các công ty liên doanh, liên kết",
@@ -115,17 +146,36 @@
           "aliases": [
             "Các khoản thu nhập khác",
             "Thu khác từ góp vốn, mua cổ phần",
+            "Thu từ thanh lý các khoản đầu tư dài hạn khác",
+            "Thu nhập từ chuyển nhượng khoản đầu tư dài hạn khác",
+            "Thu nhập từ chuyển nhượng góp vốn, đầu tư dài hạn",
+            "Thu nhập từ chuyển nhượng công ty con",
+            "Thu nhập từ thanh lý công ty con",
             "Lãi từ việc bán các khoản góp vốn, mua cổ phần",
             "Thu nhập từ thanh lý các khoản đầu tư góp vốn, mua cổ phần",
             "Thu nhập từ thanh lý các khoản góp vốn, mua cổ phần",
             "Thu nhập thanh lý, thoái vốn đầu tư vào đơn vị khác",
-            "Thu nhập từ hợp nhất kinh doanh"
+            "Thu nhập từ hợp nhất kinh doanh",
+            "Chênh lệch đánh giá lại khoản đầu tư"
           ],
           "within_role": null
         }
       ],
       "presence": "OPTIONAL",
       "role": "OTHER_INCOME",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chi dự phòng giảm giá khoản góp vốn, đầu tư dài hạn"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "LONG_TERM_INVESTMENT_PROVISION_SOURCE_ONLY",
       "role_kind": "ADDITIVE_CHILD"
     }
   ],
@@ -134,8 +184,7 @@
   "hard_negative_aliases": [
     "Tiền thu cổ tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn",
     "Cổ tức phải thu",
-    "Cổ tức trả cho cổ đông, lợi nhuận đã chia",
-    "Góp vốn, đầu tư dài hạn"
+    "Cổ tức trả cho cổ đông, lợi nhuận đã chia"
   ],
   "limits": {
     "max_continuation_pages": 2,
@@ -153,6 +202,7 @@
   "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
   "required_role_combinations": [
     ["DIRECT_DIVIDEND"],
+    ["LONG_TERM_CAPITAL_DIVIDEND"],
     ["EQUITY_METHOD"],
     ["OTHER_INCOME"]
   ],

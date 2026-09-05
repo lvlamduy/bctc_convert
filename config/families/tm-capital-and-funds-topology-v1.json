@@ -1,31 +1,31 @@
 {
   "children": [
     {
-      "matchers": [{"aliases": ["Vốn điều lệ", "Vốn góp/Vốn điều lệ", "Vốn góp của chủ sở hữu"], "within_role": null}],
+      "matchers": [{"aliases": ["Vốn điều lệ", "Vốn góp/Vốn điều lệ", "Vốn góp của chủ sở hữu", "Vốn góp chủ sở hữu", "Vốn cổ phần", "Charter capital"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "CHARTER_CAPITAL",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thặng dư vốn cổ phần"], "within_role": null}],
+      "matchers": [{"aliases": ["Thặng dư vốn cổ phần", "Thặng dư vốn", "Share premium"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "SHARE_PREMIUM",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Vốn khác", "Vốn chủ sở hữu khác"], "within_role": null}],
+      "matchers": [{"aliases": ["Vốn khác", "Vốn chủ sở hữu khác", "Other owner's equity"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "OTHER_CAPITAL",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Quỹ dự trữ bổ sung vốn điều lệ", "Quỹ dự trữ bổ sung VĐL"], "within_role": null}],
+      "matchers": [{"aliases": ["Quỹ dự trữ bổ sung vốn điều lệ", "Quỹ dự trữ bổ sung VĐL", "Quỹ bổ sung vốn điều lệ", "Reserve to supplement charter capital"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "CAPITAL_RESERVE",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Quỹ dự phòng tài chính"], "within_role": null}],
+      "matchers": [{"aliases": ["Quỹ dự phòng tài chính", "Financial reserve"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "FINANCIAL_RESERVE",
       "role_kind": "ADDITIVE_CHILD"
@@ -37,19 +37,19 @@
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái", "Chênh lệch tỷ giá đoái"], "within_role": null}],
+      "matchers": [{"aliases": ["Chênh lệch tỷ giá", "Chênh lệch tỷ giá hối đoái", "Chênh lệch tỷ giá đoái", "Foreign currency translation"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "FX_DIFFERENCE",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Lợi nhuận chưa phân phối", "Lợi nhuận sau thuế", "Lợi nhuận sau thuế chưa", "Lợi nhuận sau thuế chưa phân phối", "Lợi nhuận sau thuế chưa phân phối/lỗ lũy kế"], "within_role": null}],
+      "matchers": [{"aliases": ["Lợi nhuận chưa phân phối", "Lợi nhuận chưa phân phối lũy kế", "Lợi nhuận chưa phân phối/lỗ lũy kế", "Lợi nhuận để lại", "Lợi nhuận sau thuế", "Lợi nhuận sau thuế/Lỗ lũy kế", "Lợi nhuận sau thuế chưa", "Lợi nhuận sau thuế chưa phân phối", "Lợi nhuận sau thuế chưa phân phối lãi/lỗ lũy kế", "Lợi nhuận sau thuế chưa phân phối/lỗ lũy kế", "LN sau thuế chưa phân phối/Lỗ lũy kế", "Retained earnings"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "RETAINED_EARNINGS",
       "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Lợi ích cổ đông không kiểm soát", "Lợi ích của cổ đông không", "Lợi ích của cổ đông không kiểm", "Lợi ích của cổ đông không kiểm soát"], "within_role": null}],
+      "matchers": [{"aliases": ["Lợi ích cổ đông không kiểm soát", "Lợi ích của cổ đông không", "Lợi ích của cổ đông không kiểm", "Lợi ích của cổ đông không kiểm soát", "Lợi ích của cổ đông thiểu số", "Lợi ích của cổ đông thiểu số (Trình bày lại)"], "within_role": null}],
       "presence": "OPTIONAL",
       "role": "NON_CONTROLLING_INTEREST",
       "role_kind": "ADDITIVE_CHILD"
@@ -64,11 +64,16 @@
     "Chi tiết vốn đầu tư của Ngân hàng",
     "Chi tiết vốn đầu tư của TCTD",
     "Chi tiết vốn đầu tư của Tổ chức tín dụng",
+    "Chi tiết vốn cổ phần của Ngân hàng",
+    "Chi tiết vốn cổ phần của TCTD",
+    "Chi tiết vốn cổ phần của Tổ chức tín dụng",
     "Chi tiết phần vốn của Ngân hàng",
+    "Chi tiết phần vốn đầu tư của Ngân hàng",
     "Chi tiết phần vốn của TCTD",
     "Chi tiết phần vốn của Tổ chức tín dụng",
     "Chi tiết cổ phiếu của Ngân hàng",
     "Lãi trên mỗi cổ phiếu",
+    "Lãi cơ bản trên cổ phiếu",
     "Thu nhập trên mỗi cổ phiếu"
   ],
   "limits": {"max_continuation_pages": 1, "max_cluster_span_lines": 2048, "max_label_line_span": 6},
@@ -78,8 +83,14 @@
       "Vốn và các quỹ",
       "Vốn và quỹ",
       "Vốn và quỹ của Tổ chức tín dụng",
+      "Vốn của Tổ chức tín dụng",
+      "Vốn quỹ của Tổ chức tín dụng",
+      "Vốn quỹ của TCTD",
       "Vốn và các quỹ của Ngân hàng và lợi ích cổ đông không kiểm soát",
-      "Vốn và quỹ của Ngân hàng"
+      "Vốn và quỹ của Ngân hàng",
+      "Vốn quỹ của Ngân hàng",
+      "Vốn và quỹ của Tập đoàn",
+      "Statement of changes in owners' equity"
     ],
     "resolution_mode": "EXPLICIT_ONLY",
     "role": "CAPITAL_AND_FUNDS_ROOT"
@@ -90,13 +101,18 @@
     "Chi tiết vốn đầu tư của Ngân hàng",
     "Chi tiết vốn đầu tư của TCTD",
     "Chi tiết vốn đầu tư của Tổ chức tín dụng",
+    "Chi tiết vốn cổ phần của Ngân hàng",
+    "Chi tiết vốn cổ phần của TCTD",
+    "Chi tiết vốn cổ phần của Tổ chức tín dụng",
     "Chi tiết phần vốn của Ngân hàng",
+    "Chi tiết phần vốn đầu tư của Ngân hàng",
     "Chi tiết phần vốn của TCTD",
     "Chi tiết phần vốn của Tổ chức tín dụng",
     "Chi tiết cổ phiếu của Ngân hàng",
     "Cổ phiếu",
     "Cổ tức",
     "Lãi trên mỗi cổ phiếu",
+    "Lãi cơ bản trên cổ phiếu",
     "Thu nhập trên mỗi cổ phiếu",
     "Thu nhập lãi và các khoản thu nhập tương tự"
   ]

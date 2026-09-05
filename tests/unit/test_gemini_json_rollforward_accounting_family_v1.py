@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -428,6 +429,223 @@ def _source_refs(
     ]
 
 
+def _source_repair_fixture() -> tuple[dict, dict, dict, str]:
+    page = _page(_stacked_table())
+    table = page["sections"][0]["tables"][0]
+    table["rows"][1]["values_exact"][0] = None
+    source_logical_name = "source-repair-fixture.pdf"
+    source_sha256 = "1" * 64
+    source_size_bytes = 12345
+    document_id = "gfpstorev1:document:" + canonical_json_sha256_v1(
+        {
+            "source_logical_name": source_logical_name,
+            "source_sha256": source_sha256,
+            "source_size_bytes": source_size_bytes,
+        }
+    )
+    source_binding = {
+        "document_id": document_id,
+        "image_sha256": "2" * 64,
+        "image_size_bytes": 54321,
+        "media_type": "image/png",
+        "physical_page": 7,
+        "pixel_height": 2000,
+        "pixel_width": 1500,
+        "render_dpi": 300,
+        "source_logical_name": source_logical_name,
+        "source_sha256": source_sha256,
+        "source_size_bytes": source_size_bytes,
+    }
+    source_binding["page_id"] = "gfpstorev1:page:" + canonical_json_sha256_v1(
+        {
+            "document_id": document_id,
+            "physical_page": 7,
+            "image_sha256": source_binding["image_sha256"],
+            "image_size_bytes": source_binding["image_size_bytes"],
+            "pixel_width": source_binding["pixel_width"],
+            "pixel_height": source_binding["pixel_height"],
+            "render_dpi": source_binding["render_dpi"],
+            "media_type": source_binding["media_type"],
+        }
+    )
+    extraction_run_id = "gfpstorev1:run:" + "3" * 64
+    stored_canonical_json_sha256 = "4" * 64
+    version_id = "gfpstorev1:json:" + canonical_json_sha256_v1(
+        {
+            "canonical_json_sha256": stored_canonical_json_sha256,
+            "extraction_run_id": extraction_run_id,
+            "page_id": source_binding["page_id"],
+        }
+    )
+    effective_page = copy.deepcopy(page)
+    effective_page["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = "-"
+    repair = {
+        "base_page_json_sha256": canonical_json_sha256_v1(page),
+        "base_page_json_version_id": version_id,
+        "cell_repairs": [
+            {
+                "after_exact": "-",
+                "before_exact": None,
+                "cell_id": "r2:c1",
+                "column_header_path_exact": table["columns"][0]["header_path_exact"],
+                "crop_bbox_pixels_xyxy": [100, 200, 300, 250],
+                "crop_rgb_sha256": "5" * 64,
+                "row_hierarchy_path_exact": table["rows"][1]["hierarchy_path_exact"],
+                "row_label_exact": table["rows"][1]["label_exact"],
+                "visual_state": "DASH",
+            }
+        ],
+        "effective_page_json_sha256": canonical_json_sha256_v1(effective_page),
+        "extraction_run_id": extraction_run_id,
+        "repair_reason": "VISIBLE_ACCOUNTING_DASH_OMITTED_FROM_SELECTED_JSON",
+        "source_binding": source_binding,
+        "stored_canonical_json_sha256": stored_canonical_json_sha256,
+        "table_ref": {
+            "base_table_sha256": canonical_json_sha256_v1(table),
+            "effective_table_sha256": canonical_json_sha256_v1(
+                effective_page["sections"][0]["tables"][0]
+            ),
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+        "visual_evidence": {
+            "artifact_ref": {
+                "path": "data/registered/source-repair-test.json",
+                "sha256": "6" * 64,
+                "size_bytes": 100,
+            },
+            "crop_bbox_pixels_xyxy": [50, 100, 1400, 1000],
+            "crop_rgb_sha256": "7" * 64,
+            "evidence_kind": "AUTHENTICATED_MANUAL_VISUAL_ACCOUNTING_DASH_TRANSCRIPTION",
+        },
+    }
+    repair["repair_id"] = "gjfrasrv1:repair:" + canonical_json_sha256_v1(repair)
+    overlay = {
+        "family_id": "PROVISION_MOVEMENT_ROLLFORWARD",
+        "format_version": "GEMINI_JSON_ROLLFORWARD_AUTHENTICATED_SOURCE_REPAIR_OVERLAY_V1",
+        "repairs": [repair],
+    }
+    overlay["overlay_id"] = "gjfrasrv1:overlay:" + canonical_json_sha256_v1(overlay)
+    evaluation = _json("tm-provision-movement-rollforward-evaluation-v1.json")
+    evaluation["authenticated_source_repair_overlay"] = overlay
+    compiled = compile_gemini_json_rollforward_family_specs_v1(
+        _json("tm-provision-movement-rollforward-topology-v1.json"),
+        evaluation,
+        _json("tm-provision-movement-rollforward-schema-binding-v1.json"),
+    )
+    region = {
+        "document_id": document_id,
+        "page_json_version_id": version_id,
+        "physical_page": 7,
+        "section_id": "s1",
+        "source_logical_name": source_logical_name,
+        "source_sha256": source_sha256,
+        "table_id": "t1",
+    }
+    return compiled, page, region, version_id
+
+
+def test_authenticated_source_repair_applies_only_exact_pinned_visible_dash() -> None:
+    compiled, page, region, version_id = _source_repair_fixture()
+
+    effective, receipts = subject._apply_authenticated_source_repair_overlay_v1(
+        region_axis=[region],
+        page_json_by_version={version_id: page},
+        compiled_specs=compiled,
+    )
+
+    assert page["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] is None
+    assert effective[version_id]["sections"][0]["tables"][0]["rows"][1][
+        "values_exact"
+    ][0] == "-"
+    assert receipts == [
+        subject._authenticated_source_repair_receipt_v1(
+            overlay=compiled["source_repair_overlay"],
+            repair=compiled["source_repair_overlay"]["repairs"][0],
+        )
+    ]
+
+
+def test_authenticated_source_repair_ignores_unrelated_locator_and_rejects_tamper() -> None:
+    compiled, page, region, version_id = _source_repair_fixture()
+    unrelated = {**region, "table_id": "t2"}
+
+    effective, receipts = subject._apply_authenticated_source_repair_overlay_v1(
+        region_axis=[unrelated],
+        page_json_by_version={version_id: page},
+        compiled_specs=compiled,
+    )
+    assert effective[version_id] is page
+    assert receipts == []
+
+    tampered = copy.deepcopy(page)
+    tampered["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = "0"
+    with pytest.raises(
+        GeminiJsonRollforwardAccountingFamilyV1Error,
+        match="base page drifted",
+    ):
+        subject._apply_authenticated_source_repair_overlay_v1(
+            region_axis=[region],
+            page_json_by_version={version_id: tampered},
+            compiled_specs=compiled,
+        )
+
+    drifted_specs = copy.deepcopy(compiled)
+    drifted_specs["source_repair_overlay"]["repairs"][0][
+        "effective_page_json_sha256"
+    ] = "8" * 64
+    with pytest.raises(
+        GeminiJsonRollforwardAccountingFamilyV1Error,
+        match="effective page drifted",
+    ):
+        subject._apply_authenticated_source_repair_overlay_v1(
+            region_axis=[region],
+            page_json_by_version={version_id: page},
+            compiled_specs=drifted_specs,
+        )
+
+
+def test_registered_source_repair_visual_evidence_artifact_replays() -> None:
+    repairs = _compiled()["source_repair_overlay"]["repairs"]
+    artifact_ref = repairs[0]["visual_evidence"]["artifact_ref"]
+    artifact = ROOT / artifact_ref["path"]
+    payload = artifact.read_bytes()
+    evidence = json.loads(payload)
+
+    assert len(payload) == artifact_ref["size_bytes"]
+    assert sha256(payload).hexdigest() == artifact_ref["sha256"]
+    assert len(repairs) == len(evidence["repairs"]) == 9
+    assert sum(len(repair["cell_repairs"]) for repair in repairs) == 14
+    evidence_by_version = {
+        item["base_page_json"]["page_json_version_id"]: item
+        for item in evidence["repairs"]
+    }
+    assert set(evidence_by_version) == {
+        repair["base_page_json_version_id"] for repair in repairs
+    }
+    for repair in repairs:
+        assert repair["visual_evidence"]["artifact_ref"] == artifact_ref
+        item = evidence_by_version[repair["base_page_json_version_id"]]
+        assert item["base_page_json"] == {
+            "canonical_object_sha256": repair["base_page_json_sha256"],
+            "page_json_version_id": repair["base_page_json_version_id"],
+            "stored_canonical_json_sha256": repair["stored_canonical_json_sha256"],
+        }
+        assert item["effective_page_json"] == {
+            "canonical_object_sha256": repair["effective_page_json_sha256"],
+            "table_sha256": repair["table_ref"]["effective_table_sha256"],
+        }
+        assert item["cell_evidence"] == [
+            {
+                "cell_id": cell["cell_id"],
+                "crop_bbox_pixels_xyxy": cell["crop_bbox_pixels_xyxy"],
+                "crop_rgb_sha256": cell["crop_rgb_sha256"],
+                "source_visible_value": cell["after_exact"],
+            }
+            for cell in repair["cell_repairs"]
+        ]
+
+
 def test_one_unknown_is_solved_only_by_one_full_rank_lane_equation() -> None:
     solution = solve_one_unknown_rollforward_lane_v1(
         {
@@ -482,7 +700,143 @@ def test_absent_optional_row_is_not_an_unknown_cell() -> None:
     assert solution["residual"] == 0
 
 
-def test_one_unknown_table_cell_is_inferred_and_ready() -> None:
+def test_one_display_unit_rounding_is_explicit_but_larger_mismatch_is_rejected() -> None:
+    cells = {
+        "OPENING_BALANCE_ROW": _cell(100),
+        "PROVISION_OR_REVERSAL_ROW": _cell(20),
+        "USE_MOVEMENT_ROW": _cell(-10),
+        "CLOSING_BALANCE_ROW": _cell(111),
+    }
+
+    rounded = solve_one_unknown_rollforward_lane_v1(
+        cells,
+        movement_specs=_movement_specs(),
+    )
+    assert rounded["status"] == "EXACT_DISPLAY_UNIT_ROUNDING"
+    assert rounded["residual"] == -1
+
+    cells["CLOSING_BALANCE_ROW"] = _cell(112)
+    mismatch = solve_one_unknown_rollforward_lane_v1(
+        cells,
+        movement_specs=_movement_specs(),
+    )
+    assert mismatch["status"] == "MISMATCH"
+    assert mismatch["residual"] == -2
+
+
+def test_unique_unsigned_use_is_normalized_by_exact_equation_with_source_preserved() -> None:
+    current = _period_table("Tại ngày 31 tháng 12 năm 2025")
+    current["rows"][2]["values_exact"] = ["10", "15", "10"]
+
+    candidate = _evaluate(
+        _page(current, _period_table("Tại ngày 31 tháng 12 năm 2024"))
+    )
+
+    assert candidate["status"] == READY
+    receipts = candidate["closure_receipt"][
+        "directional_deduction_normalization_receipts"
+    ]
+    assert len(receipts) == 3
+    assert all(item["source_cell"]["coefficient"] > 0 for item in receipts)
+    assert all(item["normalized_cell"]["coefficient"] < 0 for item in receipts)
+    assert all(
+        item["normalized_cell"]["source_text"] == item["source_cell"]["source_text"]
+        for item in receipts
+    )
+    assert all(
+        mapping["mapping_kind"]
+        == "DECLARATIVE_EXACT_DIRECTIONAL_DEDUCTION_ROLLFORWARD_PROPOSAL"
+        for mapping in candidate["mappings"]
+        if mapping["movement_role"] == "USE_MOVEMENT_ROW"
+        and mapping["period_role"] == "CURRENT_PERIOD"
+    )
+
+
+def test_two_possible_unsigned_deductions_remain_ambiguous() -> None:
+    current = _period_table("Tại ngày 31 tháng 12 năm 2025")
+    current["rows"][2]["values_exact"] = ["10", "15", "10"]
+    current["rows"].insert(
+        3,
+        {
+            "hierarchy_path_exact": ["Giảm dự phòng trong kỳ"],
+            "label_exact": "Giảm dự phòng trong kỳ",
+            "row_kind": "ITEM",
+            "values_exact": ["10", "15", "10"],
+        },
+    )
+    current["rows"][-1]["values_exact"] = ["130", "245", "130"]
+
+    candidate = _evaluate(
+        _page(current, _period_table("Tại ngày 31 tháng 12 năm 2024"))
+    )
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "directional_deduction_normalization_receipts" not in candidate["closure_receipt"]
+    assert any("ROLLFORWARD_LANE_EQUATION_MISMATCH" in reason for reason in candidate["reasons"])
+
+
+def test_blank_lane_cells_may_close_from_visible_totals_but_are_not_mapped() -> None:
+    current = _period_table("Tại ngày 31 tháng 12 năm 2025")
+    current["columns"][2] = {
+        "header_path_exact": ["Tổng cộng"],
+        "value_kind": "MONEY",
+    }
+    current["rows"][0]["values_exact"] = ["110", "215", "325"]
+    current["rows"][1]["values_exact"] = ["20", "30", "50"]
+    current["rows"][2]["values_exact"] = [None, "(15)", "(15)"]
+    current["rows"].insert(
+        3,
+        {
+            "hierarchy_path_exact": ["Điều chỉnh khác"],
+            "label_exact": "Điều chỉnh khác",
+            "row_kind": "ITEM",
+            "values_exact": [None, "5", "5"],
+        },
+    )
+    current["rows"][-1]["values_exact"] = ["130", "235", "365"]
+    comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
+    comparative["columns"].pop()
+    for row in comparative["rows"]:
+        row["values_exact"].pop()
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == READY
+    receipts = candidate["closure_receipt"]["horizontal_total_zero_recovery_receipts"]
+    assert len(receipts) == 2
+    assert {item["row_label_exact"] for item in receipts} == {
+        "Sử dụng dự phòng trong kỳ",
+        "Điều chỉnh khác",
+    }
+    assert all(item["recovered_cell"]["coefficient"] == 0 for item in receipts)
+    assert all(item["recovered_cell"]["source_text"] is None for item in receipts)
+    assert {787, 790}.isdisjoint(
+        {mapping["report_norm_id"] for mapping in candidate["mappings"]}
+    )
+    assert all(
+        mapping["cell"]["state"] != "HORIZONTAL_TOTAL_PROVEN_ZERO"
+        for mapping in candidate["mappings"]
+    )
+
+    current["rows"][2]["values_exact"][2] = "(14)"
+    current["rows"][3]["values_exact"][2] = "6"
+    unresolved = _evaluate(_page(current, comparative))
+    assert unresolved["status"] == UNRESOLVED
+    assert unresolved["mappings"] == []
+    assert "horizontal_total_zero_recovery_receipts" not in unresolved["closure_receipt"]
+
+
+@pytest.mark.parametrize("surface", ["-", "--", "––", "——", "__"])
+def test_dash_only_money_surface_is_zero_without_discarding_raw_text(surface: str) -> None:
+    assert subject._money(surface) == {
+        "coefficient": 0,
+        "source_text": surface,
+        "state": "DASH_ZERO",
+    }
+
+
+def test_one_unknown_table_cell_may_close_but_is_not_mapped() -> None:
     candidate = _evaluate(
         _page(
             _period_table("Tại ngày 31 tháng 12 năm 2025", margin_provision=None),
@@ -492,10 +846,36 @@ def test_one_unknown_table_cell_is_inferred_and_ready() -> None:
 
     assert candidate["status"] == READY
     assert candidate["reasons"] == []
-    inferred = [mapping for mapping in candidate["mappings"] if mapping["report_norm_id"] == 6063]
+    inferred = [
+        vector
+        for vector in candidate["closure_receipt"]["role_vectors"]
+        if vector["period_role"] == "CURRENT_PERIOD"
+        and vector["lane_role"] == "MARGIN_ADVANCE_PROVISION_LANE"
+        and vector["movement_role"] == "PROVISION_OR_REVERSAL_ROW"
+    ]
     assert len(inferred) == 1
     assert inferred[0]["cell"]["coefficient"] == 20
     assert inferred[0]["cell"]["state"] == "INFERRED_ONE_UNKNOWN_FULL_RANK"
+    assert all(mapping["report_norm_id"] != 6063 for mapping in candidate["mappings"])
+
+
+def test_visible_dash_zero_is_source_observed_and_mapped() -> None:
+    current = _period_table("Tại ngày 31 tháng 12 năm 2025")
+    current["rows"][2]["values_exact"][0] = "-"
+    current["rows"][-1]["values_exact"][0] = "130"
+
+    candidate = _evaluate(
+        _page(current, _period_table("Tại ngày 31 tháng 12 năm 2024"))
+    )
+
+    assert candidate["status"] == READY
+    mapped = [mapping for mapping in candidate["mappings"] if mapping["report_norm_id"] == 787]
+    assert len(mapped) == 1
+    assert mapped[0]["cell"] == {
+        "coefficient": 0,
+        "source_text": "-",
+        "state": "DASH_ZERO",
+    }
 
 
 def test_comparative_multiple_unknowns_veto_every_mapping() -> None:
@@ -525,7 +905,7 @@ def test_comparative_multiple_unknowns_veto_every_mapping() -> None:
 
 def test_comparative_equation_mismatch_vetoes_current_period_mappings() -> None:
     comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
-    comparative["rows"][-1]["values_exact"][0] = "111"
+    comparative["rows"][-1]["values_exact"][0] = "112"
     candidate = _evaluate(
         _page(
             _period_table("Tại ngày 31 tháng 12 năm 2025"),
@@ -1471,6 +1851,40 @@ def test_explicit_current_opening_must_equal_comparative_closing() -> None:
     )
 
 
+def test_one_display_unit_endpoint_rounding_preserves_both_printed_values() -> None:
+    current = _period_table("Tại ngày 30 tháng 06 năm 2025")
+    comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
+    current["rows"][0]["values_exact"][0] = "111"
+    current["rows"][-1]["values_exact"][0] = "121"
+
+    rounded = _evaluate(_page(current, comparative))
+
+    assert rounded["status"] == READY
+    general = next(
+        item
+        for item in rounded["closure_receipt"]["endpoint_continuity_receipts"]
+        if item["lane_role"] == "GENERAL_PROVISION_LANE"
+    )
+    assert general["previous_closing"]["cell"]["coefficient"] == 110
+    assert general["next_opening"]["cell"]["coefficient"] == 111
+    assert general["endpoint_value_rounding_receipt"] == {
+        "difference_in_display_units": 1,
+        "rule": (
+            "SOURCE_VISIBLE_ADJACENT_PERIOD_ENDPOINTS_MAY_DIFFER_BY_ONE_DISPLAY_UNIT_"
+            "WITHOUT_REWRITING_EITHER_VALUE"
+        ),
+        "status": "EXACT_ONE_DISPLAY_UNIT_ENDPOINT_ROUNDING",
+    }
+
+    current["rows"][0]["values_exact"][0] = "112"
+    current["rows"][-1]["values_exact"][0] = "122"
+    mismatch = _evaluate(_page(current, comparative))
+    assert mismatch["status"] == UNRESOLVED
+    assert "ROLLFORWARD_ENDPOINT_CONTINUITY_INVALID:GENERAL_PROVISION_LANE" in mismatch[
+        "reasons"
+    ]
+
+
 def test_explicit_consecutive_opening_preserves_ready_endpoint_receipts() -> None:
     table = _stacked_table()
     table["rows"].insert(
@@ -2083,4 +2497,115 @@ def test_explicit_same_date_period_boundary_is_a_chained_endpoint() -> None:
     assert all(
         receipt["continuity_kind"] == "CHAINED_PRIOR_CLOSE_TO_CURRENT_OPEN"
         for receipt in candidate["closure_receipt"]["endpoint_continuity_receipts"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("surface", "expected"),
+    [
+        ("Số cuối quý", "CURRENT_PERIOD"),
+        ("6.2. Biến động dự phòng\nSố cuối quý", "CURRENT_PERIOD"),
+        ("Số đầu năm", "COMPARATIVE_PERIOD"),
+        ("Số đầu năm của khoản vay", None),
+        ("Số cuối quý\nSố đầu năm", None),
+    ],
+)
+def test_period_role_classifier_accepts_only_exact_physical_caption_lines(
+    surface: str,
+    expected: str | None,
+) -> None:
+    assert subject.classify_gemini_json_rollforward_period_role_surface_v1(surface) == expected
+
+
+def test_unique_ordered_endpoint_chain_binds_undated_adjacent_components() -> None:
+    current = _period_table("Tại ngày 31 tháng 12 năm 2025")
+    comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
+    current["title_exact"] = None
+    comparative["title_exact"] = None
+
+    candidate = _evaluate(_page(current, comparative))
+
+    assert candidate["status"] == READY
+    receipt = candidate["closure_receipt"]["period_assignment_receipt"]
+    assert receipt["status"] == "ORDERED_TWO_COMPONENT_UNIQUE_ENDPOINT_CHAIN_BOUND"
+    assert [item["period_role"] for item in receipt["assignments"]] == [
+        "CURRENT_PERIOD",
+        "COMPARATIVE_PERIOD",
+    ]
+    assert all(item["date"] is None for item in receipt["assignments"])
+
+    drifted = copy.deepcopy(candidate)
+    drifted["closure_receipt"]["period_assignment_receipt"]["assignments"].reverse()
+    material = copy.deepcopy(drifted)
+    material.pop("candidate_id")
+    drifted["candidate_id"] = "gjfafcv1:candidate:" + canonical_json_sha256_v1(material)
+    refs = _source_refs(
+        [
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t2",
+            },
+        ]
+    )
+    with pytest.raises(
+        GeminiJsonRollforwardAccountingFamilyV1Error,
+        match="candidate does not replay exactly",
+    ):
+        validate_gemini_json_rollforward_family_candidate_replay_v1(
+            drifted,
+            regions=refs,
+            page_json_by_version={VERSION_A: _page(current, comparative)},
+            compiled_specs=_compiled(),
+            query_receipt=build_gemini_json_rollforward_region_query_receipt_v1(refs),
+        )
+
+
+@pytest.mark.parametrize("mutation", ["NONADJACENT", "CHAIN_MISMATCH", "BIDIRECTIONAL"])
+def test_undated_component_order_never_binds_without_one_unique_exact_chain(
+    mutation: str,
+) -> None:
+    current = _period_table("Tại ngày 31 tháng 12 năm 2025")
+    comparative = _period_table("Tại ngày 31 tháng 12 năm 2024")
+    current["title_exact"] = None
+    comparative["title_exact"] = None
+    tables = [current, comparative]
+    refs = None
+    if mutation == "NONADJACENT":
+        tables.insert(1, copy.deepcopy(current))
+        refs = [
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+            {
+                "page_json_version_id": VERSION_A,
+                "physical_page": 7,
+                "section_id": "s1",
+                "table_id": "t3",
+            },
+        ]
+    elif mutation == "CHAIN_MISMATCH":
+        current["rows"][0]["values_exact"][0] = "111"
+        current["rows"][-1]["values_exact"][0] = "121"
+    else:
+        current["rows"][-1]["values_exact"] = comparative["rows"][0]["values_exact"][:]
+        current["rows"][1]["values_exact"] = ["0", "0", "0"]
+        current["rows"][2]["values_exact"] = ["(10)", "(15)", "(10)"]
+
+    candidate = _evaluate(_page(*tables), refs=refs)
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["closure_receipt"]["period_assignment_receipt"]["status"] != (
+        "ORDERED_TWO_COMPONENT_UNIQUE_ENDPOINT_CHAIN_BOUND"
     )

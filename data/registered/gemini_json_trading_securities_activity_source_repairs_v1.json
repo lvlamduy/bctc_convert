@@ -1,0 +1,1283 @@
+{
+  "family_id": "TRADING_SECURITIES_ACTIVITY",
+  "format_version": "GEMINI_JSON_TRADING_SECURITIES_ACTIVITY_AUTHENTICATED_SOURCE_REPAIR_ARTIFACT_V1",
+  "policy": "TRANSCRIBE_ONLY_PDF_VISIBLE_MONEY_TOKENS_NO_EQUATION_BACKSOLVE_NO_BLANK_TO_ZERO_NO_PROVIDER",
+  "repairs": [
+    {
+      "base_page_json_sha256": "b9e9c986b49c4f83a761bfe8f9aa93a7e6b7c46cf043eff1719f3b2d7fb13b06",
+      "base_table_sha256": "832561c4074466f29de538b3ce267b1ec9edf161f4ab962a742f08c529ab27ee",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": "-带有横线-",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "(Chi phí) /Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "(Chi phí) /Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "(Chi phí) /Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "(Chi phí) /Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3540,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "7a6a2f983798c2ec5c12dae43755c7e646b803e6c8248ca909edcd4c23a4d7e3",
+        "size_bytes": 2566524,
+        "width": 2466
+      },
+      "page_json_version_id": "gfpstorev1:json:65714b974a862eb86b12bbb6147ca8404f9b02af423116368b2c2813ae67be23",
+      "physical_page": 24,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/ABB/2025/BCTC Hợp nhất quý 4 năm 2025__592d2993__3_abb_2026_2_4_91abe48_bctc_hn_q4_2025.pdf",
+      "source_sha256": "836a7a4c5f0f73bf145af4bfe6c8394215bb69881cbae702ac591966db88259a",
+      "source_size_bytes": 7349106,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "4c759c47b11726514fbb69789676860753fd1fac68c36ee80041f09a6e9c7530",
+      "base_table_sha256": "9771f2b6a9cebbbbe7db33fbe94c7cf0deef97f6b7d78759ce9b7eb140031258",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": "-ktCap-",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "(Chi phí) /Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "(Chi phí) /Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "(Chi phí) /Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "(Chi phí) /Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3528,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "c9f405683bc28adcb3ed2cb92241e7933788b1d792d8beb916e7c2077ae75a70",
+        "size_bytes": 2536708,
+        "width": 2460
+      },
+      "page_json_version_id": "gfpstorev1:json:1c6177547c2ded2b65923e2010caece7c609452585d349e8906f1e191e233b3c",
+      "physical_page": 24,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/ABB/2025/phpkgbljk-bctc-hn-q3-2025-68fb4c313c9de.pdf",
+      "source_sha256": "2945ee34c5c6fcbe1f63ac8e4dd060c6c58f6eec50d91840baf6dfe9ff608fe1",
+      "source_size_bytes": 7516916,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "ae07afb6430aa342b3187aab9558667e812b94ceba434082773c29eccc8bb536",
+      "base_table_sha256": "6740694bd31cfd459fad17a7770f4cae832030d9b8ca674b377159af586aecdf",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": "-ktCap",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí về mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí về mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 1,
+          "original_value_exact": "-ktCap",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí dự phòng giảm giá chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí dự phòng giảm giá chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "087bf28f90ca58bdabacc010e3d5a3fcc27933cb2a789d335fc5fa5927f37b45",
+        "size_bytes": 3012901,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:2fb0d681028a9053baa152693660f498cab37d9734e0db6b8a589b1e0e5fca3b",
+      "physical_page": 29,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/EIB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+      "source_sha256": "72f179c9ffc3117d1ef350d42108095d4d71f354b347755a24f009fdf85ba4de",
+      "source_size_bytes": 11996953,
+      "table_id": "t2"
+    },
+    {
+      "base_page_json_sha256": "a2e51b5d3b0ec2d61e521c406a468e4b0415d89b25d2772444f142b789723bcf",
+      "base_table_sha256": "b4d5d28f2a38bc63952470a9259168e37cd6d3fbf5872ad1b25f78ab9e80aa2b",
+      "cell_repairs": [
+        {
+          "column_ordinal": 1,
+          "original_value_exact": "-Code",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí về mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí về mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": "--",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí về mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí về mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": "--",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí dự phòng giảm giá chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí dự phòng giảm giá chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "9455350e5e4e7249a13506b328796ffa5872c15562509e865275168563365aa8",
+        "size_bytes": 2865799,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:e7b32b5d61fe2d06ef1a579209df4e752daf1e6b37c1a2d9e5322435dbd8fdf9",
+      "physical_page": 30,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/EIB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "7d12ee5d77697f8ce5611998c35506e71c39df37bfe63f69b3350cec470a254d",
+      "source_size_bytes": 11845354,
+      "table_id": "t2"
+    },
+    {
+      "base_page_json_sha256": "8e1523adc6f6e735a6f48eea52522edc5790a6a401ad90c4b4fec3fa0adc2e31",
+      "base_table_sha256": "c9fcf5001bab4cd48e64710d3b29baf55ef2052ebcfea8a675061ec63a19b8f2",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": "22\n.565",
+          "replacement_value_exact": "22.565",
+          "row_hierarchy_path_exact": [
+            "Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "TOTAL",
+          "row_label_exact": "Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3546,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "be45acd7aa220bf2cb9a8f65f7ca0b202d77a59d2bdc22e0b8bc9d7794ccd74e",
+        "size_bytes": 3877682,
+        "width": 2484
+      },
+      "page_json_version_id": "gfpstorev1:json:fdc47144d317b4e4098567f30f330bc346263a9b517846da982f8b6c226cccfc",
+      "physical_page": 40,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/KLB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+      "source_sha256": "43c4d53e0f6aa7238fd5b1526e2585760bb707fd32ae5bf61e2519423b175c41",
+      "source_size_bytes": 16031883,
+      "table_id": "t2"
+    },
+    {
+      "base_page_json_sha256": "b0b395da79e8e04a523d3a3423aeaa1bc5e3599366d2fef3e3594e00bd29776b",
+      "base_table_sha256": "ee6901df9b3d607520b20077d71dcdffcecdcf1e147d239988a29ec693447ee2",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Cộng"
+          ],
+          "row_id": "r2",
+          "row_kind": "TOTAL",
+          "row_label_exact": "Cộng",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [
+        {
+          "column_ordinal": 2,
+          "header_path_exact": [
+            "Kỳ trước"
+          ],
+          "original_value_kind": "TEXT",
+          "replacement_value_kind": "MONEY",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_COLUMN"
+        }
+      ],
+      "page_image": {
+        "height": 3546,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "1c487fadc6ab62cef80b36834920ba641b6003cfaa6a4b2ea6f2ae72ecc7fdc4",
+        "size_bytes": 3496368,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:4622d3d2aeff6bebba7291ce25ae522103e8bf800545d136680f922e804c8aa1",
+      "physical_page": 31,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/KLB/2025/bao-cao-tai-chinh-giua-nien-do-q4.2025-rieng_tv.pdf",
+      "source_sha256": "e6dba37ac2ea7d1ba936913ec516130b1f09108a4efcc9501956321bfabac9c9",
+      "source_size_bytes": 10583534,
+      "table_id": "t4"
+    },
+    {
+      "base_page_json_sha256": "65e94c70b9b6638bfe2b7aeda9fd38eb8b70a5a409d910ee1bc507f3683c9792",
+      "base_table_sha256": "7620e2c2a5414841724fc512a62dab3e8fc92d995862346d04117a7c9177d7fa",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí về mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí về mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí dự phòng rủi ro chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí dự phòng rủi ro chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/lỗ thuần từ hoạt động mua bán chứng khoán\nkinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "TOTAL",
+          "row_label_exact": "Lãi/lỗ thuần từ hoạt động mua bán chứng khoán\nkinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3496,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "ef76d8f7182183768a9348a4c9e54ca6b92a620e53cd3598066051e2006068e8",
+        "size_bytes": 4802717,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:dc3663fdaa057ba13160e9d921dae037eeb688bab6ea5852eaa7af5d1028d7d3",
+      "physical_page": 41,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s3",
+      "source_logical_name": "vietstock_bctc/VAB/2025/2_vab_2025_4_15_d453cb6_vn_baocaotaichinh_q1_2025.pdf",
+      "source_sha256": "3221863e1973770c69cc5e5615db8333499a0158c15a4df7f40f49419dee7693",
+      "source_size_bytes": 16170639,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "3ca051f24a8ba83736584ebfb0941a12fe6778b739d1781746fe60f9e512ad2d",
+      "base_table_sha256": "5fd2b48cf057da8c1f05409019267ef3b7abb8fcedb80eb6b8ac869792373255",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí về mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí về mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/lỗ thuần từ hoạt động mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "TOTAL",
+          "row_label_exact": "Lãi/lỗ thuần từ hoạt động mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3488,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "bb594caacae448b294b61a08d3c5bac5a002ff9efa6b0661259addd5b5d18f7f",
+        "size_bytes": 1149711,
+        "width": 2484
+      },
+      "page_json_version_id": "gfpstorev1:json:9f609b3e417a8993b6b66494fe26fa1163dac8dc6bc9cb1aa5e5db558a9c92dd",
+      "physical_page": 41,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC HOP NHAT QUY 2.2025 TVIET_0001-da nen.pdf",
+      "source_sha256": "fc653f4dd792a56ea076938379d7dd25d415471622418b8b9a48af6d000cd852",
+      "source_size_bytes": 6519529,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "f8de1174434af9076703b35666f026bb093131eff86bbb183a4476165338b378",
+      "base_table_sha256": "a32c2b90db0a9e1518c53573bf8093563946ec7fa5c1047af4ffeb5ff353311b",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí về mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí về mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3559,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "f97c378dee0a9ca834a937dee5ef7b3a0bd840db9f945ac159439bca4b23db1d",
+        "size_bytes": 899091,
+        "width": 2471
+      },
+      "page_json_version_id": "gfpstorev1:json:97ae81022756e484185cc5144641e84e5271f733b07b11ee795a4bf19925b3c0",
+      "physical_page": 43,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/VAB/2025/BCTC Hợp nhất quý 3 năm 2025.pdf",
+      "source_sha256": "4731cf17493c26feb5cdf533ecf942ce149ab4ba3b8aed1f23dd638926fb9353",
+      "source_size_bytes": 8628432,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "ac6564d950fef7deee56daf4e0c1f7a3778155c695ce4ad2936a356ed800a964",
+      "base_table_sha256": "9dbff06ff51dd7ad32816dac70b649eab463267d1eb4fffeb2a2b99037dc56b8",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Thu nhập từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_label_exact": "Thu nhập từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí về mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí về mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Chi phí dự phòng rủi ro chứng khoán kinh doanh"
+          ],
+          "row_id": "r3",
+          "row_kind": "ITEM",
+          "row_label_exact": "Chi phí dự phòng rủi ro chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 2,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/lỗ thuần từ hoạt động mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r4",
+          "row_kind": "TOTAL",
+          "row_label_exact": "Lãi/lỗ thuần từ hoạt động mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3505,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "92ca3deaafb3fa50ec062db4cc45f9fa4895253bcea30853a7c7f9ec04226809",
+        "size_bytes": 905159,
+        "width": 2471
+      },
+      "page_json_version_id": "gfpstorev1:json:9c62fb82ffb98721fbce3db9edb8a7ce795c250b1fe31badbff3f51da75c0ee9",
+      "physical_page": 43,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s2",
+      "source_logical_name": "vietstock_bctc/VAB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "db337e1de3e7aab90012dec81ef50467b059ad2c7e6acc07cd52b65166d0617f",
+      "source_size_bytes": 11485173,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "3dbd2b019d7982a72b497f75a556e9fabc609deda5644708d08300e25584c675",
+      "base_table_sha256": "9afa5a424151eda88d4d9715fd8eb362d54b8cca899e20116017aa5627c5df2d",
+      "cell_repairs": [
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3509,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "d5480c665dd29f557f8ec2083dbd87d4b9d69aa29641f1e218bd5165d774de8f",
+        "size_bytes": 1626624,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:8adf7366434c0ef0c9e8b2f0c152952b64edbf0aa8be459f655244beed0ff654",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+      "source_sha256": "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+      "source_size_bytes": 11320313,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "13efc25b97a0e6f4deada445b6eba86ecf549dfc5df1fa1f03e8450a5b51a702",
+      "base_table_sha256": "3c3e3f0e6b29a7c43c0c172936ca5578fcc58f91d1f01ac7f63db961bb015a2f",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "8a07ca54c3b3b2dc93bb767a4fe7cdfdb3f7ce7018653cf7ac5bef61a897407d",
+        "size_bytes": 1514275,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:fa4c10179763df1e155e2bf0e7fe34d7dd65002813ac5fbe99a06b792b553fb2",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 4 năm 2025.pdf",
+      "source_sha256": "55452f947d44bc11de79d9180c118acea4d45a674159364ad763ad5a8f712f29",
+      "source_size_bytes": 9523186,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "4dd60e3b9350134b3c36f8a21bf7c6b9913d8b176eecef2b018417d2f1a5ac81",
+      "base_table_sha256": "0fa2bd189d93bac40df9f38181e499a1055f3950e1792ba9c694d8f6d4d1d4af",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3513,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a0e032ebb72d8217e1ca0291c3d9c58a540e089682a5d2b54787507de82e58bc",
+        "size_bytes": 1625745,
+        "width": 2480
+      },
+      "page_json_version_id": "gfpstorev1:json:8970ba7f6a301553d16accaaa0493ce3e167ac1933ac51ed535cd78a426b2bb3",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "3261184d473884431c968378ccae71fe0994f242263cd5a4a6fa88aecdcecdf8",
+      "source_size_bytes": 11423887,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "96cc0d7923e106e4697331847149d908ca1d85f6b4cc0cf8bed03786c7bf8e52",
+      "base_table_sha256": "f2db6648458d35e5875599906625b4f08df0776c0f588b2b7b24abfcc1f5ada9",
+      "cell_repairs": [
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "39d7e89555009b3d43075eeba1e5ed3737b1ad6c7224d2c0e097ea9018bc52a5",
+        "size_bytes": 1570900,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:b819d1208548f3ff6a7cfc15bee9daef9b6b73a7ee63cc404756ac1c7d70e51a",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Q2_2025-1.pdf",
+      "source_sha256": "831abe75cfbd1987c8e63ecec9e3cc1f9a0ee49db1ffc7c930c0851847cc98a3",
+      "source_size_bytes": 9731305,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "cab25dec5c872313d24ac328b79d60cd103a782bea4625aa513e95edd5cdbb56",
+      "base_table_sha256": "7e9b639c1438be58211e42b7fed96af362c6c9fe087cdfb3b08f8256d2b9a71f",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "387c463a77649dcde64f3f4a65b6ef5a4268c5986b4abc2626213785d723e500",
+        "size_bytes": 1605706,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:52faf9697d1425df25b302c177d4d389f084afe7b3a9af62a9eebd99a6ea29f0",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhHopNhat_Q3_2025.pdf",
+      "source_sha256": "0f4379366c3f774a6ece78ac708437719a835f6d657fc3b3e529ee9d71c8a613",
+      "source_size_bytes": 9658454,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "e2feea610113ecdd76f30dc1cad9c901a0ebe5b85a145bfb9f00421fd309f05e",
+      "base_table_sha256": "87cbf14ea70f4f97a3294fff37d63042859dd3670a970a6e1ca235af2e1e8727",
+      "cell_repairs": [
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "75d28e196c365e4842f38a2ad605be968f9a4b626e85366d0630d2007a25d2f0",
+        "size_bytes": 1612659,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:0568867379b94b984cdc3a48c28a8119835497c592351ed648f12eb409f35f32",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Q2_2025.pdf",
+      "source_sha256": "1bf17e6dafef92f6fcd437dbdff37dbd03e04f84a9c06d89930baf7d38128ff6",
+      "source_size_bytes": 9719793,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "11fe1c8af853580b88b507497afef5a7f832797cfbdb73a6f0bbdf6bb9ec6074",
+      "base_table_sha256": "3b50b9c4a3a578ada3e5820b742df300a3b0d53d6d2898bbbb36d0b436326420",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": "‐",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán\nkinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán\nkinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 6,
+          "original_value_exact": "‐",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán\nkinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán\nkinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3508,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "29f140ebc6fc4749b88afcda125d38c1d146e3a472bbf0cb0bb8a9a7c38d5931",
+        "size_bytes": 1530445,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:626ac849d4ff03357dda65f621b4bed712fe4744ab330d952951e664a63708a7",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Q3_2025.pdf",
+      "source_sha256": "f70f321296d8b9da75ee8bbf5e5566b3a64e03c17eaf719ed2579e2043feab48",
+      "source_size_bytes": 9546319,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "16d777a8deb2a5f7940b30355d9da840b42f1eb809189bbd8747eac4bc2fe158",
+      "base_table_sha256": "086b0c4b64ceb1bff3b30e9a23fd780329f83028ddde7da062f38306213c4c7e",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3300,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "0b77e680c65ffc0a14203355a15091058a04d267ccee46fc2484d12d15898293",
+        "size_bytes": 8091305,
+        "width": 2550
+      },
+      "page_json_version_id": "gfpstorev1:json:dc81f1f59e17eec380b64ec9e0b760d7c3d4a3570fe20db5fb76d9f8aa7cf67c",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2026/2_bvb_2026_4_29_66c0e1c_vi_baocaotaichinhriengle_q1_2026.pdf",
+      "source_sha256": "97225e710ecb384f13cbc52eb8ee79add0a890c191bb43a9d61ded6e21fa86d8",
+      "source_size_bytes": 20173683,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "8ea82bb0c96c741ff705369f45e5bddfc57f65ea23716524714cb39709169eb6",
+      "base_table_sha256": "29a616bae1163776b960f433fac44918a5ec19d803763f3b7e50417e1cc5ed5c",
+      "cell_repairs": [
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3505,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "24997cb3afdd065bab8803114565381904271d1fbb4d084f2bb059f859400d80",
+        "size_bytes": 2163987,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:8049c6040a70f6db6be05733bebb439411b1a76c387bec633e4d7aadc0e62fb9",
+      "physical_page": 8,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/BVB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+      "source_sha256": "49bba703096fa5091eb1e7c27e8fe01909be16a8cc2a06026be88b308bbcd3c5",
+      "source_size_bytes": 13019812,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "d2561c68a229b38bb35e3912ccdf26ac0ad95dc25d6fd0004e1e1cbe244bc02f",
+      "base_table_sha256": "26dc267a514f9b405f6806cca48e1837afb049f00e86dc8c221dd7c8b059ebef",
+      "cell_repairs": [
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3546,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "dc7239a0c439120b26014b2c0b630cf7e7340c3468ce427343d56afe1a940591",
+        "size_bytes": 3441971,
+        "width": 2484
+      },
+      "page_json_version_id": "gfpstorev1:json:79f10f3d39a302bf9432fbfef2a90e7e265521e0c9e7ff7d0091e2627ef1eacc",
+      "physical_page": 5,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/KLB/2025/BAO CAO TAI CHINH QUY 3.2025 HOP NHAT.pdf",
+      "source_sha256": "66e07ea5075283291d4abda7fb550fe4277295944c8993dfd35400e6a4878da2",
+      "source_size_bytes": 8958235,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "b801608267dd03adae71f97ed665c9468ab2ab51d29c9317bec15cdf7d58ff12",
+      "base_table_sha256": "ffb7accb3e3f4ce278850aa07540cf89fbd56a6ab8eedd64285d0fefadeb5622",
+      "cell_repairs": [
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3538,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "68131378f944c49cbe11bbaffe472bd38c874feb97e5e549eb279010baef04c4",
+        "size_bytes": 3352721,
+        "width": 2484
+      },
+      "page_json_version_id": "gfpstorev1:json:c864a91bf9ee9b3af22f91872bc014f5cfa148cb2589210db4607c8f4d1d2610",
+      "physical_page": 5,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/KLB/2025/BAO CAO TAI CHINH QUY 3.2025 RIENG.pdf",
+      "source_sha256": "c7d46c7125d6ba94ab22f12456b0a4334cdfe9a94ba14167e9b2afd44dced865",
+      "source_size_bytes": 9307963,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "aec128faa4fe1cd8b792512ea1b3310ea55752f039468652716482864fe40b98",
+      "base_table_sha256": "44433dea33feaaeddbcf59339a3118b7b6a24f719db7120a50834649734ef714",
+      "cell_repairs": [
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3500,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "c6d8b64b57f2293d0fabd1ac81401e8a29a482749602c5f662d9dd9e9b4e0e29",
+        "size_bytes": 3980613,
+        "width": 2450
+      },
+      "page_json_version_id": "gfpstorev1:json:5e776b038e035648872d99485ac096936384106afc1fb041588053aae96ae745",
+      "physical_page": 5,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/KLB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+      "source_sha256": "523cc89343c44d44d6bd59f3a309f88fb52877e285b8a0e286653d310fbcdfba",
+      "source_size_bytes": 14397616,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "61c99f63504e4a9cee2a942a2b25b8b4f301a49acf770484446e1a00c5403e6e",
+      "base_table_sha256": "b0381178008c4a805f062084bc8b07d88745aaa4ba1d5fe01e53507f5c32975e",
+      "cell_repairs": [
+        {
+          "column_ordinal": 4,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3542,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "5e87af2dfa89db4853d8fd37400428a5fd27aa89d4548a7e35d346a43401fd94",
+        "size_bytes": 3229359,
+        "width": 2484
+      },
+      "page_json_version_id": "gfpstorev1:json:a454a549dfc76809e8f1b5c79c2ba976064e4ccb4ce554aafa52a825a2c03334",
+      "physical_page": 10,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/KLB/2025/VI_BaoCaoTaiChinh_KiemToan_BanNien_2025_HN.pdf",
+      "source_sha256": "cca550de67cbd0f2e05c77e39365872495d74d8c079aeef012ead6dc52997d33",
+      "source_size_bytes": 15203095,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "bd55f6a3ab35a2250f096499943e360e0def009d447acea48895f4df2c229f2e",
+      "base_table_sha256": "38c8092b0512f14800f8e690b7674a34a45437e5d195ad9102661f2f9e8aa708",
+      "cell_repairs": [
+        {
+          "column_ordinal": 2,
+          "original_value_exact": "- tie-",
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3510,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "ab420da80b52e529be8f20e184dde6282ab77cdf3e73d4e162d8fd12d53ffd01",
+        "size_bytes": 3947400,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:962d30897602a6766afaa6e3b3ee5b25b56f75a325bec388b409f3a546ddd9b1",
+      "physical_page": 13,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/NVB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "source_sha256": "cf1b81d78efda77a8c803f5b38d0e2d586c6785f02554ab3b87c5dccd6ddd27d",
+      "source_size_bytes": 5042572,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "566ec989af030a75306861baf0e5b187040063ef299acaa04c2d4da0ee35a791",
+      "base_table_sha256": "4b2dd96e478fa1616624568ba1448314a03b77481adb4e30915ce5c49de13a5c",
+      "cell_repairs": [
+        {
+          "column_ordinal": 3,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3510,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "02616bb39209e12dcb82d05b4e1c6384120d97a8561c451b9d9cf1a3a898451a",
+        "size_bytes": 3969945,
+        "width": 2481
+      },
+      "page_json_version_id": "gfpstorev1:json:a05d99655d62eec674f01fc8434e8bc6a64a50346962654877456a83c67f6ff6",
+      "physical_page": 13,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/NVB/2025/VI_BaoCaoTaiChinh_BanNien_2025_HopNhat.pdf",
+      "source_sha256": "92f4239c94d2880bc99d0986cc61a580dae7b4a2f52721bf4f47700aded2bb65",
+      "source_size_bytes": 5430112,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "91d04a95915b4fe598c0cac6afee614fca062d38582a3d0126ac5f181882ce63",
+      "base_table_sha256": "913ab3010eaab27618185d7b71c80b2c86a53e16a2d02c0aae6b1115237a1508",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3505,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "fe19fb4ee72fede494a96a5d27906e0661cc022978122ea8547b09738e3cc749",
+        "size_bytes": 3564093,
+        "width": 2475
+      },
+      "page_json_version_id": "gfpstorev1:json:dd6c1d4b850eeb3a1d9dd602e29b73d7694ffbf02fc1096f81e105cca778bbb9",
+      "physical_page": 7,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/SGB/2025/BAO-CAO-TAI-CHINH-HOP-NHAT-QUY-3---20205.pdf",
+      "source_sha256": "c2cd8985045a97c75bc6637c207dc2cff9dbdb8cccd68c1542eb8050869adbd3",
+      "source_size_bytes": 16001947,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "4d482d6ce74b6d3d0b400d19d380da0e43d8e9b4a8927375fdc4dd7817acdfd3",
+      "base_table_sha256": "78cd28e21d44f6834740bea1a084ad57246fe43a00db90326c6324228c45a05f",
+      "cell_repairs": [
+        {
+          "column_ordinal": 4,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "SUBTOTAL",
+          "row_label_exact": "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3496,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "a9cead4899fb9491ade7c9ab3b5c59d82df00728cd86529b28788a9707cf8d7d",
+        "size_bytes": 3436291,
+        "width": 2471
+      },
+      "page_json_version_id": "gfpstorev1:json:d2c0c4eaee76696092ca5dfca4dd2ebf463b60e45359ea657a8be1442f9a5527",
+      "physical_page": 6,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/SGB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "32e0564c1248db84fe8fe8e4717c254916364015082efdc154458f4d51d12256",
+      "source_size_bytes": 15200551,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "29ce25b603c297ceb62d01989918ddb5bf1cca6c0cedf92c91f2c0159e99e550",
+      "base_table_sha256": "61bea00b35e7c4eba70294b354d52c1758f029ea30279080b6dc494826e90d5e",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "IV Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "IV Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3537,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "7039df5e99c77993ea4507f3929b435279b91653c38bb0749fc04ae2688d6357",
+        "size_bytes": 1190920,
+        "width": 2486
+      },
+      "page_json_version_id": "gfpstorev1:json:cfb637f6a5b08b49ef2dfba40db3d171b4226e98576520102db51eb6d091f46c",
+      "physical_page": 7,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/SHB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+      "source_sha256": "710071aa8f543294faa4388ed0634bd7ee915daae24b249116212b4c4efc21d8",
+      "source_size_bytes": 5900185,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "03a0d7cbef60e0a1740592b7fea04045d47060eb0702b2f8104dd3f3cf7294ba",
+      "base_table_sha256": "c9df1b352c02f54cc43b27c8f9703450827c4d058b8e28037c2a7c59c60da251",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3537,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "641c53e3343dc0abaf2c59293c03b43c983fc9aaeedf291810ca8731773b0d52",
+        "size_bytes": 1513398,
+        "width": 2460
+      },
+      "page_json_version_id": "gfpstorev1:json:8be48406a45aa1d82db6bc63d9992857c5127f981064620ca2426b8b65d6ebb6",
+      "physical_page": 7,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/SHB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+      "source_sha256": "e43e50a17cd71ce393475b2bc53b47d6502b5b966f2d46d17da4dc1eac4cda6f",
+      "source_size_bytes": 6218212,
+      "table_id": "t1"
+    },
+    {
+      "base_page_json_sha256": "68f87b8688dbd5c0db00368fef7e72d58c78837f559209ed6157d2df331950e1",
+      "base_table_sha256": "f7b681b50421fe694eddbec5f1d168f577004aed222646624cfe70d7c9185d48",
+      "cell_repairs": [
+        {
+          "column_ordinal": 5,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        },
+        {
+          "column_ordinal": 6,
+          "original_value_exact": null,
+          "replacement_value_exact": "-",
+          "row_hierarchy_path_exact": [
+            "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh"
+          ],
+          "row_id": "r8",
+          "row_kind": "ITEM",
+          "row_label_exact": "Lãi/ lỗ thuần từ mua bán chứng khoán kinh doanh",
+          "visual_observation": "PDF_RENDER_VISIBLE_MONEY_TOKEN"
+        }
+      ],
+      "column_repairs": [],
+      "page_image": {
+        "height": 3372,
+        "media_type": "image/png",
+        "render_dpi": 300,
+        "sha256": "363b46004282981291327614f51b005c099749c9ee1ee3f54b5fbb310d99f657",
+        "size_bytes": 866333,
+        "width": 2439
+      },
+      "page_json_version_id": "gfpstorev1:json:82362a40fc27d29538c05839e00efd5ee168c1521d55d6f0e72784891d69cefb",
+      "physical_page": 4,
+      "reviewed_utc_date": "2026-09-04",
+      "section_id": "s1",
+      "source_logical_name": "vietstock_bctc/STB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+      "source_sha256": "a49a130496376a6ac8c2ef9fc4f50c2153b92fc65eeaf102e973ad9ab72a4dc0",
+      "source_size_bytes": 2968951,
+      "table_id": "t1"
+    }
+  ]
+}

@@ -3,18 +3,24 @@ from __future__ import annotations
 import json
 import sqlite3
 from copy import deepcopy
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
 
+import bctc_ai.storage.gemini_accounting_family_store_v1 as family_store
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     build_gemini_json_flat_family_sweep_v1,
     compile_gemini_json_flat_family_specs_v1,
     evaluate_gemini_json_flat_family_table_v1,
 )
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    SourceObservationMappingContractError,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (
     GeminiAccountingFamilyStoreV1Error,
+    _run_checked_source_replay_adapter_v1,
     gemini_accounting_family_store_summary_v1,
     ingest_gemini_accounting_family_sweep_v1,
     load_gemini_accounting_family_sweep_v1,
@@ -112,6 +118,109 @@ def _sweep() -> dict:
 
 def _reference(name: str, digit: str) -> dict:
     return {"path": name, "sha256": digit * 64, "size_bytes": 123}
+
+
+def _replay_adapter_fixture_v1(**_: object) -> list[dict]:
+    return [{"document_ordinal": 1, "status": "NOT_OBSERVED"}]
+
+
+def _adapter_reference() -> dict:
+    payload = Path(__file__).read_bytes()
+    return {
+        "path": "tests/unit/test_gemini_accounting_family_store_v1.py",
+        "sha256": sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+def test_source_replay_adapter_is_byte_bound_and_must_rebuild_exact_trials() -> None:
+    reference = _adapter_reference()
+    expected = _replay_adapter_fixture_v1()
+    _run_checked_source_replay_adapter_v1(
+        _replay_adapter_fixture_v1,
+        adapter_ref=reference,
+        implementation_refs=[reference],
+        source_page_database=Path("source.sqlite3"),
+        selected_page_json_version_ids=["gfpstorev1:json:" + "1" * 64],
+        compiled_specs={"family_id": "EXAMPLE"},
+        indexed_query_evidence={"accepted_clusters": []},
+        expected_trials=expected,
+    )
+
+    with pytest.raises(
+        GeminiAccountingFamilyStoreV1Error,
+        match="returned a different trial axis",
+    ):
+        _run_checked_source_replay_adapter_v1(
+            lambda **_: [],
+            adapter_ref=reference,
+            implementation_refs=[reference],
+            source_page_database=Path("source.sqlite3"),
+            selected_page_json_version_ids=["gfpstorev1:json:" + "1" * 64],
+            compiled_specs={"family_id": "EXAMPLE"},
+            indexed_query_evidence={"accepted_clusters": []},
+            expected_trials=expected,
+        )
+
+
+def test_source_replay_adapter_rejects_unbound_or_path_drifted_implementation() -> None:
+    reference = _adapter_reference()
+    with pytest.raises(
+        GeminiAccountingFamilyStoreV1Error,
+        match="is not an implementation reference",
+    ):
+        _run_checked_source_replay_adapter_v1(
+            _replay_adapter_fixture_v1,
+            adapter_ref=reference,
+            implementation_refs=[],
+            source_page_database=Path("source.sqlite3"),
+            selected_page_json_version_ids=["gfpstorev1:json:" + "1" * 64],
+            compiled_specs={"family_id": "EXAMPLE"},
+            indexed_query_evidence={"accepted_clusters": []},
+            expected_trials=_replay_adapter_fixture_v1(),
+        )
+
+    drifted = {**reference, "path": "tests/unit/not-the-adapter.py"}
+    with pytest.raises(
+        GeminiAccountingFamilyStoreV1Error,
+        match="implementation path drifted",
+    ):
+        _run_checked_source_replay_adapter_v1(
+            _replay_adapter_fixture_v1,
+            adapter_ref=drifted,
+            implementation_refs=[drifted],
+            source_page_database=Path("source.sqlite3"),
+            selected_page_json_version_ids=["gfpstorev1:json:" + "1" * 64],
+            compiled_specs={"family_id": "EXAMPLE"},
+            indexed_query_evidence={"accepted_clusters": []},
+            expected_trials=_replay_adapter_fixture_v1(),
+        )
+
+
+def test_ingest_enforces_source_observation_contract_before_store_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def reject(_: object) -> None:
+        raise SourceObservationMappingContractError("invented blank value")
+
+    monkeypatch.setattr(
+        family_store,
+        "validate_source_observation_mapping_contract_v1",
+        reject,
+    )
+    database = tmp_path / "families.sqlite3"
+    with pytest.raises(
+        GeminiAccountingFamilyStoreV1Error,
+        match="violates the source-observation mapping contract",
+    ):
+        ingest_gemini_accounting_family_sweep_v1(
+            database,
+            sweep=_sweep(),
+            corpus_index_ref=_reference("corpus-index.json", "4"),
+            implementation_refs=[_reference("engine.py", "5")],
+            run_kind="EXPERIMENTAL",
+        )
+    assert not database.exists()
 
 
 def test_family_sweep_is_stored_before_export_with_full_trace(tmp_path: Path) -> None:

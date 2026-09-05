@@ -1,0 +1,160 @@
+{
+  "family_id": "CREDIT_RISK_PROVISION_EXPENSE",
+  "format_version": "CREDIT_RISK_PROVISION_EXPENSE_AUTHENTICATED_SOURCE_REPAIR_SPEC_V1",
+  "render_contract": {
+    "alpha": false,
+    "colorspace": "RGB",
+    "format": "PNG",
+    "matrix": [2, 2],
+    "renderer": "PyMuPDF"
+  },
+  "repairs": [
+    {
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "source_sha256": "28a0d17b780fdddee6faa8c211f09eb4b3b9870a6720ba677ff1eebb667af747",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:cf8f4f6c3c47573721b0698c484971cccd95183e657dce0a1db4f7990449ef30",
+        "physical_page": 36,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "ccbecabdbb3c2b357a42f5913d5f334a1467c7fb402c930c349d51c5cd22f2b8",
+      "row_ordinal": 4,
+      "column_ordinal": 2,
+      "before_exact": null,
+      "after_exact": "-",
+      "repair_id": "gjcrpefav1:repair:324320d07912edef56c11a38cf45a9f4b01979ce0b9badc021465b75c662969f"
+    },
+    {
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "source_sha256": "831abe75cfbd1987c8e63ecec9e3cc1f9a0ee49db1ffc7c930c0851847cc98a3",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:da7554ae1fa09103c10ee6101c71a10931381c6dda1705be95fa7fa4f516cb2c",
+        "physical_page": 36,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "c687b301ed5b3086ca57ac3f3b783682d11f630d519303cc3bb0e769d70a7ede",
+      "row_ordinal": 4,
+      "column_ordinal": 2,
+      "before_exact": null,
+      "after_exact": "-",
+      "repair_id": "gjcrpefav1:repair:3d45ad399c504ea7c4a34c6464a1a0c057cee5c81bb82e0c74e404c8908d71af"
+    },
+    {
+      "repair_kind": "SECTION_AND_TABLE_TITLE_PDF_VISIBLE_EXACT",
+      "source_sha256": "0f4379366c3f774a6ece78ac708437719a835f6d657fc3b3e529ee9d71c8a613",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:8e7da9228348422c47348412633a8c749928accf670ecc770989b14b324c07ee",
+        "physical_page": 36,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "76bc6de0ed6e3240851e902863972724c379f126b5b8f94e40c8e6fe3ef413a3",
+      "before_section_title_exact": "26. Chi phí phòng rủi ro tín dụng:",
+      "before_table_title_exact": "26. Chi phí phòng rủi ro tín dụng:",
+      "after_title_exact": "26. Chi phí dự phòng rủi ro tín dụng:",
+      "repair_id": "gjcrpefav1:repair:b8e57440b5e8e239a4301d9a1ca1e565b37a358eb6ca22089a1216131013e925"
+    },
+    {
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "source_sha256": "1bf17e6dafef92f6fcd437dbdff37dbd03e04f84a9c06d89930baf7d38128ff6",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:415a324b163f9268d6a3752634e919cfc4fc48715062275a60b18a0464dc4586",
+        "physical_page": 36,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "cfb04860421721c18800587673ca595864da5dbb676545c20447b349761dcfae",
+      "row_ordinal": 4,
+      "column_ordinal": 2,
+      "before_exact": null,
+      "after_exact": "-",
+      "repair_id": "gjcrpefav1:repair:b13cbe4810cd79e4990049dcc0873c3b1041ab38b44283e32d1be687889b8935"
+    },
+    {
+      "repair_kind": "ROW_VALUES_PDF_VISIBLE_EXACT",
+      "source_sha256": "d214a3a4480e013a56c6ebe60bf6d742bd882fef234171b4a928a98f98b14f6a",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:5e2bc88eb3499d8e9bca63138d1fa5672ca028a89e94ab5fa708f9b1da8ea4c3",
+        "physical_page": 63,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "92c6215f5d194608ce78e84f42842f7ebba71745337851fb090d91724570c080",
+      "row_ordinal": 1,
+      "before_values_exact": ["7.3", "4.397", null],
+      "after_values_exact": ["7.3", "-", "4.397"],
+      "repair_id": "gjcrpefav1:repair:01c07a196b3bca68b7a509fcf83060fb8089da03f78aa0c2b035e66316ac2f68"
+    },
+    {
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "source_sha256": "553195cdc772f58a5ea34cb118cfcf98f7ea7460efc802ecc4e95269665a8527",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:e58729829aea90f2732226d02821bd363a7fb1000007dca98cefee1adaae32b3",
+        "physical_page": 76,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "acd45a590a7d1ace4e3a3b7ea6cd1a9085e4fed9049fe978d9dac21649f035ab",
+      "row_ordinal": 1,
+      "column_ordinal": 2,
+      "before_exact": null,
+      "after_exact": "-",
+      "repair_id": "gjcrpefav1:repair:910002d361de3d1bfc2514f5e5a52a3838d50820771cdfcf41e3edf189971180"
+    },
+    {
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "source_sha256": "c66142b157f4751207d80d5316f578f7499817be51d31526d2d521286eeb472e",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:3cd59f91d995799056764017eb5ae1bd5ed51132f28598b428a4cd8f020d4a69",
+        "physical_page": 58,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "8bc1a1c5a42d1570433bab354aa7bce0da6aa19b5d9b05a1ecfac2f95b054ab4",
+      "row_ordinal": 4,
+      "column_ordinal": 3,
+      "before_exact": null,
+      "after_exact": "-",
+      "repair_id": "gjcrpefav1:repair:f31dadd30f2ce4a4ddef431108be551f7306cf71861f76cf480b16c0764d4297"
+    },
+    {
+      "repair_kind": "MONEY_CELL_PDF_VISIBLE_EXACT",
+      "source_sha256": "c1df78d8d31faa6079e9a7738c31c759573d15620f4a9f551e57e2ac9b3957eb",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:10ed307c8c25d0a743858df3b7d40568586fc02a85e55d438054f25a92375650",
+        "physical_page": 67,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "9d8a616c285dd0b877d2bc17b7da4312a9bceeead0525ee3108c5c2c04064c4f",
+      "row_ordinal": 1,
+      "column_ordinal": 2,
+      "before_exact": null,
+      "after_exact": "-",
+      "repair_id": "gjcrpefav1:repair:a3b984bf1e0ea72d31767e6c145a782cd1008cb917ca1e47228ae46cbd3b93d8"
+    },
+    {
+      "repair_kind": "ROW_LABEL_PDF_VISIBLE_EXACT",
+      "source_sha256": "8c6b1e9b3cd835223d95b0a638ca754b4544fc1a67c0175bd2b977842c0d6453",
+      "locator": {
+        "page_json_version_id": "gfpstorev1:json:4978a0afa442e11ec476ec0217bf516dda266a1280884a0fdde7e88be277a8d9",
+        "physical_page": 53,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "pdf_page_render_sha256": "8fd959747ed2a089269aa5841355264c846824efb166f223ca4663a413234058",
+      "row_ordinal": 5,
+      "before_label_exact": "Hoàn nhập dự phòng cho kho ản phải thu\ntừ hợp đồng bán nợ",
+      "after_label_exact": "Hoàn nhập dự phòng cho khoản phải thu\ntừ hợp đồng bán nợ",
+      "before_hierarchy_path_exact": [
+        "Hoàn nhập dự phòng cho kho ản phải thu\ntừ hợp đồng bán nợ"
+      ],
+      "after_hierarchy_path_exact": [
+        "Hoàn nhập dự phòng cho khoản phải thu\ntừ hợp đồng bán nợ"
+      ],
+      "repair_id": "gjcrpefav1:repair:340ab6521c3901d0dff6ab7c0ec711a9befd763bf949843afb3764f3abd27def"
+    }
+  ]
+}

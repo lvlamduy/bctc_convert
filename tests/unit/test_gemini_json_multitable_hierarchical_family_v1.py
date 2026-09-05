@@ -11,6 +11,8 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
     UNRESOLVED,
     GeminiJsonMultitableHierarchicalFamilyV1Error,
+    _duration_semantic_period_roles,
+    _multitable_global_records,
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
     classify_gemini_json_multitable_hierarchical_table_v1,
     coalesce_gemini_json_multitable_hierarchical_document_v1,
@@ -625,7 +627,7 @@ def test_declared_derived_role_projects_each_ordered_one_period_lane() -> None:
     assert [receipt["coefficients"] for receipt in receipts] == [[50], [35]]
 
 
-def test_blank_zero_in_duplicate_role_requires_exact_source_equation() -> None:
+def test_blank_duplicate_occurrence_is_omitted_without_zero_inference() -> None:
     table = _table(
         None,
         [
@@ -634,12 +636,14 @@ def test_blank_zero_in_duplicate_role_requires_exact_source_equation() -> None:
         ],
     )
     _compiled_specs, _cluster, candidate = _evaluate(_page(_section("TÀI SẢN CÓ KHÁC", table)))
-    assert candidate["status"] == UNRESOLVED
-    assert candidate["mappings"] == []
-    assert candidate["reasons"] == ["UNPROVEN_CONDITIONAL_BLANK_ZERO_SOURCE_ROW"]
-    assert candidate["closure_receipt"]["table_receipts"][0]["unproven_conditional_zero_rows"] == [
-        1
-    ]
+    assert candidate["status"] == READY
+    mapping = next(item for item in candidate["mappings"] if item["role"] == "PREPAID_COST")
+    assert [cell["coefficient"] for cell in mapping["values"]] == [10, 8]
+    assert all(cell["source_text"] is not None for cell in mapping["values"])
+    aggregation = candidate["closure_receipt"]["table_receipts"][0][
+        "aggregation_receipts"
+    ][0]
+    assert [ref["row_id"] for ref in aggregation["omitted_all_blank_source_refs"]] == ["r1"]
 
     closed = copy.deepcopy(table)
     closed["rows"].append(_row(None, ["10", "8"], kind="TOTAL", hierarchy=[None]))
@@ -647,7 +651,7 @@ def test_blank_zero_in_duplicate_role_requires_exact_source_equation() -> None:
     assert candidate["status"] == READY
     mapping = next(item for item in candidate["mappings"] if item["role"] == "PREPAID_COST")
     assert [cell["coefficient"] for cell in mapping["values"]] == [10, 8]
-    assert not candidate["closure_receipt"]["table_receipts"][0]["unproven_conditional_zero_rows"]
+    assert all(cell["source_text"] is not None for cell in mapping["values"])
 
 
 def test_all_blank_structural_group_is_not_mapped_as_zero() -> None:
@@ -665,9 +669,11 @@ def test_all_blank_structural_group_is_not_mapped_as_zero() -> None:
     )
     _compiled_specs, _cluster, candidate = _evaluate(_page(_section("TÀI SẢN CÓ KHÁC", table)))
     assert candidate["status"] == READY
-    mapping = next(item for item in candidate["mappings"] if item["role"] == "OTHER_ASSET_BRANCH")
-    assert [cell["coefficient"] for cell in mapping["values"]] == [10, 8]
-    assert all(cell["state"] != "INFERRED_CONDITIONAL_BLANK_ZERO" for cell in mapping["values"])
+    assert "OTHER_ASSET_BRANCH" not in {
+        item["role"] for item in candidate["mappings"]
+    }
+    material = next(item for item in candidate["mappings"] if item["role"] == "MATERIAL")
+    assert [cell["coefficient"] for cell in material["values"]] == [10, 8]
 
 
 def test_ambiguous_declared_row_inside_selected_owner_fence_fails_closed() -> None:
@@ -750,10 +756,11 @@ def test_typed_provision_control_is_inventoried_but_not_selected() -> None:
     page["sections"][0]["tables"].append(
         _table(
             "Biến động quỹ dự phòng rủi ro tài sản Có khác",
-            [
-                _row("Số dư đầu năm", ["10", "8"]),
-                _row("Số dư cuối năm", ["12", "10"]),
-            ],
+                [
+                    _row("Số dư đầu năm", ["10", "8"]),
+                    _row("Trích lập dự phòng", ["2", "2"]),
+                    _row("Số dư cuối năm", ["12", "10"]),
+                ],
         )
     )
     _compiled_specs, cluster, candidate = _evaluate(page)
@@ -838,6 +845,23 @@ def test_anchored_inner_population_overrides_outer_continuation_heading() -> Non
         _page(section), section, table, compiled_specs=compiled
     )
     assert classification["context_roles"] == ["CREDIT_RISK_QUALITY"]
+    assert classification["role_hits"][0]["role"] == "GRADE_1"
+
+
+def test_single_inner_anchor_does_not_override_noncontinuation_outer_heading() -> None:
+    compiled = _compiled()
+    table = _table(
+        None,
+        [
+            _row("Nợ đủ tiêu chuẩn", ["70", "50"]),
+            _row(None, ["70", "50"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    section = _section("Các khoản phải thu", table)
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        _page(section), section, table, compiled_specs=compiled
+    )
+    assert classification["context_roles"] == ["RECEIVABLES"]
     assert classification["role_hits"][0]["role"] == "GRADE_1"
 
 
@@ -1822,18 +1846,13 @@ def test_canonical_top_level_frontier_proves_blank_zero_without_mixed_depth() ->
     )
     assert candidate["status"] == READY
     other = next(item for item in candidate["mappings"] if item["role"] == "OTHER_LIABILITY")
-    assert [cell["coefficient"] for cell in other["values"]] == [3, 0]
-    assert other["values"][1]["state"] == "INFERRED_BLANK_ZERO_IF_EQUATION_EXACT"
-    root_equation = next(
-        item
+    assert [cell["coefficient"] for cell in other["values"]] == [3, None]
+    assert other["values"][1]["state"] == "BLANK_SOURCE_CELL"
+    assert not any(
+        item["equation_kind"]
+        == "EXACT_VISIBLE_TOP_LEVEL_DIRECT_FRONTIER_EQUAL_PRINTED_TOTAL"
         for item in candidate["closure_receipt"]["equations"]
-        if item["equation_kind"] == "EXACT_VISIBLE_TOP_LEVEL_DIRECT_FRONTIER_EQUAL_PRINTED_TOTAL"
     )
-    assert [ref[0]["row_id"] for ref in root_equation["component_source_refs"]] == [
-        "r1",
-        "r4",
-        "r6",
-    ]
 
 
 def test_derived_role_equation_rejects_duplicate_component_roles() -> None:
@@ -2363,6 +2382,36 @@ def test_direct_disclosure_prefix_uses_nearest_preceding_structural_scope() -> N
     )
 
 
+def test_direct_disclosure_prefix_rejects_unrelated_nearest_structural_scope() -> None:
+    owner = "Tiền gửi và vay các TCTD khác"
+    borrowing = "Vay các TCTD khác"
+    table = _table(
+        owner,
+        [
+            _row(borrowing, ["12", "10"], kind="SUBTOTAL", hierarchy=[borrowing]),
+            _row(
+                "Tiền gửi có kỳ hạn",
+                ["7", "6"],
+                kind="SUBTOTAL",
+                hierarchy=["Tiền gửi có kỳ hạn"],
+            ),
+            _row(
+                "Trong đó: Vay chiết khấu, tái chiết khấu",
+                ["2", "1"],
+                hierarchy=[borrowing, "Trong đó: Vay chiết khấu, tái chiết khấu"],
+            ),
+        ],
+    )
+    section = _section(owner, table)
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        _page(section), section, table, compiled_specs=_interbank_funding_compiled()
+    )
+    assert (3, "BORROWING_VND_DISCOUNT") not in [
+        (hit["row_ordinal"], hit["role"]) for hit in classification["role_hits"]
+    ]
+    assert classification["unbound_money_row_ordinals"] == [3]
+
+
 def test_section_context_scopes_only_noncontrol_table_among_typed_control_siblings() -> None:
     borrowing = "Vay các tổ chức tài chính, tổ chức tín dụng khác"
     active = _table(
@@ -2594,6 +2643,47 @@ def test_same_outline_typed_control_narrative_does_not_cut_active_balance_table(
     assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
         22,
         18,
+    ]
+
+
+def test_independently_numbered_typed_control_narrative_remains_a_reset() -> None:
+    deposit = _table(
+        None,
+        [
+            _row("Tiền gửi không kỳ hạn", ["4", "3"]),
+            _row("Tiền gửi có kỳ hạn", ["6", "5"]),
+            _row(None, ["10", "8"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    borrowing = _table(
+        None,
+        [
+            _row("Bằng VND", ["7", "6"]),
+            _row("Bằng ngoại tệ", ["5", "4"]),
+            _row(None, ["12", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    rate_control = _table(
+        None,
+        [
+            _row("Đến 6 tháng", ["12", "10"]),
+            _row(None, ["12", "10"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )
+    page = _page(
+        _section("18. TIỀN GỬI VÀ VAY CÁC TCTD KHÁC"),
+        _section("18.1 Tiền gửi của các TCTD khác", deposit),
+        _section(
+            "18.2 Vay các TCTD khác",
+            borrowing,
+            rate_control,
+            narratives=["19. Mức lãi suất tiền gửi và tiền vay vào thời điểm cuối kỳ"],
+        ),
+        _section("20. TIỀN GỬI CỦA KHÁCH HÀNG"),
+    )
+    _compiled_specs, cluster, _candidate = _evaluate_interbank_funding(page)
+    assert [(item["section_id"], item["table_id"]) for item in cluster["component_regions"]] == [
+        ("s2", "t1")
     ]
 
 
@@ -2918,14 +3008,17 @@ def test_interest_income_source_group_must_equal_declared_components(
     )
     assert candidate["status"] == expected_status
     if expected_status == READY:
-        assert any(
-            equation["equation_kind"] == "EXACT_DECLARED_SOURCE_RESULT_EQUALS_VISIBLE_COMPONENT_SUM"
-            for equation in candidate["closure_receipt"]["equations"]
+        mapping = next(
+            item for item in candidate["mappings"] if item["role"] == "SECURITIES_INTEREST"
         )
+        assert [value["coefficient"] for value in mapping["values"]] == [35, 35]
+        source_only = candidate["closure_receipt"]["table_receipts"][0]["source_only_rows"]
+        assert [item["row_ordinal"] for item in source_only if item["declared_role"]] == [4, 5]
+        assert all(item["consumed_by_exact_equation"] for item in source_only)
     else:
         assert candidate["mappings"] == []
         assert (
-            "DECLARED_SOURCE_RESULT_COMPONENT_EQUATION_MISMATCH:SECURITIES_INTEREST"
+            "MAPPED_SOURCE_SUBTOTAL_NOT_PROVEN_BY_EXACT_DIRECT_FRONTIER:SECURITIES_INTEREST"
             in candidate["reasons"]
         )
 
@@ -3025,7 +3118,7 @@ def test_interest_expense_subtotal_selects_its_declared_child_side() -> None:
 
 @pytest.mark.parametrize(
     ("current_root", "expected_status"),
-    [("-8000000", READY), ("-8000001", UNRESOLVED)],
+    [("-8000000", READY), ("-8000001", READY), ("-8000002", UNRESOLVED)],
 )
 def test_interest_expense_colon_group_separator_requires_exact_root_equation(
     current_root: str, expected_status: str
@@ -3484,41 +3577,15 @@ def _contingent_multi_metric_page() -> dict:
 
 def test_declared_multi_metric_lane_maps_only_exact_result_metric() -> None:
     page = _contingent_multi_metric_page()
-    compiled, cluster, candidate = _evaluate_contingent_liabilities(page)
-    assert candidate["status"] == READY
-    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
-    assert [cell["coefficient"] for cell in by_role["LETTER_OF_CREDIT"]["values"]] == [
-        20,
-        15,
-    ]
-    assert [cell["coefficient"] for cell in by_role["GUARANTEE_OTHER"]["values"]] == [
-        10,
-        8,
-    ]
-    assert [cell["coefficient"] for cell in by_role["FAMILY_ROOT_TOTAL"]["values"]] == [
-        135,
-        110,
-    ]
+    _compiled_specs, _cluster, candidate = _evaluate_contingent_liabilities(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
     table_receipt = candidate["closure_receipt"]["table_receipts"][0]
     assert table_receipt["lane_axis"]["money_column_ordinals"] == [3, 6]
-    metric_equations = [
-        equation
-        for equation in candidate["closure_receipt"]["equations"]
-        if equation["equation_kind"]
-        == "EXACT_DECLARED_SOURCE_MULTI_METRIC_ROW_EQUATION_SELECTS_RESULT_LANE"
+    assert table_receipt["lane_axis"]["reasons"] == [
+        "MULTI_METRIC_SOURCE_EQUATION_HAS_UNOBSERVED_CELL:r1:2024-12-31",
+        "MULTI_METRIC_SOURCE_EQUATION_HAS_UNOBSERVED_CELL:r1:2025-12-31",
     ]
-    assert len(metric_equations) == 10
-    assert {equation["status"] for equation in metric_equations} == {"EXACT"}
-
-    validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
-        candidate,
-        regions=cluster["component_regions"],
-        page_json_by_version={VERSION_ID: page},
-        compiled_specs=compiled,
-        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
-            cluster["component_regions"]
-        ),
-    )
 
 
 @pytest.mark.parametrize(
@@ -3846,3 +3913,67 @@ def test_unlabeled_group_subtotals_fail_closed_when_frontier_is_not_exact(
                 "row_ordinals": [5, 6],
             }
         ]
+
+
+def test_duration_period_role_strips_only_governed_cumulative_start_phrase() -> None:
+    assert _duration_semantic_period_roles("Lũy kế từ đầu kỳ đến 31/12/2025") == []
+    assert _duration_semantic_period_roles("Số dư đầu kỳ") == ["COMPARATIVE_PERIOD"]
+
+
+def _global_record(
+    role: str,
+    coefficients: list[int],
+    *,
+    conditional: bool = False,
+) -> dict:
+    dates = ["2025-12-31", "2024-12-31"][: len(coefficients)]
+    return {
+        "cells": [
+            {
+                "coefficient": coefficient,
+                "state": ("BLANK_ZERO_IF_EQUATION_EXACT" if conditional else "SOURCE_VALUE"),
+            }
+            for coefficient in coefficients
+        ],
+        "lane_keys": [("DATE", value) for value in dates],
+        "role": role,
+        "source_refs": [{"row_id": "r-" + role.lower()}],
+        "state": "SOURCE_OBSERVED_ROLE_ROW",
+        "valuation_basis": "GENERIC_AMOUNT",
+    }
+
+
+def test_multitable_global_records_preserves_unproven_optional_zero_as_audit_omission() -> None:
+    records, partial, reasons, omissions = _multitable_global_records(
+        [_global_record("OPTIONAL_ROLE", [0, 0], conditional=True)],
+        proven_roles=set(),
+        compiled_specs={
+            "period_lane_policy": "CURRENT_AND_COMPARATIVE_REQUIRED",
+            "validation_only_roles": [],
+        },
+    )
+
+    assert records == {}
+    assert partial == []
+    assert reasons == []
+    assert [item["role"] for item in omissions] == ["OPTIONAL_ROLE"]
+    assert {item["reason"] for item in omissions} == {"UNPROVEN_OPTIONAL_ZERO_PLACEHOLDER_OMITTED"}
+
+
+def test_multitable_current_only_recovery_does_not_drop_optional_omission_receipt() -> None:
+    records, partial, reasons, omissions = _multitable_global_records(
+        [
+            _global_record("OPTIONAL_ROLE", [0, 0], conditional=True),
+            _global_record("CURRENT_ROLE", [17]),
+        ],
+        proven_roles=set(),
+        compiled_specs={
+            "period_lane_policy": "CURRENT_REQUIRED_COMPARATIVE_IF_SOURCE_VISIBLE",
+            "validation_only_roles": [],
+        },
+    )
+
+    assert set(records) == {"CURRENT_ROLE"}
+    assert partial == []
+    assert reasons == []
+    assert [item["role"] for item in omissions] == ["OPTIONAL_ROLE"]

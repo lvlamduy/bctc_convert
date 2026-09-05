@@ -1,0 +1,20 @@
+{
+  "corpus_manifest_index_id": "gjfccmiv1:index:32c474f657f9484244e9675a0ca4801cb49b4923971dfb7bea17081904154747",
+  "family_id": "CREDIT_RISK_PROVISION_EXPENSE",
+  "format_version": "CREDIT_RISK_PROVISION_EXPENSE_PDF_RESIDUAL_AUDIT_SPEC_V1",
+  "residuals": [],
+  "review_contract": {
+    "render_contract": {
+      "alpha": false,
+      "colorspace": "RGB",
+      "format": "PNG",
+      "matrix": [
+        1,
+        1
+      ],
+      "renderer": "PyMuPDF"
+    },
+    "scope": "EVERY_PDF_PAGE_FOR_EVERY_NOT_OBSERVED_OR_UNRESOLVED_DOCUMENT",
+    "visual_disposition_rule": "NO_PDF_VISIBLE_SCHEMA_MAPPABLE_FAMILY37_ROW_OR_EXPLICIT_SOURCE_AMBIGUITY"
+  }
+}

@@ -1,15 +1,15 @@
 {
   "children": [
     {
-      "matchers": [{"aliases": ["Thu nhập từ hoạt động dịch vụ", "Thu nhập hoạt động dịch vụ"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu nhập từ hoạt động dịch vụ", "Thu nhập hoạt động dịch vụ", "Thu nhập từ hoạt động dịch vụ từ", "Thu phí dịch vụ"], "within_role": null}],
       "presence": "OPTIONAL", "role": "INCOME_PARENT", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Dịch vụ thanh toán", "Hoạt động thanh toán", "Thu từ dịch vụ thanh toán", "Thu phí liên quan đến các loại thẻ", "Thu phí liên quan đến hoạt động thẻ"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Dịch vụ thanh toán", "Hoạt động thanh toán", "Thu nhập từ dịch vụ thanh toán", "Thu từ dịch vụ thanh toán", "Thu dịch vụ thanh toán", "Thu từ dịch vụ thanh toán và thẻ", "Dịch vụ thanh toán và tiền mặt", "Dịch vụ quản lý, sử dụng tài khoản và thẻ", "Dịch vụ đối tác liên kết thẻ", "Dịch vụ thẻ", "Dịch vụ chi trả kiều hối", "Thu từ dịch vụ tài khoản", "Thu phí liên quan đến các loại thẻ", "Thu phí liên quan đến hoạt động thẻ"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ dịch vụ thanh toán"], "within_role": "NET_PAYMENT_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "INCOME_PAYMENT", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Dịch vụ ngân quỹ", "Hoạt động ngân quỹ", "Thu từ dịch vụ ngân quỹ"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Dịch vụ ngân quỹ", "Hoạt động ngân quỹ", "Thu nhập từ dịch vụ ngân quỹ", "Thu từ dịch vụ ngân quỹ", "Thu dịch vụ ngân quỹ", "Thu từ nghiệp vụ ngân quỹ"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ dịch vụ ngân quỹ"], "within_role": "NET_TREASURY_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "INCOME_TREASURY", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -17,27 +17,27 @@
       "presence": "OPTIONAL", "role": "INCOME_PAYMENT_TREASURY", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Dịch vụ chứng khoán", "Thu từ hoạt động môi giới chứng khoán"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Dịch vụ chứng khoán", "Thu từ hoạt động môi giới chứng khoán", "Dịch vụ môi giới kinh doanh chứng khoán"], "within_role": "INCOME_PARENT"}],
       "presence": "OPTIONAL", "role": "INCOME_SECURITIES", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Dịch vụ đại lý", "Thu từ dịch vụ đại lý nhận ủy thác", "Thu từ nghiệp vụ ủy thác và đại lý"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Dịch ủy thác và đại lý", "Dịch vụ đại lý", "Dịch vụ ủy thác", "Dịch vụ ủy thác và đại lý", "Dịch vụ ủy thác quản lý quỹ", "Nghiệp vụ ủy thác và đại lý", "Thu từ hoạt động ủy thác và đại lý", "Thu từ dịch vụ đại lý nhận ủy thác", "Thu từ dịch vụ ủy thác và đại lý", "Thu từ nghiệp vụ ủy thác và đại lý"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ hoạt động ủy thác và đại lý"], "within_role": "NET_TRUST_AGENCY_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "INCOME_TRUST_AGENCY", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Dịch vụ đại lý bảo hiểm", "Hoạt động bảo hiểm", "Thu từ dịch vụ bảo hiểm", "Thu nhập từ dịch vụ bảo hiểm", "Thu nhập từ dịch vụ bảo hiểm và đại lý bảo hiểm", "Thu từ dịch vụ đại lý bảo hiểm", "Thu từ kinh doanh và dịch vụ bảo hiểm", "Thu từ kinh doanh, dịch vụ bảo hiểm và doanh thu", "Thu từ kinh doanh, dịch vụ bảo hiểm và doanh thu phí bảo hiểm gốc"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Dịch vụ bảo hiểm", "Dịch vụ đại lý bảo hiểm", "Dịch vụ đại lý bảo hiểm và các phí hỗ trợ liên quan", "Dịch vụ hợp tác bảo hiểm", "Dịch vụ hoa hồng hợp tác bảo hiểm", "Dịch vụ hỗ trợ liên kết bảo hiểm", "Dịch vụ đại lý bảo hiểm và phí liên kết bảo hiểm", "Hoạt động bảo hiểm", "Thu phí đại lý bảo hiểm", "Thu từ dịch vụ bảo hiểm", "Thu nhập từ dịch vụ bảo hiểm", "Thu nhập từ dịch vụ đại lý bảo hiểm", "Thu nhập từ dịch vụ bảo hiểm và đại lý bảo hiểm", "Thu từ dịch vụ đại lý bảo hiểm", "Thu kinh doanh và dịch vụ bảo hiểm", "Thu từ kinh doanh và dịch vụ bảo hiểm", "Thu từ kinh doanh, dịch vụ bảo hiểm và doanh thu", "Thu từ kinh doanh, dịch vụ bảo hiểm và doanh thu phí bảo hiểm gốc"], "within_role": "INCOME_PARENT"}],
       "presence": "OPTIONAL", "role": "INCOME_INSURANCE", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu từ dịch vụ tư vấn", "Thu nhập từ dịch vụ tư vấn"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Dịch vụ tư vấn", "Thu từ hoạt động tư vấn", "Thu từ dịch vụ tư vấn", "Thu nhập từ dịch vụ tư vấn"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ hoạt động tư vấn"], "within_role": "NET_CONSULTING_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "INCOME_CONSULTING", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu từ xử lý nợ, thẩm định giá và khai thác tài sản"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Thu dịch vụ thẩm định tài sản", "Thu từ xử lý nợ, thẩm định giá và khai thác tài sản"], "within_role": "INCOME_PARENT"}],
       "presence": "OPTIONAL", "role": "INCOME_DEBT_VALUATION", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Các dịch vụ khác", "Dịch vụ khác", "Thu các dịch vụ khác", "Thu dịch vụ khác", "Thu khác", "Thu nhập khác", "Thu phí khác", "Thu từ dịch vụ khác"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Các dịch vụ khác", "Dịch vụ khác", "Thu các dịch vụ khác", "Thu dịch vụ khác", "Thu khác", "Thu khác về dịch vụ", "Thu nhập khác", "Thu nhập từ dịch vụ khác", "Thu phí khác", "Thu phí dịch vụ khác", "Thu từ hoạt động dịch vụ khác", "Thu từ dịch vụ khác"], "within_role": "INCOME_PARENT"}, {"aliases": ["Thu từ hoạt động dịch vụ khác"], "within_role": "NET_OTHER_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "INCOME_OTHER", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -45,31 +45,71 @@
       "presence": "OPTIONAL", "role": "INCOME_COMBINED_CONSULTING_TRUST_AGENCY", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Thu từ nghiệp vụ bảo lãnh, đại lý phát hành chứng khoán"], "within_role": "INCOME_PARENT"}],
+      "matchers": [{"aliases": ["Dịch vụ bảo lãnh phát hành chứng khoán", "Thu từ nghiệp vụ bảo lãnh, đại lý phát hành chứng khoán"], "within_role": "INCOME_PARENT"}],
       "presence": "OPTIONAL", "role": "INCOME_GUARANTEE_SECURITIES_AGENCY", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi phí từ hoạt động dịch vụ", "Chi phí hoạt động dịch vụ", "Chi phí cho hoạt động dịch vụ"], "within_role": null}],
+      "matchers": [{"aliases": ["Thu dịch vụ ngân quỹ, ủy thác và đại lý"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_COMBINED_TREASURY_TRUST_AGENCY_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Hoạt động ủy thác, tư vấn và đại lý bảo hiểm", "Nghiệp vụ ủy thác, tư vấn và đại lý bảo hiểm", "Dịch vụ kinh doanh, dịch vụ bảo hiểm và tư vấn"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_COMBINED_INSURANCE_CONSULTING_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu dịch vụ cho thuê văn phòng", "Thu dịch vụ cho thuê kho và văn phòng", "Thu từ dịch vụ cho thuê tài sản", "Thu từ dịch vụ bảo quản tài sản", "Dịch vụ bảo quản tài sản", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ ké", "Thu từ cung ứng dịch vụ bảo quản tài sản, cho thuê tủ két"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_CUSTODY_RENT_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Dịch vụ mua hẳn miễn truy đòi bộ chứng từ theo thư tín dụng"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_FORFAITING_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Thu phí nghiệp vụ chiết khấu", "Thu phí tất toán trước hạn khoản vay", "Thu từ hoạt động dịch vụ"], "within_role": "INCOME_PARENT"}],
+      "presence": "OPTIONAL", "role": "INCOME_OTHER_SCHEMA_GAP_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Lãi thuần từ dịch vụ thanh toán"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "NET_PAYMENT_SOURCE_ONLY", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Lỗ thuần từ dịch vụ ngân quỹ"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "NET_TREASURY_SOURCE_ONLY", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Lãi thuần từ hoạt động ủy thác và đại lý"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "NET_TRUST_AGENCY_SOURCE_ONLY", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Lãi/ (Lỗ) thuần từ hoạt động tư vấn"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "NET_CONSULTING_SOURCE_ONLY", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Lãi thuần từ hoạt động dịch vụ khác"], "within_role": null}],
+      "presence": "OPTIONAL", "role": "NET_OTHER_SOURCE_ONLY", "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [{"aliases": ["Chi phí từ hoạt động dịch vụ", "Chi phí hoạt động dịch vụ", "Chi phí hoạt động dịch vụ cho", "Chi phí cho hoạt động dịch vụ", "Chi về dịch vụ", "Chi phí dịch vụ liên quan"], "within_role": null}],
       "presence": "OPTIONAL", "role": "EXPENSE_PARENT", "role_kind": "STRUCTURAL_GROUP"
     },
     {
-      "matchers": [{"aliases": ["Chi cho dịch vụ thanh toán", "Chi về dịch vụ thanh toán", "Dịch vụ thanh toán", "Hoạt động thanh toán", "Chi cho hoạt động thẻ", "Chi phí cho hoạt động thẻ", "Hoạt động thẻ"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi cho dịch vụ thanh toán", "Chi dịch vụ thanh toán", "Chi phí dịch vụ thanh toán", "Chi từ dịch vụ thanh toán", "Chi về dịch vụ thanh toán", "Chi về dịch vụ thanh toán và thẻ", "Dịch vụ thanh toán", "Dịch vụ thanh toán và tiền mặt", "Hoạt động thanh toán", "Chi cho hoạt động thẻ", "Chi phí cho hoạt động thẻ", "Hoạt động thẻ"], "within_role": "EXPENSE_PARENT"}, {"aliases": ["Chi về dịch vụ thanh toán"], "within_role": "NET_PAYMENT_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "EXPENSE_PAYMENT", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi cho dịch vụ ngân quỹ", "Chi về hoạt động ngân quỹ", "Dịch vụ ngân quỹ", "Hoạt động ngân quỹ"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi cho dịch vụ ngân quỹ", "Chi dịch vụ ngân quỹ", "Chi phí dịch vụ ngân quỹ", "Chi từ dịch vụ ngân quỹ", "Chi về dịch vụ ngân quỹ", "Chi phí về dịch vụ ngân quỹ", "Chi về ngân quỹ", "Chi về hoạt động ngân quỹ", "Chi về nghiệp vụ ngân quỹ", "Dịch vụ ngân quỹ", "Hoạt động ngân quỹ"], "within_role": "EXPENSE_PARENT"}, {"aliases": ["Chi từ dịch vụ ngân quỹ"], "within_role": "NET_TREASURY_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "EXPENSE_TREASURY", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi về dịch vụ thanh toán và ngân quỹ", "Chi phí dịch vụ thanh toán và ngân quỹ"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi dịch vụ thanh toán và ngân quỹ", "Chi về dịch vụ thanh toán và ngân quỹ", "Chi phí dịch vụ thanh toán và ngân quỹ"], "within_role": "EXPENSE_PARENT"}],
       "presence": "OPTIONAL", "role": "EXPENSE_PAYMENT_TREASURY", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Dịch vụ chứng khoán", "Dịch vụ môi giới"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Dịch vụ chứng khoán", "Dịch vụ môi giới", "Dịch vụ môi giới kinh doanh chứng khoán"], "within_role": "EXPENSE_PARENT"}],
       "presence": "OPTIONAL", "role": "EXPENSE_SECURITIES", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi phí hoa hồng môi giới", "Hoa hồng môi giới"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi phí hoa hồng môi giới", "Chi về hoa hồng, môi giới", "Dịch vụ hoa hồng môi giới", "Hoa hồng môi giới"], "within_role": "EXPENSE_PARENT"}],
       "presence": "OPTIONAL", "role": "EXPENSE_BROKERAGE_COMMISSION", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -77,19 +117,19 @@
       "presence": "OPTIONAL", "role": "EXPENSE_SECURITIES_BROKERAGE", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi về dịch vụ bảo hiểm", "Chi phí dịch vụ bảo hiểm", "Chi về dịch vụ đại lý bảo hiểm", "Chi về hoạt động kinh doanh bảo hiểm", "Dịch vụ đại lý bảo hiểm", "Hoạt động bảo hiểm"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi về dịch vụ bảo hiểm", "Chi phí dịch vụ bảo hiểm", "Chi về dịch vụ đại lý bảo hiểm", "Chi về hoạt động kinh doanh bảo hiểm", "Dịch vụ bảo hiểm", "Dịch vụ đại lý bảo hiểm", "Hoạt động bảo hiểm"], "within_role": "EXPENSE_PARENT"}],
       "presence": "OPTIONAL", "role": "EXPENSE_INSURANCE", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi cho nghiệp vụ ủy thác và đại lý", "Chi về nghiệp vụ ủy thác và đại lý", "Dịch vụ đại lý", "Dịch vụ ủy thác và đại lý"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi cho nghiệp vụ ủy thác và đại lý", "Chi từ hoạt động ủy thác và đại lý", "Chi từ dịch vụ ủy thác và đại lý", "Chi về nghiệp vụ ủy thác và đại lý", "Dịch vụ đại lý", "Dịch vụ ủy thác và đại lý"], "within_role": "EXPENSE_PARENT"}, {"aliases": ["Chi từ hoạt động ủy thác và đại lý"], "within_role": "NET_TRUST_AGENCY_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "EXPENSE_TRUST_AGENCY", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Bưu điện, viễn thông", "Chi cho dịch vụ viễn thông", "Cước phí bưu điện về mạng viễn thông"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Bưu điện, viễn thông", "Chi cho dịch vụ viễn thông", "Chi phí bưu điện và mạng viễn thông", "Chi phí bưu điện về mạng viễn thông", "Chi phí bưu phí và mạng viễn thông", "Chi về cước phí, mạng viễn thông", "Chi về cước phí bưu điện, mạng viễn thông", "Cước phí bưu điện, mạng viễn thông", "Cước phí bưu điện về mạng viễn thông", "Dịch vụ cước phí bưu điện, mạng viễn thông"], "within_role": "EXPENSE_PARENT"}],
       "presence": "OPTIONAL", "role": "EXPENSE_TELECOM", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi dịch vụ tư vấn", "Chi về dịch vụ tư vấn"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi dịch vụ tư vấn", "Chi từ hoạt động tư vấn", "Chi về dịch vụ tư vấn", "Dịch vụ tư vấn"], "within_role": "EXPENSE_PARENT"}, {"aliases": ["Chi từ hoạt động tư vấn"], "within_role": "NET_CONSULTING_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "EXPENSE_CONSULTING", "role_kind": "ADDITIVE_CHILD"
     },
     {
@@ -97,12 +137,16 @@
       "presence": "OPTIONAL", "role": "EXPENSE_DEBT_VALUATION", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi cho dịch vụ khác", "Chi các dịch vụ khác", "Chi dịch vụ khác", "Chi khác", "Chi phí khác", "Chi về dịch vụ khác", "Các dịch vụ khác", "Dịch vụ khác"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi cho dịch vụ khác", "Chi các dịch vụ khác", "Chi dịch vụ khác", "Chi từ hoạt động dịch vụ khác", "Chi từ dịch vụ khác", "Chi khác", "Chi khác về dịch vụ", "Chi phí khác", "Chi phí hoạt động dịch vụ khác", "Chi phí dịch vụ khác", "Chi về dịch vụ khác", "Các chi phí khác", "Các dịch vụ khác", "Dịch vụ khác"], "within_role": "EXPENSE_PARENT"}, {"aliases": ["Chi từ hoạt động dịch vụ khác"], "within_role": "NET_OTHER_SOURCE_ONLY"}],
       "presence": "OPTIONAL", "role": "EXPENSE_OTHER", "role_kind": "ADDITIVE_CHILD"
     },
     {
-      "matchers": [{"aliases": ["Chi về dịch vụ tư vấn, ủy thác và đại lý"], "within_role": "EXPENSE_PARENT"}],
+      "matchers": [{"aliases": ["Chi về dịch vụ tư vấn, ủy thác và đại lý", "Dịch vụ tư vấn, ủy thác và đại lý"], "within_role": "EXPENSE_PARENT"}],
       "presence": "OPTIONAL", "role": "EXPENSE_COMBINED_CONSULTING_TRUST_AGENCY", "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [{"aliases": ["Chi về đối tác liên kết thẻ", "Chi về đối tác liên kết dịch vụ"], "within_role": "EXPENSE_PARENT"}],
+      "presence": "OPTIONAL", "role": "EXPENSE_PARTNER_SERVICE_SOURCE_ONLY", "role_kind": "ADDITIVE_CHILD"
     }
   ],
   "family_id": "SERVICE_ACTIVITY",
@@ -115,6 +159,6 @@
     "role": "NET_SERVICE_ACTIVITY"
   },
   "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
-  "required_role_combinations": [["INCOME_PARENT", "EXPENSE_PARENT"]],
+  "required_role_combinations": [["INCOME_PARENT", "EXPENSE_PARENT"], ["NET_PAYMENT_SOURCE_ONLY", "NET_TREASURY_SOURCE_ONLY", "NET_TRUST_AGENCY_SOURCE_ONLY"]],
   "structural_reset_aliases": ["Lãi thuần từ hoạt động kinh doanh ngoại hối", "Lãi/lỗ thuần từ hoạt động kinh doanh ngoại hối", "Lãi thuần từ mua bán chứng khoán", "Lãi/lỗ thuần từ mua bán chứng khoán", "Thu nhập từ hoạt động khác", "Lãi thuần từ hoạt động khác"]
 }

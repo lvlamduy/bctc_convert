@@ -1,0 +1,1058 @@
+{
+  "family_id": "ISSUED_VALUABLE_PAPERS",
+  "format_version": "GEMINI_JSON_ISSUED_VALUABLE_PAPERS_AUTHENTICATED_SOURCE_REPAIR_SPEC_V1",
+  "policy": "ONLY_PDF_VISIBLE_ACCOUNTING_DASH_MISSING_AS_NULL_NO_BLANK_ZERO_INFERENCE",
+  "render_contract": {
+    "alpha": false,
+    "colorspace": "RGB",
+    "format": "PNG",
+    "render_dpi": 300,
+    "renderer": "BCTC_AI_FULL_PDF_PAGE_RENDER_V1_PYMUPDF"
+  },
+  "repair_axis_sha256": "4413fe24d7030ebcbbaa296523781a72a30ca072536966b5c038cd3ffdffccfb",
+  "repairs": [
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          2115,
+          1676,
+          2205,
+          1726
+        ],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "2ee0cbfeac6e3fd5e2ff20cf1f70b4bf9d12f2cc9b0598874004737e2a8bd779"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e2ad5456af4c1befedfa7eebb63af2740bd5365da4955ceb705b56327e4c4d47",
+        "physical_page": 20,
+        "row_ordinal": 3,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "4d73f6ae24a93cd026d976b2b61bb3da6818987490efe626e2f208737160d379",
+        "image_size_bytes": 2232087,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2466,
+        "render_dpi": 300,
+        "render_receipt_sha256": "a881451af031efed7a043be0f897c6fb932493837445479ea6817104ffdc316b"
+      },
+      "repair_id": "gjivpfav1:source-repair:c6b21c781334fa779a07d45cac8ba4bc1dfb3bde349b3852c8bb598c1ef0e3c0",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phppidjcp-bctc-rl-q3-2025-68fb4c6b97d59.pdf",
+        "source_sha256": "6662efe86bace42fa9214c71040374c07880660d510da59774202d8a196d8ec0",
+        "source_size_bytes": 7111461
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          2115,
+          2072,
+          2205,
+          2122
+        ],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "cc7863ac0c57f68ff8cca63b93b08aab3beea8a090ec255c3d753c0905fb4153"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e2ad5456af4c1befedfa7eebb63af2740bd5365da4955ceb705b56327e4c4d47",
+        "physical_page": 20,
+        "row_ordinal": 7,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "4d73f6ae24a93cd026d976b2b61bb3da6818987490efe626e2f208737160d379",
+        "image_size_bytes": 2232087,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2466,
+        "render_dpi": 300,
+        "render_receipt_sha256": "a881451af031efed7a043be0f897c6fb932493837445479ea6817104ffdc316b"
+      },
+      "repair_id": "gjivpfav1:source-repair:1c25a290372ee5d8ba79fad93442d3b49b292f68f57291d723f4c9c25c7f2abe",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phppidjcp-bctc-rl-q3-2025-68fb4c6b97d59.pdf",
+        "source_sha256": "6662efe86bace42fa9214c71040374c07880660d510da59774202d8a196d8ec0",
+        "source_size_bytes": 7111461
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          2115,
+          2166,
+          2205,
+          2216
+        ],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "516337057d2c663103a83bdc6f1806dc3623f0521a26e8c56900c9d47b22d55e"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e2ad5456af4c1befedfa7eebb63af2740bd5365da4955ceb705b56327e4c4d47",
+        "physical_page": 20,
+        "row_ordinal": 8,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "4d73f6ae24a93cd026d976b2b61bb3da6818987490efe626e2f208737160d379",
+        "image_size_bytes": 2232087,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2466,
+        "render_dpi": 300,
+        "render_receipt_sha256": "a881451af031efed7a043be0f897c6fb932493837445479ea6817104ffdc316b"
+      },
+      "repair_id": "gjivpfav1:source-repair:5f328c005e01e7bf685dd4c622999e1f8a7525289bb6a1207576b99693fd10ed",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phppidjcp-bctc-rl-q3-2025-68fb4c6b97d59.pdf",
+        "source_sha256": "6662efe86bace42fa9214c71040374c07880660d510da59774202d8a196d8ec0",
+        "source_size_bytes": 7111461
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          2115,
+          2262,
+          2205,
+          2312
+        ],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "8db2b3d7e4678c5f730517643801bc5cd42071d90b72e07faf67219f02209d78"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e2ad5456af4c1befedfa7eebb63af2740bd5365da4955ceb705b56327e4c4d47",
+        "physical_page": 20,
+        "row_ordinal": 9,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "4d73f6ae24a93cd026d976b2b61bb3da6818987490efe626e2f208737160d379",
+        "image_size_bytes": 2232087,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2466,
+        "render_dpi": 300,
+        "render_receipt_sha256": "a881451af031efed7a043be0f897c6fb932493837445479ea6817104ffdc316b"
+      },
+      "repair_id": "gjivpfav1:source-repair:d00d9fa2032ce0dbbadb0cd70cac5d005087f6d9bbca91845cc87e5fc91c0bed",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phppidjcp-bctc-rl-q3-2025-68fb4c6b97d59.pdf",
+        "source_sha256": "6662efe86bace42fa9214c71040374c07880660d510da59774202d8a196d8ec0",
+        "source_size_bytes": 7111461
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          2115,
+          2359,
+          2205,
+          2409
+        ],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "31a8d686eed8275336af38de57c4b9b3b59492e081286a603d5dc4596091e00e"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e2ad5456af4c1befedfa7eebb63af2740bd5365da4955ceb705b56327e4c4d47",
+        "physical_page": 20,
+        "row_ordinal": 10,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "4d73f6ae24a93cd026d976b2b61bb3da6818987490efe626e2f208737160d379",
+        "image_size_bytes": 2232087,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2466,
+        "render_dpi": 300,
+        "render_receipt_sha256": "a881451af031efed7a043be0f897c6fb932493837445479ea6817104ffdc316b"
+      },
+      "repair_id": "gjivpfav1:source-repair:4b4a00924b1a1e9cc6222c72d8cd4f04f21d0f4d2742bfc95c943f92c0fc5220",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phppidjcp-bctc-rl-q3-2025-68fb4c6b97d59.pdf",
+        "source_sha256": "6662efe86bace42fa9214c71040374c07880660d510da59774202d8a196d8ec0",
+        "source_size_bytes": 7111461
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          2115,
+          2741,
+          2205,
+          2791
+        ],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "a4d0341436226316a95aaad983ad46b3e7bfd7ec275bce8cddae53d93167d3db"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e2ad5456af4c1befedfa7eebb63af2740bd5365da4955ceb705b56327e4c4d47",
+        "physical_page": 20,
+        "row_ordinal": 14,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "4d73f6ae24a93cd026d976b2b61bb3da6818987490efe626e2f208737160d379",
+        "image_size_bytes": 2232087,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2466,
+        "render_dpi": 300,
+        "render_receipt_sha256": "a881451af031efed7a043be0f897c6fb932493837445479ea6817104ffdc316b"
+      },
+      "repair_id": "gjivpfav1:source-repair:258b6ceef85d7a3ec97ace5f338b363317f4c5ead123c4d7d5de5088b4172d6a",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phppidjcp-bctc-rl-q3-2025-68fb4c6b97d59.pdf",
+        "source_sha256": "6662efe86bace42fa9214c71040374c07880660d510da59774202d8a196d8ec0",
+        "source_size_bytes": 7111461
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [
+          2115,
+          2836,
+          2205,
+          2886
+        ],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "0383d444310a5d2a33c295563923677f3b9fc418c8fb079c41309890fde3f971"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e2ad5456af4c1befedfa7eebb63af2740bd5365da4955ceb705b56327e4c4d47",
+        "physical_page": 20,
+        "row_ordinal": 15,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "4d73f6ae24a93cd026d976b2b61bb3da6818987490efe626e2f208737160d379",
+        "image_size_bytes": 2232087,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2466,
+        "render_dpi": 300,
+        "render_receipt_sha256": "a881451af031efed7a043be0f897c6fb932493837445479ea6817104ffdc316b"
+      },
+      "repair_id": "gjivpfav1:source-repair:c869dcff120e99dab271a1858c40ea1312ed2f4033aa842d2abe42ed9e7865f8",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phppidjcp-bctc-rl-q3-2025-68fb4c6b97d59.pdf",
+        "source_sha256": "6662efe86bace42fa9214c71040374c07880660d510da59774202d8a196d8ec0",
+        "source_size_bytes": 7111461
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [1795, 1555, 1870, 1610],
+        "pixel_height": 55,
+        "pixel_width": 75,
+        "rgb_sha256": "62c21f68bb3e1caea65fa52ced6a41c8ba5f372e56f36176b4a6fad9ee99d257"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:15ab6f280b41a1f05d6b960fd43cbf93a73d36585f8a12d8814394ac589811cc",
+        "physical_page": 10,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "74dd1296b5f64bd20c3077c039728b0d3a5631917d7c2b8dc6f1358556d2a557",
+        "image_size_bytes": 2506199,
+        "media_type": "image/png",
+        "physical_page": 10,
+        "pixel_height": 3488,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "acaca4aeac7e7c15bf4f8137a48ddd2dc64dc899d5932721d337d16ff07e4c40"
+      },
+      "repair_id": "gjivpfav1:source-repair:ff1a50fb34fec0dcf810c5f38bd8b225ff076c146dd951c45d0f0ceb5e2ec603",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/SGB/2025/BCTC-hop-nhat-da-duoc-kiem-toan-2025.pdf",
+        "source_sha256": "5d01e7d409d7694a69be467b362cdf733975335933ef750a9ef4c4b921a16147",
+        "source_size_bytes": 20574186
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2248, 1555, 2322, 1610],
+        "pixel_height": 55,
+        "pixel_width": 74,
+        "rgb_sha256": "b3faaad322dff73022516d76b7c63ab1a13eb4728683d1d91538b59a0113fe83"
+      },
+      "locator": {
+        "column_ordinal": 3,
+        "page_json_version_id": "gfpstorev1:json:15ab6f280b41a1f05d6b960fd43cbf93a73d36585f8a12d8814394ac589811cc",
+        "physical_page": 10,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "74dd1296b5f64bd20c3077c039728b0d3a5631917d7c2b8dc6f1358556d2a557",
+        "image_size_bytes": 2506199,
+        "media_type": "image/png",
+        "physical_page": 10,
+        "pixel_height": 3488,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "acaca4aeac7e7c15bf4f8137a48ddd2dc64dc899d5932721d337d16ff07e4c40"
+      },
+      "repair_id": "gjivpfav1:source-repair:e4b234f44f89b32942a48207aa7e4ab34ed7bac47cd412c18dbcd4b582ef2c66",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/SGB/2025/BCTC-hop-nhat-da-duoc-kiem-toan-2025.pdf",
+        "source_sha256": "5d01e7d409d7694a69be467b362cdf733975335933ef750a9ef4c4b921a16147",
+        "source_size_bytes": 20574186
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [1780, 1255, 1850, 1310],
+        "pixel_height": 55,
+        "pixel_width": 70,
+        "rgb_sha256": "44757c6209f0d239b8160b8ff08868f17e518d25946508742f2460d1f5313a43"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:3ae3e58d868e7ab1b39492b436005e54ba106f0de9a44356f316693c2a5298b4",
+        "physical_page": 4,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "9500ea0158bf45dfb56488af7188bbcfc9db0c10d6defecf04b19eabdedf1778",
+        "image_size_bytes": 2943895,
+        "media_type": "image/png",
+        "physical_page": 4,
+        "pixel_height": 3492,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "573c2035e0b93e8e458139d4990c2f2bb35bd8b56aaf50e92070f819848b565a"
+      },
+      "repair_id": "gjivpfav1:source-repair:a2f7f32494821b98cf4017248b6d7b7490c84f8bf56065ca89f8beed3e60b6ae",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/SGB/2026/5_sgb_2026_7_27_989deeb_vi__bao_cao_tai_chinh_hop_nhat_q22026_daky.pdf",
+        "source_sha256": "57bc956a4b2358d4a8f79998e88f00f7c0987c2a3b3e5b03e03d813763ee4ead",
+        "source_size_bytes": 16641532
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2188, 1270, 2255, 1325],
+        "pixel_height": 55,
+        "pixel_width": 67,
+        "rgb_sha256": "a0f58cf8872dc7bf9ebd1016197c9208066a9683da018493180f6d7318d9a6a6"
+      },
+      "locator": {
+        "column_ordinal": 3,
+        "page_json_version_id": "gfpstorev1:json:3ae3e58d868e7ab1b39492b436005e54ba106f0de9a44356f316693c2a5298b4",
+        "physical_page": 4,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "9500ea0158bf45dfb56488af7188bbcfc9db0c10d6defecf04b19eabdedf1778",
+        "image_size_bytes": 2943895,
+        "media_type": "image/png",
+        "physical_page": 4,
+        "pixel_height": 3492,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "573c2035e0b93e8e458139d4990c2f2bb35bd8b56aaf50e92070f819848b565a"
+      },
+      "repair_id": "gjivpfav1:source-repair:0da6b980161941818550c1d3eba13c6efa1e14b39537582cee211aa119af3078",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/SGB/2026/5_sgb_2026_7_27_989deeb_vi__bao_cao_tai_chinh_hop_nhat_q22026_daky.pdf",
+        "source_sha256": "57bc956a4b2358d4a8f79998e88f00f7c0987c2a3b3e5b03e03d813763ee4ead",
+        "source_size_bytes": 16641532
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [1798, 1282, 1865, 1335],
+        "pixel_height": 53,
+        "pixel_width": 67,
+        "rgb_sha256": "ab49ec9c7f94d19b86e7fdff12243ced3dc9c1b56e88cac1c8f42e4f50f78bfb"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:37ac3d7940c96fdaf9fc1e75b714f13652dd5056f0a56b60403932a865cbb347",
+        "physical_page": 4,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "201386829d3903b2b108e6ceb966cf855fa1a8cb4053ae3e49592f748b95f09b",
+        "image_size_bytes": 3060467,
+        "media_type": "image/png",
+        "physical_page": 4,
+        "pixel_height": 3484,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "e1e42ec5047b67f603e59963ca4f1861499e0226db484c9a975a14bc51558164"
+      },
+      "repair_id": "gjivpfav1:source-repair:fb9232834f464040c2782139752bd23a8d22e0c4f2c059bb244c1bacee50b3f1",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/SGB/2026/7_sgb_2026_7_27_a0f7e4f_vi__bao_cao_tai_chinh_q22026_daky.pdf",
+        "source_sha256": "cbff3d2bd30c6487a3be7f0942e65a19ec52f0711838eb89cf332cba517f2f3b",
+        "source_size_bytes": 17356164
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2190, 1276, 2258, 1330],
+        "pixel_height": 54,
+        "pixel_width": 68,
+        "rgb_sha256": "c424cdc8d75814d451463b0180902cf7b524ff62bd625bd75c61e5fbf9996941"
+      },
+      "locator": {
+        "column_ordinal": 3,
+        "page_json_version_id": "gfpstorev1:json:37ac3d7940c96fdaf9fc1e75b714f13652dd5056f0a56b60403932a865cbb347",
+        "physical_page": 4,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "201386829d3903b2b108e6ceb966cf855fa1a8cb4053ae3e49592f748b95f09b",
+        "image_size_bytes": 3060467,
+        "media_type": "image/png",
+        "physical_page": 4,
+        "pixel_height": 3484,
+        "pixel_width": 2475,
+        "render_dpi": 300,
+        "render_receipt_sha256": "e1e42ec5047b67f603e59963ca4f1861499e0226db484c9a975a14bc51558164"
+      },
+      "repair_id": "gjivpfav1:source-repair:14ac447b349fe7b445881ecfa04ee7f2979f87373014ae5cec50496c2d055978",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/SGB/2026/7_sgb_2026_7_27_a0f7e4f_vi__bao_cao_tai_chinh_q22026_daky.pdf",
+        "source_sha256": "cbff3d2bd30c6487a3be7f0942e65a19ec52f0711838eb89cf332cba517f2f3b",
+        "source_size_bytes": 17356164
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [1778, 1225, 1845, 1278],
+        "pixel_height": 53,
+        "pixel_width": 67,
+        "rgb_sha256": "9f9fd92e4ef16bd51bba12bda28b6a33935385e52a548314c816a25afa69e000"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:11854a7705daa96e3b6c490f40942e27ba27ae176d2457e262f2f77f746f07ec",
+        "physical_page": 5,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "58f10c28eba94adca3f8de93640ce4f05a44f05d18f2298f187423e331b13e66",
+        "image_size_bytes": 2845161,
+        "media_type": "image/png",
+        "physical_page": 5,
+        "pixel_height": 3500,
+        "pixel_width": 2467,
+        "render_dpi": 300,
+        "render_receipt_sha256": "d754b70b8e0eaa403455df331d5be30c8af65a07ef6447c636062372757a6472"
+      },
+      "repair_id": "gjivpfav1:source-repair:059760e156c4a7127d25ee05cb80ebd8b50dbbff6cc315f57b2d7cd980c09e14",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/SGB/2026/BCTC-HN-quy-1---2026_VIE_0001.pdf",
+        "source_sha256": "077a51aaa61b25250172040eaecb7b09c8ca691c7e92359b44a18e9d55d0f55f",
+        "source_size_bytes": 15949655
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2185, 1240, 2250, 1293],
+        "pixel_height": 53,
+        "pixel_width": 65,
+        "rgb_sha256": "ab52652629c03d7c601c43c73fe3a585e5d18d4d3555407d5a1a48f0ab87061f"
+      },
+      "locator": {
+        "column_ordinal": 3,
+        "page_json_version_id": "gfpstorev1:json:11854a7705daa96e3b6c490f40942e27ba27ae176d2457e262f2f77f746f07ec",
+        "physical_page": 5,
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "58f10c28eba94adca3f8de93640ce4f05a44f05d18f2298f187423e331b13e66",
+        "image_size_bytes": 2845161,
+        "media_type": "image/png",
+        "physical_page": 5,
+        "pixel_height": 3500,
+        "pixel_width": 2467,
+        "render_dpi": 300,
+        "render_receipt_sha256": "d754b70b8e0eaa403455df331d5be30c8af65a07ef6447c636062372757a6472"
+      },
+      "repair_id": "gjivpfav1:source-repair:b4def3e9f93bfbc11c870211f69767b2ba37b977831c4803c058dcf0c9078bfb",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/SGB/2026/BCTC-HN-quy-1---2026_VIE_0001.pdf",
+        "source_sha256": "077a51aaa61b25250172040eaecb7b09c8ca691c7e92359b44a18e9d55d0f55f",
+        "source_size_bytes": 15949655
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2195, 1970, 2262, 2025],
+        "pixel_height": 55,
+        "pixel_width": 67,
+        "rgb_sha256": "8b80bc6d151ba2d2cf5de073ba7ae2dc9d6d4110b88d0a2a530bfd5a6c54a284"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:8560a627443ef8681142e442c728a9415990531e2d48483455fc2b03d97d5b84",
+        "physical_page": 39,
+        "row_ordinal": 2,
+        "section_id": "s1",
+        "table_id": "t4"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "75b7b3c8047e611a6ddfe82360deb8ff701d484d2d697e22b97fd96e66dc4fab",
+        "image_size_bytes": 911511,
+        "media_type": "image/png",
+        "physical_page": 39,
+        "pixel_height": 3517,
+        "pixel_width": 2480,
+        "render_dpi": 300,
+        "render_receipt_sha256": "93bac3446faf591486a347b3cfcc4fa67759f02ba258a1e0a4fefa64841f180f"
+      },
+      "repair_id": "gjivpfav1:source-repair:7f68a1259305395b28dc6508edfa494558252ac41aa9cec7947aa9650a38f5e4",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/VAB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "source_sha256": "db337e1de3e7aab90012dec81ef50467b059ad2c7e6acc07cd52b65166d0617f",
+        "source_size_bytes": 11485173
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [1860, 2110, 1940, 2160],
+        "pixel_height": 50,
+        "pixel_width": 80,
+        "rgb_sha256": "bfdb6b0017d519ab5f6f5490cc613e9fb108873eb15f338b224d4b55389606cf"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e898d64a6489a67634c5996abdf06743fcdafa01535432a2313eaac395e6e2c9",
+        "physical_page": 54,
+        "row_ordinal": 4,
+        "section_id": "s2",
+        "table_id": "t2"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "e45d822cf2ab71a7acbd9b1036293684c3859aa67d120ca0543eab65598a91a6",
+        "image_size_bytes": 3378954,
+        "media_type": "image/png",
+        "physical_page": 54,
+        "pixel_height": 3510,
+        "pixel_width": 2482,
+        "render_dpi": 300,
+        "render_receipt_sha256": "f5fb119af6619b291ec8196fa50923953712a4521326bca47160008d276b1dd4"
+      },
+      "repair_id": "gjivpfav1:source-repair:9356d113c30a43f70a09cd21ba60f8316c2dd7e9f9174342b380b6c52bcffb08",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+        "source_sha256": "742dbc45b1f5f7612100fd6e078977e206f700693a1f132e3373b81386934b8c",
+        "source_size_bytes": 8825841
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [1860, 2210, 1940, 2260],
+        "pixel_height": 50,
+        "pixel_width": 80,
+        "rgb_sha256": "33c15d37dba938cee47163667d8315e25924bc50ff51ab66687c0ba7123c60f3"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e898d64a6489a67634c5996abdf06743fcdafa01535432a2313eaac395e6e2c9",
+        "physical_page": 54,
+        "row_ordinal": 6,
+        "section_id": "s2",
+        "table_id": "t2"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "e45d822cf2ab71a7acbd9b1036293684c3859aa67d120ca0543eab65598a91a6",
+        "image_size_bytes": 3378954,
+        "media_type": "image/png",
+        "physical_page": 54,
+        "pixel_height": 3510,
+        "pixel_width": 2482,
+        "render_dpi": 300,
+        "render_receipt_sha256": "f5fb119af6619b291ec8196fa50923953712a4521326bca47160008d276b1dd4"
+      },
+      "repair_id": "gjivpfav1:source-repair:9e13a5f256a56e560421c26edf0c22007fe29d358d3a0c56a8eb3707dac56b34",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+        "source_sha256": "742dbc45b1f5f7612100fd6e078977e206f700693a1f132e3373b81386934b8c",
+        "source_size_bytes": 8825841
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [1860, 2790, 1940, 2840],
+        "pixel_height": 50,
+        "pixel_width": 80,
+        "rgb_sha256": "08f43d44ff69a411ecb156238a77c3d3a4c7d034ec61e3f3b87b4be2683e09cc"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e898d64a6489a67634c5996abdf06743fcdafa01535432a2313eaac395e6e2c9",
+        "physical_page": 54,
+        "row_ordinal": 4,
+        "section_id": "s2",
+        "table_id": "t3"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "e45d822cf2ab71a7acbd9b1036293684c3859aa67d120ca0543eab65598a91a6",
+        "image_size_bytes": 3378954,
+        "media_type": "image/png",
+        "physical_page": 54,
+        "pixel_height": 3510,
+        "pixel_width": 2482,
+        "render_dpi": 300,
+        "render_receipt_sha256": "f5fb119af6619b291ec8196fa50923953712a4521326bca47160008d276b1dd4"
+      },
+      "repair_id": "gjivpfav1:source-repair:1b4348c12cca423a0f1735ab564bb6039cda1cd871b1fcd9cb3b9b9207a00c74",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+        "source_sha256": "742dbc45b1f5f7612100fd6e078977e206f700693a1f132e3373b81386934b8c",
+        "source_size_bytes": 8825841
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [1860, 2890, 1940, 2940],
+        "pixel_height": 50,
+        "pixel_width": 80,
+        "rgb_sha256": "f8f9a5f24fdaf3d6fbe09d1644f3d2f2f0aa4953eb78ac4f8dd52b574e764586"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:e898d64a6489a67634c5996abdf06743fcdafa01535432a2313eaac395e6e2c9",
+        "physical_page": 54,
+        "row_ordinal": 6,
+        "section_id": "s2",
+        "table_id": "t3"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "e45d822cf2ab71a7acbd9b1036293684c3859aa67d120ca0543eab65598a91a6",
+        "image_size_bytes": 3378954,
+        "media_type": "image/png",
+        "physical_page": 54,
+        "pixel_height": 3510,
+        "pixel_width": 2482,
+        "render_dpi": 300,
+        "render_receipt_sha256": "f5fb119af6619b291ec8196fa50923953712a4521326bca47160008d276b1dd4"
+      },
+      "repair_id": "gjivpfav1:source-repair:e9cb9bde208890b50da49d04b16800ba130aed46e6af0d4d8e6a3f6747c5f6c7",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/TPB/2025/BCTC Hợp nhất Soát xét 6 tháng đầu năm 2025.pdf",
+        "source_sha256": "742dbc45b1f5f7612100fd6e078977e206f700693a1f132e3373b81386934b8c",
+        "source_size_bytes": 8825841
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2110, 1672, 2200, 1722],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "e8cd6197c49f473bd054ceb9b6951f8eeaba604ca427e3f3e94161c9da3a70fd"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:417f1228be4b3ddc9e6e3b3e351e782773bcf3e30eb1a5fda08ae42845d82821",
+        "physical_page": 20,
+        "row_ordinal": 3,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "d8d0cd6005edbe4aa10d9ecc809d0763092925ec1b5c6b5f8126cffdfa4afc27",
+        "image_size_bytes": 2238195,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2454,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8ee74db7f16f6a2ee39fe5aa83b4ec9676cc9cb2ebd332c32ed946055b65089b"
+      },
+      "repair_id": "gjivpfav1:source-repair:7c294f3fc42deb79e2cb9b1cd55a1a816eefb7e615f1a2b1ac4f3a7ea73593c1",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phplpiamp-bctc-q2-2025-rl-6889fde02c284.pdf",
+        "source_sha256": "e89f13e3b4d6e9bc1654d052e24511633e418dd37bd5631b77b4dfe6b607ce59",
+        "source_size_bytes": 7247557
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2110, 2063, 2200, 2113],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "b9dcc7b42e2e0c4f03cb2b5476bdce76c824dd0fe812ff7ed503d3a804fc04d3"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:417f1228be4b3ddc9e6e3b3e351e782773bcf3e30eb1a5fda08ae42845d82821",
+        "physical_page": 20,
+        "row_ordinal": 7,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "d8d0cd6005edbe4aa10d9ecc809d0763092925ec1b5c6b5f8126cffdfa4afc27",
+        "image_size_bytes": 2238195,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2454,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8ee74db7f16f6a2ee39fe5aa83b4ec9676cc9cb2ebd332c32ed946055b65089b"
+      },
+      "repair_id": "gjivpfav1:source-repair:34a0bf2a1ce80e9f7b9e454c44b80f9fc0d5e916c5c752823856e82e6fc6ff75",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phplpiamp-bctc-q2-2025-rl-6889fde02c284.pdf",
+        "source_sha256": "e89f13e3b4d6e9bc1654d052e24511633e418dd37bd5631b77b4dfe6b607ce59",
+        "source_size_bytes": 7247557
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2110, 2156, 2200, 2206],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "ed5e8bdee9e7efdb18e45df00661efb1cd94c77cc077cffca6624e04f971077d"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:417f1228be4b3ddc9e6e3b3e351e782773bcf3e30eb1a5fda08ae42845d82821",
+        "physical_page": 20,
+        "row_ordinal": 8,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "d8d0cd6005edbe4aa10d9ecc809d0763092925ec1b5c6b5f8126cffdfa4afc27",
+        "image_size_bytes": 2238195,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2454,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8ee74db7f16f6a2ee39fe5aa83b4ec9676cc9cb2ebd332c32ed946055b65089b"
+      },
+      "repair_id": "gjivpfav1:source-repair:cc99f322f7582971fd1059a3e7cf8cf1c5f56108e0e031d1f7ef0d3a8e8c749d",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phplpiamp-bctc-q2-2025-rl-6889fde02c284.pdf",
+        "source_sha256": "e89f13e3b4d6e9bc1654d052e24511633e418dd37bd5631b77b4dfe6b607ce59",
+        "source_size_bytes": 7247557
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2110, 2251, 2200, 2301],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "4c4d4ca1ce4cc4237e5c2ab602482640794eab7603460af34cc4b7b2caaab81d"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:417f1228be4b3ddc9e6e3b3e351e782773bcf3e30eb1a5fda08ae42845d82821",
+        "physical_page": 20,
+        "row_ordinal": 9,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "d8d0cd6005edbe4aa10d9ecc809d0763092925ec1b5c6b5f8126cffdfa4afc27",
+        "image_size_bytes": 2238195,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2454,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8ee74db7f16f6a2ee39fe5aa83b4ec9676cc9cb2ebd332c32ed946055b65089b"
+      },
+      "repair_id": "gjivpfav1:source-repair:f55bcaae2c35c5dc7afa3f6cb3d174f72cac40493ef13f184842309d9e4e8cfc",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phplpiamp-bctc-q2-2025-rl-6889fde02c284.pdf",
+        "source_sha256": "e89f13e3b4d6e9bc1654d052e24511633e418dd37bd5631b77b4dfe6b607ce59",
+        "source_size_bytes": 7247557
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2110, 2347, 2200, 2397],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "e5c76d81ce81cd77042a16d0b2f5a7389e462c5e165d31585ac42c878c5a5994"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:417f1228be4b3ddc9e6e3b3e351e782773bcf3e30eb1a5fda08ae42845d82821",
+        "physical_page": 20,
+        "row_ordinal": 10,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "d8d0cd6005edbe4aa10d9ecc809d0763092925ec1b5c6b5f8126cffdfa4afc27",
+        "image_size_bytes": 2238195,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2454,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8ee74db7f16f6a2ee39fe5aa83b4ec9676cc9cb2ebd332c32ed946055b65089b"
+      },
+      "repair_id": "gjivpfav1:source-repair:40663f13dbd059d4c8781758edc613e7d5620eafe40d8972a0e3ce5bcaf9f989",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phplpiamp-bctc-q2-2025-rl-6889fde02c284.pdf",
+        "source_sha256": "e89f13e3b4d6e9bc1654d052e24511633e418dd37bd5631b77b4dfe6b607ce59",
+        "source_size_bytes": 7247557
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2110, 2722, 2200, 2772],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "ce7969326f7070ecb3a4ef6b82cbe7bfb0d4c4e002fa50ac203be787e790505b"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:417f1228be4b3ddc9e6e3b3e351e782773bcf3e30eb1a5fda08ae42845d82821",
+        "physical_page": 20,
+        "row_ordinal": 14,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "d8d0cd6005edbe4aa10d9ecc809d0763092925ec1b5c6b5f8126cffdfa4afc27",
+        "image_size_bytes": 2238195,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2454,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8ee74db7f16f6a2ee39fe5aa83b4ec9676cc9cb2ebd332c32ed946055b65089b"
+      },
+      "repair_id": "gjivpfav1:source-repair:da21d9f01ca634958fa78f0814deeac24c86a3d0ba086ea0f29a61ff7cd1f4b4",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phplpiamp-bctc-q2-2025-rl-6889fde02c284.pdf",
+        "source_sha256": "e89f13e3b4d6e9bc1654d052e24511633e418dd37bd5631b77b4dfe6b607ce59",
+        "source_size_bytes": 7247557
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2110, 2816, 2200, 2866],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "3fc5102d2f9b4c2a56ee152d2595ea2976677f962a4afa76c78061a31238d590"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:417f1228be4b3ddc9e6e3b3e351e782773bcf3e30eb1a5fda08ae42845d82821",
+        "physical_page": 20,
+        "row_ordinal": 15,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "d8d0cd6005edbe4aa10d9ecc809d0763092925ec1b5c6b5f8126cffdfa4afc27",
+        "image_size_bytes": 2238195,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2454,
+        "render_dpi": 300,
+        "render_receipt_sha256": "8ee74db7f16f6a2ee39fe5aa83b4ec9676cc9cb2ebd332c32ed946055b65089b"
+      },
+      "repair_id": "gjivpfav1:source-repair:a04d8990b0fe1545ff5ac0ecb84b1edc005fd1359f105fa1cdcc5beff21ccafe",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/phplpiamp-bctc-q2-2025-rl-6889fde02c284.pdf",
+        "source_sha256": "e89f13e3b4d6e9bc1654d052e24511633e418dd37bd5631b77b4dfe6b607ce59",
+        "source_size_bytes": 7247557
+      }
+    },
+    {
+      "after_exact": "-",
+      "before_exact": null,
+      "crop_evidence": {
+        "bbox_pixels_xyxy": [2110, 2743, 2200, 2793],
+        "pixel_height": 50,
+        "pixel_width": 90,
+        "rgb_sha256": "42d5c267e7b20a6f01e317f95d82c836ad23e87bfa43d3242d47c8c88bed3090"
+      },
+      "locator": {
+        "column_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:d35d712be2ba3d15ba2596827760a12eb53db844c63d5ef1c9617f3edb1c6758",
+        "physical_page": 20,
+        "row_ordinal": 14,
+        "section_id": "s2",
+        "table_id": "t1"
+      },
+      "observed_pdf_glyph": "-",
+      "render": {
+        "image_sha256": "54829150cfeb5b1ed4e537c7d34bf022fbd7f8a93b8fc2ca8aef702cb7c8704a",
+        "image_size_bytes": 1920109,
+        "media_type": "image/png",
+        "physical_page": 20,
+        "pixel_height": 3528,
+        "pixel_width": 2460,
+        "render_dpi": 300,
+        "render_receipt_sha256": "b153b00f4d07e20b53e593279eeb2010fc92fcea3248bfe56c7e92ea1fec84d0"
+      },
+      "repair_id": "gjivpfav1:source-repair:dd070b69bda7f861dc30cbbdd1953eb7528fde548899b35ec087989a3fb955ca",
+      "repair_kind": "MONEY_CELL_VISIBLE_DASH",
+      "source": {
+        "source_logical_name": "vietstock_bctc/ABB/2025/BCTC Hợp nhất quý 4 năm 2025__592d2993__3_abb_2026_2_4_91abe48_bctc_hn_q4_2025.pdf",
+        "source_sha256": "836a7a4c5f0f73bf145af4bfe6c8394215bb69881cbae702ac591966db88259a",
+        "source_size_bytes": 7349106
+      }
+    }
+  ]
+}
