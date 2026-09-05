@@ -13,9 +13,12 @@ after the original pause. The documented local preparation gate applies;
 formal laptop join remains pending, not silently granted by its informal ACK.
 F37 remains read-only. No shared-branch push is authorized by role metadata.
 
-Laptop reports WSL installed but reboot/distro/Python 3.12/original preflight
-still pending. This does not authorize bypassing its user gates or claiming
-laptop acceptance from a VPS run.
+Latest laptop event at 06:43 UTC supersedes the earlier reboot/distro blocker:
+Ubuntu 24.04 on dedicated ext4 and Python 3.12.3 are installed, and isolated
+frozen snapshot/binary/symlink/identity runtime probes PASS. Archive, database
+and corpus restore/preflight remain pending; there is still no formal join or
+F39 claim. This does not authorize bypassing its user gates or claiming laptop
+acceptance from a VPS run.
 
 VPS now has an isolated minimal Python 3.12.13 environment:
 `/tmp/f36-python312-runtime.GGDE2m/venv/bin/python`.
