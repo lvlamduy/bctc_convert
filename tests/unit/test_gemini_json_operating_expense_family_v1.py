@@ -1712,6 +1712,262 @@ def test_operating_expense_continuation_recovery_fails_closed(mutation: str) -> 
     assert "operating_expense_continuation_query_receipt" not in cluster
 
 
+def _adapt_continuation_pages_for_unit_test(
+    pages: dict[int, dict[str, dict[str, Any]]], compiled: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    base = _rebuild_continuation_query_fixture(pages, compiled)
+    adapted = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=base,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )
+    trial = build_gemini_json_operating_expense_trials_v1(
+        indexed_query_evidence=adapted,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )[0]
+    return adapted, trial
+
+
+@pytest.mark.parametrize("layout", ["COMPLETE_OWNER", "INTERNAL_OWNER"])
+@pytest.mark.parametrize("fragment", [VERSION_ID, CONTINUATION_VERSION_ID])
+@pytest.mark.parametrize(
+    "unit",
+    [
+        "USD", "Nghìn đồng", "Triệu đồng và VND", "Triệu đồng và eur", "VND", "Unit: XYZ",
+        "Triệu đồng ₹", "Triệu đồng ₽",
+    ],
+)
+def test_continuation_invalid_explicit_unit_never_becomes_missing(
+    layout: str, fragment: str, unit: str
+) -> None:
+    fixture = (
+        _continuation_query_fixture
+        if layout == "COMPLETE_OWNER"
+        else _internal_owner_continuation_query_fixture
+    )
+    _base, pages, compiled = fixture()
+    pages[1][fragment]["sections"][0]["tables"][0]["unit_exact"] = unit
+    before = copy.deepcopy(pages)
+    adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert pages == before
+    assert trial["status"] != READY
+    assert trial["mappings"] == []
+    assert "operating_expense_continuation_query_receipt" not in (
+        adapted["candidate_dispositions"][0]["cluster"]
+    )
+    if layout == "COMPLETE_OWNER":
+        assert trial["status"] == UNRESOLVED
+
+
+@pytest.mark.parametrize("fragment", [VERSION_ID, CONTINUATION_VERSION_ID])
+@pytest.mark.parametrize("affected_columns", [1, 2])
+@pytest.mark.parametrize(
+    "surface",
+    [
+        "USD",
+        "EUR",
+        "eur",
+        "Eur",
+        "Đơn vị tính: EUR",
+        "Đơn vị tính: eur",
+        "Triệu đồng và eur",
+        "Unit: XYZ",
+        "Nghìn đồng",
+        "Triệu đồng, %",
+        "Triệu đồng ₹",
+        "Triệu đồng ₽",
+    ],
+)
+def test_continuation_unexplained_money_header_unit_is_a_veto(
+    fragment: str, affected_columns: int, surface: str
+) -> None:
+    _base, pages, compiled = _continuation_query_fixture()
+    table = pages[1][fragment]["sections"][0]["tables"][0]
+    # Keep a valid local table unit: an invalid header must still veto it.
+    for ordinal, (column, period) in enumerate(
+        zip(table["columns"], ("Kỳ này", "Kỳ trước"), strict=True), start=1
+    ):
+        prefix = [OWNER] if fragment == VERSION_ID else []
+        column["header_path_exact"] = [
+            *prefix,
+            period,
+            *([surface] if ordinal <= affected_columns else []),
+        ]
+    before = copy.deepcopy(pages)
+    _adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+    assert pages == before
+
+
+@pytest.mark.parametrize("fragment", [VERSION_ID, CONTINUATION_VERSION_ID])
+@pytest.mark.parametrize(
+    "unit",
+    [
+        None,
+        "Triệu Đồng Việt Nam",
+        "Đơn vị tính: triệu đồng VN",
+        "(Triệu VND)",
+        "Unit: Million VND",
+        "ĐVT: triệu đồng",
+    ],
+)
+def test_continuation_missing_unit_and_bounded_currency_names_remain_source_bound(
+    fragment: str, unit: str | None
+) -> None:
+    _base, pages, compiled = _continuation_query_fixture()
+    pages[1][fragment]["sections"][0]["tables"][0]["unit_exact"] = unit
+    before = copy.deepcopy(pages)
+    _adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == READY
+    assert {mapping["unit"] for mapping in trial["mappings"]} == {"MILLION_VND"}
+    assert validate_source_observation_mapping_contract_v1(trial)["violation_count"] == 0
+    assert pages == before
+
+
+@pytest.mark.parametrize(
+    "periods", [("Năm 2026", "Năm 2025"), ("Year 2026", "Year 2025")]
+)
+@pytest.mark.parametrize("surface", ["Triệu đồng Việt Nam", "Đơn vị tính: Triệu đồng VN"])
+def test_continuation_explicit_header_units_preserve_period_parser_authority(
+    periods: tuple[str, str], surface: str
+) -> None:
+    _base, pages, compiled = _continuation_query_fixture()
+    for version in (VERSION_ID, CONTINUATION_VERSION_ID):
+        table = pages[1][version]["sections"][0]["tables"][0]
+        table["unit_exact"] = None
+        prefix = [OWNER] if version == VERSION_ID else []
+        for column, period in zip(table["columns"], periods, strict=True):
+            column["header_path_exact"] = [*prefix, period, surface]
+    before = copy.deepcopy(pages)
+    _adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == READY
+    assert validate_source_observation_mapping_contract_v1(trial)["violation_count"] == 0
+    assert pages == before
+
+
+def test_primary_root_page_map_order_preserves_sealed_query_and_candidate_bytes() -> None:
+    base, pages, compiled = _titleless_primary_query_fixture()
+    # The hash sort is deliberately opposite to selected-source order.
+    extra_version = "gfpstorev1:json:" + "a" * 64
+    pages[1][extra_version] = copy.deepcopy(pages[1][PRIMARY_VERSION_ID])
+    selected_page_axis = [
+        *base["selected_page_axis"],
+        {
+            **base["selected_page_axis"][0],
+            "page_json_version_id": extra_version,
+            "physical_page": 3,
+            "selected_page_ordinal": 3,
+        },
+    ]
+    base = build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        selected_document_axis=base["selected_document_axis"],
+        selected_page_axis=selected_page_axis,
+        document_clusters=[item["cluster"] for item in base["candidate_dispositions"]],
+        query_policy_sha256=canonical_json_sha256_v1(compiled["query_policy"]),
+    )
+    outputs = []
+    for source_pages in (pages, {1: dict(reversed(list(pages[1].items())))}):
+        adapted = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+            base_indexed_query_evidence=base,
+            page_json_by_document=source_pages,
+            compiled_specs=compiled,
+        )
+        trials = build_gemini_json_operating_expense_trials_v1(
+            indexed_query_evidence=adapted,
+            page_json_by_document=source_pages,
+            compiled_specs=compiled,
+        )
+        assert trials[0]["status"] == READY
+        evidence = adapted["candidate_dispositions"][0]["cluster"][
+            "operating_expense_titleless_primary_region_recovery_receipt"
+        ]["selected_region_evidence"]
+        assert [root["locator"]["physical_page"] for root in evidence["matched_primary_roots"]] == [
+            1, 3
+        ]
+        owner_evidence = trials[0]["candidates"][0]["closure_receipt"][
+            "document_unit_context"
+        ]["owner_row_evidence"]
+        assert [item["page_json_version_id"] for item in owner_evidence] == [
+            PRIMARY_VERSION_ID, extra_version
+        ]
+        assert {
+            (ref["locator"]["physical_page"], ref["locator"]["selected_page_ordinal"])
+            for mapping in trials[0]["mappings"]
+            for ref in mapping["source_refs"]
+        } == {(2, 2)}
+        outputs.append((adapted, trials))
+    assert outputs[0] == outputs[1]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["DUPLICATE_VERSION", "DUPLICATE_ORDINAL", "GAPPED_ORDINAL", "REGION_DRIFT", "MISSING_PAGE"],
+)
+def test_page_order_frontier_metadata_tamper_fails_closed(mutation: str) -> None:
+    base, pages, compiled = _titleless_primary_query_fixture()
+    adapted = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=base,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )
+    regions = adapted["candidate_dispositions"][0]["cluster"]["component_regions"]
+    selected = copy.deepcopy(base["selected_page_axis"])
+    if mutation == "DUPLICATE_VERSION":
+        selected.append(copy.deepcopy(selected[0]))
+    elif mutation == "DUPLICATE_ORDINAL":
+        selected[1]["selected_page_ordinal"] = selected[0]["selected_page_ordinal"]
+    elif mutation == "GAPPED_ORDINAL":
+        selected[0]["selected_page_ordinal"] = 3
+    elif mutation == "REGION_DRIFT":
+        selected[0]["selected_page_ordinal"], selected[1]["selected_page_ordinal"] = 2, 1
+    else:
+        pages[1].pop(PRIMARY_VERSION_ID)
+    receipt = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions)
+    with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error, match="page|source order"):
+        evaluate_gemini_json_operating_expense_family_cluster_v1(
+            regions=regions,
+            page_json_by_version=pages[1],
+            selected_page_axis=selected,
+            compiled_specs=compiled,
+            query_receipt=receipt,
+        )
+
+
+def test_unitless_sender_can_inherit_only_observed_receiver_header_unit() -> None:
+    _base, pages, compiled = _continuation_query_fixture()
+    for version in (VERSION_ID, CONTINUATION_VERSION_ID):
+        pages[1][version]["sections"][0]["tables"][0]["unit_exact"] = None
+    receiver = pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0]
+    for column, period in zip(receiver["columns"], ("Kỳ này", "Kỳ trước"), strict=True):
+        column["header_path_exact"] = [period, "Triệu đồng Việt Nam"]
+    before = copy.deepcopy(pages)
+    _adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == READY
+    projection = trial["candidates"][0]["closure_receipt"]["operating_expense_adapter_receipt"][
+        "continuation_projection_receipts"
+    ][0]
+    assert projection["prior_unit"] is None
+    assert projection["receiver_unit"]["canonical_unit"] == "MILLION_VND"
+    assert projection["receiver_unit"]["evidence"]["source"] == (
+        "LOCAL_UNIFORM_ALL_MONEY_COLUMN_UNITS"
+    )
+    assert pages == before
+
+
+def test_valid_unit_never_repairs_an_unsupported_period_axis() -> None:
+    _base, pages, compiled = _continuation_query_fixture()
+    receiver = pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0]
+    for column, period in zip(
+        receiver["columns"], ("Current period", "Previous period"), strict=True
+    ):
+        column["header_path_exact"] = [period, "Triệu đồng"]
+    _adapted, trial = _adapt_continuation_pages_for_unit_test(pages, compiled)
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
+
+
 def test_pdf_visible_dash_repair_is_cell_local_source_bound_and_replays() -> None:
     rows = _base_rows()
     rows[12]["values_exact"][1] = None
