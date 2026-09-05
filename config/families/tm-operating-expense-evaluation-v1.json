@@ -28,7 +28,27 @@
   ],
   "continuation_period_axis_policy": "ADJACENT_PAGE_EXPLICIT_CONTINUATION_INHERITS_COMPLETE_BLANK_HEADER_AXIS",
   "corroboration_pairs": [],
-  "derived_role_equations": [],
+  "derived_role_equations": [
+    {
+      "component_roles": [
+        "FLAT_ASSET_RENT_SOURCE_ONLY",
+        "FLAT_ASSET_DEPRECIATION_SOURCE_ONLY",
+        "FLAT_ASSET_MAINTENANCE_SOURCE_ONLY",
+        "FLAT_ASSET_TOOLS_SOURCE_ONLY"
+      ],
+      "result_role": "ASSET_EXPENSE"
+    },
+    {
+      "component_roles": [
+        "FLAT_ADMIN_PRINTING_SOURCE_ONLY",
+        "IT_EXPENSE_SOURCE_ONLY",
+        "FLAT_ADMIN_COMMUNICATION_SOURCE_ONLY",
+        "FLAT_ADMIN_UTILITIES_SOURCE_ONLY",
+        "FLAT_ADMIN_TRAVEL_SOURCE_ONLY"
+      ],
+      "result_role": "ADMIN_EXPENSE"
+    }
+  ],
   "detail_context_roles": [],
   "direct_frontier_policy": "CANONICAL_PROVEN_OR_CONTIGUOUS_NUMBERED_TOP_LEVEL_DIRECT_FRONTIER",
   "duration_header_path_scope_policy": "DISTINCT_SUFFIX_AFTER_EXACT_COMMON_PREFIX",
@@ -104,6 +124,8 @@
   "unmapped_direct_family_row_policy": "UNRESOLVED_WHEN_EXPLICIT_FAMILY_ROOT_HAS_UNMAPPED_DIRECT_MONEY_CHILD",
   "validation_only_roles": [
     "EMPLOYEE_SCHEMA_GAP_SOURCE_ONLY",
+    "EMPLOYEE_UNIFORM_SOURCE_ONLY",
+    "EMPLOYEE_OTHER_ALLOWANCE_SOURCE_ONLY",
     "ASSET_SCHEMA_GAP_SOURCE_ONLY",
     "ADMIN_SCHEMA_GAP_SOURCE_ONLY",
     "FLAT_ASSET_RENT_SOURCE_ONLY",
@@ -122,5 +144,27 @@
     "IT_EXPENSE_SOURCE_ONLY",
     "NONDEDUCTIBLE_VAT_SOURCE_ONLY",
     "GOODWILL_AMORTIZATION_SOURCE_ONLY"
+  ],
+  "validation_role_leaf_projections": [
+    {
+      "source_role": "FLAT_ASSET_DEPRECIATION_SOURCE_ONLY",
+      "target_role": "DEPRECIATION_EXPENSE"
+    },
+    {
+      "source_role": "FLAT_ADMIN_TRAVEL_SOURCE_ONLY",
+      "target_role": "TRAVEL_EXPENSE"
+    },
+    {
+      "source_role": "FLAT_OTHER_OPERATING_SOURCE_ONLY",
+      "target_role": "OTHER_OPERATING_EXPENSE"
+    },
+    {
+      "source_role": "EMPLOYEE_UNIFORM_SOURCE_ONLY",
+      "target_role": "OTHER_EMPLOYEE_EXPENSE"
+    },
+    {
+      "source_role": "EMPLOYEE_OTHER_ALLOWANCE_SOURCE_ONLY",
+      "target_role": "EMPLOYEE_BENEFIT"
+    }
   ]
 }
