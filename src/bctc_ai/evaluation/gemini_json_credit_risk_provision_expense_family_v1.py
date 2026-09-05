@@ -5,7 +5,7 @@ mapping authority for ordinary two-period disclosures.  This module adds only
 source-observable structure that the shared query cannot represent directly:
 
 * exact PDF-authenticated repairs applied to a private JSON clone;
-* exact same-document primary-statement unit corroboration for unitless notes;
+* exact textual unit authority and closed-continuation unit propagation;
 * conditional splitting of two distinct ``OTHER_PROVISION`` source rows before
   their declared additive equation is evaluated; and
 * customer-provision movement tables whose period is on rows and whose
@@ -19,7 +19,9 @@ PDF render visibly contains a dash.
 from __future__ import annotations
 
 import re
+from calendar import monthrange
 from collections.abc import Mapping, Sequence
+from datetime import date, timedelta
 from typing import Any
 
 from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import (
@@ -43,6 +45,7 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
     classify_gemini_json_multitable_hierarchical_table_v1,
+    coalesce_gemini_json_multitable_hierarchical_document_v1,
     compile_gemini_json_multitable_hierarchical_family_specs_v1,
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
     validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
@@ -72,10 +75,11 @@ SOURCE_ROW_COVERAGE_FORMAT_VERSION = (
 )
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_CREDIT_RISK_PROVISION_EXPENSE_"
-    "AUTHENTICATED_PDF_VISIBLE_REPAIR_EXACT_SAME_DOCUMENT_PRIMARY_UNIT_"
-    "CORROBORATION_STRUCTURAL_DUPLICATE_OTHER_ROLE_SPLIT_AND_TRANSPOSED_"
+    "AUTHENTICATED_PDF_VISIBLE_REPAIR_EXACT_TEXTUAL_OR_CLOSED_STRUCTURAL_"
+    "UNIT_AUTHORITY_STRUCTURAL_DUPLICATE_OTHER_ROLE_SPLIT_AND_TRANSPOSED_"
     "CUSTOMER_PROVISION_PRIVATE_CLONE_ONLY_NO_BLANK_ZERO_NO_BACKSOLVE_"
-    "NO_BANK_FILE_YEAR_PAGE_NOTE_VALUE_ROUTING_PROPOSAL_ONLY_"
+    "NO_VALUE_UNIT_OR_PERIOD_INFERENCE_NO_BANK_FILE_YEAR_PAGE_NOTE_VALUE_"
+    "ROUTING_PROPOSAL_ONLY_"
     + SHARED_CLAIM_BOUNDARY
 )
 
@@ -540,8 +544,9 @@ def _project_customer_adjacent_continuations(
     *,
     selected_page_axis: Sequence[Mapping[str, Any]],
     document_ordinal: int,
+    compiled_specs: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
-    """Carry exact customer role headers across an explicit adjacent continuation."""
+    """Carry exact customer structure across an authenticated continuation."""
 
     axis = sorted(
         (
@@ -571,16 +576,20 @@ def _project_customer_adjacent_continuations(
                     type(previous_table) is not dict
                     or previous_table.get("continuation")
                     != "CONTINUES_ON_NEXT_PAGE"
-                    or _transposed_role_axis(previous_table) is None
-                    or _movement_owner_kind(
-                        " ".join(
-                            (
-                                str(previous_section.get("title_exact") or ""),
-                                str(previous_table.get("title_exact") or ""),
+                    or (
+                        _movement_owner_kind(
+                            " ".join(
+                                (
+                                    str(previous_section.get("title_exact") or ""),
+                                    str(previous_table.get("title_exact") or ""),
+                                )
                             )
                         )
+                        != "CUSTOMER"
+                        and not _is_structural_customer_movement(
+                            previous_section, previous_table
+                        )
                     )
-                    != "CUSTOMER"
                 ):
                     continue
                 previous_columns = previous_table.get("columns")
@@ -644,8 +653,32 @@ def _project_customer_adjacent_continuations(
             current_section,
             current_table,
         ) = pairs[0]
+        previous_unit_axis = _unit_axis(
+            previous_table,
+            compiled_specs=compiled_specs,
+            document_unit_context=None,
+        )
+        current_unit_axis = _unit_axis(
+            current_table,
+            compiled_specs=compiled_specs,
+            document_unit_context=None,
+        )
+        if (
+            previous_unit_axis.get("complete") is True
+            and current_unit_axis.get("complete") is True
+            and previous_unit_axis.get("canonical_unit")
+            != current_unit_axis.get("canonical_unit")
+        ):
+            continue
         before_columns = canonical_clone_v1(current_table["columns"])
         current_table["columns"] = canonical_clone_v1(previous_table["columns"])
+        before_unit_exact = current_table.get("unit_exact")
+        if (
+            previous_unit_axis.get("complete") is True
+            and current_unit_axis.get("complete") is not True
+            and before_unit_exact is None
+        ):
+            current_table["unit_exact"] = previous_table.get("unit_exact")
         before_section_title = current_section.get("title_exact")
         if before_section_title is None:
             current_section["title_exact"] = previous_section.get("title_exact")
@@ -681,9 +714,11 @@ def _project_customer_adjacent_continuations(
             "after_columns_exact": canonical_clone_v1(current_table["columns"]),
             "after_initial_hierarchy_paths_exact": after_hierarchy_paths,
             "after_section_title_exact": current_section.get("title_exact"),
+            "after_unit_exact": current_table.get("unit_exact"),
             "before_columns_exact": before_columns,
             "before_initial_hierarchy_paths_exact": before_hierarchy_paths,
             "before_section_title_exact": before_section_title,
+            "before_unit_exact": before_unit_exact,
             "carried_group_hierarchy_path_exact": carried_path,
             "current_locator": {
                 "page_json_version_id": current_axis["page_json_version_id"],
@@ -697,7 +732,7 @@ def _project_customer_adjacent_continuations(
             },
             "rule": (
                 "EXPLICIT_ADJACENT_ON_NEXT_FROM_PREVIOUS_CUSTOMER_TABLE_"
-                "CARRIES_IDENTICAL_ROLE_HEADERS_AND_OWNER"
+                "CARRIES_IDENTICAL_ROLE_HEADERS_OWNER_AND_EXPLICIT_UNIT"
             ),
         }
         receipts.append(
@@ -823,6 +858,42 @@ def _primary_root_observations(
                     or unit is None
                 ):
                     continue
+                columns = table.get("columns")
+                if type(columns) is not list:
+                    continue
+                common_period_surfaces = [
+                    item
+                    for item in (
+                        table.get("title_exact"),
+                        section.get("title_exact"),
+                    )
+                    if type(item) is str and item.strip()
+                ]
+                period_scope_by_lane = {}
+                for semantic_role, column_ordinal in zip(
+                    ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"),
+                    money_ordinals,
+                    strict=True,
+                ):
+                    column = columns[column_ordinal - 1]
+                    header_path = (
+                        column.get("header_path_exact")
+                        if type(column) is dict
+                        else None
+                    )
+                    local_surfaces = [
+                        item
+                        for item in (
+                            header_path if type(header_path) is list else []
+                        )
+                        if type(item) is str and item.strip()
+                    ]
+                    period_scope_by_lane[semantic_role] = (
+                        _family37_period_scope_v1(
+                            [*local_surfaces, *common_period_surfaces],
+                            semantic_role=semantic_role,
+                        )
+                    )
                 rows = table.get("rows")
                 for row_ordinal, row in enumerate(
                     rows if type(rows) is list else [], start=1
@@ -846,11 +917,20 @@ def _primary_root_observations(
                                 "table_id": f"t{table_ordinal}",
                             },
                             "money_column_ordinals": canonical_clone_v1(money_ordinals),
+                            "period_scope_by_lane": period_scope_by_lane,
                             "row": canonical_clone_v1(row),
                             "row_ordinal": row_ordinal,
                             "unit_receipt": canonical_clone_v1(unit),
                         }
                     )
+    result.sort(
+        key=lambda item: (
+            item["locator"]["physical_page"],
+            int(item["locator"]["section_id"][1:]),
+            int(item["locator"]["table_id"][1:]),
+            item["row_ordinal"],
+        )
+    )
     return result
 
 
@@ -890,9 +970,21 @@ def _target_total_observation(
         classification = classify_gemini_json_multitable_hierarchical_table_v1(
             page, section, table, compiled_specs=compiled_specs
         )
-        money_ordinals = classification.get("money_column_ordinals")
+        # ``classification.money_column_ordinals`` is the physical source
+        # order.  Root values must use the same semantic current/comparative
+        # lane order as every child mapping; otherwise a fully reversed table
+        # silently swaps only the printed root.
+        lane_axis = _multitable_lane_axis(
+            section, table, compiled_specs=compiled_specs
+        )
+        money_ordinals = lane_axis.get("money_column_ordinals")
         rows = table.get("rows")
-        if type(money_ordinals) is not list or len(money_ordinals) != 2 or type(rows) is not list:
+        if (
+            lane_axis.get("complete") is not True
+            or type(money_ordinals) is not list
+            or len(money_ordinals) != 2
+            or type(rows) is not list
+        ):
             continue
         for total in classification.get("total_rows", []):
             row_ordinal = total.get("row_ordinal") if type(total) is dict else None
@@ -919,91 +1011,6 @@ def _target_total_observation(
     return observations[0] if len(observations) == 1 else None
 
 
-def _bind_exact_primary_statement_unit(
-    *,
-    pages: dict[str, dict[str, Any]],
-    regions: Sequence[Mapping[str, Any]],
-    selected_page_axis: Sequence[Mapping[str, Any]],
-    compiled_specs: Mapping[str, Any],
-) -> list[dict[str, Any]]:
-    tables = []
-    for region in regions:
-        section, table = _source_table(
-            pages[region["page_json_version_id"]],
-            section_id=region["section_id"],
-            table_id=region["table_id"],
-        )
-        if section.get("content_kind") == "PRIMARY_STATEMENT":
-            continue
-        tables.append((region, table))
-    if not tables or any(table.get("unit_exact") is not None for _region, table in tables):
-        return []
-    target = _target_total_observation(
-        pages=pages,
-        regions=[region for region, _table in tables],
-        compiled_specs=compiled_specs,
-    )
-    document_ordinals = {region.get("document_ordinal") for region, _table in tables}
-    if target is None or len(document_ordinals) != 1:
-        return []
-    document_ordinal = next(iter(document_ordinals))
-    if type(document_ordinal) is not int:
-        return []
-    roots = _primary_root_observations(
-        pages=pages,
-        selected_page_axis=selected_page_axis,
-        document_ordinal=document_ordinal,
-        compiled_specs=compiled_specs,
-    )
-    target_vector = [cell["coefficient"] for cell in target["cells"]]
-    matches = []
-    for root in roots:
-        vector = [cell["coefficient"] for cell in root["cells"]]
-        if vector == target_vector:
-            match_kind = "EXACT_SIGNED_COEFFICIENT_VECTOR"
-        elif [abs(item) for item in vector] == [abs(item) for item in target_vector]:
-            match_kind = "EXACT_MAGNITUDE_VECTOR_WITH_SOURCE_PRESENTATION_SIGN_DIFFERENCE"
-        else:
-            continue
-        matches.append({**canonical_clone_v1(root), "match_kind": match_kind})
-    units = {item["canonical_unit"] for item in matches}
-    if len(units) != 1:
-        return []
-    unit = next(iter(units))
-    for _region, table in tables:
-        table["unit_exact"] = _UNIT_SURFACE[unit]
-    material = {
-        "canonical_unit": unit,
-        "matched_primary_roots": matches,
-        "rule": (
-            "UNITLESS_FAMILY37_NOTE_VISIBLE_TOTAL_EQUALS_SAME_DOCUMENT_"
-            "PRIMARY_FAMILY_ROOT_BOTH_DURATION_LANES_EXACT_OR_EXACT_"
-            "MAGNITUDE_SIGN_PRESENTATION_DIFFERENCE_NO_SCALE_INFERENCE"
-        ),
-        "target_observation": canonical_clone_v1(target),
-        "target_region_axis": [
-            {
-                key: region[key]
-                for key in (
-                    "page_json_version_id",
-                    "physical_page",
-                    "section_id",
-                    "table_id",
-                )
-            }
-            for region, _table in tables
-        ],
-        "target_unit_before_exact": None,
-        "target_unit_exact": _UNIT_SURFACE[unit],
-    }
-    return [
-        {
-            **material,
-            "receipt_id": "gjcrpefav1:unit:" + canonical_json_sha256_v1(material),
-        }
-    ]
-
-
 def _region(
     *,
     document: Mapping[str, Any],
@@ -1025,6 +1032,100 @@ def _region(
         "source_sha256": document["source_sha256"],
         "table_id": f"t{table_ordinal}",
     }
+
+
+def _family37_selected_document_pages_v1(
+    *,
+    document: Mapping[str, Any],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    source_pages: Mapping[str, dict[str, Any]],
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Join selected metadata to exact page payloads in source order.
+
+    The page-version identifier is an upstream store identity, not a raw JSON
+    hash.  This family layer therefore binds both the authenticated identifier
+    and the exact payload hash, and refuses missing or surplus payloads.
+    """
+
+    axis = sorted(
+        (
+            canonical_clone_v1(item)
+            for item in selected_page_axis
+            if item.get("document_ordinal") == document.get("document_ordinal")
+        ),
+        key=lambda item: (
+            item["selected_page_ordinal"],
+            item["physical_page"],
+            item["page_json_version_id"],
+        ),
+    )
+    expected_versions = [item["page_json_version_id"] for item in axis]
+    if (
+        not axis
+        or len(expected_versions) != len(set(expected_versions))
+        or set(expected_versions) != set(source_pages)
+    ):
+        raise _error("Family-37 selected page payload frontier drifted")
+    result = []
+    for expected_ordinal, item in enumerate(axis, start=1):
+        if item.get("selected_page_ordinal") != expected_ordinal:
+            raise _error("Family-37 selected page source order drifted")
+        page = source_pages.get(item["page_json_version_id"])
+        if type(page) is not dict:
+            raise _error("Family-37 selected page JSON is invalid")
+        result.append((item, page))
+    return result
+
+
+def _family37_page_identity_axis_v1(
+    *,
+    ordered_pages: Sequence[tuple[Mapping[str, Any], Mapping[str, Any]]],
+    repaired_pages: Mapping[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    result = []
+    for page_axis, page in ordered_pages:
+        version_id = page_axis["page_json_version_id"]
+        repaired = repaired_pages.get(version_id)
+        if type(repaired) is not dict:
+            raise _error("Family-37 repaired page frontier drifted")
+        result.append(
+            {
+                "input_page_json_sha256": canonical_json_sha256_v1(page),
+                "page_json_version_id": version_id,
+                "physical_page": page_axis["physical_page"],
+                "repaired_page_json_sha256": canonical_json_sha256_v1(repaired),
+                "selected_page_ordinal": page_axis["selected_page_ordinal"],
+            }
+        )
+    return result
+
+
+def _family37_recomputed_base_cluster_v1(
+    *,
+    document: Mapping[str, Any],
+    ordered_pages: Sequence[tuple[Mapping[str, Any], Mapping[str, Any]]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    identity_fields = (
+        "document_id",
+        "document_ordinal",
+        "source_logical_name",
+        "source_sha256",
+    )
+    if any(
+        page_axis.get(field) != document.get(field)
+        for page_axis, _page in ordered_pages
+        for field in identity_fields
+    ):
+        raise _error("Family-37 selected page document identity drifted")
+    records = [
+        {**canonical_clone_v1(page_axis), "page_json": canonical_clone_v1(page)}
+        for page_axis, page in ordered_pages
+    ]
+    return coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=records,
+        compiled_specs=compiled_specs,
+    )
 
 
 def _money_bearing_row_ordinals(table: Mapping[str, Any]) -> set[int]:
@@ -1136,6 +1237,325 @@ def _normal_expense_regions(
                     )
                 )
     return result
+
+
+def _family37_normal_fragment_inventory_v1(
+    *,
+    document: Mapping[str, Any],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    pages: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Inventory positive normal owners before strict candidate admission."""
+
+    axis_by_version = {
+        item["page_json_version_id"]: item
+        for item in selected_page_axis
+        if item.get("document_ordinal") == document["document_ordinal"]
+    }
+    document_unit_context = _family_document_unit_context(
+        pages=pages, compiled_specs=compiled_specs
+    )
+    result = []
+    for version_id, axis in sorted(
+        axis_by_version.items(),
+        key=lambda item: (
+            item[1]["selected_page_ordinal"],
+            item[1]["physical_page"],
+            item[0],
+        ),
+    ):
+        page = pages.get(version_id)
+        if type(page) is not dict:
+            raise _error("Family-37 normal owner page is absent")
+        for section_ordinal, section in enumerate(page.get("sections", []), start=1):
+            if (
+                type(section) is not dict
+                or section.get("content_kind") != "FINANCIAL_NOTE"
+            ):
+                continue
+            for table_ordinal, table in enumerate(
+                section.get("tables", []), start=1
+            ):
+                if type(table) is not dict:
+                    continue
+                classification = (
+                    classify_gemini_json_multitable_hierarchical_table_v1(
+                        page, section, table, compiled_specs=compiled_specs
+                    )
+                )
+                roles = sorted(
+                    {
+                        hit["role"]
+                        for hit in classification.get("role_hits", [])
+                        if type(hit) is dict
+                        and hit.get("role") in compiled_specs["child_by_role"]
+                    }
+                )
+                hit_rows = {
+                    hit["row_ordinal"]
+                    for hit in classification.get("role_hits", [])
+                    if type(hit) is dict
+                    and hit.get("role") in compiled_specs["child_by_role"]
+                    and type(hit.get("row_ordinal")) is int
+                }
+                rows = table.get("rows")
+                if type(rows) is not list:
+                    continue
+                money_rows = _money_bearing_row_ordinals(table)
+                total_rows = {
+                    item["row_ordinal"]
+                    for item in classification.get("total_rows", [])
+                    if type(item) is dict
+                    and type(item.get("row_ordinal")) is int
+                    and item["row_ordinal"] in money_rows
+                }
+                detail_rows = money_rows - total_rows
+                action_rows = {
+                    row_ordinal
+                    for row_ordinal, row in enumerate(rows, start=1)
+                    if type(row) is dict
+                    and _transposed_action_kind(row.get("label_exact")) is not None
+                }
+                owner_surface_exact = " ".join(
+                    item
+                    for item in (
+                        section.get("title_exact"),
+                        table.get("title_exact"),
+                    )
+                    if type(item) is str
+                )
+                owner_surface = _normalized(owner_surface_exact)
+                semantic_owner = bool(
+                    classification.get("owner_visible") is True
+                    or "du phong rui ro tin dung" in owner_surface
+                )
+                positive_owner = bool(
+                    semantic_owner
+                    and classification.get("family_presence_anchor_visible") is True
+                    and (roles or action_rows.intersection(money_rows))
+                )
+                marker = table.get("continuation")
+                provisional_receiver = bool(
+                    marker == "CONTINUES_FROM_PREVIOUS_PAGE" and money_rows
+                )
+                if not positive_owner and not provisional_receiver:
+                    continue
+                lane_axis = _multitable_lane_axis(
+                    section, table, compiled_specs=compiled_specs
+                )
+                unit_axis = _unit_axis(
+                    table,
+                    compiled_specs=compiled_specs,
+                    document_unit_context=document_unit_context,
+                )
+                region = _region(
+                    document=document,
+                    page_axis=axis,
+                    section_ordinal=section_ordinal,
+                    table_ordinal=table_ordinal,
+                    component_roles=roles,
+                )
+                result.append(
+                    {
+                        "action_row_ordinals": sorted(action_rows),
+                        "component_roles": roles,
+                        "continuation": marker,
+                        "detail_row_ordinals": sorted(detail_rows),
+                        "detail_rows_are_declared": bool(
+                            detail_rows
+                            and detail_rows <= hit_rows
+                            and action_rows.intersection(detail_rows)
+                        ),
+                        "lane_axis": canonical_clone_v1(lane_axis),
+                        "money_row_ordinals": sorted(money_rows),
+                        "owner_surface_exact": owner_surface_exact,
+                        "positive_owner": positive_owner,
+                        "semantic_owner": semantic_owner,
+                        "region": region,
+                        "total_row_ordinals": sorted(total_rows),
+                        "unit": (
+                            unit_axis.get("canonical_unit")
+                            if unit_axis.get("complete") is True
+                            else None
+                        ),
+                    }
+                )
+    result.sort(
+        key=lambda item: (
+            item["region"]["selected_page_ordinal"],
+            item["region"]["physical_page"],
+            int(item["region"]["section_id"][1:]),
+            int(item["region"]["table_id"][1:]),
+        )
+    )
+    return result
+
+
+def _family37_normal_candidate_groups_v1(
+    records: Sequence[Mapping[str, Any]],
+) -> tuple[list[list[dict[str, Any]]], list[dict[str, Any]]]:
+    """Close standalone and exact adjacent NEXT/FROM normal populations."""
+
+    groups: list[list[dict[str, Any]]] = []
+    rejected: list[dict[str, Any]] = []
+    consumed: set[int] = set()
+
+    def complete_lanes(record: Mapping[str, Any]) -> bool:
+        axis = record.get("lane_axis")
+        return bool(
+            type(axis) is dict
+            and axis.get("complete") is True
+            and len(axis.get("money_column_ordinals", [])) == 2
+        )
+
+    def complete_unit(record: Mapping[str, Any]) -> bool:
+        return record.get("unit") in _UNIT_SURFACE
+
+    def strict_standalone(record: Mapping[str, Any]) -> bool:
+        totals = record.get("total_row_ordinals", [])
+        money = record.get("money_row_ordinals", [])
+        return bool(
+            record.get("positive_owner") is True
+            and complete_lanes(record)
+            and complete_unit(record)
+            and record.get("detail_rows_are_declared") is True
+            and len(totals) == 1
+            and money
+            and max(money) == totals[0]
+        )
+
+    for index, record in enumerate(records):
+        marker = record.get("continuation")
+        if marker == "NONE" and strict_standalone(record):
+            groups.append([canonical_clone_v1(record["region"])])
+            consumed.add(index)
+
+    for index, sender in enumerate(records):
+        if index in consumed or sender.get("continuation") != "CONTINUES_ON_NEXT_PAGE":
+            continue
+        sender_region = sender["region"]
+        receivers = [
+            (receiver_index, receiver)
+            for receiver_index, receiver in enumerate(records)
+            if receiver_index not in consumed
+            and receiver.get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE"
+            and receiver["region"]["selected_page_ordinal"]
+            == sender_region["selected_page_ordinal"] + 1
+            and receiver["region"]["physical_page"]
+            == sender_region["physical_page"] + 1
+        ]
+        if len(receivers) != 1:
+            rejected.append(
+                {
+                    "positive_owner": sender.get("positive_owner") is True,
+                    "reason": "NEXT_RECEIVER_NOT_UNIQUE",
+                    "region": canonical_clone_v1(sender_region),
+                }
+            )
+            continue
+        receiver_index, receiver = receivers[0]
+        sender_lanes = sender.get("lane_axis", {})
+        receiver_lanes = receiver.get("lane_axis", {})
+        unit_conflict = bool(
+            sender.get("unit") is not None
+            and receiver.get("unit") is not None
+            and sender.get("unit") != receiver.get("unit")
+        )
+        total_records = [
+            item
+            for item in (sender, receiver)
+            for _row in item.get("total_row_ordinals", [])
+        ]
+        receiver_money = receiver.get("money_row_ordinals", [])
+        combined_detail = bool(
+            sender.get("detail_row_ordinals")
+            or receiver.get("detail_row_ordinals")
+        )
+        detail_valid = bool(
+            (not sender.get("detail_row_ordinals") or sender.get("detail_rows_are_declared"))
+            and (
+                not receiver.get("detail_row_ordinals")
+                or receiver.get("detail_rows_are_declared")
+            )
+        )
+        compatible = bool(
+            sender.get("positive_owner") is True
+            and complete_lanes(sender)
+            and complete_lanes(receiver)
+            and complete_unit(sender)
+            and complete_unit(receiver)
+            and sender_lanes.get("lane_keys") == receiver_lanes.get("lane_keys")
+            and sender_lanes.get("source_lane_keys")
+            == receiver_lanes.get("source_lane_keys")
+            and not unit_conflict
+            and (
+                receiver.get("semantic_owner") is True
+                or not _normalized(receiver.get("owner_surface_exact") or "")
+            )
+            and combined_detail
+            and detail_valid
+            and len(total_records) == 1
+            and len(receiver.get("total_row_ordinals", [])) == 1
+            and receiver_money
+            and max(receiver_money) == receiver["total_row_ordinals"][0]
+        )
+        if not compatible:
+            rejected.append(
+                {
+                    "positive_owner": sender.get("positive_owner") is True,
+                    "reason": "CONTINUATION_SEMANTIC_CONFLICT",
+                    "region": canonical_clone_v1(sender_region),
+                }
+            )
+            continue
+        pair = [
+            canonical_clone_v1(sender_region),
+            canonical_clone_v1(receiver["region"]),
+        ]
+        for fragment_ordinal, region in enumerate(pair, start=1):
+            region["fragment_ordinal"] = fragment_ordinal
+        groups.append(pair)
+        consumed.update({index, receiver_index})
+
+    for index, record in enumerate(records):
+        if index in consumed or record.get("continuation") == "NONE":
+            continue
+        if not any(
+            item.get("region") == record.get("region") for item in rejected
+        ):
+            rejected.append(
+                {
+                    "positive_owner": record.get("positive_owner") is True,
+                    "reason": (
+                        "MULTIHOP_BOTH_UNSUPPORTED"
+                        if record.get("continuation") == "BOTH"
+                        else "FROM_WITHOUT_SENDER"
+                        if record.get("continuation")
+                        == "CONTINUES_FROM_PREVIOUS_PAGE"
+                        else "NEXT_RECEIVER_NOT_UNIQUE"
+                    ),
+                    "region": canonical_clone_v1(record["region"]),
+                }
+            )
+    groups.sort(
+        key=lambda group: (
+            group[0]["selected_page_ordinal"],
+            group[0]["physical_page"],
+            int(group[0]["section_id"][1:]),
+            int(group[0]["table_id"][1:]),
+        )
+    )
+    rejected.sort(
+        key=lambda item: (
+            item["region"]["selected_page_ordinal"],
+            item["region"]["physical_page"],
+            int(item["region"]["section_id"][1:]),
+            int(item["region"]["table_id"][1:]),
+            item["reason"],
+        )
+    )
+    return groups, rejected
 
 
 def _split_duplicate_other_rows(
@@ -1278,33 +1698,685 @@ def _surface_years(value: Any) -> list[int]:
     return result
 
 
-def _duration_signatures(value: Any) -> list[str]:
-    surface = _normalized(
-        " ".join(str(item or "") for item in value)
-        if type(value) is list
-        else str(value or "")
-    )
-    patterns = (
-        ("THREE_MONTH", ("quy 1", "quy i ", "ba thang")),
-        ("SIX_MONTH", ("quy 2", "quy ii ", "sau thang")),
-        ("NINE_MONTH", ("quy 3", "quy iii ", "chin thang")),
-        (
-            "FULL_YEAR",
-            (
-                "quy 4",
-                "quy iv ",
-                "nam tai chinh",
-                "trong nam",
-                "cho nam ket thuc",
-                "01/01/",
-            ),
+def _family37_source_dates_v1(surface: str) -> list[date] | None:
+    matches = []
+    for pattern in (
+        re.compile(
+            r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](20\d{2})(?!\d)"
         ),
+        re.compile(
+            r"ng[aà]y\s+(\d{1,2})\s+th[aá]ng\s+(\d{1,2})\s+"
+            r"n[aă]m\s+(20\d{2})",
+            flags=re.IGNORECASE,
+        ),
+    ):
+        for match in pattern.finditer(surface):
+            day, month, year = match.groups()
+            try:
+                parsed = date(int(year), int(month), int(day))
+            except ValueError:
+                return None
+            matches.append((match.start(), parsed))
+    return [parsed for _position, parsed in sorted(matches)]
+
+
+def _family37_full_twelve_month_range_v1(start: date, end: date) -> bool:
+    next_year = start.year + 1
+    next_day = min(start.day, monthrange(next_year, start.month)[1])
+    boundary = date(next_year, start.month, next_day)
+    return end in {boundary - timedelta(days=1), boundary}
+
+
+_MONTH_COUNT_WORDS = {
+    "mot": 1,
+    "hai": 2,
+    "ba": 3,
+    "bon": 4,
+    "nam": 5,
+    "sau": 6,
+    "bay": 7,
+    "tam": 8,
+    "chin": 9,
+    "muoi": 10,
+    "muoi mot": 11,
+    "muoi hai": 12,
+}
+
+
+def _family37_numeric_month_token_v1(surface: str) -> str | None:
+    """Return a duration count, excluding ``ngày 31 tháng 12`` dates."""
+
+    for match in re.finditer(
+        r"(?<!\d)([-+−–]?\s*\d{1,2})\s+thang\b", surface
+    ):
+        prefix = surface[: match.start()].rstrip()
+        suffix = surface[match.end() :]
+        if prefix.endswith("ngay") or re.match(r"\s+\d{1,2}\s+nam\b", suffix):
+            continue
+        return match.group(1).replace(" ", "")
+    return None
+
+
+def _family37_month_count_v1(surface: str) -> int | None:
+    token = _family37_numeric_month_token_v1(surface)
+    if token is not None:
+        if token.startswith(("-", "+", "−", "–")):
+            return None
+        count = int(token)
+        return count if 1 <= count <= 12 else None
+    match = re.search(
+        r"\b(muoi hai|muoi mot|muoi|chin|tam|bay|sau|nam|bon|ba|hai|mot)\s+thang\b",
+        surface,
     )
-    result = []
-    for signature, markers in patterns:
-        if any(marker in surface for marker in markers):
-            result.append(signature)
+    if match is None:
+        return None
+    token = match.group(1)
+    return _MONTH_COUNT_WORDS[token]
+
+
+def _family37_period_scope_v1(
+    value: Any, *, semantic_role: str
+) -> dict[str, Any]:
+    """Parse one movement duration without inferring it from an amount."""
+
+    surfaces = value if type(value) is list else [value]
+    exact_axis = [item for item in surfaces if type(item) is str and item.strip()]
+    raw_surface = " | ".join(exact_axis)
+    surface = _normalized(raw_surface)
+    dates = _family37_source_dates_v1(raw_surface)
+    years = [
+        int(item)
+        for item in re.findall(r"(?<!\d)(20\d{2})(?!\d)", raw_surface)
+    ]
+    calendar_year = years[0] if years else None
+    reasons = []
+    quarter_match = re.search(
+        r"\b(?:quy|q)\s*(iv|iii|ii|i|[1-4])(?:\s*[./-]?\s*(20\d{2}))?\b",
+        surface,
+    )
+    quarter = None
+    if quarter_match is not None:
+        quarter = {
+            "i": 1,
+            "ii": 2,
+            "iii": 3,
+            "iv": 4,
+        }.get(quarter_match.group(1))
+        if quarter is None:
+            quarter = int(quarter_match.group(1))
+        if quarter_match.group(2) is not None:
+            calendar_year = int(quarter_match.group(2))
+    signed_numeric_month = re.search(
+        r"[-+−–]\s*\d{1,2}\s+th(?:a|á)ng\b",
+        raw_surface,
+        flags=re.IGNORECASE,
+    ) is not None
+    numeric_month_token = _family37_numeric_month_token_v1(surface)
+    unsupported_numeric_month = bool(
+        signed_numeric_month
+        or numeric_month_token is not None
+        and (
+            numeric_month_token.startswith(("-", "+", "−", "–"))
+            or not 1 <= int(numeric_month_token) <= 12
+        )
+    )
+    explicit_date_ranges = [
+        (dates[index], dates[index + 1])
+        for index in range(0, len(dates) - 1, 2)
+    ] if dates is not None else []
+    conflicting_explicit_date_ranges = bool(
+        dates is not None
+        and len(dates) > 2
+        and (
+            len(dates) % 2 != 0
+            or len(set(explicit_date_ranges)) != 1
+        )
+    )
+    if dates is None:
+        dates = []
+        basis = "INVALID_DATE"
+        reasons.append("INVALID_CALENDAR_DATE")
+    elif conflicting_explicit_date_ranges:
+        basis = "INVALID_RANGE"
+        reasons.append("CONFLICTING_EXPLICIT_DATE_RANGES")
+    elif len(dates) >= 2 and dates[0] > dates[1]:
+        basis = "INVALID_RANGE"
+        reasons.append("REVERSED_DATE_RANGE")
+    elif len(dates) == 1 and any(
+        marker in surface for marker in ("tai ngay", "as of")
+    ):
+        basis = "STOCK_DATE"
+    elif unsupported_numeric_month:
+        basis = "UNSUPPORTED_EXPLICIT_DURATION"
+        reasons.append("UNSUPPORTED_EXPLICIT_MONTH_COUNT")
+    elif any(
+        marker in surface
+        for marker in (
+            "luy ke tu dau",
+            "tu dau nam den cuoi",
+            "tu dau ky den ngay",
+        )
+    ):
+        basis = "ELAPSED_FROM_YEAR_START"
+    else:
+        months = _family37_month_count_v1(surface)
+        if months is not None and any(
+            marker in surface for marker in ("dau nam", "ky", "ket thuc")
+        ):
+            basis = "ELAPSED_FROM_YEAR_START"
+        elif len(dates) >= 2:
+            if _family37_full_twelve_month_range_v1(dates[0], dates[1]):
+                basis = "FULL_YEAR"
+            elif dates[0].month == 1 and dates[0].day == 1:
+                basis = "ELAPSED_FROM_YEAR_START"
+            else:
+                basis = "EXACT_DATE_RANGE"
+        elif "cho nam tai chinh ket thuc" in surface or "cho nam ket thuc" in surface:
+            basis = "FULL_YEAR"
+        elif quarter is not None:
+            basis = "SINGLE_QUARTER"
+        elif "trong nam" in surface:
+            basis = "AMBIGUOUS_WITHIN_YEAR"
+        elif any(
+            marker in surface for marker in ("trong ky", "ky nay", "ky truoc")
+        ):
+            basis = "RELATIVE_REPORTING_PERIOD"
+        else:
+            basis = "UNKNOWN"
+    elapsed_month_count = None
+    if basis == "ELAPSED_FROM_YEAR_START":
+        if quarter is not None:
+            elapsed_month_count = quarter * 3
+        else:
+            elapsed_month_count = _family37_month_count_v1(surface)
+            if (
+                elapsed_month_count is None
+                and len(dates) >= 2
+                and dates[0].year == dates[1].year
+                and dates[0].month == dates[0].day == 1
+                and dates[1].day
+                == monthrange(dates[1].year, dates[1].month)[1]
+            ):
+                elapsed_month_count = dates[1].month
+    material = {
+        "basis": basis,
+        "calendar_year": calendar_year,
+        "elapsed_month_count": elapsed_month_count,
+        "end_date": dates[1].isoformat() if len(dates) >= 2 else None,
+        "quarter_ordinal": quarter,
+        "raw_surface_axis": exact_axis,
+        "reasons": reasons,
+        "semantic_role": semantic_role,
+        "start_date": dates[0].isoformat() if len(dates) >= 2 else None,
+    }
+    return {
+        **material,
+        "receipt_id": "gjcrpefav1:period-scope:"
+        + canonical_json_sha256_v1(material),
+    }
+
+
+def _family37_section_period_surfaces_v1(
+    section: Mapping[str, Any],
+) -> dict[str, list[str]]:
+    """Extract only lane-labelled duration clauses from section narratives."""
+
+    result = {"CURRENT_PERIOD": [], "COMPARATIVE_PERIOD": []}
+    narratives = section.get("narratives_exact")
+    for narrative in narratives if type(narratives) is list else []:
+        if type(narrative) is not str:
+            continue
+        for clause in re.split(r"[;\n]+", narrative):
+            exact = clause.strip()
+            normalized = _normalized(exact)
+            roles = []
+            if any(marker in normalized for marker in ("ky nay", "nam nay")):
+                roles.append("CURRENT_PERIOD")
+            if any(marker in normalized for marker in ("ky truoc", "nam truoc")):
+                roles.append("COMPARATIVE_PERIOD")
+            explicit_date_count = len(
+                re.findall(
+                    r"(?<!\d)\d{1,2}[./-]\d{1,2}[./-]20\d{2}(?!\d)",
+                    exact,
+                )
+            )
+            has_duration = bool(
+                explicit_date_count >= 2
+                or _family37_month_count_v1(normalized) is not None
+                or re.search(r"\b(?:quy|q)\s*(?:iv|iii|ii|i|[1-4])\b", normalized)
+                or "cho nam ket thuc" in normalized
+            )
+            if len(roles) == 1 and has_duration:
+                result[roles[0]].append(exact)
     return result
+
+
+def _family37_supported_duration_scope_v1(scope: Mapping[str, Any]) -> bool:
+    basis = scope.get("basis")
+    if basis == "EXACT_DATE_RANGE":
+        return bool(scope.get("start_date") and scope.get("end_date"))
+    if basis == "ELAPSED_FROM_YEAR_START":
+        return bool(
+            scope.get("calendar_year") is not None
+            and (
+                scope.get("elapsed_month_count") is not None
+                or (scope.get("start_date") and scope.get("end_date"))
+            )
+        )
+    if basis == "SINGLE_QUARTER":
+        return bool(
+            scope.get("calendar_year") is not None
+            and scope.get("quarter_ordinal") is not None
+        )
+    if basis == "FULL_YEAR":
+        return scope.get("calendar_year") is not None
+    return False
+
+
+def _family37_root_has_exact_period_axis_v1(root: Mapping[str, Any] | None) -> bool:
+    if type(root) is not dict:
+        return False
+    scopes = root.get("period_scope_by_lane")
+    return bool(
+        type(scopes) is dict
+        and all(
+            type(scopes.get(role)) is dict
+            and _family37_supported_duration_scope_v1(scopes[role])
+            for role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
+        )
+    )
+
+
+def _family37_observation_period_scope_v1(
+    observation: Mapping[str, Any], *, semantic_role: str
+) -> dict[str, Any]:
+    layout_scope = observation.get("layout_period_scope")
+    if (
+        type(layout_scope) is dict
+        and layout_scope.get("semantic_role") == semantic_role
+    ):
+        return canonical_clone_v1(layout_scope)
+    return _family37_period_scope_v1(
+        observation.get("duration_surface_axis", []),
+        semantic_role=semantic_role,
+    )
+
+
+def _family37_exact_root_lane_for_observation_v1(
+    observation: Mapping[str, Any], root: Mapping[str, Any] | None
+) -> str | None:
+    if not _family37_root_has_exact_period_axis_v1(root):
+        return None
+    period_key = observation.get("period_key")
+    if (
+        type(period_key) is list
+        and len(period_key) == 2
+        and period_key[0] == "YEAR"
+        and type(period_key[1]) is int
+    ):
+        year_matches = [
+            semantic_role
+            for semantic_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
+            if root["period_scope_by_lane"][semantic_role].get("calendar_year")
+            == period_key[1]
+        ]
+        if len(year_matches) == 1:
+            semantic_role = year_matches[0]
+            detail_scope = _family37_observation_period_scope_v1(
+                observation,
+                semantic_role=semantic_role,
+            )
+            allowed, _compatibility = _family37_period_compatibility_v1(
+                detail_scope, root["period_scope_by_lane"][semantic_role]
+            )
+            if allowed:
+                return semantic_role
+    matches = []
+    for semantic_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
+        root_scope = root["period_scope_by_lane"][semantic_role]
+        detail_scope = _family37_observation_period_scope_v1(
+            observation,
+            semantic_role=semantic_role,
+        )
+        if not _family37_supported_duration_scope_v1(detail_scope):
+            continue
+        allowed, compatibility = _family37_period_compatibility_v1(
+            detail_scope, root_scope
+        )
+        if allowed and compatibility == "EXACT_COMPATIBLE":
+            matches.append(semantic_role)
+    return matches[0] if len(matches) == 1 else None
+
+
+def _family37_period_compatibility_v1(
+    detail: Mapping[str, Any], root: Mapping[str, Any]
+) -> tuple[bool, str]:
+    if detail.get("semantic_role") != root.get("semantic_role"):
+        return False, "SEMANTIC_LANE_CONFLICT"
+    detail_basis = detail.get("basis")
+    root_basis = root.get("basis")
+    if detail_basis == "RELATIVE_REPORTING_PERIOD":
+        invalid_parent_reasons = {
+            "AMBIGUOUS_WITHIN_YEAR",
+            "INVALID_DATE",
+            "INVALID_RANGE",
+            "STOCK_DATE",
+            "UNSUPPORTED_EXPLICIT_DURATION",
+            "UNKNOWN",
+        }
+        if root_basis in invalid_parent_reasons:
+            return False, (
+                "PRIMARY_PARENT_INVALID_CALENDAR_DATE"
+                if root_basis == "INVALID_DATE"
+                else "RELATIVE_DETAIL_WITHOUT_EXACT_PARENT_SCOPE"
+            )
+        if (
+            detail.get("calendar_year") is not None
+            and root.get("calendar_year") is not None
+            and detail.get("calendar_year") != root.get("calendar_year")
+        ):
+            return False, "CALENDAR_YEAR_CONFLICT"
+        return True, "PRIMARY_PARENT_INHERITED"
+    if detail_basis in {
+        "AMBIGUOUS_WITHIN_YEAR",
+        "INVALID_RANGE",
+        "INVALID_DATE",
+        "STOCK_DATE",
+        "UNSUPPORTED_EXPLICIT_DURATION",
+    }:
+        return False, "DETAIL_DURATION_SCOPE_NOT_PROVEN"
+    if root_basis == "UNKNOWN" and detail_basis != "UNKNOWN":
+        return True, "PRIMARY_ROOT_DURATION_UNPROVEN_DETAIL_ONLY"
+    if detail_basis == root_basis == "UNKNOWN":
+        return False, "DETAIL_AND_PRIMARY_DURATION_SCOPES_UNPROVEN"
+    if detail_basis != root_basis:
+        full_year_equivalent = {
+            detail_basis,
+            root_basis,
+        } == {"FULL_YEAR", "ELAPSED_FROM_YEAR_START"} and (
+            detail.get("elapsed_month_count") == 12
+            or root.get("elapsed_month_count") == 12
+        )
+        if full_year_equivalent:
+            if detail.get("calendar_year") != root.get("calendar_year"):
+                return False, "CALENDAR_YEAR_CONFLICT"
+            return True, "FULL_YEAR_EQUIVALENT_TWELVE_MONTH_SCOPE"
+        return False, "DURATION_BASIS_CONFLICT"
+    if (
+        detail.get("quarter_ordinal") is not None
+        and root.get("quarter_ordinal") is not None
+        and detail.get("quarter_ordinal") != root.get("quarter_ordinal")
+    ):
+        return False, "QUARTER_CONFLICT"
+    if detail.get("elapsed_month_count") != root.get("elapsed_month_count"):
+        return False, "ELAPSED_WINDOW_CONFLICT"
+    if (
+        detail.get("calendar_year") is not None
+        and root.get("calendar_year") is not None
+        and detail.get("calendar_year") != root.get("calendar_year")
+    ):
+        return False, "CALENDAR_YEAR_CONFLICT"
+    detail_bounds = (detail.get("start_date"), detail.get("end_date"))
+    root_bounds = (root.get("start_date"), root.get("end_date"))
+    if (
+        detail_basis == "EXACT_DATE_RANGE"
+        and detail_bounds != root_bounds
+    ) or (
+        all(item is not None for item in (*detail_bounds, *root_bounds))
+        and detail_bounds != root_bounds
+    ):
+        return False, "EXACT_DATE_RANGE_ENDPOINT_CONFLICT"
+    return True, "EXACT_COMPATIBLE"
+
+
+def _family37_layout_period_scope_v1(
+    narrative_exact: str, *, semantic_role: str
+) -> dict[str, Any]:
+    """Interpret an exact annual movement-introduction narrative."""
+
+    scope = _family37_period_scope_v1(
+        narrative_exact, semantic_role=semantic_role
+    )
+    surface = _normalized(narrative_exact)
+    years = _surface_years(narrative_exact)
+    is_full_year_surface = bool(
+        len(years) == 1
+        and (
+            re.search(r"\btrong nam\s+20\d{2}\b", surface)
+            or re.search(r"\bden het quy\s*(?:iv|4)\s+(?:nam\s+)?20\d{2}\b", surface)
+        )
+    )
+    if not is_full_year_surface:
+        return scope
+    material = {
+        key: canonical_clone_v1(value)
+        for key, value in scope.items()
+        if key != "receipt_id"
+    }
+    material.update(
+        {
+            "basis": "FULL_YEAR",
+            "calendar_year": years[0],
+            "elapsed_month_count": None,
+            "end_date": None,
+            "quarter_ordinal": None,
+            "reasons": [],
+            "start_date": None,
+        }
+    )
+    return {
+        **material,
+        "receipt_id": "gjcrpefav1:period-scope:"
+        + canonical_json_sha256_v1(material),
+    }
+
+
+def _family37_layout_member_kind_v1(
+    section: Mapping[str, Any], member: Any
+) -> str | None:
+    if type(member) is str:
+        surface = _normalized(member)
+        if (
+            "thay doi" in surface
+            and "du phong rui ro tin dung" in surface
+            and "sau" in surface
+        ):
+            return "CUSTOMER_MOVEMENT"
+        if "so du du phong" in surface and "tai ngay" in surface and "sau" in surface:
+            return "CUSTOMER_SNAPSHOT"
+        return None
+    if type(member) is not dict:
+        return None
+    role_axis = _transposed_role_axis(member)
+    actions = [
+        row
+        for row in member.get("rows", [])
+        if type(row) is dict
+        and _transposed_action_kind(row.get("label_exact")) is not None
+    ]
+    if (
+        role_axis is not None
+        and {"CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC"} <= set(role_axis)
+        and actions
+        and _is_structural_customer_movement(section, member)
+    ):
+        return "CUSTOMER_MOVEMENT"
+    labels = {
+        _without_leading_ordinal(_normalized(row.get("label_exact") or ""))
+        for row in member.get("rows", [])
+        if type(row) is dict
+    }
+    if (
+        len(_money_column_ordinals(member)) == 1
+        and not actions
+        and {"du phong chung", "du phong cu the"} <= labels
+    ):
+        return "CUSTOMER_SNAPSHOT"
+    return None
+
+
+def _project_family37_same_section_period_layouts_v1(
+    pages: dict[str, dict[str, Any]],
+    *,
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    document_ordinal: int,
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Bind exact annual narratives to same-section tables by visible layout."""
+
+    roots = _primary_root_observations(
+        pages=pages,
+        selected_page_axis=selected_page_axis,
+        document_ordinal=document_ordinal,
+        compiled_specs=compiled_specs,
+    )
+    receipts = []
+    for page_json_version_id, page in pages.items():
+        source_page_sha256 = canonical_json_sha256_v1(page)
+        for section_ordinal, section in enumerate(page.get("sections", []), start=1):
+            if type(section) is not dict:
+                continue
+            narratives = section.get("narratives_exact")
+            tables = section.get("tables")
+            if (
+                type(narratives) is not list
+                or type(tables) is not list
+                or len(narratives) != len(tables)
+                or len(tables) < 3
+                or any(type(item) is not str or not item.strip() for item in narratives)
+                or any(type(item) is not dict for item in tables)
+            ):
+                continue
+            narrative_kinds = [
+                _family37_layout_member_kind_v1(section, item)
+                for item in narratives
+            ]
+            table_kinds = [
+                _family37_layout_member_kind_v1(section, item) for item in tables
+            ]
+            if (
+                narrative_kinds != table_kinds
+                or narrative_kinds.count("CUSTOMER_SNAPSHOT") != 1
+                or narrative_kinds.count("CUSTOMER_MOVEMENT") != 2
+            ):
+                continue
+            movement_indexes = [
+                index
+                for index, kind in enumerate(table_kinds)
+                if kind == "CUSTOMER_MOVEMENT"
+            ]
+            movement_units = []
+            for index in movement_indexes:
+                unit_axis = _unit_axis(
+                    tables[index],
+                    compiled_specs=compiled_specs,
+                    document_unit_context=None,
+                )
+                if unit_axis.get("complete") is not True:
+                    break
+                movement_units.append(unit_axis)
+            if len(movement_units) != 2:
+                continue
+            canonical_units = {
+                item.get("canonical_unit") for item in movement_units
+            }
+            if len(canonical_units) != 1:
+                continue
+            matching_roots = [
+                root
+                for root in roots
+                if root.get("canonical_unit") == next(iter(canonical_units))
+                and _family37_root_has_exact_period_axis_v1(root)
+            ]
+            if len(matching_roots) != 1:
+                continue
+            root = matching_roots[0]
+            bindings = []
+            for index, unit_axis in zip(
+                movement_indexes, movement_units, strict=True
+            ):
+                narrative_exact = narratives[index]
+                lane_matches = []
+                for semantic_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
+                    detail_scope = _family37_layout_period_scope_v1(
+                        narrative_exact,
+                        semantic_role=semantic_role,
+                    )
+                    root_scope = root["period_scope_by_lane"][semantic_role]
+                    allowed, compatibility = _family37_period_compatibility_v1(
+                        detail_scope, root_scope
+                    )
+                    if allowed and _family37_supported_duration_scope_v1(
+                        detail_scope
+                    ):
+                        lane_matches.append(
+                            (semantic_role, detail_scope, root_scope, compatibility)
+                        )
+                if len(lane_matches) != 1:
+                    bindings = []
+                    break
+                semantic_role, detail_scope, root_scope, compatibility = lane_matches[0]
+                bindings.append(
+                    {
+                        "compatibility": compatibility,
+                        "detail_scope": detail_scope,
+                        "narrative_exact": narrative_exact,
+                        "narrative_ordinal": index + 1,
+                        "root_locator": canonical_clone_v1(root["locator"]),
+                        "root_scope": canonical_clone_v1(root_scope),
+                        "semantic_role": semantic_role,
+                        "table_ordinal": index + 1,
+                        "unit_axis": canonical_clone_v1(unit_axis),
+                    }
+                )
+            if [item["semantic_role"] for item in bindings] != [
+                "CURRENT_PERIOD",
+                "COMPARATIVE_PERIOD",
+            ]:
+                continue
+            for binding in bindings:
+                material = {
+                    **binding,
+                    "format_version": ADAPTER_FORMAT_VERSION,
+                    "locator": {
+                        "page_json_version_id": page_json_version_id,
+                        "section_id": f"s{section_ordinal}",
+                        "table_id": f"t{binding['table_ordinal']}",
+                    },
+                    "rule": (
+                        "SAME_AUTHENTICATED_PAGE_SECTION_EQUAL_NARRATIVE_TABLE_"
+                        "ORDINAL_TYPE_COMPATIBLE_EXACT_ROOT_PERIOD_BINDING"
+                    ),
+                    "source_page_canonical_json_sha256_before_projection": (
+                        source_page_sha256
+                    ),
+                }
+                receipt = {
+                    **material,
+                    "receipt_id": "gjcrpefav1:period-layout-projection:"
+                    + canonical_json_sha256_v1(material),
+                }
+                tables[binding["table_ordinal"] - 1][
+                    "_family37_period_layout_binding_v1"
+                ] = {
+                    "detail_scope": canonical_clone_v1(binding["detail_scope"]),
+                    "narrative_exact": binding["narrative_exact"],
+                    "receipt_id": receipt["receipt_id"],
+                    "semantic_role": binding["semantic_role"],
+                }
+                receipts.append(receipt)
+    return receipts
+
+
+def _duration_signatures(value: Any) -> list[str]:
+    scope = _family37_period_scope_v1(value, semantic_role="UNASSIGNED")
+    basis = scope["basis"]
+    if basis == "SINGLE_QUARTER":
+        return [f"SINGLE_QUARTER_Q{scope['quarter_ordinal']}"]
+    if basis == "ELAPSED_FROM_YEAR_START":
+        months = scope["elapsed_month_count"]
+        return [f"ELAPSED_{months or 'UNKNOWN'}_MONTH"]
+    return [basis] if basis not in {"UNKNOWN", "RELATIVE_REPORTING_PERIOD"} else []
 
 
 def _transposed_period_marker(value: Any) -> str | None:
@@ -1416,175 +2488,51 @@ def _transposed_cells(
     return result
 
 
-def _customer_balance_unit_context(
-    *,
-    pages: Mapping[str, dict[str, Any]],
-    compiled_specs: Mapping[str, Any],
-) -> dict[str, Any] | None:
-    ending_vectors = []
-    primary_vectors = []
-    for page_json_version_id, page in pages.items():
-        for section_ordinal, section in enumerate(page.get("sections", []), start=1):
-            if type(section) is not dict:
-                continue
-            for table_ordinal, table in enumerate(
-                section.get("tables", []), start=1
-            ):
-                if type(table) is not dict:
-                    continue
-                locator = {
-                    "page_json_version_id": page_json_version_id,
-                    "section_id": f"s{section_ordinal}",
-                    "table_id": f"t{table_ordinal}",
-                }
-                role_axis = _transposed_role_axis(table)
-                if role_axis is not None:
-                    table_endings = []
-                    for row_ordinal, row in enumerate(
-                        table.get("rows", []), start=1
-                    ):
-                        if (
-                            type(row) is not dict
-                            or "so du cuoi"
-                            not in _normalized(row.get("label_exact") or "")
-                        ):
-                            continue
-                        cells = _transposed_cells(row, role_axis=role_axis)
-                        coefficient = (
-                            cells.get("CUSTOMER_PROVISION", {}).get("coefficient")
-                            if type(cells) is dict
-                            else None
-                        )
-                        if type(coefficient) is int:
-                            table_endings.append(
-                                {
-                                    "coefficient": coefficient,
-                                    "locator": locator,
-                                    "row_ordinal": row_ordinal,
-                                }
-                            )
-                    if table_endings:
-                        ending_vectors.append(table_endings)
-                if (
-                    page.get("status") != "PRIMARY_FINANCIAL_STATEMENT"
-                    or section.get("content_kind") != "PRIMARY_STATEMENT"
-                ):
-                    continue
-                # These are balance positions, not duration lanes.  Their
-                # exact MONEY columns and local unit remain admissible unit
-                # corroboration even when the duration compiler rejects the
-                # position-style headers.
-                money_ordinals = _money_column_ordinals(table)
-                unit = _local_explicit_unit(
-                    table,
-                    compiled_specs=compiled_specs,
-                    document_unit_context=None,
-                )
-                if len(money_ordinals) != 2 or unit is None:
-                    continue
-                for row_ordinal, row in enumerate(
-                    table.get("rows", []), start=1
-                ):
-                    if type(row) is not dict:
-                        continue
-                    label = _without_leading_ordinal(
-                        _normalized(row.get("label_exact") or "")
-                    )
-                    if "du phong rui ro cho vay khach hang" not in label:
-                        continue
-                    cells = _observed_cells(row, money_ordinals)
-                    if cells is None:
-                        continue
-                    primary_vectors.append(
-                        {
-                            "canonical_unit": unit["canonical_unit"],
-                            "coefficients": [
-                                cell["coefficient"] for cell in cells
-                            ],
-                            "locator": locator,
-                            "money_column_ordinals": canonical_clone_v1(
-                                money_ordinals
-                            ),
-                            "row_ordinal": row_ordinal,
-                            "unit_receipt": canonical_clone_v1(unit),
-                        }
-                    )
-    matches = []
-    for endings in ending_vectors:
-        ending_coefficients = [item["coefficient"] for item in endings]
-        for primary in primary_vectors:
-            primary_coefficients = primary["coefficients"]
-            matched_lane_count = 0
-            for ending, primary_coefficient in zip(
-                ending_coefficients, primary_coefficients, strict=False
-            ):
-                if abs(ending) != abs(primary_coefficient):
-                    break
-                matched_lane_count += 1
-            # One exact same-document balance lane is sufficient to identify
-            # the movement table's presentation unit.  The remaining balance
-            # lane can legitimately differ by one reporting-unit quantum
-            # because the primary statement is rounded while the note is not.
-            # This receipt never chooses a period or a value; it only accepts
-            # the unique explicit unit attached to an otherwise identical
-            # customer-provision closing balance.
-            if matched_lane_count >= 1:
-                matches.append(
-                    {
-                        "canonical_unit": primary["canonical_unit"],
-                        "ending_observations": canonical_clone_v1(endings),
-                        "matched_lane_count": matched_lane_count,
-                        "primary_observation": canonical_clone_v1(primary),
-                    }
-                )
-    units = {item["canonical_unit"] for item in matches}
-    if len(units) != 1:
-        return None
-    material = {
-        "canonical_unit": next(iter(units)),
-        "evidence": matches,
-        "rule": (
-            "CUSTOMER_PROVISION_MOVEMENT_VISIBLE_ENDING_GENERAL_AND_SPECIFIC_"
-            "SUM_MATCHES_EXPLICIT_UNIT_PRIMARY_BALANCE_ALLOWANCE_LANES"
-        ),
-        "status": "UNIQUE",
-    }
-    return {
-        **material,
-        "evidence_axis_sha256": canonical_json_sha256_v1(matches),
-    }
-
-
 def _family_document_unit_context(
     *,
     pages: Mapping[str, dict[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
-    consensus = _document_unit_context_axis(pages, compiled_specs=compiled_specs)
-    if consensus.get("status") == "UNIQUE":
-        return consensus
-    balance = _customer_balance_unit_context(
-        pages=pages, compiled_specs=compiled_specs
+    # Unit authority is strictly textual/structural.  Matching monetary
+    # coefficients, magnitudes, signs, or scales must never select a unit.
+    context = canonical_clone_v1(
+        _document_unit_context_axis(pages, compiled_specs=compiled_specs)
     )
-    return balance if balance is not None else consensus
+    # The shared customer-deposit context intentionally retains exact owner
+    # row coefficients for that family's narrowly governed value
+    # corroboration.  Family 37 has no such authority: strip the evidence at
+    # this boundary even when textual document-unit consensus is otherwise
+    # unique.  Shared ``_unit_axis`` can then inherit only the explicit
+    # consensus fields, never a matching coefficient vector.
+    context["owner_row_evidence"] = []
+    context["owner_row_evidence_axis_sha256"] = canonical_json_sha256_v1([])
+    context["family37_value_unit_corroboration_disabled"] = True
+    return context
 
 
-def _customer_balance_position_observations(
+def _project_family37_document_unit_consensus_v1(
+    pages: dict[str, dict[str, Any]],
     *,
-    pages: Mapping[str, dict[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
-    """Return direct two-position customer allowance rows with explicit units."""
+    """Materialize only a strict textual document-unit consensus on a clone."""
 
-    observations = []
+    context = _family_document_unit_context(
+        pages=pages, compiled_specs=compiled_specs
+    )
+    canonical_unit = context.get("canonical_unit")
+    if (
+        context.get("status") != "UNIQUE"
+        or canonical_unit not in _UNIT_SURFACE
+        or context.get("conflicts")
+    ):
+        return []
+    receipts = []
     for page_json_version_id, page in pages.items():
-        if page.get("status") != "PRIMARY_FINANCIAL_STATEMENT":
-            continue
         for section_ordinal, section in enumerate(page.get("sections", []), start=1):
             if (
                 type(section) is not dict
-                or section.get("content_kind") != "PRIMARY_STATEMENT"
-                or section.get("statement_type") == "INCOME_STATEMENT"
+                or section.get("content_kind") != "FINANCIAL_NOTE"
             ):
                 continue
             for table_ordinal, table in enumerate(
@@ -1592,59 +2540,63 @@ def _customer_balance_position_observations(
             ):
                 if type(table) is not dict:
                     continue
-                money_ordinals = _money_column_ordinals(table)
-                unit = _local_explicit_unit(
+                owner_surface = _normalized(
+                    " ".join(
+                        item
+                        for item in (
+                            section.get("title_exact"),
+                            table.get("title_exact"),
+                        )
+                        if type(item) is str
+                    )
+                )
+                if "du phong rui ro" not in owner_surface:
+                    continue
+                local_axis = _unit_axis(
                     table,
                     compiled_specs=compiled_specs,
                     document_unit_context=None,
                 )
-                if len(money_ordinals) != 2 or unit is None:
+                if (
+                    local_axis.get("complete") is True
+                    or local_axis.get("evidence")
+                    or local_axis.get("undeclared_evidence")
+                    or local_axis.get("reasons")
+                    != ["MONEY_UNIT_NOT_EXACTLY_RESOLVED"]
+                ):
                     continue
-                for row_ordinal, row in enumerate(table.get("rows", []), start=1):
-                    if type(row) is not dict:
-                        continue
-                    label = _without_leading_ordinal(
-                        _normalized(row.get("label_exact") or "")
-                    )
-                    if "du phong rui ro cho vay khach hang" not in label:
-                        continue
-                    cells = _observed_cells(row, money_ordinals)
-                    if cells is None:
-                        continue
-                    observations.append(
-                        {
-                            "canonical_unit": unit["canonical_unit"],
-                            "cells": cells,
-                            "locator": {
-                                "page_json_version_id": page_json_version_id,
-                                "section_id": f"s{section_ordinal}",
-                                "table_id": f"t{table_ordinal}",
-                            },
-                            "money_column_ordinals": canonical_clone_v1(
-                                money_ordinals
-                            ),
-                            "row_ordinal": row_ordinal,
-                            "unit_receipt": canonical_clone_v1(unit),
-                        }
-                    )
-    return observations
-
-
-def _balance_position_matches_movement_ending(
-    balance_cell: Mapping[str, Any], observation: Mapping[str, Any]
-) -> bool:
-    ending = observation.get("ending_observation")
-    ending_coefficient = (
-        ending.get("cells", {}).get("CUSTOMER_PROVISION", {}).get("coefficient")
-        if type(ending) is dict
-        else None
-    )
-    balance_coefficient = balance_cell.get("coefficient")
-    return bool(
-        type(ending_coefficient) is int
-        and type(balance_coefficient) is int
-        and abs(abs(ending_coefficient) - abs(balance_coefficient)) <= 1
-    )
+                before_unit_exact = table.get("unit_exact")
+                table["unit_exact"] = _UNIT_SURFACE[canonical_unit]
+                material = {
+                    "after_unit_exact": table["unit_exact"],
+                    "before_unit_exact": before_unit_exact,
+                    "document_unit_context": {
+                        "canonical_unit": canonical_unit,
+                        "distinct_page_version_count": context[
+                            "distinct_page_version_count"
+                        ],
+                        "evidence": canonical_clone_v1(context["evidence"]),
+                        "evidence_axis_sha256": context["evidence_axis_sha256"],
+                        "status": context["status"],
+                    },
+                    "locator": {
+                        "page_json_version_id": page_json_version_id,
+                        "section_id": f"s{section_ordinal}",
+                        "table_id": f"t{table_ordinal}",
+                    },
+                    "rule": (
+                        "STRICT_EXPLICIT_MULTI_PAGE_DOCUMENT_UNIT_CONSENSUS_"
+                        "PROJECTED_WITHOUT_OWNER_ROW_VALUE_CORROBORATION"
+                    ),
+                }
+                receipts.append(
+                    {
+                        **material,
+                        "receipt_id": "gjcrpefav1:unit-consensus-projection:"
+                        + canonical_json_sha256_v1(material),
+                    }
+                )
+    return receipts
 
 
 def _sum_transposed_action_cells(
@@ -1676,6 +2628,7 @@ def _transposed_table_observations(
     region: Mapping[str, Any],
     compiled_specs: Mapping[str, Any],
     document_unit_context: Mapping[str, Any] | None,
+    period_surface_by_lane: Mapping[str, Sequence[str]],
 ) -> list[dict[str, Any]]:
     role_axis = _transposed_role_axis(table)
     rows = table.get("rows")
@@ -1740,20 +2693,29 @@ def _transposed_table_observations(
     container_surface = " ".join(
         [
             str(section.get("title_exact") or ""),
-            *(str(item or "") for item in section.get("narratives_exact", [])),
             str(table.get("title_exact") or ""),
         ]
     )
     position_surface = _normalized(header_surface + " " + container_surface)
     container_marker = _transposed_period_marker(table.get("title_exact"))
-    container_years = _surface_years(container_surface)
-    container_duration_signatures = _duration_signatures(container_surface)
+    structural_container_years = _surface_years(container_surface)
+    layout_period_binding = table.get("_family37_period_layout_binding_v1")
     result = []
     for period_key, actions in grouped.items():
-        if period_key is None and container_marker is not None:
+        if (
+            period_key is None
+            and type(layout_period_binding) is dict
+            and layout_period_binding.get("semantic_role")
+            in {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"}
+        ):
+            period_key = (
+                "SEMANTIC_ROLE",
+                layout_period_binding["semantic_role"],
+            )
+        elif period_key is None and container_marker is not None:
             period_key = ("SEMANTIC_ROLE", container_marker)
-        elif period_key is None and len(container_years) == 1:
-            period_key = ("YEAR", container_years[0])
+        elif period_key is None and len(structural_container_years) == 1:
+            period_key = ("YEAR", structural_container_years[0])
         combined = [
             item
             for item in actions
@@ -1812,11 +2774,60 @@ def _transposed_table_observations(
                 for item in action["row"].get("hierarchy_path_exact", [])
             )
         )
+        duration_surface_axis = [
+            item
+            for item in (
+                table.get("title_exact"),
+                (
+                    layout_period_binding.get("narrative_exact")
+                    if type(layout_period_binding) is dict
+                    else None
+                ),
+            )
+            if type(item) is str and item.strip()
+        ]
+        for action in actions:
+            path = action["row"].get("hierarchy_path_exact")
+            duration_surface_axis.extend(
+                item
+                for item in (path if type(path) is list else [])
+                if type(item) is str and item.strip()
+            )
+            label = action["row"].get("label_exact")
+            if type(label) is str and label.strip():
+                duration_surface_axis.append(label)
+        if (
+            type(period_key) is tuple
+            and len(period_key) == 2
+            and period_key[0] == "SEMANTIC_ROLE"
+        ):
+            duration_surface_axis.extend(
+                item
+                for item in period_surface_by_lane.get(str(period_key[1]), [])
+                if item not in duration_surface_axis
+            )
+        elif (
+            type(period_key) is tuple
+            and len(period_key) == 2
+            and period_key[0] == "YEAR"
+        ):
+            for surfaces in period_surface_by_lane.values():
+                duration_surface_axis.extend(
+                    item
+                    for item in surfaces
+                    if _surface_years(item) == [period_key[1]]
+                    and item not in duration_surface_axis
+                )
+        container_years = _surface_years(duration_surface_axis)
+        container_duration_signatures = _duration_signatures(
+            duration_surface_axis
+        )
         result.append(
             {
                 "all_actions": canonical_clone_v1(actions),
                 "canonical_unit": canonical_unit,
                 "container_years": container_years,
+                "duration_surface_axis": duration_surface_axis,
                 "container_duration_signatures": container_duration_signatures,
                 "ending_observation": (
                     canonical_clone_v1(endings[0]) if len(endings) == 1 else None
@@ -1828,6 +2839,19 @@ def _transposed_table_observations(
                     else "OPENING_ANNUAL_POSITION"
                     if "so dau nam" in position_surface
                     or "so du dau nam" in action_scope_surface
+                    else None
+                ),
+                "layout_period_scope": (
+                    canonical_clone_v1(
+                        layout_period_binding.get("detail_scope")
+                    )
+                    if type(layout_period_binding) is dict
+                    and type(layout_period_binding.get("detail_scope")) is dict
+                    else None
+                ),
+                "layout_period_binding_receipt_id": (
+                    layout_period_binding.get("receipt_id")
+                    if type(layout_period_binding) is dict
                     else None
                 ),
                 "period_key": (
@@ -1856,6 +2880,46 @@ def _movement_owner_kind(surface: str) -> str | None:
     if "tctd" in normalized or "to chuc tin dung" in normalized:
         return "INTERBANK"
     return None
+
+
+def _is_structural_customer_movement(
+    section: Mapping[str, Any], table: Mapping[str, Any]
+) -> bool:
+    """Recognize a customer movement from local table structure only.
+
+    Section narratives can describe an earlier table and therefore cannot own a
+    later continuation. Exact general/specific columns plus a generic credit-
+    risk movement title establish customer scope unless the local section/table
+    title explicitly names a competing provision owner.
+    """
+
+    role_axis = _transposed_role_axis(table)
+    if role_axis is None or not {
+        "CUSTOMER_GENERAL",
+        "CUSTOMER_SPECIFIC",
+    } <= set(role_axis):
+        return False
+    structural_surface = " ".join(
+        (
+            str(section.get("title_exact") or ""),
+            str(table.get("title_exact") or ""),
+        )
+    )
+    structural_owner = _movement_owner_kind(structural_surface)
+    if structural_owner in {
+        "INTERBANK",
+        "PURCHASED_DEBT",
+        "SECURITIES_CONTROL",
+    }:
+        return False
+    structural_normalized = _normalized(structural_surface)
+    return bool(
+        "du phong rui ro tin dung" in structural_normalized
+        and any(
+            marker in structural_normalized
+            for marker in ("thay doi", "tang giam", "doi voi")
+        )
+    )
 
 
 def _customer_balance_summary_owner(table: Mapping[str, Any]) -> bool:
@@ -1889,25 +2953,31 @@ def _customer_balance_summary_owner(table: Mapping[str, Any]) -> bool:
 
 
 def _choose_transposed_variant(
-    observation: Mapping[str, Any], *, root_cell: Mapping[str, Any] | None
+    observation: Mapping[str, Any], *, root: Mapping[str, Any] | None
 ) -> dict[str, Any] | None:
+    """Choose gross/net only from an exact primary action label, never amounts."""
+
     variants = observation.get("variants")
     if type(variants) is not list or not variants:
         return None
     if len(variants) == 1:
         return canonical_clone_v1(variants[0])
-    root_coefficient = root_cell.get("coefficient") if type(root_cell) is dict else None
-    if type(root_coefficient) is not int:
+    root_label = (
+        root.get("row", {}).get("label_exact") if type(root) is dict else None
+    )
+    normalized_root = _without_leading_ordinal(_normalized(root_label or ""))
+    if "hoan nhap" in normalized_root:
+        required_kind = "EXACT_NET_PROVISION_PLUS_REVERSAL"
+    elif "chi phi" in normalized_root and "du phong" in normalized_root:
+        required_kind = "DIRECT_GROSS_PROVISION"
+    else:
         return None
-    matches = [
+    matching = [
         variant
         for variant in variants
-        if type(variant.get("cells", {}).get("CUSTOMER_PROVISION", {}).get("coefficient"))
-        is int
-        and abs(variant["cells"]["CUSTOMER_PROVISION"]["coefficient"])
-        == abs(root_coefficient)
+        if variant.get("variant_kind") == required_kind
     ]
-    return canonical_clone_v1(matches[0]) if len(matches) == 1 else None
+    return canonical_clone_v1(matching[0]) if len(matching) == 1 else None
 
 
 def _separate_customer_role_kind(
@@ -2073,6 +3143,21 @@ def _customer_separate_role_observations(
                     continue
                 tables_by_role[role].append(
                     {
+                        "duration_surface_by_lane": [
+                            [
+                                item
+                                for item in (
+                                    table["columns"][column_ordinal - 1].get(
+                                        "header_path_exact", []
+                                    )
+                                    if type(table["columns"][column_ordinal - 1])
+                                    is dict
+                                    else []
+                                )
+                                if type(item) is str and item.strip()
+                            ]
+                            for column_ordinal in money_ordinals
+                        ],
                         "lane_axis": canonical_clone_v1(lane_axis),
                         "money_column_ordinals": canonical_clone_v1(money_ordinals),
                         "region": _region(
@@ -2185,9 +3270,15 @@ def _customer_separate_role_observations(
                 "canonical_unit": general["unit_axis"]["canonical_unit"],
                 "container_duration_signatures": [],
                 "container_years": [],
+                "duration_surface_axis": canonical_clone_v1(
+                    general["duration_surface_by_lane"][lane]
+                ),
                 "ending_observation": None,
                 "header_position": None,
-                "period_key": canonical_clone_v1(period_key),
+                "period_key": [
+                    "SEMANTIC_ROLE",
+                    "CURRENT_PERIOD" if lane == 0 else "COMPARATIVE_PERIOD",
+                ],
                 "region": canonical_clone_v1(general["region"]),
                 "regions": [
                     canonical_clone_v1(general["region"]),
@@ -2198,6 +3289,7 @@ def _customer_separate_role_observations(
                     "CUSTOMER_SPECIFIC": specific["money_column_ordinals"][lane],
                 },
                 "source_layout_kind": "SEPARATE_CUSTOMER_ROLE_TABLES",
+                "source_period_key": canonical_clone_v1(period_key),
                 "table_title_exact": None,
                 "unit_axis": canonical_clone_v1(general["unit_axis"]),
                 "variants": variants,
@@ -2234,6 +3326,7 @@ def _customer_transposed_observations(
     active_owner_page: int | None = None
     continuation_support_region: dict[str, Any] | None = None
     continuation_support_page: int | None = None
+    continuation_period_surface_by_lane: dict[str, list[str]] | None = None
     for _selected_ordinal, _version_id, page, axis in ordered_pages:
         if page.get("status") not in {
             "FINANCIAL_NOTE_CONTENT",
@@ -2266,51 +3359,53 @@ def _customer_transposed_observations(
                 )
                 explicit_owner = _movement_owner_kind(table_surface)
                 owner = explicit_owner
-                structural_surface = " ".join(
-                    [
-                        str(section.get("title_exact") or ""),
-                        str(table.get("title_exact") or ""),
-                    ]
-                )
-                structural_normalized = _normalized(structural_surface)
-                structural_owner = _movement_owner_kind(structural_surface)
-                role_axis = _transposed_role_axis(table)
                 if _customer_balance_summary_owner(table):
                     active_owner = "CUSTOMER"
                     active_owner_page = axis["physical_page"]
-                generic_movement = bool(
-                    "du phong rui ro tin dung" in structural_normalized
-                    and any(
-                        marker in structural_normalized
-                        for marker in ("thay doi", "tang giam", "doi voi")
-                    )
+                structural_customer_movement = _is_structural_customer_movement(
+                    section, table
                 )
-                if (
-                    role_axis is not None
-                    and {
-                        "CUSTOMER_GENERAL",
-                        "CUSTOMER_SPECIFIC",
-                    }
-                    <= set(role_axis)
-                    and generic_movement
-                    and structural_owner not in {
-                        "INTERBANK",
-                        "PURCHASED_DEBT",
-                        "SECURITIES_CONTROL",
-                    }
-                ):
+                if structural_customer_movement:
                     owner = "CUSTOMER"
                 if owner is None and active_owner_page is not None and (
                     axis["physical_page"] - active_owner_page <= 1
                 ):
                     owner = active_owner
-                elif generic_movement and active_owner in {"CUSTOMER", "INTERBANK"}:
+                elif structural_customer_movement and active_owner in {
+                    "CUSTOMER",
+                    "INTERBANK",
+                }:
                     owner = active_owner
                 if owner != "CUSTOMER":
                     if explicit_owner is not None:
                         active_owner = explicit_owner
                         active_owner_page = axis["physical_page"]
                     continue
+                local_period_surface_by_lane = (
+                    _family37_section_period_surfaces_v1(section)
+                )
+                effective_period_surface_by_lane = canonical_clone_v1(
+                    local_period_surface_by_lane
+                )
+                if (
+                    table.get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE"
+                    and continuation_support_region is not None
+                    and continuation_support_page == axis["physical_page"] - 1
+                    and continuation_period_surface_by_lane is not None
+                ):
+                    for semantic_role, surfaces in (
+                        continuation_period_surface_by_lane.items()
+                    ):
+                        effective_period_surface_by_lane[semantic_role] = [
+                            *surfaces,
+                            *(
+                                item
+                                for item in effective_period_surface_by_lane.get(
+                                    semantic_role, []
+                                )
+                                if item not in surfaces
+                            ),
+                        ]
                 region = _region(
                     document=document,
                     page_axis=axis,
@@ -2325,12 +3420,18 @@ def _customer_transposed_observations(
                 if table.get("continuation") == "CONTINUES_ON_NEXT_PAGE":
                     continuation_support_region = canonical_clone_v1(region)
                     continuation_support_page = axis["physical_page"]
+                    continuation_period_surface_by_lane = canonical_clone_v1(
+                        local_period_surface_by_lane
+                    )
+                    active_owner = "CUSTOMER"
+                    active_owner_page = axis["physical_page"]
                 table_observations = _transposed_table_observations(
                     section=section,
                     table=table,
                     region=region,
                     compiled_specs=compiled_specs,
                     document_unit_context=document_unit_context,
+                    period_surface_by_lane=effective_period_surface_by_lane,
                 )
                 if table_observations:
                     if (
@@ -2411,194 +3512,69 @@ def _transposed_detail_receipt(
             "CURRENT_DURATION_MOVEMENT_ROW_ONLY_SECOND_ANNUAL_POSITION_"
             "CONTROL_IS_NOT_COMPARATIVE_DURATION"
         )
-    elif len(observations) == 1:
-        observation = observations[0]
-        period_key = observation.get("period_key")
-        table_marker = _transposed_period_marker(
-            observation.get("table_title_exact")
-        )
-        if observation.get("header_position") == "OPENING_ANNUAL_POSITION":
-            pass
-        elif (
-            observation.get("header_position") == "CURRENT_POSITION"
-            or period_key == ["SEMANTIC_ROLE", "CURRENT_PERIOD"]
-            or table_marker == "CURRENT_PERIOD"
-        ):
-            current = observation
-            rule = "ONE_SOURCE_VISIBLE_CURRENT_DURATION_MOVEMENT_OBSERVATION"
-        elif (
-            period_key == ["SEMANTIC_ROLE", "COMPARATIVE_PERIOD"]
-            or table_marker == "COMPARATIVE_PERIOD"
-        ):
-            comparative = observation
-            rule = (
-                "ONE_SOURCE_VISIBLE_COMPARATIVE_DURATION_MOVEMENT_"
-                "OBSERVATION_CURRENT_UNOBSERVED"
-            )
-        elif (
-            type(period_key) is list
-            and len(period_key) == 2
-            and period_key[0] == "YEAR"
-            and type(period_key[1]) is int
-            and root is not None
-        ):
-            source_lane_keys = root.get("lane_axis", {}).get("source_lane_keys")
-            lane_years = [
-                _surface_years(item)
-                for item in (
-                    source_lane_keys if type(source_lane_keys) is list else []
+    else:
+        semantic_candidates = {
+            semantic_role: [
+                observation
+                for observation in observations
+                if observation.get("header_position")
+                == (
+                    "CURRENT_POSITION"
+                    if semantic_role == "CURRENT_PERIOD"
+                    else "COMPARATIVE_POSITION"
                 )
+                or observation.get("period_key")
+                == ["SEMANTIC_ROLE", semantic_role]
+                or _transposed_period_marker(
+                    observation.get("table_title_exact")
+                )
+                == semantic_role
             ]
-            if len(lane_years) == 2 and lane_years[0] == [period_key[1]]:
-                current = observation
-                rule = (
-                    "ONE_SOURCE_VISIBLE_YEAR_MOVEMENT_MATCHES_PRIMARY_"
-                    "CURRENT_DURATION_LANE"
-                )
-            elif len(lane_years) == 2 and lane_years[1] == [period_key[1]]:
-                comparative = observation
-                rule = (
-                    "ONE_SOURCE_VISIBLE_YEAR_MOVEMENT_MATCHES_PRIMARY_"
-                    "COMPARATIVE_DURATION_LANE_CURRENT_UNOBSERVED"
-                )
-    elif len(observations) == 2:
-        by_marker = {
-            item.get("period_key", (None, None))[1]: item
-            for item in observations
-            if type(item.get("period_key")) is list
-            and item["period_key"][0] == "SEMANTIC_ROLE"
+            for semantic_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
         }
-        by_year = {
-            item["period_key"][1]: item
-            for item in observations
-            if type(item.get("period_key")) is list
-            and item["period_key"][0] == "YEAR"
+        if len(semantic_candidates["CURRENT_PERIOD"]) == 1:
+            current = semantic_candidates["CURRENT_PERIOD"][0]
+        if len(semantic_candidates["COMPARATIVE_PERIOD"]) == 1:
+            comparative = semantic_candidates["COMPARATIVE_PERIOD"][0]
+
+        assigned = {id(item) for item in (current, comparative) if item is not None}
+        exact_root_candidates = {
+            "CURRENT_PERIOD": [],
+            "COMPARATIVE_PERIOD": [],
         }
-        if set(by_marker) == {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"}:
-            current = by_marker["CURRENT_PERIOD"]
-            comparative = by_marker["COMPARATIVE_PERIOD"]
-            rule = "EXACT_SOURCE_VISIBLE_CURRENT_AND_COMPARATIVE_GROUP_LABELS"
-        elif (
-            set(by_marker) == {"COMPARATIVE_PERIOD"}
-            and len(by_year) == 1
-        ):
-            comparative = by_marker["COMPARATIVE_PERIOD"]
-            current = next(iter(by_year.values()))
-            rule = (
-                "EXACT_SOURCE_VISIBLE_COMPARATIVE_GROUP_AND_SINGLE_EXPLICIT_"
-                "CURRENT_YEAR_MOVEMENT"
+        for observation in observations:
+            if id(observation) in assigned:
+                continue
+            exact_lane = _family37_exact_root_lane_for_observation_v1(
+                observation, root
             )
-        elif len(by_year) == 2:
-            years = sorted(by_year, reverse=True)
-            current, comparative = by_year[years[0]], by_year[years[1]]
-            rule = "TWO_EXPLICIT_SOURCE_YEAR_MOVEMENT_OBSERVATIONS"
-        elif all(item.get("period_key") is None for item in observations):
-            observation_units = {
-                item.get("canonical_unit")
-                for item in observations
-                if type(item.get("canonical_unit")) is str
-            }
-            balance_positions = [
-                item
-                for item in _customer_balance_position_observations(
-                    pages=pages, compiled_specs=compiled_specs
-                )
-                if len(observation_units) == 1
-                and item.get("canonical_unit") == next(iter(observation_units))
-            ]
-            matched_orders = []
-            for balance in balance_positions:
-                lane_matches = [
-                    [
-                        observation
-                        for observation in observations
-                        if _balance_position_matches_movement_ending(
-                            balance_cell, observation
-                        )
-                    ]
-                    for balance_cell in balance["cells"]
-                ]
-                if (
-                    all(len(items) == 1 for items in lane_matches)
-                    and lane_matches[0][0] is not lane_matches[1][0]
-                ):
-                    matched_orders.append(
-                        (lane_matches[0][0], lane_matches[1][0])
-                    )
-            distinct_orders = {
-                tuple(
-                    (
-                        item["region"]["page_json_version_id"],
-                        item["region"]["section_id"],
-                        item["region"]["table_id"],
-                    )
-                    for item in order
-                )
-                for order in matched_orders
-            }
-            if len(distinct_orders) == 1:
-                current, comparative = matched_orders[0]
-                rule = (
-                    "EXACT_CUSTOMER_ALLOWANCE_BALANCE_POSITIONS_BIND_TWO_"
-                    "UNTITLED_MOVEMENT_TABLES"
-                )
-            else:
-                ordered_container_years = []
-                for observation in observations:
-                    for year in observation.get("container_years", []):
-                        if year not in ordered_container_years:
-                            ordered_container_years.append(year)
-                if len(ordered_container_years) >= 2:
-                    current, comparative = observations
-                    rule = (
-                        "TWO_ORDERED_MOVEMENT_TABLES_BIND_TO_TWO_ORDERED_"
-                        "VISIBLE_CONTAINER_PERIODS"
-                    )
-        else:
-            ordered_container_years = []
-            for observation in observations:
-                for year in observation.get("container_years", []):
-                    if year not in ordered_container_years:
-                        ordered_container_years.append(year)
-            if len(ordered_container_years) >= 2:
-                current, comparative = observations
-                rule = (
-                    "TWO_ORDERED_MOVEMENT_TABLES_BIND_TO_TWO_ORDERED_VISIBLE_"
-                    "CONTAINER_PERIODS"
-                )
-            elif root is not None:
-                matches = []
-                for _lane, root_cell in enumerate(root["cells"]):
-                    lane_matches = []
-                    for observation in observations:
-                        if any(
-                            type(variant["cells"]["CUSTOMER_PROVISION"].get("coefficient"))
-                            is int
-                            and abs(
-                                variant["cells"]["CUSTOMER_PROVISION"]["coefficient"]
-                            )
-                            == abs(root_cell["coefficient"])
-                            for variant in observation["variants"]
-                        ):
-                            lane_matches.append(observation)
-                    matches.append(lane_matches)
-                if (
-                    all(len(items) == 1 for items in matches)
-                    and matches[0][0] is not matches[1][0]
-                ):
-                    current, comparative = matches[0][0], matches[1][0]
-                    rule = "PRIMARY_DURATION_LANES_EXACTLY_BIND_TWO_MOVEMENT_TABLES"
-                elif len(matches[0]) == 1 and not matches[1]:
-                    current = matches[0][0]
-                    excluded_noncomparable_duration_control = next(
-                        item for item in observations if item is not current
-                    )
-                    rule = (
-                        "PRIMARY_CURRENT_DURATION_LANE_EXACTLY_BINDS_ONE_"
-                        "MOVEMENT_OTHER_ANNUAL_CONTROL_IS_SOURCE_ONLY"
-                    )
+            if exact_lane is not None:
+                exact_root_candidates[exact_lane].append(observation)
+        if current is None and len(exact_root_candidates["CURRENT_PERIOD"]) == 1:
+            current = exact_root_candidates["CURRENT_PERIOD"][0]
+        if (
+            comparative is None
+            and len(exact_root_candidates["COMPARATIVE_PERIOD"]) == 1
+        ):
+            comparative = exact_root_candidates["COMPARATIVE_PERIOD"][0]
+        if current is not None or comparative is not None:
+            rule = (
+                "EXPLICIT_SEMANTIC_LANE_OR_EXACT_PRIMARY_PERIOD_SCOPE_"
+                "MATCH_WITHOUT_YEAR_ORDER_OR_AMOUNT_ROUTING"
+            )
     if current is None and comparative is None:
         return None
+    layout_period_binding_receipt_ids = [
+        item.get("layout_period_binding_receipt_id")
+        for item in (current, comparative)
+        if type(item) is dict
+    ]
+    both_lanes_layout_bound = bool(
+        current is not None
+        and comparative is not None
+        and len(layout_period_binding_receipt_ids) == 2
+        and all(type(item) is str for item in layout_period_binding_receipt_ids)
+    )
     if current is not None and comparative is not None:
         ordered_container_durations = []
         for observation in (current, comparative):
@@ -2618,23 +3594,7 @@ def _transposed_detail_receipt(
             for variant in current.get("variants", [])
             for signature in variant.get("duration_signatures", [])
         }
-        comparative_root_exact = bool(
-            root is not None
-            and any(
-                type(
-                    variant.get("cells", {})
-                    .get("CUSTOMER_PROVISION", {})
-                    .get("coefficient")
-                )
-                is int
-                and abs(
-                    variant["cells"]["CUSTOMER_PROVISION"]["coefficient"]
-                )
-                == abs(root["cells"][1]["coefficient"])
-                for variant in comparative.get("variants", [])
-            )
-        )
-        if (
+        if not both_lanes_layout_bound and (
             len(ordered_container_durations) >= 2
             and ordered_container_durations[0]
             != ordered_container_durations[1]
@@ -2646,7 +3606,6 @@ def _transposed_detail_receipt(
             comparative_action_durations == {"FULL_YEAR"}
             and "FULL_YEAR" not in current_action_durations
             and root is not None
-            and not comparative_root_exact
         ):
             excluded_noncomparable_duration_control = comparative
             comparative = None
@@ -2654,11 +3613,112 @@ def _transposed_detail_receipt(
                 "CURRENT_DURATION_MOVEMENT_ONLY_NONCOMPARABLE_ANNUAL_"
                 "ROLLFORWARD_IS_SOURCE_ONLY"
             )
+        elif both_lanes_layout_bound:
+            rule = (
+                "BOTH_LANES_INDEPENDENT_EXACT_SAME_SECTION_LAYOUT_PERIOD_"
+                "BINDINGS_SUPERSEDE_NONCOMPARABLE_CONTAINER_HEURISTIC"
+            )
+    period_compatibility_axis = []
+    primary_root_duration_accepted = root is not None
+    excluded_period_controls: list[dict[str, Any]] = []
+    if root is not None:
+        for semantic_role, observation in (
+            ("CURRENT_PERIOD", current),
+            ("COMPARATIVE_PERIOD", comparative),
+        ):
+            if observation is None:
+                continue
+            detail_scope = _family37_observation_period_scope_v1(
+                observation,
+                semantic_role=semantic_role,
+            )
+            root_scope = root.get("period_scope_by_lane", {}).get(semantic_role)
+            if type(root_scope) is not dict:
+                allowed, compatibility = True, "PRIMARY_DURATION_SCOPE_UNSPECIFIED"
+            else:
+                allowed, compatibility = _family37_period_compatibility_v1(
+                    detail_scope, root_scope
+                )
+            period_compatibility_axis.append(
+                {
+                    "accepted": allowed,
+                    "compatibility": compatibility,
+                    "detail_scope": detail_scope,
+                    "root_scope": canonical_clone_v1(root_scope),
+                    "semantic_role": semantic_role,
+                }
+            )
+            if compatibility == "PRIMARY_ROOT_DURATION_UNPROVEN_DETAIL_ONLY":
+                primary_root_duration_accepted = False
+            if not allowed:
+                excluded_period_controls.append(
+                    {
+                        "observation": canonical_clone_v1(observation),
+                        "reason": compatibility,
+                        "semantic_role": semantic_role,
+                    }
+                )
+                if semantic_role == "CURRENT_PERIOD":
+                    current = None
+                else:
+                    comparative = None
+        if excluded_period_controls:
+            rule = (
+                "EXACT_LANE_DURATION_COMPATIBILITY_REJECTS_ONLY_CONFLICTING_"
+                "MOVEMENT_LANES"
+            )
+    else:
+        for semantic_role, observation in (
+            ("CURRENT_PERIOD", current),
+            ("COMPARATIVE_PERIOD", comparative),
+        ):
+            if observation is None:
+                continue
+            detail_scope = _family37_observation_period_scope_v1(
+                observation,
+                semantic_role=semantic_role,
+            )
+            period_key = observation.get("period_key")
+            lane_is_explicit = period_key == ["SEMANTIC_ROLE", semantic_role]
+            allowed = bool(
+                lane_is_explicit
+                and _family37_supported_duration_scope_v1(detail_scope)
+            )
+            compatibility = (
+                "DETAIL_EXACT_SCOPE_SELF_AUTHORIZED"
+                if allowed
+                else "DETAIL_WITHOUT_EXACT_SEMANTIC_LANE_DURATION_AUTHORITY"
+            )
+            period_compatibility_axis.append(
+                {
+                    "accepted": allowed,
+                    "compatibility": compatibility,
+                    "detail_scope": detail_scope,
+                    "root_scope": None,
+                    "semantic_role": semantic_role,
+                }
+            )
+            if not allowed:
+                excluded_period_controls.append(
+                    {
+                        "observation": canonical_clone_v1(observation),
+                        "reason": compatibility,
+                        "semantic_role": semantic_role,
+                    }
+                )
+                if semantic_role == "CURRENT_PERIOD":
+                    current = None
+                else:
+                    comparative = None
+        if excluded_period_controls:
+            rule = "DETAIL_ONLY_REQUIRES_EXACT_SEMANTIC_LANE_DURATION_AUTHORITY"
+    if current is None and comparative is None:
+        return None
     current_variant = (
         None
         if current is None
         else _choose_transposed_variant(
-            current, root_cell=root["cells"][0] if root is not None else None
+            current, root=root
         )
     )
     comparative_variant = (
@@ -2666,7 +3726,7 @@ def _transposed_detail_receipt(
         if comparative is None
         else _choose_transposed_variant(
             comparative,
-            root_cell=root["cells"][1] if root is not None else None,
+            root=root,
         )
     )
     if (current is not None and current_variant is None) or (
@@ -2719,10 +3779,24 @@ def _transposed_detail_receipt(
                 action["row_ordinal"],
             )
             if axis not in selected_action_axes:
+                period_control = next(
+                    (
+                        item
+                        for item in excluded_period_controls
+                        if item["observation"].get("region")
+                        == observation.get("region")
+                        and item["observation"].get("period_key")
+                        == observation.get("period_key")
+                    ),
+                    None,
+                )
                 source_only_rows.append(
                     {
                         "disposition": (
-                            "PRIOR_ANNUAL_POSITION_CONTROL_NOT_COMPARATIVE_DURATION"
+                            "DETAIL_LANE_REJECTED_BY_EXACT_DURATION_SCOPE_"
+                            + period_control["reason"]
+                            if period_control is not None
+                            else "PRIOR_ANNUAL_POSITION_CONTROL_NOT_COMPARATIVE_DURATION"
                             if observation is excluded_position_control
                             else "NONCOMPARABLE_ANNUAL_ROLLFORWARD_NOT_COMPARATIVE_DURATION"
                             if observation is excluded_noncomparable_duration_control
@@ -2741,9 +3815,17 @@ def _transposed_detail_receipt(
         "excluded_noncomparable_duration_control": (
             excluded_noncomparable_duration_control
         ),
+        "excluded_period_controls": excluded_period_controls,
         "excluded_position_control": excluded_position_control,
         "format_version": ADAPTER_FORMAT_VERSION,
+        "layout_period_binding_receipt_ids": (
+            layout_period_binding_receipt_ids
+            if both_lanes_layout_bound
+            else []
+        ),
         "rule": rule,
+        "period_compatibility_axis": period_compatibility_axis,
+        "primary_root_duration_accepted": primary_root_duration_accepted,
         "source_only_rows": source_only_rows,
     }
     return {
@@ -2779,236 +3861,660 @@ def _primary_root_region(
     )
 
 
+def _family37_unique_regions_v1(
+    regions: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    unique: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for source_region in regions:
+        region = canonical_clone_v1(source_region)
+        identity = (
+            region["page_json_version_id"],
+            region["section_id"],
+            region["table_id"],
+        )
+        existing = unique.get(identity)
+        if existing is None:
+            unique[identity] = region
+        else:
+            roles = sorted(
+                set(existing.get("component_roles", []))
+                | set(region.get("component_roles", []))
+            )
+            existing["component_roles"] = roles
+    result = sorted(
+        unique.values(),
+        key=lambda item: (
+            item["selected_page_ordinal"],
+            item["physical_page"],
+            int(item["section_id"][1:]),
+            int(item["table_id"][1:]),
+        ),
+    )
+    for fragment_ordinal, region in enumerate(result, start=1):
+        region["fragment_ordinal"] = fragment_ordinal
+    return result
+
+
+def _family37_movement_continuation_rejections_v1(
+    *,
+    observations: Sequence[Mapping[str, Any]],
+    pages: Mapping[str, dict[str, Any]],
+    structural_projection_receipts: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    accepted = {
+        (
+            locator["page_json_version_id"],
+            locator["section_id"],
+            locator["table_id"],
+        )
+        for receipt in structural_projection_receipts
+        if type(receipt) is dict
+        and type(receipt.get("receipt_id")) is str
+        and receipt["receipt_id"].startswith("gjcrpefav1:continuation-projection:")
+        for locator in (
+            receipt.get("previous_locator"),
+            receipt.get("current_locator"),
+        )
+        if type(locator) is dict
+    }
+    regions = _family37_unique_regions_v1(
+        [
+            region
+            for observation in observations
+            for region in _observation_regions(observation)
+        ]
+    )
+    rejected = []
+    for region in regions:
+        _section, table = _source_table(
+            pages[region["page_json_version_id"]],
+            section_id=region["section_id"],
+            table_id=region["table_id"],
+        )
+        marker = table.get("continuation")
+        identity = (
+            region["page_json_version_id"],
+            region["section_id"],
+            region["table_id"],
+        )
+        if marker != "NONE" and identity not in accepted:
+            rejected.append(
+                {
+                    "continuation": marker,
+                    "reason": "F37_SOURCE_CONTINUATION_NOT_CLOSED",
+                    "region": canonical_clone_v1(region),
+                }
+            )
+    return rejected
+
+
+def _family37_all_observations_conflict_with_root_period_v1(
+    *,
+    observations: Sequence[Mapping[str, Any]],
+    root: Mapping[str, Any] | None,
+) -> bool:
+    authority_axis = _family37_period_authority_axis_v1(
+        observations=observations,
+        root=root,
+    )
+    return bool(authority_axis and not any(item["accepted"] for item in authority_axis))
+
+
+def _family37_period_authority_axis_v1(
+    *,
+    observations: Sequence[Mapping[str, Any]],
+    root: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Bind each assignable detail lane to an exact primary-period decision."""
+
+    if root is None or not observations:
+        return []
+    root_scopes = root.get("period_scope_by_lane")
+    if type(root_scopes) is not dict:
+        return []
+    assignments: list[tuple[str, Mapping[str, Any]]] = []
+    for observation in observations:
+        period_key = observation.get("period_key")
+        lane = None
+        if period_key == ["SEMANTIC_ROLE", "CURRENT_PERIOD"]:
+            lane = "CURRENT_PERIOD"
+        elif period_key == ["SEMANTIC_ROLE", "COMPARATIVE_PERIOD"]:
+            lane = "COMPARATIVE_PERIOD"
+        else:
+            lane = _family37_exact_root_lane_for_observation_v1(
+                observation, root
+            )
+            # A fully scoped observation that disagrees on one endpoint must
+            # still appear as rejected exact source authority.  Attribute it
+            # only when its visible calendar year uniquely identifies one
+            # exact root lane; this never makes the observation acceptable and
+            # never relies on year ordering or table position.
+            if lane is None and _family37_root_has_exact_period_axis_v1(root):
+                unassigned_scope = _family37_period_scope_v1(
+                    observation.get("duration_surface_axis", []),
+                    semantic_role="UNASSIGNED",
+                )
+                observation_year = unassigned_scope.get("calendar_year")
+                matching_lanes = [
+                    role
+                    for role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
+                    if observation_year is not None
+                    and root_scopes[role].get("calendar_year") == observation_year
+                ]
+                if len(matching_lanes) == 1:
+                    lane = matching_lanes[0]
+        if lane is not None:
+            assignments.append((lane, observation))
+    if not assignments:
+        return []
+    result = []
+    for lane, observation in assignments:
+        root_scope = root_scopes.get(lane)
+        if type(root_scope) is not dict:
+            continue
+        detail_scope = _family37_observation_period_scope_v1(
+            observation, semantic_role=lane
+        )
+        allowed, reason = _family37_period_compatibility_v1(
+            detail_scope, root_scope
+        )
+        material = {
+            "accepted": allowed,
+            "compatibility": reason,
+            "detail_scope": detail_scope,
+            "observation_regions": _family37_unique_regions_v1(
+                _observation_regions(observation)
+            ),
+            "period_key": canonical_clone_v1(observation.get("period_key")),
+            "root_locator": canonical_clone_v1(root["locator"]),
+            "root_scope": canonical_clone_v1(root_scope),
+            "semantic_lane": lane,
+        }
+        result.append(
+            {
+                **material,
+                "period_authority_id": "gjcrpefav1:period-authority:"
+                + canonical_json_sha256_v1(material),
+            }
+        )
+    result.sort(
+        key=lambda item: (
+            item["observation_regions"][0]["selected_page_ordinal"],
+            item["observation_regions"][0]["physical_page"],
+            int(item["observation_regions"][0]["section_id"][1:]),
+            int(item["observation_regions"][0]["table_id"][1:]),
+            item["semantic_lane"],
+        )
+    )
+    return result
+
+
+def _family37_normal_breakdown_authorized_roles_v1(
+    *,
+    regions: Sequence[Mapping[str, Any]],
+    pages: Mapping[str, dict[str, Any]],
+    transposed_receipt: Mapping[str, Any] | None,
+    compiled_specs: Mapping[str, Any],
+) -> set[str]:
+    """Authorize child movement cells only after exact direct-lane reconciliation."""
+
+    if not regions or type(transposed_receipt) is not dict:
+        return set()
+    query_receipt = (
+        build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions)
+    )
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=regions,
+        page_json_by_version=pages,
+        compiled_specs=compiled_specs,
+        query_receipt=query_receipt,
+    )
+    if candidate.get("status") != READY:
+        return set()
+    by_role = {
+        mapping.get("role"): mapping
+        for mapping in candidate.get("mappings", [])
+        if type(mapping) is dict and type(mapping.get("role")) is str
+    }
+    customer = by_role.get("CUSTOMER_PROVISION")
+    if type(customer) is not dict or any(
+        role in by_role for role in ("CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC")
+    ):
+        return set()
+    direct_values = customer.get("values")
+    if type(direct_values) is not list or len(direct_values) != 2:
+        return set()
+    if transposed_receipt.get("canonical_unit") != customer.get("unit"):
+        return set()
+    observed_lane_count = 0
+    for lane, key in enumerate(("current", "comparative")):
+        observation = transposed_receipt.get(key)
+        if observation is None:
+            continue
+        if type(observation) is not dict:
+            return set()
+        observed = (
+            observation.get("cells", {})
+            .get("CUSTOMER_PROVISION", {})
+            .get("coefficient")
+        )
+        direct = direct_values[lane].get("coefficient")
+        if type(observed) is not int or type(direct) is not int or observed != direct:
+            return set()
+        observed_lane_count += 1
+    return (
+        {"CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC"}
+        if observed_lane_count
+        else set()
+    )
+
+
+def _family37_document_plan_v1(
+    *,
+    document: Mapping[str, Any],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    source_pages: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Recompute the complete family-local source authority for one document."""
+
+    ordered_pages = _family37_selected_document_pages_v1(
+        document=document,
+        selected_page_axis=selected_page_axis,
+        source_pages=source_pages,
+    )
+    base_cluster = _family37_recomputed_base_cluster_v1(
+        document=document,
+        ordered_pages=ordered_pages,
+        compiled_specs=compiled_specs,
+    )
+    repaired_pages, repair_receipts = _apply_document_repairs(
+        pages=source_pages,
+        source_sha256=document["source_sha256"],
+        compiled_specs=compiled_specs,
+    )
+    page_identity_axis = _family37_page_identity_axis_v1(
+        ordered_pages=ordered_pages,
+        repaired_pages=repaired_pages,
+    )
+    pages = {
+        page_axis["page_json_version_id"]: canonical_clone_v1(
+            repaired_pages[page_axis["page_json_version_id"]]
+        )
+        for page_axis, _page in ordered_pages
+    }
+    structural_projection_receipts = _project_shared_duration_header_prefixes(
+        pages
+    )
+    structural_projection_receipts.extend(
+        _project_family37_document_unit_consensus_v1(
+            pages,
+            compiled_specs=compiled_specs,
+        )
+    )
+    structural_projection_receipts.extend(
+        _project_customer_adjacent_continuations(
+            pages,
+            selected_page_axis=selected_page_axis,
+            document_ordinal=document["document_ordinal"],
+            compiled_specs=compiled_specs,
+        )
+    )
+    structural_projection_receipts.extend(
+        _project_family37_same_section_period_layouts_v1(
+            pages,
+            selected_page_axis=selected_page_axis,
+            document_ordinal=document["document_ordinal"],
+            compiled_specs=compiled_specs,
+        )
+    )
+    normal_records = _family37_normal_fragment_inventory_v1(
+        document=document,
+        selected_page_axis=selected_page_axis,
+        pages=pages,
+        compiled_specs=compiled_specs,
+    )
+    normal_groups, normal_rejections = _family37_normal_candidate_groups_v1(
+        normal_records
+    )
+    positive_normal_rejections = [
+        item for item in normal_rejections if item.get("positive_owner") is True
+    ]
+    transposed_observations = _customer_transposed_observations(
+        document=document,
+        selected_page_axis=selected_page_axis,
+        pages=pages,
+        compiled_specs=compiled_specs,
+    )
+    movement_rejections = _family37_movement_continuation_rejections_v1(
+        observations=transposed_observations,
+        pages=pages,
+        structural_projection_receipts=structural_projection_receipts,
+    )
+    roots = _primary_root_observations(
+        pages=pages,
+        selected_page_axis=selected_page_axis,
+        document_ordinal=document["document_ordinal"],
+        compiled_specs=compiled_specs,
+    )
+    roots = _primary_roots_compatible_with_observations(
+        roots, transposed_observations
+    )
+    transposed_receipt = _transposed_detail_receipt(
+        document=document,
+        selected_page_axis=selected_page_axis,
+        pages=pages,
+        compiled_specs=compiled_specs,
+    )
+
+    decision = NOT_OBSERVED
+    query_kind = "NO_POSITIVE_F37_OWNER"
+    blocking_reasons: list[str] = []
+    accepted_regions: list[dict[str, Any]] = []
+    split_receipts: list[dict[str, Any]] = []
+
+    if len(normal_groups) == 1:
+        if positive_normal_rejections or movement_rejections:
+            blocking_reasons.append("F37_SOURCE_CONTINUATION_NOT_CLOSED")
+        else:
+            accepted_regions, split_receipts = _split_duplicate_other_rows(
+                pages=pages,
+                regions=normal_groups[0],
+                compiled_specs=compiled_specs,
+            )
+            decision = READY
+            query_kind = (
+                "NORMAL_TWO_PERIOD_CLOSED_CONTINUATION"
+                if len(accepted_regions) > 1
+                else "NORMAL_TWO_PERIOD_SOURCE_TABLE"
+            )
+    elif len(normal_groups) > 1:
+        blocking_reasons.append("F37_MULTIPLE_NORMAL_SOURCE_POPULATIONS")
+
+    if decision != READY and not blocking_reasons:
+        if transposed_receipt is not None:
+            accepted_roots = (
+                roots
+                if transposed_receipt.get("primary_root_duration_accepted") is True
+                else []
+            )
+            detail_axis = [
+                item
+                for item in (
+                    transposed_receipt.get("current"),
+                    transposed_receipt.get("comparative"),
+                )
+                if type(item) is dict
+            ]
+            accepted_regions = [
+                region for item in detail_axis for region in _observation_regions(item)
+            ]
+            if len(accepted_roots) == 1:
+                accepted_regions.append(
+                    _primary_root_region(
+                        accepted_roots[0],
+                        document=document,
+                        selected_page_axis=selected_page_axis,
+                    )
+                )
+            if movement_rejections and any(
+                (
+                    region["page_json_version_id"],
+                    region["section_id"],
+                    region["table_id"],
+                )
+                in {
+                    (
+                        rejected["region"]["page_json_version_id"],
+                        rejected["region"]["section_id"],
+                        rejected["region"]["table_id"],
+                    )
+                    for rejected in movement_rejections
+                }
+                for region in accepted_regions
+            ):
+                accepted_regions = []
+                blocking_reasons.append("F37_SOURCE_CONTINUATION_NOT_CLOSED")
+            else:
+                decision = READY
+                query_kind = (
+                    "TRANSPOSED_CUSTOMER_PROVISION_WITH_PRIMARY_ROOT"
+                    if accepted_roots
+                    else "TRANSPOSED_CUSTOMER_PROVISION_WITH_LOCAL_UNIT"
+                )
+        elif transposed_observations:
+            blocking_reasons.append(
+                "F37_DETAIL_PRIMARY_DURATION_SCOPE_CONFLICT"
+                if len(roots) == 1
+                and _family37_all_observations_conflict_with_root_period_v1(
+                    observations=transposed_observations, root=roots[0]
+                )
+                else "F37_TRANSPOSED_PRESENTATION_NOT_UNIQUE"
+            )
+    positive_owner = bool(
+        any(item.get("positive_owner") is True for item in normal_records)
+        or transposed_observations
+    )
+    if decision != READY:
+        if positive_normal_rejections or movement_rejections:
+            blocking_reasons.append("F37_SOURCE_CONTINUATION_NOT_CLOSED")
+        if positive_owner and not blocking_reasons:
+            blocking_reasons.append(
+                "F37_POSITIVE_OWNER_WITHOUT_SAFE_SEMANTIC_LANES"
+            )
+        if blocking_reasons:
+            decision = UNRESOLVED
+            query_kind = "POSITIVE_F37_OWNER_REJECTED_BY_SOURCE_AUTHORITY"
+        elif repair_receipts:
+            raise _error(
+                "Family-37 authenticated repair did not select one family region"
+            )
+
+    accepted_regions = _family37_unique_regions_v1(accepted_regions)
+    owned_regions = _family37_unique_regions_v1(
+        [
+            *(
+                item["region"]
+                for item in normal_records
+                if item.get("positive_owner") is True
+            ),
+            *(
+                region
+                for observation in transposed_observations
+                for region in _observation_regions(observation)
+            ),
+            *(
+                _primary_root_region(
+                    root,
+                    document=document,
+                    selected_page_axis=selected_page_axis,
+                )
+                for root in roots
+                if transposed_observations
+            ),
+            *accepted_regions,
+        ]
+    )
+    blocking_reasons = sorted(set(blocking_reasons))
+    accepted_movement_roles: set[str] = set()
+    if decision == READY:
+        if query_kind.startswith("NORMAL_TWO_PERIOD"):
+            accepted_movement_roles = _family37_normal_breakdown_authorized_roles_v1(
+                regions=accepted_regions,
+                pages=pages,
+                transposed_receipt=transposed_receipt,
+                compiled_specs=compiled_specs,
+            )
+        else:
+            accepted_movement_roles = {
+                "CUSTOMER_GENERAL",
+                "CUSTOMER_PROVISION",
+                "CUSTOMER_SPECIFIC",
+            }
+    accepted_source_cells, rejected_source_cells = (
+        _family37_movement_source_cell_axes_v1(
+            observations=transposed_observations,
+            transposed_receipt=(transposed_receipt if decision == READY else None),
+            accepted_roles=accepted_movement_roles,
+            source_sha256=document["source_sha256"],
+        )
+    )
+    period_authority_axis = _family37_period_authority_axis_v1(
+        observations=transposed_observations,
+        root=roots[0] if len(roots) == 1 else None,
+    )
+    authority_material = {
+        "accepted_region_axis": accepted_regions if decision == READY else [],
+        "accepted_movement_role_axis": sorted(accepted_movement_roles),
+        "accepted_source_cell_axis": accepted_source_cells,
+        "blocking_reason_axis": blocking_reasons,
+        "decision": decision,
+        "document": canonical_clone_v1(document),
+        "format_version": "F37_EXACT_SOURCE_AUTHORITY_V1",
+        "movement_continuation_rejection_axis": movement_rejections,
+        "normal_continuation_rejection_axis": normal_rejections,
+        "normal_owner_record_axis": normal_records,
+        "owned_region_axis": owned_regions,
+        "page_identity_axis": page_identity_axis,
+        "period_authority_axis": period_authority_axis,
+        "query_kind": query_kind,
+        "rejected_source_cell_axis": rejected_source_cells,
+        "repair_receipt_ids": sorted(
+            item["receipt_id"] for item in repair_receipts
+        ),
+        "source_repair_spec_sha256": compiled_specs[
+            "credit_risk_provision_expense_source_repair_spec_sha256"
+        ],
+        "structural_projection_receipt_ids": sorted(
+            item["receipt_id"] for item in structural_projection_receipts
+        ),
+        "transposed_receipt": canonical_clone_v1(transposed_receipt),
+    }
+    source_authority_receipt = {
+        **authority_material,
+        "receipt_id": "gjcrpefav1:source-authority:"
+        + canonical_json_sha256_v1(authority_material),
+    }
+    adapter_material = {
+        "format_version": ADAPTER_FORMAT_VERSION,
+        "query_kind": query_kind,
+        "source_authority_receipt": source_authority_receipt,
+        "source_repair_receipt_ids": [
+            item["receipt_id"] for item in repair_receipts
+        ],
+        "split_receipts": split_receipts,
+        "structural_projection_receipt_ids": [
+            item["receipt_id"] for item in structural_projection_receipts
+        ],
+        **(
+            {"transposed_receipt": transposed_receipt}
+            if transposed_receipt is not None
+            else {}
+        ),
+    }
+    adapter_receipt = {
+        **adapter_material,
+        "receipt_id": "gjcrpefav1:query:"
+        + canonical_json_sha256_v1(adapter_material),
+    }
+    return {
+        "accepted_region_axis": accepted_regions if decision == READY else [],
+        "adapter_receipt": adapter_receipt,
+        "base_cluster": base_cluster,
+        "blocking_reasons": blocking_reasons,
+        "decision": decision,
+        "owned_region_axis": owned_regions,
+        "pages": pages,
+        "repair_receipts": repair_receipts,
+        "split_receipts": split_receipts,
+        "structural_projection_receipts": structural_projection_receipts,
+        "transposed_receipt": transposed_receipt,
+    }
+
+
+def _family37_cluster_from_plan_v1(plan: Mapping[str, Any]) -> dict[str, Any]:
+    base_cluster = plan["base_cluster"]
+    material = {
+        key: canonical_clone_v1(value)
+        for key, value in base_cluster.items()
+        if key
+        not in {
+            "cluster_id",
+            "component_regions",
+            "owner_receipt",
+            "reasons",
+            "status",
+            "credit_risk_provision_expense_query_adapter_receipt",
+        }
+    }
+    decision = plan["decision"]
+    material.update(
+        {
+            "component_regions": (
+                canonical_clone_v1(plan["accepted_region_axis"])
+                if decision == READY
+                else []
+            ),
+            "credit_risk_provision_expense_query_adapter_receipt": canonical_clone_v1(
+                plan["adapter_receipt"]
+            ),
+            "owner_receipt": (
+                canonical_clone_v1(base_cluster.get("owner_receipt"))
+                if decision == READY
+                else None
+            ),
+            "reasons": (
+                canonical_clone_v1(plan["blocking_reasons"])
+                if decision == UNRESOLVED
+                else []
+            ),
+            "status": decision,
+        }
+    )
+    return {
+        **material,
+        "cluster_id": "gjmthfcv1:cluster:"
+        + canonical_json_sha256_v1(material),
+    }
+
+
+def _validate_family37_cluster_against_plan_v1(
+    cluster: Mapping[str, Any], plan: Mapping[str, Any]
+) -> None:
+    expected = _family37_cluster_from_plan_v1(plan)
+    if not same_typed_json_v1(cluster, expected):
+        raise _error("Family-37 source authority disposition drifted")
+
+
 def build_gemini_json_credit_risk_provision_expense_indexed_query_evidence_v1(
     *,
     base_indexed_query_evidence: Any,
     page_json_by_document: Mapping[int, Mapping[str, dict[str, Any]]],
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Recover every strict source-visible Family-37 disclosure generically."""
+    """Build indexed evidence from independently recomputed F37 authority."""
 
     base = validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
         base_indexed_query_evidence, compiled_specs=compiled_specs
     )
     clusters = []
     for disposition, document in zip(
-        base["candidate_dispositions"], base["selected_document_axis"], strict=True
+        base["candidate_dispositions"],
+        base["selected_document_axis"],
+        strict=True,
     ):
         source_pages = page_json_by_document.get(document["document_ordinal"])
         if type(source_pages) is not dict:
             raise _error("Family-37 selected document page JSON is absent")
-        pages, repair_receipts = _apply_document_repairs(
-            pages=source_pages,
-            source_sha256=document["source_sha256"],
-            compiled_specs=compiled_specs,
-        )
-        structural_projection_receipts = _project_shared_duration_header_prefixes(
-            pages
-        )
-        structural_projection_receipts.extend(
-            _project_customer_adjacent_continuations(
-                pages,
-                selected_page_axis=base["selected_page_axis"],
-                document_ordinal=document["document_ordinal"],
-            )
-        )
-        normal = _normal_expense_regions(
+        plan = _family37_document_plan_v1(
             document=document,
             selected_page_axis=base["selected_page_axis"],
-            pages=pages,
+            source_pages=source_pages,
             compiled_specs=compiled_specs,
         )
-        transposed_observations = (
-            []
-            if normal
-            else _customer_transposed_observations(
-                document=document,
-                selected_page_axis=base["selected_page_axis"],
-                pages=pages,
-                compiled_specs=compiled_specs,
-            )
-        )
-        transposed = None if normal else _transposed_detail_receipt(
-            document=document,
-            selected_page_axis=base["selected_page_axis"],
-            pages=pages,
-            compiled_specs=compiled_specs,
-        )
-        query_kind = None
-        query_receipt: dict[str, Any] | None = None
-        regions: list[dict[str, Any]] = []
-        split_receipts: list[dict[str, Any]] = []
-        if len(normal) == 1:
-            regions, split_receipts = _split_duplicate_other_rows(
-                pages=pages, regions=normal, compiled_specs=compiled_specs
-            )
-            query_kind = "NORMAL_TWO_PERIOD_SOURCE_TABLE"
-        elif len(normal) > 1:
-            raise _error("Family-37 document has multiple strict normal candidates")
-        elif transposed is not None:
-            roots = _primary_root_observations(
-                pages=pages,
-                selected_page_axis=base["selected_page_axis"],
-                document_ordinal=document["document_ordinal"],
-                compiled_specs=compiled_specs,
-            )
-            roots = _primary_roots_compatible_with_observations(
-                roots, transposed_observations
-            )
-            if len(roots) > 1:
-                raise _error("Family-37 transposed disclosure has ambiguous primary roots")
-            detail_axis = [
-                item
-                for item in (transposed["current"], transposed["comparative"])
-                if item is not None
-            ]
-            regions = [
-                region
-                for item in detail_axis
-                for region in _observation_regions(item)
-            ]
-            if roots:
-                regions.append(
-                    _primary_root_region(
-                        roots[0],
-                        document=document,
-                        selected_page_axis=base["selected_page_axis"],
-                    )
-                )
-            query_kind = (
-                "TRANSPOSED_CUSTOMER_PROVISION_WITH_PRIMARY_ROOT"
-                if roots
-                else "TRANSPOSED_CUSTOMER_PROVISION_WITH_LOCAL_UNIT"
-            )
-            query_receipt = canonical_clone_v1(transposed)
-        elif transposed_observations:
-            roots = _primary_root_observations(
-                pages=pages,
-                selected_page_axis=base["selected_page_axis"],
-                document_ordinal=document["document_ordinal"],
-                compiled_specs=compiled_specs,
-            )
-            roots = _primary_roots_compatible_with_observations(
-                roots, transposed_observations
-            )
-            observation_units = {
-                item.get("canonical_unit")
-                for item in transposed_observations
-                if type(item.get("canonical_unit")) is str
-            }
-            if roots or len(observation_units) == 1:
-                regions = [
-                    region
-                    for observation in transposed_observations
-                    for region in _observation_regions(observation)
-                ]
-                for root in roots:
-                    regions.append(
-                        _primary_root_region(
-                            root,
-                            document=document,
-                            selected_page_axis=base["selected_page_axis"],
-                        )
-                    )
-                query_kind = "TRANSPOSED_CUSTOMER_PROVISION_AMBIGUOUS_PRESENTATION"
-                query_receipt = {
-                    "observations": canonical_clone_v1(transposed_observations),
-                    "reason": (
-                        "SOURCE_VISIBLE_MOVEMENT_ACTIONS_EXIST_BUT_EXACT_"
-                        "DURATION_OR_GROSS_NET_PRESENTATION_IS_NOT_UNIQUE"
-                    ),
-                    **(
-                        {"root": canonical_clone_v1(roots[0])}
-                        if len(roots) == 1
-                        else {"root_axis": canonical_clone_v1(roots)}
-                        if roots
-                        else {}
-                    ),
-                }
-        elif repair_receipts:
-            raise _error("Family-37 authenticated repair did not select one family region")
-        if not regions:
-            source_cluster = disposition["cluster"]
-            material = {
-                **{
-                    key: canonical_clone_v1(value)
-                    for key, value in source_cluster.items()
-                    if key
-                    not in {
-                        "cluster_id",
-                        "component_regions",
-                        "owner_receipt",
-                        "reasons",
-                        "status",
-                    }
-                },
-                "component_regions": [],
-                "owner_receipt": None,
-                "reasons": [],
-                "status": NOT_OBSERVED,
-            }
-            clusters.append(
-                {
-                    **material,
-                    "cluster_id": "gjmthfcv1:cluster:"
-                    + canonical_json_sha256_v1(material),
-                }
-            )
-            continue
-        unique_regions = {}
-        for region in regions:
-            identity = (
-                region["page_json_version_id"],
-                region["section_id"],
-                region["table_id"],
-            )
-            existing = unique_regions.get(identity)
-            if existing is None:
-                unique_regions[identity] = region
-            elif existing.get("component_roles") != region.get("component_roles"):
-                raise _error("Family-37 duplicate region role axis drifted")
-        regions = list(unique_regions.values())
-        regions.sort(
-            key=lambda item: (
-                item["selected_page_ordinal"],
-                int(item["section_id"][1:]),
-                int(item["table_id"][1:]),
-            )
-        )
-        for fragment_ordinal, region in enumerate(regions, start=1):
-            region["fragment_ordinal"] = fragment_ordinal
-        adapter_material = {
-            "format_version": ADAPTER_FORMAT_VERSION,
-            "query_kind": query_kind,
-            "source_repair_receipt_ids": [
-                item["receipt_id"] for item in repair_receipts
-            ],
-            "structural_projection_receipt_ids": [
-                item["receipt_id"] for item in structural_projection_receipts
-            ],
-            "split_receipts": split_receipts,
-            **({"transposed_receipt": query_receipt} if query_receipt is not None else {}),
-        }
-        adapter_receipt = {
-            **adapter_material,
-            "receipt_id": "gjcrpefav1:query:"
-            + canonical_json_sha256_v1(adapter_material),
-        }
-        source_cluster = disposition["cluster"]
-        material = {
-            **{key: canonical_clone_v1(value) for key, value in source_cluster.items() if key != "cluster_id"},
-            "component_regions": regions,
-            "credit_risk_provision_expense_query_adapter_receipt": adapter_receipt,
-            "reasons": [],
-            "status": READY,
-        }
-        clusters.append(
-            {
-                **material,
-                "cluster_id": "gjmthfcv1:cluster:"
-                + canonical_json_sha256_v1(material),
-            }
-        )
+        if not same_typed_json_v1(disposition["cluster"], plan["base_cluster"]):
+            raise _error("Family-37 base indexed source authority drifted")
+        clusters.append(_family37_cluster_from_plan_v1(plan))
     adapted = build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
         selected_document_axis=base["selected_document_axis"],
         selected_page_axis=base["selected_page_axis"],
@@ -3639,6 +5145,156 @@ def _transposed_role_source_ordinals(
     raise _error("Family-37 transposed role has no source-column frontier")
 
 
+def _family37_observation_semantic_lanes_v1(
+    observations: Sequence[Mapping[str, Any]],
+    *,
+    transposed_receipt: Mapping[str, Any] | None,
+) -> dict[tuple[str, str, str, str], str]:
+    result = {}
+
+    def observation_key(item: Mapping[str, Any]) -> tuple[str, str, str, str]:
+        region = item["region"]
+        return (
+            region["page_json_version_id"],
+            region["section_id"],
+            region["table_id"],
+            canonical_json_sha256_v1(item.get("period_key")),
+        )
+
+    if type(transposed_receipt) is dict:
+        for lane, key in (
+            ("CURRENT_PERIOD", "current"),
+            ("COMPARATIVE_PERIOD", "comparative"),
+        ):
+            observation = transposed_receipt.get(key)
+            if type(observation) is dict:
+                result[observation_key(observation)] = lane
+        for excluded in transposed_receipt.get("excluded_period_controls", []):
+            if type(excluded) is dict and type(excluded.get("observation")) is dict:
+                result[observation_key(excluded["observation"])] = excluded.get(
+                    "semantic_role", "UNRESOLVED_PERIOD_LANE"
+                )
+    for observation in observations:
+        key = observation_key(observation)
+        if key in result:
+            continue
+        period_key = observation.get("period_key")
+        if period_key == ["SEMANTIC_ROLE", "CURRENT_PERIOD"]:
+            result[key] = "CURRENT_PERIOD"
+        elif period_key == ["SEMANTIC_ROLE", "COMPARATIVE_PERIOD"]:
+            result[key] = "COMPARATIVE_PERIOD"
+        else:
+            result[key] = "UNRESOLVED_PERIOD_LANE"
+    return result
+
+
+def _family37_movement_source_cell_axes_v1(
+    *,
+    observations: Sequence[Mapping[str, Any]],
+    transposed_receipt: Mapping[str, Any] | None,
+    accepted_roles: set[str],
+    source_sha256: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    lane_by_observation = _family37_observation_semantic_lanes_v1(
+        observations, transposed_receipt=transposed_receipt
+    )
+    accepted_action_axes = set()
+    if type(transposed_receipt) is dict:
+        for observation in (
+            transposed_receipt.get("current"),
+            transposed_receipt.get("comparative"),
+        ):
+            if type(observation) is not dict:
+                continue
+            for action in observation.get("selected_actions", []):
+                if type(action) is not dict:
+                    continue
+                region = _action_region(observation, action)
+                accepted_action_axes.add(
+                    (
+                        region["page_json_version_id"],
+                        region["section_id"],
+                        region["table_id"],
+                        action["row_ordinal"],
+                        action["action_kind"],
+                    )
+                )
+
+    accepted = []
+    rejected = []
+    for observation in observations:
+        observation_region = observation["region"]
+        observation_key = (
+            observation_region["page_json_version_id"],
+            observation_region["section_id"],
+            observation_region["table_id"],
+            canonical_json_sha256_v1(observation.get("period_key")),
+        )
+        semantic_lane = lane_by_observation[observation_key]
+        for action in observation.get("all_actions", []):
+            if type(action) is not dict:
+                continue
+            region = _action_region(observation, action)
+            if observation.get("source_layout_kind") == "SEPARATE_CUSTOMER_ROLE_TABLES":
+                role_cells = [
+                    (
+                        action["source_role"],
+                        action["column_ordinal"],
+                        action["source_cell"],
+                    )
+                ]
+            else:
+                role_cells = [
+                    (role, column_ordinal, action["cells"][role])
+                    for role, column_ordinal in observation["role_axis"].items()
+                ]
+            action_axis = (
+                region["page_json_version_id"],
+                region["section_id"],
+                region["table_id"],
+                action["row_ordinal"],
+                action["action_kind"],
+            )
+            for role, column_ordinal, source_cell in role_cells:
+                material = {
+                    "action_kind": action["action_kind"],
+                    "column_ordinal": column_ordinal,
+                    "page_json_version_id": region["page_json_version_id"],
+                    "physical_page": region["physical_page"],
+                    "role": role,
+                    "row_ordinal": action["row_ordinal"],
+                    "section_id": region["section_id"],
+                    "semantic_lane": semantic_lane,
+                    "source_cell": canonical_clone_v1(source_cell),
+                    "source_sha256": source_sha256,
+                    "table_id": region["table_id"],
+                }
+                item = {
+                    **material,
+                    "source_authority_cell_id": "gjcrpefav1:source-cell:"
+                    + canonical_json_sha256_v1(material),
+                }
+                (
+                    accepted
+                    if action_axis in accepted_action_axes and role in accepted_roles
+                    else rejected
+                ).append(item)
+    def sort_key(item: Mapping[str, Any]) -> tuple[Any, ...]:
+        return (
+            item["physical_page"],
+            int(item["section_id"][1:]),
+            int(item["table_id"][1:]),
+            item["row_ordinal"],
+            item["column_ordinal"],
+            item["semantic_lane"],
+            item["role"],
+            item["action_kind"],
+        )
+    accepted.sort(key=sort_key)
+    rejected.sort(key=sort_key)
+    return accepted, rejected
+
+
 def _movement_source_role_coverage(
     *,
     document: Mapping[str, Any],
@@ -3647,6 +5303,7 @@ def _movement_source_role_coverage(
     compiled_specs: Mapping[str, Any],
     mappings: Sequence[Mapping[str, Any]],
     direct_expense_table_selected: bool,
+    source_authority_receipt: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     mapped_axes = {
         (
@@ -3655,6 +5312,7 @@ def _movement_source_role_coverage(
             source_ref["locator"]["table_id"],
             source_ref["row_ordinal"],
             column_ordinal,
+            mapping.get("role"),
         )
         for mapping in mappings
         if type(mapping) is dict
@@ -3668,9 +5326,62 @@ def _movement_source_role_coverage(
         pages=pages,
         compiled_specs=compiled_specs,
     )
+    lane_by_observation = _family37_observation_semantic_lanes_v1(
+        observations,
+        transposed_receipt=(
+            source_authority_receipt.get("transposed_receipt")
+            if type(source_authority_receipt) is dict
+            else None
+        ),
+    )
+    accepted_by_identity = {}
+    rejected_by_identity = {}
+    if type(source_authority_receipt) is dict:
+        for item in source_authority_receipt.get("accepted_source_cell_axis", []):
+            if type(item) is not dict:
+                raise _error("Family-37 accepted source-cell authority is invalid")
+            identity = (
+                item.get("source_sha256"),
+                item.get("page_json_version_id"),
+                item.get("section_id"),
+                item.get("table_id"),
+                item.get("row_ordinal"),
+                item.get("column_ordinal"),
+                item.get("semantic_lane"),
+                item.get("role"),
+                item.get("action_kind"),
+            )
+            if identity in accepted_by_identity:
+                raise _error("Family-37 accepted source-cell authority is duplicate")
+            accepted_by_identity[identity] = item
+        for item in source_authority_receipt.get("rejected_source_cell_axis", []):
+            if type(item) is not dict:
+                raise _error("Family-37 rejected source-cell authority is invalid")
+            identity = (
+                item.get("source_sha256"),
+                item.get("page_json_version_id"),
+                item.get("section_id"),
+                item.get("table_id"),
+                item.get("row_ordinal"),
+                item.get("column_ordinal"),
+                item.get("semantic_lane"),
+                item.get("role"),
+                item.get("action_kind"),
+            )
+            if identity in rejected_by_identity:
+                raise _error("Family-37 rejected source-cell authority is duplicate")
+            rejected_by_identity[identity] = item
     entries = []
     violations = []
     for observation in observations:
+        observation_region = observation["region"]
+        observation_identity = (
+            observation_region["page_json_version_id"],
+            observation_region["section_id"],
+            observation_region["table_id"],
+            canonical_json_sha256_v1(observation.get("period_key")),
+        )
+        semantic_lane = lane_by_observation[observation_identity]
         if observation.get("source_layout_kind") == "SEPARATE_CUSTOMER_ROLE_TABLES":
             source_cells = [
                 (
@@ -3701,12 +5412,45 @@ def _movement_source_role_coverage(
                 region["table_id"],
                 action["row_ordinal"],
                 column_ordinal,
+                role,
             )
             mapped = axis in mapped_axes
-            if mapped:
+            authority_identity = (
+                document["source_sha256"],
+                region["page_json_version_id"],
+                region["section_id"],
+                region["table_id"],
+                action["row_ordinal"],
+                column_ordinal,
+                semantic_lane,
+                role,
+                action["action_kind"],
+            )
+            accepted_authority = accepted_by_identity.get(authority_identity)
+            rejected_authority = rejected_by_identity.get(authority_identity)
+            if mapped and accepted_authority is not None:
                 disposition = "MAPPED_FROM_EXACT_SOURCE_OBSERVATION"
+            elif mapped and source_authority_receipt is None:
+                disposition = "MAPPED_FROM_EXACT_SOURCE_OBSERVATION"
+            elif mapped and rejected_authority is not None:
+                disposition = "VIOLATION_MAPPING_USES_REJECTED_SOURCE_CELL"
+            elif mapped and type(source_authority_receipt) is dict:
+                disposition = (
+                    "VIOLATION_MAPPING_CELL_NOT_IN_ACCEPTED_SOURCE_AUTHORITY"
+                )
             elif source_cell.get("coefficient") is None:
                 disposition = "SOURCE_ONLY_BLANK_ROLE_OBSERVATION_NOT_MAPPED"
+            elif accepted_authority is not None:
+                disposition = "VIOLATION_ACCEPTED_SOURCE_CELL_NOT_MAPPED"
+            elif rejected_authority is not None:
+                disposition = (
+                    "SOURCE_ONLY_MOVEMENT_ACTION_NOT_SELECTED_BY_EXACT_"
+                    "DURATION_AND_PRIMARY_PRESENTATION"
+                )
+            elif (
+                type(source_authority_receipt) is dict
+            ):
+                disposition = "VIOLATION_MOVEMENT_CELL_NOT_IN_EXACT_SOURCE_AUTHORITY"
             elif direct_expense_table_selected:
                 disposition = (
                     "SOURCE_ONLY_CUSTOMER_ROLLFORWARD_ACTION_SUPERSEDED_BY_"
@@ -3732,11 +5476,31 @@ def _movement_source_role_coverage(
                 },
                 "role": role,
                 "row_ordinal": action["row_ordinal"],
+                "semantic_lane": semantic_lane,
                 "source_cell": canonical_clone_v1(source_cell),
                 "source_label_exact": action["row"].get("label_exact"),
+                "source_authority_cell_id": (
+                    accepted_authority.get("source_authority_cell_id")
+                    if type(accepted_authority) is dict
+                    else rejected_authority.get("source_authority_cell_id")
+                    if type(rejected_authority) is dict
+                    else None
+                ),
+                "source_authority_disposition": (
+                    "EXACT_ACCEPTED_SOURCE_CELL"
+                    if type(accepted_authority) is dict
+                    else "EXACT_REJECTED_SOURCE_ONLY_CELL"
+                    if type(rejected_authority) is dict
+                    else "NO_EXACT_SOURCE_AUTHORITY"
+                ),
+                "source_authority_receipt_id": (
+                    source_authority_receipt.get("receipt_id")
+                    if type(source_authority_receipt) is dict
+                    else None
+                ),
             }
             entries.append(entry)
-            if not mapped and not disposition.startswith("SOURCE_ONLY_"):
+            if disposition.startswith("VIOLATION_"):
                 violations.append(canonical_clone_v1(entry))
     material = {
         "covered_observation_count": len(entries),
@@ -4015,18 +5779,15 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
         axes = page_axis_by_document.get(document_ordinal)
         if type(source_pages) is not dict or type(axes) is not dict:
             raise _error("Family-37 source-row coverage page frontier is absent")
-        pages, _repair_receipts = _apply_document_repairs(
-            pages=source_pages,
-            source_sha256=document["source_sha256"],
+        plan = _family37_document_plan_v1(
+            document=document,
+            selected_page_axis=indexed["selected_page_axis"],
+            source_pages=source_pages,
             compiled_specs=compiled_specs,
         )
-        _project_shared_duration_header_prefixes(pages)
-        _project_customer_adjacent_continuations(
-            pages,
-            selected_page_axis=indexed["selected_page_axis"],
-            document_ordinal=document_ordinal,
-        )
         cluster = disposition["cluster"]
+        _validate_family37_cluster_against_plan_v1(cluster, plan)
+        pages = plan["pages"]
         selected_tables = {
             (
                 region["page_json_version_id"],
@@ -4038,7 +5799,7 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
         query_kind = cluster.get(
             "credit_risk_provision_expense_query_adapter_receipt", {}
         ).get("query_kind")
-        direct_selected = query_kind == "NORMAL_TWO_PERIOD_SOURCE_TABLE"
+        direct_selected = str(query_kind).startswith("NORMAL_TWO_PERIOD")
         movement = _movement_source_role_coverage(
             document=document,
             selected_page_axis=indexed["selected_page_axis"],
@@ -4046,6 +5807,9 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
             compiled_specs=compiled_specs,
             mappings=trial.get("mappings", []),
             direct_expense_table_selected=direct_selected,
+            source_authority_receipt=plan["adapter_receipt"][
+                "source_authority_receipt"
+            ],
         )
         if movement["violation_count"]:
             raise _error("Family-37 nested movement coverage is invalid")
@@ -4073,7 +5837,17 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
                 evidence={
                     "action_kind": entry["action_kind"],
                     "column_ordinal": entry["column_ordinal"],
+                    "semantic_lane": entry["semantic_lane"],
                     "source_cell": entry["source_cell"],
+                    "source_authority_cell_id": entry[
+                        "source_authority_cell_id"
+                    ],
+                    "source_authority_disposition": entry[
+                        "source_authority_disposition"
+                    ],
+                    "source_authority_receipt_id": entry[
+                        "source_authority_receipt_id"
+                    ],
                 },
             )
             movement_entries.append(full_entry)
@@ -4503,6 +6277,11 @@ def _transposed_candidate(
         if type(receipt) is dict
         else [],
     )
+    if (
+        type(receipt) is dict
+        and receipt.get("primary_root_duration_accepted") is not True
+    ):
+        roots = []
     if receipt is None or len(roots) > 1:
         raise _error("Family-37 transposed candidate source structure drifted")
     root = roots[0] if roots else None
@@ -4747,7 +6526,7 @@ def _ambiguous_transposed_candidate(
     }
 
 
-def evaluate_gemini_json_credit_risk_provision_expense_family_cluster_v1(
+def _evaluate_gemini_json_credit_risk_provision_expense_family_cluster_from_authorized_plan_v1(
     *,
     regions: Any,
     page_json_by_version: Mapping[str, dict[str, Any]],
@@ -4773,10 +6552,25 @@ def evaluate_gemini_json_credit_risk_provision_expense_family_cluster_v1(
         pages
     )
     structural_projection_receipts.extend(
+        _project_family37_document_unit_consensus_v1(
+            pages,
+            compiled_specs=compiled_specs,
+        )
+    )
+    structural_projection_receipts.extend(
         _project_customer_adjacent_continuations(
             pages,
             selected_page_axis=selected_page_axis,
             document_ordinal=first["document_ordinal"],
+            compiled_specs=compiled_specs,
+        )
+    )
+    structural_projection_receipts.extend(
+        _project_family37_same_section_period_layouts_v1(
+            pages,
+            selected_page_axis=selected_page_axis,
+            document_ordinal=first["document_ordinal"],
+            compiled_specs=compiled_specs,
         )
     )
     document = {
@@ -4824,7 +6618,10 @@ def evaluate_gemini_json_credit_risk_provision_expense_family_cluster_v1(
                     )
                     for region in _observation_regions(observation)
                 )
-        if len(roots) == 1:
+        if (
+            len(roots) == 1
+            and transposed_receipt.get("primary_root_duration_accepted") is True
+        ):
             transposed_axes.add(
                 (
                     roots[0]["locator"]["page_json_version_id"],
@@ -4883,12 +6680,6 @@ def evaluate_gemini_json_credit_risk_provision_expense_family_cluster_v1(
     )
     if not same_typed_json_v1(adapted_regions, region_axis):
         raise _error("Family-37 split role axis drifted from indexed query evidence")
-    unit_receipts = _bind_exact_primary_statement_unit(
-        pages=pages,
-        regions=region_axis,
-        selected_page_axis=selected_page_axis,
-        compiled_specs=compiled_specs,
-    )
     candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
         regions=region_axis,
         page_json_by_version=pages,
@@ -4902,9 +6693,194 @@ def evaluate_gemini_json_credit_risk_provision_expense_family_cluster_v1(
         source_repair_receipts=source_repair_receipts,
         split_receipts=split_receipts,
         structural_projection_receipts=structural_projection_receipts,
-        unit_receipts=unit_receipts,
+        unit_receipts=[],
         compiled_specs=compiled_specs,
     )
+
+
+def _bind_family37_candidate_source_authority_v1(
+    candidate: dict[str, Any],
+    *,
+    plan: Mapping[str, Any],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    closure = candidate.get("closure_receipt")
+    adapter = (
+        closure.get("credit_risk_provision_expense_adapter_receipt")
+        if type(closure) is dict
+        else None
+    )
+    if type(adapter) is not dict:
+        raise _error("Family-37 candidate adapter receipt is absent")
+    material = {
+        key: canonical_clone_v1(value)
+        for key, value in adapter.items()
+        if key != "adapter_receipt_id"
+    }
+    material["source_authority_receipt"] = canonical_clone_v1(
+        plan["adapter_receipt"]["source_authority_receipt"]
+    )
+    regions = candidate.get("component_regions")
+    if type(regions) is not list or not regions:
+        raise _error("Family-37 candidate source regions are absent")
+    first = regions[0]
+    document = {
+        key: first[key]
+        for key in (
+            "document_id",
+            "document_ordinal",
+            "source_logical_name",
+            "source_sha256",
+        )
+    }
+    source_authority = plan["adapter_receipt"]["source_authority_receipt"]
+    material["source_role_coverage"] = _movement_source_role_coverage(
+        document=document,
+        selected_page_axis=selected_page_axis,
+        pages=plan["pages"],
+        compiled_specs=compiled_specs,
+        mappings=candidate.get("mappings", []),
+        direct_expense_table_selected=str(plan["adapter_receipt"]["query_kind"]).startswith(
+            "NORMAL_TWO_PERIOD"
+        ),
+        source_authority_receipt=source_authority,
+    )
+    if material["source_role_coverage"]["violation_count"]:
+        raise _error("Family-37 candidate exact source-cell coverage failed")
+    closure["credit_risk_provision_expense_adapter_receipt"] = {
+        **material,
+        "adapter_receipt_id": "gjcrpefav1:evaluation:"
+        + canonical_json_sha256_v1(material),
+    }
+    candidate_material = {
+        key: value for key, value in candidate.items() if key != "candidate_id"
+    }
+    candidate["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        candidate_material
+    )
+    return candidate
+
+
+def _family37_direct_unresolved_candidate_v1(
+    *,
+    regions: Sequence[Mapping[str, Any]],
+    query_receipt: Mapping[str, Any],
+    plan: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    first = regions[0]
+    material = {
+        "claim_boundary": CLAIM_BOUNDARY,
+        "closure_receipt": {
+            "credit_risk_provision_expense_adapter_receipt": canonical_clone_v1(
+                plan["adapter_receipt"]
+            ),
+            "query_receipt": canonical_clone_v1(query_receipt),
+            "rule": (
+                "POSITIVE_F37_OWNER_REJECTED_BY_EXACT_SOURCE_AUTHORITY_"
+                "NO_MAPPING_NO_BACKSOLVE"
+            ),
+            "structural_root_receipt": {
+                "emitted_mapping": False,
+                "mapping_policy": (
+                    "TYPED_SOURCE_AUTHORITY_FAILS_CLOSED_WITH_NO_MAPPING"
+                ),
+                "report_norm_id": compiled_specs["schema"][
+                    "family_root_report_norm_id"
+                ],
+                "role": compiled_specs["topology"]["parent"]["role"],
+            },
+        },
+        "component_regions": canonical_clone_v1(list(regions)),
+        "document_id": first["document_id"],
+        "family_id": FAMILY_ID,
+        "mappings": [],
+        "page_json_version_id": first["page_json_version_id"],
+        "physical_page": first["physical_page"],
+        "reasons": canonical_clone_v1(plan["blocking_reasons"]),
+        "section_id": first["section_id"],
+        "source_logical_name": first["source_logical_name"],
+        "source_sha256": first["source_sha256"],
+        "status": UNRESOLVED,
+        "table_id": first["table_id"],
+    }
+    return {
+        "candidate_id": "gjmthfcv1:candidate:"
+        + canonical_json_sha256_v1(material),
+        **material,
+    }
+
+
+def evaluate_gemini_json_credit_risk_provision_expense_family_cluster_v1(
+    *,
+    regions: Any,
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+    query_receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Evaluate only the exact population admitted by recomputed authority."""
+
+    expected_query = (
+        build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions)
+    )
+    if not same_typed_json_v1(query_receipt, expected_query):
+        raise _error("Family-37 query receipt does not bind exact fragments")
+    supplied_regions = expected_query["region_axis"]
+    first = supplied_regions[0]
+    document = {
+        key: first[key]
+        for key in (
+            "document_id",
+            "document_ordinal",
+            "source_logical_name",
+            "source_sha256",
+        )
+    }
+    plan = _family37_document_plan_v1(
+        document=document,
+        selected_page_axis=selected_page_axis,
+        source_pages=page_json_by_version,
+        compiled_specs=compiled_specs,
+    )
+    if plan["decision"] == READY:
+        if not same_typed_json_v1(
+            supplied_regions, plan["accepted_region_axis"]
+        ):
+            raise _error(
+                "Family-37 direct candidate regions drifted from source authority"
+            )
+        candidate = (
+            _evaluate_gemini_json_credit_risk_provision_expense_family_cluster_from_authorized_plan_v1(
+                regions=supplied_regions,
+                page_json_by_version={
+                    version_id: page_json_by_version[version_id]
+                    for version_id in plan["pages"]
+                },
+                selected_page_axis=selected_page_axis,
+                compiled_specs=compiled_specs,
+                query_receipt=query_receipt,
+            )
+        )
+        return _bind_family37_candidate_source_authority_v1(
+            candidate,
+            plan=plan,
+            selected_page_axis=selected_page_axis,
+            compiled_specs=compiled_specs,
+        )
+    if plan["decision"] == UNRESOLVED:
+        if not same_typed_json_v1(supplied_regions, plan["owned_region_axis"]):
+            raise _error(
+                "Family-37 direct candidate regions drifted from source authority"
+            )
+        return _family37_direct_unresolved_candidate_v1(
+            regions=supplied_regions,
+            query_receipt=query_receipt,
+            plan=plan,
+            compiled_specs=compiled_specs,
+        )
+    raise _error("Family-37 direct candidate has no positive source owner")
 
 
 def build_gemini_json_credit_risk_provision_expense_trials_v1(
@@ -4925,6 +6901,16 @@ def build_gemini_json_credit_risk_provision_expense_trials_v1(
     for disposition in evidence["candidate_dispositions"]:
         cluster = disposition["cluster"]
         ordinal = disposition["document_ordinal"]
+        source_pages = page_json_by_document.get(ordinal)
+        if type(source_pages) is not dict:
+            raise _error("Family-37 trial selected page JSON is absent")
+        plan = _family37_document_plan_v1(
+            document=evidence["selected_document_axis"][ordinal - 1],
+            selected_page_axis=evidence["selected_page_axis"],
+            source_pages=source_pages,
+            compiled_specs=compiled_specs,
+        )
+        _validate_family37_cluster_against_plan_v1(cluster, plan)
         candidates = []
         mappings = []
         reasons = []
@@ -4934,7 +6920,7 @@ def build_gemini_json_credit_risk_provision_expense_trials_v1(
             regions = cluster["component_regions"]
             candidate = evaluate_gemini_json_credit_risk_provision_expense_family_cluster_v1(
                 regions=regions,
-                page_json_by_version=page_json_by_document[ordinal],
+                page_json_by_version=source_pages,
                 selected_page_axis=page_axis_by_document[ordinal],
                 compiled_specs=compiled_specs,
                 query_receipt=(
