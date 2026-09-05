@@ -2342,6 +2342,134 @@ def test_internal_owner_unit_rejection_replays_exact_source_and_reverse_page_ord
     assert pages == before
 
 
+def test_internal_owner_rejection_partition_is_byte_identical_and_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _base, template_pages, compiled = _internal_owner_continuation_query_fixture()
+    template_pages[1][CONTINUATION_VERSION_ID]["sections"][0]["tables"][0][
+        "unit_exact"
+    ] = "USD"
+    documents = []
+    selected_pages = []
+    clusters = []
+    pages_by_document = {}
+    identities = (
+        ("a", "c", ("b", "e")),
+        ("3", "4", ("5", "6")),
+    )
+    for document_ordinal, (document_char, source_char, version_chars) in enumerate(
+        identities, start=1
+    ):
+        document = {
+            "document_id": "gfpstorev1:document:" + document_char * 64,
+            "document_ordinal": document_ordinal,
+            "source_logical_name": f"fixture-{document_ordinal}.pdf",
+            "source_sha256": source_char * 64,
+        }
+        records = []
+        pages_by_version = {}
+        for selected_page_ordinal, (template_version, version_char) in enumerate(
+            zip((VERSION_ID, CONTINUATION_VERSION_ID), version_chars, strict=True),
+            start=1,
+        ):
+            page = copy.deepcopy(template_pages[1][template_version])
+            version_id = "gfpstorev1:json:" + version_char * 64
+            page_axis = {
+                **document,
+                "page_json_version_id": version_id,
+                "physical_page": selected_page_ordinal,
+                "selected_page_ordinal": selected_page_ordinal,
+            }
+            records.append({**page_axis, "page_json": page})
+            selected_pages.append(page_axis)
+            pages_by_version[version_id] = page
+        documents.append(document)
+        pages_by_document[document_ordinal] = pages_by_version
+        clusters.append(
+            coalesce_gemini_json_multitable_hierarchical_document_v1(
+                page_records=records, compiled_specs=compiled
+            )
+        )
+    base = build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        selected_document_axis=documents,
+        selected_page_axis=selected_pages,
+        document_clusters=clusters,
+        query_policy_sha256=canonical_json_sha256_v1(compiled["query_policy"]),
+    )
+    original = operating_expense_adapter._internal_owner_rejection_axes
+    observed_local_axes = []
+
+    def local_axis_spy(**kwargs: Any) -> dict[str, list[dict[str, Any]]]:
+        document_ordinal = kwargs["document"]["document_ordinal"]
+        observed_local_axes.append(
+            (
+                document_ordinal,
+                [item["document_ordinal"] for item in kwargs["selected_page_axis"]],
+            )
+        )
+        return original(**kwargs)
+
+    monkeypatch.setattr(
+        operating_expense_adapter, "_internal_owner_rejection_axes", local_axis_spy
+    )
+    optimized_indexed = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=base,
+        page_json_by_document=pages_by_document,
+        compiled_specs=compiled,
+    )
+    assert observed_local_axes == [(1, [1, 1]), (2, [2, 2])]
+    observed_local_axes.clear()
+    optimized_trials = build_gemini_json_operating_expense_trials_v1(
+        indexed_query_evidence=optimized_indexed,
+        page_json_by_document=pages_by_document,
+        compiled_specs=compiled,
+    )
+    assert observed_local_axes == [(1, [1, 1]), (2, [2, 2])]
+
+    def legacy_global_scan(**kwargs: Any) -> dict[str, list[dict[str, Any]]]:
+        return original(**{**kwargs, "selected_page_axis": base["selected_page_axis"]})
+
+    monkeypatch.setattr(
+        operating_expense_adapter, "_internal_owner_rejection_axes", legacy_global_scan
+    )
+    legacy_indexed = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=base,
+        page_json_by_document=pages_by_document,
+        compiled_specs=compiled,
+    )
+    legacy_trials = build_gemini_json_operating_expense_trials_v1(
+        indexed_query_evidence=legacy_indexed,
+        page_json_by_document=pages_by_document,
+        compiled_specs=compiled,
+    )
+
+    def canonical_bytes(value: Any) -> bytes:
+        return json.dumps(
+            value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        ).encode()
+
+    assert canonical_bytes(optimized_indexed) == canonical_bytes(legacy_indexed)
+    assert canonical_bytes(optimized_trials) == canonical_bytes(legacy_trials)
+
+    forged = copy.deepcopy(optimized_indexed)
+    del forged["candidate_dispositions"][1]["cluster"][
+        "operating_expense_internal_owner_unit_rejection_receipts"
+    ]
+    forged = _reseal_family_query_cluster(forged, compiled)
+    monkeypatch.setattr(
+        operating_expense_adapter, "_internal_owner_rejection_axes", original
+    )
+    with pytest.raises(
+        GeminiJsonOperatingExpenseFamilyV1Error,
+        match="unit-rejection source replay drifted",
+    ):
+        build_gemini_json_operating_expense_trials_v1(
+            indexed_query_evidence=forged,
+            page_json_by_document=pages_by_document,
+            compiled_specs=compiled,
+        )
+
+
 @pytest.mark.parametrize(
     "mutation",
     ["UNIT_RECEIPT", "PAGE_VERSION", "OWNER_ROW", "REMOVE_RECEIPT", "FORGE_NOT_OBSERVED"],

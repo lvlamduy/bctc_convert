@@ -4394,6 +4394,11 @@ def build_gemini_json_operating_expense_indexed_query_evidence_v1(
         base_indexed_query_evidence,
         compiled_specs=compiled_specs,
     )
+    rejection_page_axis_by_document: dict[int, list[dict[str, Any]]] = {}
+    for page in base["selected_page_axis"]:
+        rejection_page_axis_by_document.setdefault(
+            page["document_ordinal"], []
+        ).append(page)
     clusters = []
     for disposition in base["candidate_dispositions"]:
         cluster = canonical_clone_v1(disposition["cluster"])
@@ -4401,7 +4406,9 @@ def build_gemini_json_operating_expense_indexed_query_evidence_v1(
         rejection_axes = (
             _internal_owner_rejection_axes(
                 document=cluster,
-                selected_page_axis=base["selected_page_axis"],
+                selected_page_axis=rejection_page_axis_by_document[
+                    disposition["document_ordinal"]
+                ],
                 pages=pages,
                 compiled_specs=compiled_specs,
             )
@@ -4887,7 +4894,7 @@ def build_gemini_json_operating_expense_trials_v1(
             raise _error("operating-expense unit-rejection replay selected document is absent")
         expected_rejection_axes = _internal_owner_rejection_axes(
             document=cluster,
-            selected_page_axis=evidence["selected_page_axis"],
+            selected_page_axis=pages_by_document[document_ordinal],
             pages=source_pages,
             compiled_specs=compiled_specs,
         )
