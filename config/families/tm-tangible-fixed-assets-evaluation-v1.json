@@ -138,6 +138,7 @@
   "ordered_dated_endpoint_policy": "EARLIEST_AND_LATEST_DISTINCT_DATED_BALANCES_BIND_OPENING_ENDING",
   "partial_detail_total_policy": "SOURCE_VISIBLE_TOTAL_CONTROLS_VERTICAL_PRESERVE_BLANK_DETAILS_NO_MAPPING_INFERENCE",
   "row_width_policy": "UNIQUE_RIGHT_EDGE_TOTAL_WITH_ALL_EQUATION_SEALED_RELOCATION_ONLY",
+  "row_level_strict_subset_policy": "UNIQUE_UNREPAIRED_PRINTED_TOTAL_OR_CROPPED_TOTAL_COMPLETE_DISJOINT_ASSET_FRONTIER_PER_ROLE",
   "source_only_row_aliases": [
     "Đã khấu hao hết nhưng vẫn còn sử dụng",
     "Đã khấu hao hết nhưng vẫn đang được sử dụng",

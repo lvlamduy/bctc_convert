@@ -96,6 +96,17 @@ _CLOSURE_POLICIES = {
     "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_AND_CARRYING_EQUATIONS_EXACT",
     "ALL_SOURCE_ROWS_HORIZONTAL_PLUS_SIGNED_BRANCH_EQUATIONS_EXACT_WITH_OPTIONAL_CARRYING_CONTROL",
 }
+_ROW_LEVEL_STRICT_SUBSET_POLICY = (
+    "UNIQUE_UNREPAIRED_PRINTED_TOTAL_OR_CROPPED_TOTAL_COMPLETE_DISJOINT_"
+    "ASSET_FRONTIER_PER_ROLE"
+)
+_ROW_LEVEL_STRICT_SUBSET_CLAIM_BOUNDARY = (
+    "MANIFEST_SELECTED_GEMINI_JSON_ONLY_TANGIBLE_FIXED_ASSET_UNIQUE_OWNER_"
+    "PERIOD_UNIT_ROLE_ROW_LEVEL_STRICT_SUBSET_UNREPAIRED_PRINTED_TOTAL_OR_"
+    "COMPLETE_DISJOINT_ASSET_COLUMN_FORWARD_AGGREGATION_PER_ROW_EQUATION_"
+    "RECEIPTS_ENDPOINT_HORIZONTAL_CONFLICT_VETO_EXCLUDED_ROWS_TYPED_NO_BLANK_"
+    "ZERO_BACKSOLVE_GEOMETRY_OCR_PROVIDER_BANK_FILE_PAGE_OR_VALUE_ROUTING"
+)
 
 
 class GeminiJsonFixedAssetRollforwardFamilyV1Error(ValueError):
@@ -530,6 +541,7 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         "ordered_dated_endpoint_policy",
         "ordered_branch_scope_policy",
         "partial_detail_total_policy",
+        "row_level_strict_subset_policy",
         "source_only_carrying_control",
         "source_only_row_aliases",
         "source_presentation_rounding_policy",
@@ -775,6 +787,19 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         "SOURCE_VISIBLE_TOTAL_CONTROLS_VERTICAL_PRESERVE_BLANK_DETAILS_NO_MAPPING_INFERENCE",
     }:
         raise _error("fixed-asset partial-detail total policy drifted")
+    row_level_strict_subset_policy = evaluation_spec.get(
+        "row_level_strict_subset_policy"
+    )
+    if row_level_strict_subset_policy not in {
+        None,
+        _ROW_LEVEL_STRICT_SUBSET_POLICY,
+    }:
+        raise _error("fixed-asset row-level strict-subset policy drifted")
+    if (
+        row_level_strict_subset_policy is not None
+        and topology["family_id"] != "TANGIBLE_FIXED_ASSETS_ROLLFORWARD"
+    ):
+        raise _error("fixed-asset row-level strict-subset policy is not family-local")
     ordered_dated_endpoint_policy = evaluation_spec.get("ordered_dated_endpoint_policy")
     if ordered_dated_endpoint_policy not in {
         None,
@@ -1104,6 +1129,7 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
         "ordered_branch_scope_policy": ordered_branch_scope_policy,
         "ordered_dated_endpoint_policy": ordered_dated_endpoint_policy,
         "partial_detail_total_policy": partial_detail_total_policy,
+        "row_level_strict_subset_policy": row_level_strict_subset_policy,
         "source_only_carrying_control": source_only_carrying_control,
         "source_only_row_aliases": source_only_row_aliases,
         "source_presentation_rounding_policy": source_presentation_rounding_policy,
@@ -1160,6 +1186,10 @@ def compile_gemini_json_fixed_asset_rollforward_family_specs_v1(
     if immediately_preceding_table_period_policy is not None:
         query_policy["immediately_preceding_table_period_policy"] = (
             immediately_preceding_table_period_policy
+        )
+    if row_level_strict_subset_policy is not None:
+        query_policy["row_level_strict_subset_policy"] = (
+            row_level_strict_subset_policy
         )
     if source_repair_artifact_ref is not None:
         query_policy["authenticated_source_repair_artifact_ref"] = canonical_clone_v1(
@@ -2626,6 +2656,68 @@ def _single_asset_current_period_column_binding(
     }
 
 
+def _cropped_total_complete_asset_frontier_binding(
+    columns: Sequence[Mapping[str, Any]],
+    *,
+    source_money_ordinals: Sequence[int],
+    family_header_ordinals: Sequence[int],
+    total_ordinals: Sequence[int],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Bind one visibly truncated terminal total without using its cells.
+
+    This is deliberately narrower than treating a table without a total as an
+    implicit aggregate.  The source must contain exactly one terminal MONEY
+    column whose non-empty header is a strict textual prefix of a configured
+    total header, while every preceding MONEY column is a recognized asset
+    column.  The truncated column and all of its values remain source-only.
+    """
+
+    if (
+        compiled_specs["evaluation"].get("row_level_strict_subset_policy")
+        != _ROW_LEVEL_STRICT_SUBSET_POLICY
+        or total_ordinals
+        or len(source_money_ordinals) < 3
+        or list(family_header_ordinals) != list(source_money_ordinals[:-1])
+    ):
+        return None
+    cropped_ordinal = source_money_ordinals[-1]
+    if cropped_ordinal != len(columns):
+        return None
+    cropped_header_exact = _header_text(columns[cropped_ordinal - 1]).strip()
+    cropped_header = _normalized(cropped_header_exact)
+    if len(cropped_header) < 3:
+        return None
+    matching_aliases = sorted(
+        alias
+        for alias in compiled_specs["evaluation"]["total_column_aliases"]
+        if alias != cropped_header and alias.startswith(cropped_header)
+    )
+    if not matching_aliases:
+        return None
+    asset_headers = [
+        _normalized(_header_text(columns[ordinal - 1]))
+        for ordinal in family_header_ordinals
+    ]
+    if any(not header for header in asset_headers) or len(asset_headers) != len(
+        set(asset_headers)
+    ):
+        return None
+    material = {
+        "asset_column_ordinals": list(family_header_ordinals),
+        "binding_kind": "CROPPED_PRINTED_TOTAL_COMPLETE_DISJOINT_ASSET_FRONTIER",
+        "cropped_total_column_ordinal": cropped_ordinal,
+        "cropped_total_header_exact": cropped_header_exact,
+        "matching_declared_total_aliases": matching_aliases,
+        "policy": _ROW_LEVEL_STRICT_SUBSET_POLICY,
+        "source_cropped_total_cells_consumed": False,
+    }
+    return {
+        **material,
+        "receipt_id": "factafv1:receipt:" + canonical_json_sha256_v1(material),
+    }
+
+
 def classify_gemini_json_fixed_asset_rollforward_table_v1(
     section: Any, table: Any, *, compiled_specs: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -2679,6 +2771,15 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
         total_ordinals=total_ordinals,
         negative_header_hits=negative_header_hits,
         compiled_specs=compiled_specs,
+    )
+    cropped_total_asset_frontier_binding = (
+        _cropped_total_complete_asset_frontier_binding(
+            columns,
+            source_money_ordinals=source_money_ordinals,
+            family_header_ordinals=family_header_ordinals,
+            total_ordinals=total_ordinals,
+            compiled_specs=compiled_specs,
+        )
     )
     if single_asset_period_column_receipt is None:
         money_ordinals = list(source_money_ordinals)
@@ -2796,6 +2897,13 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
         if implicit_single_asset_total or single_asset_period_total
         else total_ordinals
     )
+    has_governed_total_binding = bool(
+        (
+            len(effective_total_ordinals) == 1
+            and effective_total_ordinals[0] == money_ordinals[-1]
+        )
+        or cropped_total_asset_frontier_binding is not None
+    )
     has_family_signal = bool(
         not two_period_non_rollforward_control
         and not supplemental_only_control
@@ -2848,9 +2956,7 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
     ):
         reasons.append("DISTINCT_ASSET_HEADER_FRONTIER_INCOMPLETE")
     if required_branches <= branch_hits and (
-        len(effective_total_ordinals) != 1
-        or not money_ordinals
-        or effective_total_ordinals[0] != money_ordinals[-1]
+        not money_ordinals or not has_governed_total_binding
     ):
         reasons.append("UNIQUE_RIGHT_EDGE_TOTAL_COLUMN_NOT_VISIBLE")
     if unclassified_numeric_rows:
@@ -2862,8 +2968,7 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
         and owner
         and len(family_header_ordinals)
         >= compiled_specs["evaluation"]["minimum_distinct_asset_header_aliases"]
-        and len(effective_total_ordinals) == 1
-        and effective_total_ordinals[0] == money_ordinals[-1]
+        and has_governed_total_binding
         and not reasons
     )
     return {
@@ -2875,6 +2980,9 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
         "leading_implicit_cost_branch_receipt": leading_implicit_cost_branch_receipt,
         "money_column_ordinals": money_ordinals,
         "source_money_column_ordinals": source_money_ordinals,
+        "cropped_total_complete_asset_frontier_binding": (
+            cropped_total_asset_frontier_binding
+        ),
         "owner_visible": owner,
         "endpoint_first_layout_receipt": endpoint_first_layout_receipt,
         "ordered_dated_endpoint_receipt": ordered_dated_endpoint_receipt,
@@ -2892,7 +3000,15 @@ def classify_gemini_json_fixed_asset_rollforward_table_v1(
             else (
                 "IMPLICIT_SINGLE_RECOGNIZED_ASSET_CURRENT_PERIOD_COLUMN"
                 if single_asset_period_total
-                else ("EXPLICIT_RIGHT_EDGE_TOTAL_COLUMN" if effective_total_ordinals else None)
+                else (
+                    "EXPLICIT_RIGHT_EDGE_TOTAL_COLUMN"
+                    if effective_total_ordinals
+                    else (
+                        "CROPPED_PRINTED_TOTAL_COMPLETE_DISJOINT_ASSET_FRONTIER"
+                        if cropped_total_asset_frontier_binding is not None
+                        else None
+                    )
+                )
             )
         ),
         "total_column_ordinals": effective_total_ordinals,
@@ -2920,7 +3036,14 @@ def _endpoint_total_signature(
     )
     if not classification["complete"]:
         return None
-    total_ordinal = classification["total_column_ordinals"][0]
+    cropped_binding = classification.get(
+        "cropped_total_complete_asset_frontier_binding"
+    )
+    total_ordinal = (
+        classification["total_column_ordinals"][0]
+        if cropped_binding is None
+        else None
+    )
     signature = {}
     for row in table.get("rows", []):
         if type(row) is not dict or row.get("row_kind") == "GROUP":
@@ -2932,18 +3055,34 @@ def _endpoint_total_signature(
         if role not in {layout["opening_role"], layout["ending_role"]}:
             continue
         values = row.get("values_exact")
-        if type(values) is not list or total_ordinal > len(values):
+        if type(values) is not list or (
+            total_ordinal is not None and total_ordinal > len(values)
+        ):
             return None
         try:
-            cell = _money(
-                values[total_ordinal - 1],
-                source_locator={"period_selection_endpoint": role},
-            )
+            if cropped_binding is None:
+                cells = [
+                    _money(
+                        values[total_ordinal - 1],
+                        source_locator={"period_selection_endpoint": role},
+                    )
+                ]
+            else:
+                cells = [
+                    _money(
+                        values[ordinal - 1],
+                        source_locator={
+                            "asset_column_ordinal": ordinal,
+                            "period_selection_endpoint": role,
+                        },
+                    )
+                    for ordinal in cropped_binding["asset_column_ordinals"]
+                ]
         except GeminiJsonFixedAssetRollforwardFamilyV1Error:
             return None
-        if cell["state"] == "BLANK" or role in signature:
+        if any(cell["state"] == "BLANK" for cell in cells) or role in signature:
             return None
-        signature[role] = cell["coefficient"]
+        signature[role] = sum(cell["coefficient"] for cell in cells)
     expected = {
         role
         for layout in compiled_specs["evaluation"]["branch_layouts"]
@@ -6424,6 +6563,721 @@ def _equation_closes_on_fully_observed_source_cells(
     return values[0][1] == sum(multiplier * value for multiplier, value in values[1:])
 
 
+def _source_repair_cell_identities(
+    compiled_specs: Mapping[str, Any],
+) -> set[tuple[str, str, str, str, str]]:
+    identities = set()
+    overlay = compiled_specs.get("source_repair_overlay")
+    if type(overlay) is not dict:
+        return identities
+    for repair in overlay.get("repairs", []):
+        if type(repair) is not dict:
+            continue
+        version_id = repair.get("base_page_json_version_id")
+        table_ref = repair.get("table_ref")
+        if type(version_id) is not str or type(table_ref) is not dict:
+            continue
+        for cell in repair.get("cell_repairs", []):
+            if type(cell) is not dict or type(cell.get("cell_id")) is not str:
+                continue
+            match = re.fullmatch(r"(r[1-9][0-9]*):(c[1-9][0-9]*)", cell["cell_id"])
+            if match is None:
+                continue
+            identities.add(
+                (
+                    version_id,
+                    table_ref.get("section_id"),
+                    table_ref.get("table_id"),
+                    match.group(1),
+                    match.group(2),
+                )
+            )
+    return identities
+
+
+def _source_cell_identity(
+    cell: Mapping[str, Any],
+) -> tuple[str, str, str, str, str] | None:
+    locator = cell.get("source_locator")
+    if type(locator) is not dict:
+        return None
+    identity = tuple(
+        locator.get(field)
+        for field in (
+            "page_json_version_id",
+            "section_id",
+            "table_id",
+            "row_id",
+            "column_id",
+        )
+    )
+    return identity if all(type(item) is str and item for item in identity) else None
+
+
+def _strict_subset_equation_receipt(
+    equation: Mapping[str, Any],
+    *,
+    row_by_id: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    result = equation.get("result")
+    terms = equation.get("terms")
+    if type(result) is not dict or type(terms) is not list or not terms:
+        return {
+            "axis": equation.get("axis"),
+            "equation_id": equation.get("equation_id"),
+            "status": "INVALID_EQUATION_SHAPE",
+        }
+    coordinates = [result, *terms]
+    cells = []
+    coordinate_keys = []
+    for coordinate in coordinates:
+        if type(coordinate) is not dict:
+            return {
+                "axis": equation.get("axis"),
+                "equation_id": equation.get("equation_id"),
+                "status": "INVALID_EQUATION_COORDINATE",
+            }
+        record = row_by_id.get(coordinate.get("row_id"))
+        cell = (
+            record.get("cells", {}).get(coordinate.get("column_id"))
+            if type(record) is dict
+            else None
+        )
+        identity = _source_cell_identity(cell) if type(cell) is dict else None
+        if (
+            type(cell) is not dict
+            or cell.get("state") == "BLANK"
+            or type(cell.get("coefficient")) is not int
+            or identity is None
+        ):
+            return {
+                "axis": equation.get("axis"),
+                "equation_id": equation.get("equation_id"),
+                "status": "BLANK_MISSING_OR_UNBOUND_SOURCE_CELL",
+            }
+        cells.append(cell)
+        coordinate_keys.append(identity)
+    term_keys = coordinate_keys[1:]
+    if coordinate_keys[0] in term_keys or len(term_keys) != len(set(term_keys)):
+        return {
+            "axis": equation.get("axis"),
+            "equation_id": equation.get("equation_id"),
+            "status": "OVERLAPPING_OR_DUPLICATED_SOURCE_OPERAND",
+        }
+    multipliers = [term.get("multiplier") for term in terms]
+    if any(type(multiplier) is not int for multiplier in multipliers):
+        return {
+            "axis": equation.get("axis"),
+            "equation_id": equation.get("equation_id"),
+            "status": "INVALID_EQUATION_MULTIPLIER",
+        }
+    observed = cells[0]["coefficient"]
+    expected = sum(
+        multiplier * cell["coefficient"]
+        for multiplier, cell in zip(multipliers, cells[1:], strict=True)
+    )
+    material = {
+        "axis": equation.get("axis"),
+        "complete_disjoint_source_operands": True,
+        "equation_id": equation.get("equation_id"),
+        "expected_coefficient": expected,
+        "observed_coefficient": observed,
+        "result": canonical_clone_v1(result),
+        "status": "EXACT" if expected == observed else "MISMATCH",
+        "terms": canonical_clone_v1(terms),
+    }
+    return {
+        **material,
+        "receipt_id": "fasrersv1:receipt:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _row_mapping_material(
+    *,
+    record: Mapping[str, Any],
+    cell: Mapping[str, Any],
+    source_cells: Sequence[Mapping[str, Any]],
+    period_date: str,
+    unit_id: str,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    source_refs = [
+        {
+            "cell": canonical_clone_v1(source_cell),
+            "hierarchy_path_exact": canonical_clone_v1(record["hierarchy_path_exact"]),
+            "label_exact": record["label_exact"],
+            "row_id": record["source_row_id"],
+            "source_ordinal": record["source_ordinal"],
+        }
+        for source_cell in source_cells
+    ]
+    return {
+        "bound_unit": unit_id,
+        "cell": canonical_clone_v1(cell),
+        "period_date": period_date,
+        "report_norm_id": compiled_specs["bindings"][record["role"]],
+        "role": record["role"],
+        "row_id": record["row_id"],
+        "source_refs": source_refs,
+    }
+
+
+def _seal_mapping_material(material: Mapping[str, Any]) -> dict[str, Any]:
+    cloned = canonical_clone_v1(material)
+    return {
+        **cloned,
+        "item_mapping_id": "gjffarimv1:item:" + canonical_json_sha256_v1(cloned),
+    }
+
+
+def _extract_cropped_total_complete_asset_frontier(
+    *,
+    table: Mapping[str, Any],
+    region: Mapping[str, Any],
+    classification: Mapping[str, Any],
+    unit_axis: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Forward-aggregate rows only after every asset lane closes vertically."""
+
+    binding = classification.get("cropped_total_complete_asset_frontier_binding")
+    columns = table.get("columns")
+    rows = table.get("rows")
+    reasons = []
+    if (
+        type(binding) is not dict
+        or type(columns) is not list
+        or type(rows) is not list
+        or not classification.get("complete")
+        or not unit_axis.get("complete")
+        or type(unit_axis.get("canonical_unit")) is not str
+        or not unit_axis["canonical_unit"]
+    ):
+        reasons.append("CROPPED_TOTAL_STRICT_SUBSET_CONTEXT_IS_NOT_COMPLETE")
+    asset_ordinals = (
+        list(binding.get("asset_column_ordinals", [])) if type(binding) is dict else []
+    )
+    if (
+        not asset_ordinals
+        or asset_ordinals != sorted(set(asset_ordinals))
+        or any(type(ordinal) is not int or not 1 <= ordinal <= len(columns) for ordinal in asset_ordinals)
+    ):
+        reasons.append("CROPPED_TOTAL_ASSET_FRONTIER_IS_INVALID")
+    repaired_cells = _source_repair_cell_identities(compiled_specs)
+    records = []
+    row_by_id = {}
+    branch_records: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    subtotal_roles = {
+        role
+        for layout in compiled_specs["evaluation"]["branch_layouts"]
+        for role in layout["subtotal_roles"]
+    }
+    for source_ordinal, row in enumerate(rows, start=1):
+        if type(row) is not dict:
+            reasons.append("SOURCE_ROW_IS_NOT_AN_OBJECT")
+            continue
+        if any(
+            _supplemental_row_matches(
+                row,
+                disclosure,
+                table=table,
+                compiled_specs=compiled_specs,
+            )
+            for disclosure in compiled_specs["evaluation"]["supplemental_disclosure_roles"]
+        ) or _source_only_row_matches(row, compiled_specs=compiled_specs):
+            continue
+        layout = _branch_layout_for_row(row, compiled_specs=compiled_specs)
+        if layout is None or row.get("row_kind") == "GROUP":
+            continue
+        role = _role_for_row(row, layout, compiled_specs=compiled_specs)
+        values = row.get("values_exact")
+        if role is None or type(values) is not list or len(values) != len(columns):
+            reasons.append(f"CROPPED_TOTAL_SOURCE_ROW_IS_NOT_EXACT:r{source_ordinal}")
+            continue
+        if role in subtotal_roles or _visible_subtotal_ancestor_roles(
+            row, layout, compiled_specs=compiled_specs
+        ):
+            reasons.append(f"CROPPED_TOTAL_FRONTIER_IS_NOT_FLAT:r{source_ordinal}")
+            continue
+        cells = {}
+        try:
+            for ordinal in asset_ordinals:
+                column_id = f"c{ordinal}"
+                cells[column_id] = _money(
+                    values[ordinal - 1],
+                    source_locator={
+                        "column_id": column_id,
+                        "page_json_version_id": region["page_json_version_id"],
+                        "row_id": f"r{source_ordinal}",
+                        "section_id": region["section_id"],
+                        "table_id": region["table_id"],
+                    },
+                )
+        except GeminiJsonFixedAssetRollforwardFamilyV1Error:
+            reasons.append(f"CROPPED_TOTAL_MONEY_CELL_INVALID:r{source_ordinal}")
+            continue
+        if any(cell["state"] == "BLANK" for cell in cells.values()):
+            reasons.append(f"CROPPED_TOTAL_ASSET_ROW_HAS_BLANK_OPERAND:r{source_ordinal}")
+            continue
+        if any(_source_cell_identity(cell) in repaired_cells for cell in cells.values()):
+            reasons.append(f"CROPPED_TOTAL_ASSET_ROW_USES_SOURCE_REPAIR:r{source_ordinal}")
+            continue
+        record = {
+            "branch_role": layout["branch_role"],
+            "cells": cells,
+            "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
+            "label_exact": row.get("label_exact"),
+            "role": role,
+            "row_id": f"r{source_ordinal}",
+            "source_row_id": f"r{source_ordinal}",
+            "source_ordinal": source_ordinal,
+            "source_order_ordinal": source_ordinal,
+        }
+        records.append(record)
+        row_by_id[record["row_id"]] = record
+        branch_records[layout["branch_role"]].append(record)
+    role_counts: dict[str, int] = defaultdict(int)
+    for record in records:
+        role_counts[record["role"]] += 1
+    for role, count in role_counts.items():
+        if count != 1:
+            reasons.append("CROPPED_TOTAL_ROLE_ROW_IS_NOT_UNIQUE:" + role)
+    equations = []
+    equation_receipts = []
+    signed_layouts = [
+        item
+        for item in compiled_specs["evaluation"]["branch_layouts"]
+        if item["rollforward_kind"] == "SIGNED_ADDITIVE"
+    ]
+    carrying_layout = next(
+        (
+            item
+            for item in compiled_specs["evaluation"]["branch_layouts"]
+            if item["rollforward_kind"] == "COST_AND_DEPRECIATION_CONTROL"
+        ),
+        None,
+    )
+    for layout in signed_layouts:
+        branch_axis = branch_records.get(layout["branch_role"], [])
+        opening = [item for item in branch_axis if item["role"] == layout["opening_role"]]
+        ending = [item for item in branch_axis if item["role"] == layout["ending_role"]]
+        movements = [
+            item
+            for item in branch_axis
+            if item["role"] not in {layout["opening_role"], layout["ending_role"]}
+        ]
+        if len(opening) != 1 or len(ending) != 1 or not movements:
+            reasons.append("CROPPED_TOTAL_BRANCH_FRONTIER_IS_INCOMPLETE:" + layout["branch_role"])
+            continue
+        if not (
+            opening[0]["source_order_ordinal"] < ending[0]["source_order_ordinal"]
+            and all(
+                opening[0]["source_order_ordinal"]
+                < item["source_order_ordinal"]
+                < ending[0]["source_order_ordinal"]
+                for item in movements
+            )
+        ):
+            reasons.append("CROPPED_TOTAL_BRANCH_SOURCE_ORDER_IS_INVALID:" + layout["branch_role"])
+            continue
+        for ordinal in asset_ordinals:
+            column_id = f"c{ordinal}"
+            endpoints = [
+                opening[0]["cells"][column_id]["coefficient"],
+                ending[0]["cells"][column_id]["coefficient"],
+            ]
+            if all(value >= 0 for value in endpoints):
+                branch_sign = 1
+            elif all(value <= 0 for value in endpoints):
+                branch_sign = -1
+            else:
+                reasons.append(
+                    "CROPPED_TOTAL_BRANCH_ENDPOINT_SIGN_IS_NOT_UNIQUE:"
+                    + layout["branch_role"]
+                    + ":"
+                    + column_id
+                )
+                continue
+            terms = [{"column_id": column_id, "multiplier": 1, "row_id": opening[0]["row_id"]}]
+            for movement in movements:
+                multiplier, _receipt = _movement_equation_multiplier(
+                    movement,
+                    total_id=column_id,
+                    branch_balance_sign=branch_sign,
+                    compiled_specs=compiled_specs,
+                )
+                terms.append(
+                    {
+                        "column_id": column_id,
+                        "multiplier": multiplier,
+                        "row_id": movement["row_id"],
+                    }
+                )
+            equation = {
+                "axis": "VERTICAL_ASSET_COLUMN_ROLLFORWARD",
+                "equation_id": f"cropped:{layout['branch_role']}:{column_id}",
+                "result": {"column_id": column_id, "row_id": ending[0]["row_id"]},
+                "terms": terms,
+            }
+            receipt = _strict_subset_equation_receipt(equation, row_by_id=row_by_id)
+            equations.append(equation)
+            equation_receipts.append(receipt)
+            if receipt["status"] != "EXACT":
+                reasons.append("CROPPED_TOTAL_VERTICAL_EQUATION_NOT_EXACT:" + equation["equation_id"])
+    if carrying_layout is not None:
+        cost_layout = next(item for item in signed_layouts if item["branch_role"] == "COST_BRANCH")
+        dep_layout = next(
+            item for item in signed_layouts if item["branch_role"] == "DEPRECIATION_BRANCH"
+        )
+        by_role = {record["role"]: record for record in records if role_counts[record["role"]] == 1}
+        for endpoint in ("opening_role", "ending_role"):
+            roles = (
+                cost_layout[endpoint],
+                dep_layout[endpoint],
+                carrying_layout[endpoint],
+            )
+            if any(role not in by_role for role in roles):
+                reasons.append("CROPPED_TOTAL_CARRYING_FRONTIER_IS_INCOMPLETE:" + endpoint)
+                continue
+            for ordinal in asset_ordinals:
+                column_id = f"c{ordinal}"
+                dep_value = by_role[roles[1]]["cells"][column_id]["coefficient"]
+                dep_multiplier = -1 if dep_value >= 0 else 1
+                equation = {
+                    "axis": "VERTICAL_ASSET_COLUMN_CARRYING_CONTROL",
+                    "equation_id": f"cropped:carrying:{endpoint}:{column_id}",
+                    "result": {"column_id": column_id, "row_id": by_role[roles[2]]["row_id"]},
+                    "terms": [
+                        {"column_id": column_id, "multiplier": 1, "row_id": by_role[roles[0]]["row_id"]},
+                        {"column_id": column_id, "multiplier": dep_multiplier, "row_id": by_role[roles[1]]["row_id"]},
+                    ],
+                }
+                receipt = _strict_subset_equation_receipt(equation, row_by_id=row_by_id)
+                equations.append(equation)
+                equation_receipts.append(receipt)
+                if receipt["status"] != "EXACT":
+                    reasons.append("CROPPED_TOTAL_CARRYING_EQUATION_NOT_EXACT:" + equation["equation_id"])
+    mappings = []
+    row_receipts = []
+    if not reasons:
+        by_role = {record["role"]: record for record in records}
+        for role in compiled_specs["output_role_order"]:
+            record = by_role.get(role)
+            if record is None:
+                continue
+            source_cells = [record["cells"][f"c{ordinal}"] for ordinal in asset_ordinals]
+            coefficient = sum(cell["coefficient"] for cell in source_cells)
+            mapping = _seal_mapping_material(
+                _row_mapping_material(
+                    record=record,
+                    cell={
+                        "coefficient": coefficient,
+                        "state": "DERIVED_EXACT_COMPLETE_DISJOINT_ASSET_COLUMN_FRONTIER",
+                    },
+                    source_cells=source_cells,
+                    period_date=region["period_end_date"],
+                    unit_id=unit_axis["canonical_unit"],
+                    compiled_specs=compiled_specs,
+                )
+            )
+            mappings.append(mapping)
+            row_material = {
+                "asset_column_ids": [f"c{ordinal}" for ordinal in asset_ordinals],
+                "derived_coefficient": coefficient,
+                "mapping_id": mapping["item_mapping_id"],
+                "role": role,
+                "row_id": record["row_id"],
+                "source_ref_count": len(source_cells),
+                "status": "MAPPED_FORWARD_AGGREGATE_COMPLETE_DISJOINT_FRONTIER",
+            }
+            row_receipts.append(
+                {
+                    **row_material,
+                    "receipt_id": "fasrdrsv1:receipt:"
+                    + canonical_json_sha256_v1(row_material),
+                }
+            )
+    projection = {
+        "columns": [
+            {"column_id": f"c{ordinal}", "column_kind": "ASSET_DETAIL", "column_ordinal": ordinal}
+            for ordinal in asset_ordinals
+        ],
+        "equations": canonical_clone_v1(equations),
+        "period_id": region["period_end_date"],
+        "rows": [
+            {
+                "cells": canonical_clone_v1(record["cells"]),
+                "row_id": record["row_id"],
+                "row_kind": "DATA",
+                "row_ordinal": ordinal,
+            }
+            for ordinal, record in enumerate(records, start=1)
+        ],
+        "table_id": region["table_id"],
+        "unit_id": unit_axis.get("canonical_unit"),
+    }
+    receipt_material = {
+        "binding": canonical_clone_v1(binding),
+        "equation_receipts": equation_receipts,
+        "excluded_cropped_total_column": binding.get("cropped_total_column_ordinal") if type(binding) is dict else None,
+        "mapped_rows": row_receipts,
+        "policy": _ROW_LEVEL_STRICT_SUBSET_POLICY,
+        "safety": {
+            "blank_cell_means_zero": False,
+            "complete_disjoint_asset_frontier_required": True,
+            "cropped_total_cells_consumed": False,
+            "equation_backsolve": False,
+            "family_bank_file_page_or_value_routing": False,
+            "source_repair_cells_consumed": False,
+        },
+        "status": "SEALED" if mappings and not reasons else "UNRESOLVED",
+        "unresolved_reasons": sorted(set(reasons)),
+    }
+    subset_receipt = {
+        **receipt_material,
+        "receipt_id": "fasrssv1:receipt:" + canonical_json_sha256_v1(receipt_material),
+    }
+    seal_material = {
+        "claim_boundary": _ROW_LEVEL_STRICT_SUBSET_CLAIM_BOUNDARY,
+        "effective_projection": projection,
+        "format_version": "FIXED_ASSET_ROW_LEVEL_STRICT_SUBSET_SEAL_V1",
+        "row_level_strict_subset_receipt": subset_receipt,
+        "status": "SEALED_EXACT_ROW_LEVEL_STRICT_SUBSET" if mappings and not reasons else "UNRESOLVED",
+        "unresolved_reasons": sorted(set(reasons)),
+    }
+    width_seal = {
+        **seal_material,
+        "seal_id": "fasrlssv1:seal:" + canonical_json_sha256_v1(seal_material),
+    }
+    table_receipt = {
+        "classification": canonical_clone_v1(classification),
+        "equations": equations,
+        "raw_row_inventory": [
+            {
+                "branch_role": record["branch_role"],
+                "hierarchy_path_exact": canonical_clone_v1(record["hierarchy_path_exact"]),
+                "label_exact": record["label_exact"],
+                "role": record["role"],
+                "row_id": record["row_id"],
+                "source_ordinal": record["source_ordinal"],
+            }
+            for record in records
+        ],
+        "row_level_strict_subset_receipt": subset_receipt,
+        "source_only_rows": [],
+        "unit_axis": canonical_clone_v1(unit_axis),
+    }
+    return {
+        "claim_boundary": _ROW_LEVEL_STRICT_SUBSET_CLAIM_BOUNDARY,
+        "classification": canonical_clone_v1(classification),
+        "mappings": mappings,
+        "reasons": sorted(set(reasons)),
+        "subtotal_collapse": None,
+        "table_receipt": table_receipt,
+        "unit_axis": canonical_clone_v1(unit_axis),
+        "width_seal": width_seal,
+    }
+
+
+def _build_printed_total_row_level_strict_subset(
+    *,
+    records: Sequence[Mapping[str, Any]],
+    row_by_id: Mapping[str, Mapping[str, Any]],
+    equations: Sequence[Mapping[str, Any]],
+    total_id: str,
+    region: Mapping[str, Any],
+    unit_id: str,
+    raw_projection: Mapping[str, Any],
+    original_reasons: Sequence[str],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Keep only independently authenticated printed role totals.
+
+    A failed equation excludes its result row, not unrelated rows.  Endpoints
+    additionally require their own horizontal asset equation to close.  A
+    declared subtotal may use its exact complete-disjoint child-total frontier
+    when its horizontal detail axis conflicts; ordinary movement rows may not.
+    """
+
+    repaired_cells = _source_repair_cell_identities(compiled_specs)
+    endpoint_roles = {
+        role
+        for layout in compiled_specs["evaluation"]["branch_layouts"]
+        for role in (layout["opening_role"], layout["ending_role"])
+    }
+    subtotal_roles = {
+        role
+        for layout in compiled_specs["evaluation"]["branch_layouts"]
+        for role in layout["subtotal_roles"]
+    }
+    grouped: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for record in records:
+        grouped[record["role"]].append(record)
+    equation_receipts = [
+        _strict_subset_equation_receipt(equation, row_by_id=row_by_id)
+        for equation in equations
+    ]
+    paired = list(zip(equations, equation_receipts, strict=True))
+    mappings = []
+    mapped_rows = []
+    excluded_rows = []
+    for role in compiled_specs["output_role_order"]:
+        observations = grouped.get(role, [])
+        if not observations:
+            continue
+        if len(observations) != 1:
+            excluded_rows.append(
+                {
+                    "reasons": ["ROLE_SOURCE_ROW_IS_NOT_UNIQUE"],
+                    "role": role,
+                    "row_ids": [item["row_id"] for item in observations],
+                    "status": "EXCLUDED",
+                }
+            )
+            continue
+        record = observations[0]
+        cell = record.get("cells", {}).get(total_id)
+        row_reasons = []
+        if (
+            type(cell) is not dict
+            or cell.get("state") == "BLANK"
+            or type(cell.get("coefficient")) is not int
+            or type(cell.get("source_text")) is not str
+            or _source_cell_identity(cell) is None
+        ):
+            row_reasons.append("PRINTED_TOTAL_CELL_IS_NOT_EXACTLY_SOURCE_BOUND")
+        elif _source_cell_identity(cell) in repaired_cells:
+            row_reasons.append(
+                "PRINTED_TOTAL_DEPENDS_ON_AUTHENTICATED_SOURCE_REPAIR_REQUIRES_SEPARATE_REVIEW"
+            )
+        horizontal = [
+            receipt
+            for equation, receipt in paired
+            if equation.get("axis") == "HORIZONTAL_ROW"
+            and equation.get("result")
+            == {"column_id": total_id, "row_id": record["row_id"]}
+        ]
+        result_equations = [
+            receipt
+            for equation, receipt in paired
+            if equation.get("axis") != "HORIZONTAL_ROW"
+            and equation.get("result")
+            == {"column_id": total_id, "row_id": record["row_id"]}
+        ]
+        exact_horizontal = len(horizontal) == 1 and horizontal[0]["status"] == "EXACT"
+        exact_subtotal = any(
+            receipt["status"] == "EXACT"
+            and type(receipt.get("equation_id")) is str
+            and receipt["equation_id"].startswith(f"subtotal:{record['row_id']}:")
+            for receipt in result_equations
+        )
+        mismatched_result = [
+            receipt.get("equation_id")
+            for receipt in result_equations
+            if receipt.get("status") != "EXACT"
+        ]
+        if mismatched_result:
+            row_reasons.append("RESULT_EQUATION_NOT_EXACT")
+        if role in endpoint_roles:
+            if not exact_horizontal:
+                row_reasons.append("ENDPOINT_HORIZONTAL_ASSET_EQUATION_NOT_EXACT")
+        elif role in subtotal_roles:
+            if not (exact_horizontal or exact_subtotal):
+                row_reasons.append("SUBTOTAL_HAS_NO_EXACT_ROW_OR_CHILD_TOTAL_FRONTIER")
+        elif not exact_horizontal:
+            row_reasons.append("DIRECT_ROLE_HORIZONTAL_ASSET_EQUATION_NOT_EXACT")
+        relevant_receipts = [*horizontal, *result_equations]
+        if any(
+            receipt.get("status")
+            in {
+                "BLANK_MISSING_OR_UNBOUND_SOURCE_CELL",
+                "INVALID_EQUATION_COORDINATE",
+                "INVALID_EQUATION_MULTIPLIER",
+                "INVALID_EQUATION_SHAPE",
+                "OVERLAPPING_OR_DUPLICATED_SOURCE_OPERAND",
+            }
+            for receipt in relevant_receipts
+        ):
+            row_reasons.append("ROW_EQUATION_IS_NOT_COMPLETE_AND_DISJOINT")
+        if row_reasons:
+            excluded_rows.append(
+                {
+                    "equation_receipts": relevant_receipts,
+                    "reasons": sorted(set(row_reasons)),
+                    "role": role,
+                    "row_id": record["row_id"],
+                    "status": "EXCLUDED",
+                }
+            )
+            continue
+        mapping = _seal_mapping_material(
+            _row_mapping_material(
+                record=record,
+                cell={"coefficient": cell["coefficient"], "state": cell["state"]},
+                source_cells=[cell],
+                period_date=region["period_end_date"],
+                unit_id=unit_id,
+                compiled_specs=compiled_specs,
+            )
+        )
+        mappings.append(mapping)
+        row_material = {
+            "equation_receipts": relevant_receipts,
+            "mapping_id": mapping["item_mapping_id"],
+            "role": role,
+            "row_id": record["row_id"],
+            "status": "MAPPED_EXACT_UNREPAIRED_PRINTED_TOTAL",
+            "value_binding_kind": (
+                "PRINTED_SUBTOTAL_WITH_EXACT_CHILD_TOTAL_FRONTIER"
+                if role in subtotal_roles and not exact_horizontal
+                else "PRINTED_TOTAL_WITH_EXACT_HORIZONTAL_ASSET_FRONTIER"
+            ),
+        }
+        mapped_rows.append(
+            {
+                **row_material,
+                "receipt_id": "fasrmrsv1:receipt:" + canonical_json_sha256_v1(row_material),
+            }
+        )
+    receipt_material = {
+        "excluded_rows": excluded_rows,
+        "mapped_rows": mapped_rows,
+        "original_table_reasons": sorted(set(original_reasons)),
+        "policy": _ROW_LEVEL_STRICT_SUBSET_POLICY,
+        "safety": {
+            "blank_cell_means_zero": False,
+            "complete_disjoint_equation_required": True,
+            "endpoint_horizontal_conflict_veto": True,
+            "equation_backsolve": False,
+            "family_bank_file_page_or_value_routing": False,
+            "source_repair_total_cells_consumed": False,
+            "unmapped_rows_typed": True,
+        },
+        "status": "SEALED" if mappings else "UNRESOLVED",
+    }
+    receipt = {
+        **receipt_material,
+        "receipt_id": "fasrssv1:receipt:" + canonical_json_sha256_v1(receipt_material),
+    }
+    seal_material = {
+        "claim_boundary": _ROW_LEVEL_STRICT_SUBSET_CLAIM_BOUNDARY,
+        "effective_projection": canonical_clone_v1(raw_projection),
+        "format_version": "FIXED_ASSET_ROW_LEVEL_STRICT_SUBSET_SEAL_V1",
+        "row_level_strict_subset_receipt": receipt,
+        "status": "SEALED_EXACT_ROW_LEVEL_STRICT_SUBSET" if mappings else "UNRESOLVED",
+        "unresolved_reasons": [] if mappings else sorted(set(original_reasons)),
+    }
+    return {
+        "claim_boundary": _ROW_LEVEL_STRICT_SUBSET_CLAIM_BOUNDARY,
+        "mappings": mappings,
+        "receipt": receipt,
+        "width_seal": {
+            **seal_material,
+            "seal_id": "fasrlssv1:seal:" + canonical_json_sha256_v1(seal_material),
+        },
+    }
+
+
 def _extract_table_records(
     *,
     section: Mapping[str, Any],
@@ -6494,6 +7348,14 @@ def _extract_table_records(
         else None
     )
     if total_ordinal is None:
+        if classification.get("cropped_total_complete_asset_frontier_binding") is not None:
+            return _extract_cropped_total_complete_asset_frontier(
+                table=table,
+                region=region,
+                classification=classification,
+                unit_axis=unit_axis,
+                compiled_specs=compiled_specs,
+            )
         return {
             "classification": classification,
             "mappings": [],
@@ -7153,6 +8015,7 @@ def _extract_table_records(
                             ],
                         }
                     )
+    pre_width_reasons = tuple(reasons)
     width_input = None
     width_seal = None
     if not reasons:
@@ -7471,6 +8334,40 @@ def _extract_table_records(
                     "item_mapping_id": "gjffarimv1:item:" + canonical_json_sha256_v1(material),
                 }
             )
+    row_level_strict_subset_receipt = None
+    claim_boundary = CLAIM_BOUNDARY
+    if (
+        not mappings
+        and reasons
+        and not pre_width_reasons
+        and compiled_specs["evaluation"].get("row_level_strict_subset_policy")
+        == _ROW_LEVEL_STRICT_SUBSET_POLICY
+        and type(width_seal) is dict
+        and type(width_seal.get("raw_table_snapshot")) is dict
+        and "NO_ALL_EQUATION_CLOSING_PROJECTION" in reasons
+        and set(reasons)
+        <= {
+            "NO_ALL_EQUATION_CLOSING_PROJECTION",
+            "VISIBLE_SUBTOTAL_SIGNED_SUM_MISMATCH",
+        }
+    ):
+        strict_subset = _build_printed_total_row_level_strict_subset(
+            records=records,
+            row_by_id=row_by_id,
+            equations=equations,
+            total_id=total_id,
+            region=region,
+            unit_id=unit_axis["canonical_unit"],
+            raw_projection=width_seal["raw_table_snapshot"],
+            original_reasons=reasons,
+            compiled_specs=compiled_specs,
+        )
+        if strict_subset["mappings"]:
+            mappings = strict_subset["mappings"]
+            width_seal = strict_subset["width_seal"]
+            row_level_strict_subset_receipt = strict_subset["receipt"]
+            claim_boundary = strict_subset["claim_boundary"]
+            reasons = []
     table_receipt = {
         "classification": classification,
         "adjacent_page_endpoint_first_continuation_receipt": (
@@ -7520,8 +8417,14 @@ def _extract_table_records(
         },
         "source_only_rows": source_only_row_receipts,
         "unit_axis": unit_axis,
+        **(
+            {"row_level_strict_subset_receipt": row_level_strict_subset_receipt}
+            if row_level_strict_subset_receipt is not None
+            else {}
+        ),
     }
     return {
+        "claim_boundary": claim_boundary,
         "classification": classification,
         "mappings": mappings,
         "reasons": sorted(set(reasons)),
@@ -8183,7 +9086,7 @@ def evaluate_gemini_json_fixed_asset_rollforward_family_cluster_v1(
     reasons = sorted(set([*extracted["reasons"], *supplemental["reasons"]]))
     mappings = [*extracted["mappings"], *supplemental["mappings"]] if not reasons else []
     material = {
-        "claim_boundary": CLAIM_BOUNDARY,
+        "claim_boundary": extracted.get("claim_boundary", CLAIM_BOUNDARY),
         "closure_receipt": {
             "control_regions": controls,
             "query_receipt": expected_receipt,

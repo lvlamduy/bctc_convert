@@ -781,6 +781,282 @@ def test_blank_total_nonzero_detail_row_remains_unresolved():
     assert "SOURCE_TOTAL_BLANK_WITH_NONZERO_OR_INCOMPLETE_DETAILS:r4" in candidate["reasons"]
 
 
+def test_row_level_strict_subset_keeps_exact_rows_and_vetoes_conflicting_endpoints():
+    table = _table()
+    dep_ending = next(
+        row
+        for row in table["rows"]
+        if row["hierarchy_path_exact"][0] == "Hao mòn lũy kế"
+        and row["label_exact"].startswith("Tại ngày 31")
+    )
+    carry_ending = next(
+        row
+        for row in table["rows"]
+        if row["hierarchy_path_exact"][0] == "Giá trị còn lại"
+        and row["label_exact"].startswith("Tại ngày 31")
+    )
+    dep_ending["values_exact"] = ["22", "42", "66"]
+    carry_ending["values_exact"] = ["88", "178", "264"]
+
+    _compiled_specs, _page_json, _cluster, _receipt, candidate = _candidate(table)
+
+    assert candidate["status"] == READY
+    assert {item["role"] for item in candidate["mappings"]} == {
+        "CARRY_OPENING",
+        "COST_ENDING",
+        "COST_OPENING",
+        "COST_PURCHASE",
+        "DEP_CHARGE",
+        "DEP_OPENING",
+    }
+    subset = candidate["closure_receipt"]["table_receipt"][
+        "row_level_strict_subset_receipt"
+    ]
+    assert {
+        (item["role"], tuple(item["reasons"])) for item in subset["excluded_rows"]
+    } == {
+        ("DEP_ENDING", ("ENDPOINT_HORIZONTAL_ASSET_EQUATION_NOT_EXACT",)),
+        ("CARRY_ENDING", ("ENDPOINT_HORIZONTAL_ASSET_EQUATION_NOT_EXACT",)),
+    }
+    assert subset["safety"]["endpoint_horizontal_conflict_veto"] is True
+    assert subset["safety"]["equation_backsolve"] is False
+
+
+def test_row_level_strict_subset_accepts_printed_subtotal_from_exact_child_total_frontier():
+    table = _table(subtotal=True)
+    dep_subtotal = next(
+        row
+        for row in table["rows"]
+        if row["hierarchy_path_exact"][0] == "Hao mòn lũy kế"
+        and row["label_exact"] == "Tăng trong kỳ"
+    )
+    dep_subtotal["values_exact"][0] = "4"
+
+    _compiled_specs, _page_json, _cluster, _receipt, candidate = _candidate(table)
+
+    assert candidate["status"] == READY
+    mapping = next(
+        item for item in candidate["mappings"] if item["role"] == "DEP_TOTAL_INCREASE"
+    )
+    assert mapping["cell"]["coefficient"] == 6
+    subset = candidate["closure_receipt"]["table_receipt"][
+        "row_level_strict_subset_receipt"
+    ]
+    mapped = next(item for item in subset["mapped_rows"] if item["role"] == "DEP_TOTAL_INCREASE")
+    assert mapped["value_binding_kind"] == (
+        "PRINTED_SUBTOTAL_WITH_EXACT_CHILD_TOTAL_FRONTIER"
+    )
+    assert any(
+        receipt["equation_id"].startswith("subtotal:")
+        and receipt["equation_id"].endswith(":c3")
+        and receipt["status"] == "EXACT"
+        for receipt in mapped["equation_receipts"]
+    )
+
+
+def test_cropped_terminal_total_uses_only_complete_disjoint_asset_columns():
+    table = _table()
+    table["columns"][-1]["header_path_exact"] = ["Tổn"]
+    for row in table["rows"]:
+        if row["row_kind"] != "GROUP":
+            row["values_exact"][-1] = "3"
+
+    _compiled_specs, _page_json, cluster, _receipt, candidate = _candidate(table)
+
+    assert cluster["family_table_inventory"][0]["classification"][
+        "total_column_binding_kind"
+    ] == "CROPPED_PRINTED_TOTAL_COMPLETE_DISJOINT_ASSET_FRONTIER"
+    assert candidate["status"] == READY
+    assert len(candidate["mappings"]) == 8
+    assert all(
+        item["cell"]["state"]
+        == "DERIVED_EXACT_COMPLETE_DISJOINT_ASSET_COLUMN_FRONTIER"
+        and len(item["source_refs"]) == 2
+        and all(
+            ref["cell"]["source_locator"]["column_id"] in {"c1", "c2"}
+            for ref in item["source_refs"]
+        )
+        for item in candidate["mappings"]
+    )
+    subset = candidate["closure_receipt"]["table_receipt"][
+        "row_level_strict_subset_receipt"
+    ]
+    assert subset["excluded_cropped_total_column"] == 3
+    assert subset["safety"]["cropped_total_cells_consumed"] is False
+
+
+def test_cropped_total_blank_asset_operand_remains_unresolved_without_zero_fill():
+    table = _table()
+    table["columns"][-1]["header_path_exact"] = ["Tổn"]
+    next(row for row in table["rows"] if row["label_exact"] == "Mua trong kỳ")[
+        "values_exact"
+    ][1] = None
+
+    _compiled_specs, _page_json, _cluster, _receipt, candidate = _candidate(table)
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "CROPPED_TOTAL_ASSET_ROW_HAS_BLANK_OPERAND:r3" in candidate["reasons"]
+
+
+def test_unrecognized_terminal_money_header_is_not_a_cropped_total():
+    table = _table()
+    table["columns"][-1]["header_path_exact"] = ["Cột chưa rõ"]
+    page = _page(table)
+
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[_page_record(page)], compiled_specs=_compiled()
+    )
+
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["component_regions"] == []
+    assert "UNIQUE_RIGHT_EDGE_TOTAL_COLUMN_NOT_VISIBLE" in cluster["reasons"]
+
+
+def test_cropped_total_source_shift_fails_vertical_equation_without_backsolve():
+    table = _table()
+    table["columns"][-1]["header_path_exact"] = ["Tổn"]
+    next(row for row in table["rows"] if row["label_exact"] == "Mua trong kỳ")[
+        "values_exact"
+    ][0] = "11"
+
+    _compiled_specs, _page_json, _cluster, _receipt, candidate = _candidate(table)
+
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert any(
+        reason.startswith("CROPPED_TOTAL_VERTICAL_EQUATION_NOT_EXACT")
+        for reason in candidate["reasons"]
+    )
+
+
+def test_cropped_total_rows_are_not_combined_across_unbound_pages():
+    table = _table()
+    table["columns"][-1]["header_path_exact"] = ["Tổn"]
+    split = next(
+        index
+        for index, row in enumerate(table["rows"])
+        if row["hierarchy_path_exact"][0] == "Hao mòn lũy kế"
+    )
+    first = deepcopy(table)
+    first["rows"] = deepcopy(table["rows"][:split])
+    second = deepcopy(table)
+    second["rows"] = deepcopy(table["rows"][split:])
+    first_page = _page(first)
+    second_page = _page(second)
+    second_page["sections"][0]["title_exact"] = "Tài sản cố định hữu hình (tiếp theo)"
+
+    cluster = coalesce_gemini_json_fixed_asset_rollforward_document_v1(
+        page_records=[
+            _page_record(first_page, physical_page=10),
+            _page_record(second_page, selected_page_ordinal=2, physical_page=11),
+        ],
+        compiled_specs=_compiled(),
+    )
+
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["component_regions"] == []
+    assert "CONFIGURED_BRANCH_SEED_FRONTIER_INCOMPLETE" in cluster["reasons"]
+
+
+def test_printed_total_strict_subset_excludes_source_repaired_total_cell():
+    compiled = deepcopy(_compiled())
+    version_id = "gfpstorev1:json:" + "1" * 64
+
+    def cell(value, column_id):
+        return fixed_asset_v1._money(
+            value,
+            source_locator={
+                "column_id": column_id,
+                "page_json_version_id": version_id,
+                "row_id": "r1",
+                "section_id": "s1",
+                "table_id": "t1",
+            },
+        )
+
+    record = {
+        "cells": {"c1": cell("1", "c1"), "c2": cell("2", "c2"), "c3": cell("3", "c3")},
+        "hierarchy_path_exact": ["Nguyên giá", "Mua trong kỳ"],
+        "label_exact": "Mua trong kỳ",
+        "role": "COST_PURCHASE",
+        "row_id": "r1",
+        "source_row_id": "r1",
+        "source_ordinal": 1,
+    }
+    compiled["source_repair_overlay"] = {
+        "repairs": [
+            {
+                "base_page_json_version_id": version_id,
+                "cell_repairs": [{"cell_id": "r1:c3"}],
+                "table_ref": {"section_id": "s1", "table_id": "t1"},
+            }
+        ]
+    }
+    equation = {
+        "axis": "HORIZONTAL_ROW",
+        "equation_id": "horizontal:r1",
+        "result": {"column_id": "c3", "row_id": "r1"},
+        "terms": [
+            {"column_id": "c1", "multiplier": 1, "row_id": "r1"},
+            {"column_id": "c2", "multiplier": 1, "row_id": "r1"},
+        ],
+    }
+    result = fixed_asset_v1._build_printed_total_row_level_strict_subset(
+        records=[record],
+        row_by_id={"r1": record},
+        equations=[equation],
+        total_id="c3",
+        region={"period_end_date": "2025-12-31"},
+        unit_id="MILLION_VND",
+        raw_projection={"rows": []},
+        original_reasons=["NO_ALL_EQUATION_CLOSING_PROJECTION"],
+        compiled_specs=compiled,
+    )
+
+    assert result["mappings"] == []
+    assert result["receipt"]["excluded_rows"][0]["reasons"] == [
+        "PRINTED_TOTAL_DEPENDS_ON_AUTHENTICATED_SOURCE_REPAIR_REQUIRES_SEPARATE_REVIEW"
+    ]
+
+
+def test_row_level_equation_rejects_overlapping_source_operands():
+    cell1 = fixed_asset_v1._money(
+        "1",
+        source_locator={
+            "column_id": "c1",
+            "page_json_version_id": "gfpstorev1:json:" + "1" * 64,
+            "row_id": "r1",
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+    )
+    cell2 = fixed_asset_v1._money(
+        "2",
+        source_locator={
+            "column_id": "c2",
+            "page_json_version_id": "gfpstorev1:json:" + "1" * 64,
+            "row_id": "r1",
+            "section_id": "s1",
+            "table_id": "t1",
+        },
+    )
+    receipt = fixed_asset_v1._strict_subset_equation_receipt(
+        {
+            "axis": "HORIZONTAL_ROW",
+            "equation_id": "overlap",
+            "result": {"column_id": "c2", "row_id": "r1"},
+            "terms": [
+                {"column_id": "c1", "multiplier": 1, "row_id": "r1"},
+                {"column_id": "c1", "multiplier": 1, "row_id": "r1"},
+            ],
+        },
+        row_by_id={"r1": {"cells": {"c1": cell1, "c2": cell2}}},
+    )
+
+    assert receipt["status"] == "OVERLAPPING_OR_DUPLICATED_SOURCE_OPERAND"
+
+
 def test_endpoint_first_layout_maps_six_visible_endpoints_with_carrying_controls_only():
     _compiled_specs, _page_json, cluster, _receipt, candidate = _candidate(
         _endpoint_first_table()
