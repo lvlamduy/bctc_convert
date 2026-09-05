@@ -31,6 +31,7 @@ Bucket `test-s3-duylv`, private, versioning Enabled, SSE-S3 (`AES256`). PDF/data
 - F37 evidence + additive self-containment: `.../20260905-f37-credit-risk-provision-6feb298-v1/`
 - Cross-family audit: `.../20260905-cross-family-coverage-speed-audit-v1/`
 - Shared provenance audit: `.../20260905-shared-source-ref-provenance-audit-v1/`
+- Metadata/provenance proof and residual audits: `.../20260905-metadata-provenance-proof-v1/` (44 objects, 2,297,639 bytes)
 
 F30 đã có `SHA256SUMS.txt` (19 file, checksum manifest SHA-256 `a879b9d190d80b420b40fb4b064badccd8f01c1991257f49a9f20d36dd46d9d3`), VersionId `DA.bmeyttvtR2.oMKXGUTGIe5zQ0aMxz`.
 
