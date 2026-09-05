@@ -1,0 +1,86 @@
+{
+  "cause": {
+    "canonical_byte_count": 685,
+    "canonical_final_byte_hex": "0a",
+    "canonical_receipt_sha256": "d12d81ec0e4545aaaddb9c0ceb174cad8d6a1a43a877cee9d5ef04d3dec37868",
+    "historical_noncanonical_byte_count": 684,
+    "historical_noncanonical_receipt_sha256": "87af56b85eac5d429dae4d62fa8622a8a29632c89bd5d35000830ebee5844d35",
+    "historical_preimage_rule": "OFFICIAL_CANONICAL_BYTES_WITH_EXACTLY_THE_FINAL_LF_REMOVED",
+    "official_serializer": "bctc_ai.source_structure.contracts_v1.canonical_json_bytes_v1"
+  },
+  "correction": {
+    "after": {
+      "active_20_repair_axis_sha256": "2ad0c7a2196605cbbcc58f14eb114925d60de867286490e048f8480076d51907",
+      "active_20_spec_sha256": "1e1e46c301b67ba21cc829ad0f0b70263da47fa6af0f884bf676d088b01624cb",
+      "config_file_sha256": "fc7ede97147cea1b4f98f72a7d8378535a2851e1fc896b614e687102949d4820",
+      "first_15_repair_axis_sha256": "0bbd77cbf56376a79fcd47b185b2a0f577b29ff7c38ab4a507c013cd3d9d3b25",
+      "first_15_spec_sha256": "b9c9216f46659b6b1321a1044dc017149b761891169a6d6460616810b045a7eb",
+      "repair_id": "gjoefav1:source-repair:f1879cc27122e54d55521a02bc334f9e2a88bae3382c4f8fcb981222197925b6",
+      "render_receipt_sha256": "d12d81ec0e4545aaaddb9c0ceb174cad8d6a1a43a877cee9d5ef04d3dec37868"
+    },
+    "before": {
+      "active_20_repair_axis_sha256": "d423ba692bd0d2668b4a34c325612f3c1b1abda61b4151204f6e34a7494591d5",
+      "active_20_spec_sha256": "6266031157ecaebd0e33e608cd3554c0330aa53b0a03ce3edcf7e75020f3061f",
+      "config_file_sha256": "95b2b793004934be67b002e8a7881c775b6e623803cd059f25dd3662d51b9e31",
+      "first_15_frozen_config_file_sha256": "c484644f7db79fad9aacd245f84ed7cfce32ef657ccf77c92c5d6e462a722997",
+      "first_15_repair_axis_sha256": "65e28415acdbc40158fc0b6c256e8970d0cced7d662b4b912c51be60b1a2c427",
+      "first_15_spec_sha256": "d2f30793708513d768c2d39f7d2f7ccbf5835c4784879947a563ca28d7f4c07b",
+      "repair_id": "gjoefav1:source-repair:c85ec5959db7218399ef9f7f77e785b4063bf9258d6d1b2601b1f57ea4b52b2d",
+      "render_receipt_sha256": "87af56b85eac5d429dae4d62fa8622a8a29632c89bd5d35000830ebee5844d35"
+    },
+    "new_five_repair_axis_sha256_preserved": "f578fb2daab243c7c98675c685af95574808c63f4373d176ca2c84368dce84e0"
+  },
+  "family_id": "OPERATING_EXPENSE",
+  "format_version": "FAMILY_36_PGB_RENDER_RECEIPT_METADATA_CORRECTION_V1",
+  "historical_failed_gate_evidence": [
+    {
+      "artifact": "FAILURE_AND_REPAIR_AUTH_DIAGNOSIS.md",
+      "sha256": "b372d7c728fb267640b8fe4bdfbac9d6b593285de9484127372712c18d299fe7"
+    },
+    {
+      "artifact": "receipt-newline-preimage-proof.json",
+      "sha256": "aa1d1cd3996ac064ae2a4a370d8637145f03618ad360cbd14f5b6aba5db07c30"
+    },
+    {
+      "artifact": "process-result.json",
+      "sha256": "7e3e8c24e83c51e2cf524ccd14839f669c965c3f3d334de069f64346212ad8d6"
+    }
+  ],
+  "independent_review_evidence": [
+    {
+      "artifact": "REPORT.md",
+      "sha256": "8fe2edfddcc5965f8516fdd6c7776193f2a5f73198e135130128be2e8d40fe5e"
+    },
+    {
+      "artifact": "independent-evidence.json",
+      "sha256": "ce5ae727c5a6df9f59008928ff9ac4fc91b1e9136ff084e4d69541934005b5c3"
+    },
+    {
+      "artifact": "actual-render-receipt.canonical.json",
+      "sha256": "d12d81ec0e4545aaaddb9c0ceb174cad8d6a1a43a877cee9d5ef04d3dec37868"
+    }
+  ],
+  "preserved_invariants": [
+    "HISTORICAL_FAILED_GATE_REMAINS_FAILED_AND_IS_NOT_REWRITTEN",
+    "NO_SHARED_SERIALIZER_OR_RENDERER_CHANGE",
+    "NO_SOURCE_PDF_SELECTED_JSON_LOCATOR_CROP_GLYPH_OR_VALUE_CHANGE",
+    "NO_ALTERNATE_HASH_FALLBACK",
+    "FIVE_SEPARATELY_AUTHENTICATED_ADDITIONS_REMAIN_TYPED_JSON_IDENTICAL_AND_IN_ORDER",
+    "FRESH_AUTHENTICATION_AND_ALL_DEPENDENT_RUN_RECEIPTS_REQUIRED"
+  ],
+  "receipt_id": "f36pgbcorrectionv1:receipt:0c74918b61858dfe79fa62a0556d05aa44fd7563d6372657d085de6cf5aca11b",
+  "status": "FAMILY_LOCAL_METADATA_CORRECTION_NO_RELEASE_PROMOTION",
+  "target": {
+    "locator": {
+      "column_ordinal": 1,
+      "page_json_version_id": "gfpstorev1:json:c218f38f77287030f209bacabf381b3fd116dcb4e928c5393ddde18a3478e011",
+      "physical_page": 40,
+      "row_ordinal": 3,
+      "section_id": "s1",
+      "table_id": "t1"
+    },
+    "source_logical_name": "vietstock_bctc/PGB/2026/2_pgb_2026_7_22_3a0f521_vi_baocaotaichinh_q2_2026.pdf",
+    "source_sha256": "031a48ab510b901bef9b418fd70f6b10bc4c98d846f242d30b324d21ac9fd604",
+    "source_size_bytes": 11686004
+  }
+}

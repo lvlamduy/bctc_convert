@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from datetime import date
 from typing import Any
 from unicodedata import category as unicode_category
 from unicodedata import normalize as unicode_normalize
@@ -58,6 +59,12 @@ SOURCE_REPAIR_FORMAT_VERSION = "GEMINI_JSON_OPERATING_EXPENSE_AUTHENTICATED_SOUR
 SOURCE_ROW_COVERAGE_FORMAT_VERSION = "OPERATING_EXPENSE_SOURCE_ROW_COVERAGE_V1"
 _INTERNAL_OWNER_UNIT_REJECTION = "OPERATING_EXPENSE_INTERNAL_OWNER_CONTINUATION_UNIT_REJECTED"
 _INTERNAL_OWNER_UNIT_REJECTION_FIELD = "operating_expense_internal_owner_unit_rejection_receipts"
+_INTERNAL_OWNER_PERIOD_REJECTION = "OPERATING_EXPENSE_INTERNAL_OWNER_CONTINUATION_PERIOD_REJECTED"
+_INTERNAL_OWNER_PERIOD_REJECTION_FIELD = "operating_expense_internal_owner_period_rejection_receipts"
+_INTERNAL_OWNER_REJECTION_TYPES = (
+    (_INTERNAL_OWNER_UNIT_REJECTION_FIELD, _INTERNAL_OWNER_UNIT_REJECTION, "unit"),
+    (_INTERNAL_OWNER_PERIOD_REJECTION_FIELD, _INTERNAL_OWNER_PERIOD_REJECTION, "period"),
+)
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_OPERATING_EXPENSE_"
     "MULTITABLE_HIERARCHICAL_EXACT_SAME_DOCUMENT_PRIMARY_STATEMENT_UNIT_"
@@ -88,6 +95,32 @@ _CONTINUATION_PERIOD_HEADER_WORDS = frozenset(
     "corresponding cumulative accumulated of as at on and restated audited "
     "unaudited january february march april may june july august september "
     "october november december".split()
+)
+_CONTINUATION_MONTH_WORD_VALUES = {
+    "mot": 1, "one": 1, "hai": 2, "two": 2, "ba": 3, "three": 3,
+    "bon": 4, "four": 4, "nam": 5, "five": 5, "sau": 6, "six": 6,
+    "bay": 7, "seven": 7, "tam": 8, "eight": 8, "chin": 9, "nine": 9,
+    "muoi": 10, "ten": 10, "muoi mot": 11, "eleven": 11,
+    "muoi hai": 12, "twelve": 12,
+}
+_CONTINUATION_MONTH_WORD = "|".join(sorted({
+    token for phrase in _CONTINUATION_MONTH_WORD_VALUES for token in phrase.split()
+}))
+_CONTINUATION_MONTH_PHRASE = re.compile(
+    r"(?<![a-z0-9])(?P<count>[+-]?\s*\d+(?:\s*[-/+.,]\s*\d+)*|"
+    rf"(?:{_CONTINUATION_MONTH_WORD})(?:\s+(?:{_CONTINUATION_MONTH_WORD}))*)"
+    r"\s+(?P<unit>thang|months?)(?![a-z0-9])"
+)
+# Recognize the complete source token before calendar validation. Broad day,
+# month and short-year fields must not disappear into the shared year fallback.
+# Year-first tokens are observed but remain unsupported by the shared DMY axis.
+_CONTINUATION_VISIBLE_DATE = re.compile(
+    r"(?<![a-z0-9])(?:"
+    r"(?P<iso_year>\d{4})\s*[./-]\s*(?P<iso_month>\d+)\s*[./-]\s*(?P<iso_day>\d+)|"
+    r"(?:ngay\s*)?(?P<word_day>\d+)\s+thang\s+(?P<word_month>\d+)\s+nam\s+(?P<word_year>\d+)|"
+    r"(?P<day>\d+)\s*[./-]\s*(?P<month>\d+)\s*[./-]\s*(?P<year>\d+)|"
+    r"(?P<space_day>\d+)\s+(?P<space_month>\d+)\s+(?P<space_year>(?:19|20)\d{2})"
+    r")(?![a-z0-9])"
 )
 
 
@@ -565,6 +598,18 @@ def _continuation_unit_frontier_is_safe(
                     ),
                     surface,
                 )
+                # Consume spelled counts only in a governed month phrase;
+                # e.g. "ten months" is duration syntax, bare TEN is not.
+                surface = _CONTINUATION_MONTH_PHRASE.sub(
+                    lambda match: (
+                        str(_CONTINUATION_MONTH_WORD_VALUES[match["count"]])
+                        + " " + match["unit"]
+                        if match["count"] in _CONTINUATION_MONTH_WORD_VALUES
+                        else match[0]
+                    ),
+                    surface,
+                )
+                surface = re.sub(r"\bket thuc\b", "ended", surface)
                 if any(
                     not token.isdecimal() and token not in _CONTINUATION_PERIOD_HEADER_WORDS
                     for token in surface.split()
@@ -932,6 +977,235 @@ def _duration_axis_with_optional_owner_prefix_projection(
     return None
 
 
+def _continuation_calendar_frontier(surface: str) -> tuple[str, list[dict[str, Any]]]:
+    """Validate visible date tokens without assigning a period or century.
+
+    Keep punctuation until signed counts and date forms have been observed.
+    Mask the entire calendar token before month-duration inspection, so a day
+    in ``ngày 3 tháng 6 năm 2026`` cannot become a three-month duration.
+    """
+
+    folded = unicode_normalize("NFD", unicode_normalize("NFKC", surface).casefold().replace("đ", "d"))
+    folded = "".join(character for character in folded if unicode_category(character) != "Mn")
+    folded = folded.replace("\\n", " ").translate(str.maketrans({"−": "-", "–": "-", "—": "-"}))
+    evidence = []
+
+    def observe(match: re.Match[str]) -> str:
+        prefix = next(prefix for prefix in ("iso_", "word_", "space_", "") if match[prefix + "year"] is not None)
+        year, month, day = (match[prefix + field] for field in ("year", "month", "day"))
+        parsed = None
+        # Observe even arbitrarily long malformed fields, but never convert
+        # unbounded integers or interpret their valid-looking suffixes.
+        if len(year) == 4 and len(day) <= 2 and len(month) <= 2:
+            try:
+                parsed = date(int(year), int(month), int(day))
+            except ValueError:
+                # Match existing DMY authority's unambiguous MDY fallback.
+                # Written Vietnamese and year-first dates have no such swap.
+                if prefix in {"", "space_"} and int(month) > 12:
+                    try:
+                        parsed = date(int(year), int(day), int(month))
+                    except ValueError:
+                        pass
+        evidence.append({
+            "calendar_date": parsed.isoformat() if parsed is not None else None,
+            "calendar_valid": parsed is not None,
+            "date_token": match[0],
+            "source_form": prefix.rstrip("_") or "numeric_dmy_with_unambiguous_mdy_fallback",
+        })
+        return " "
+
+    return _CONTINUATION_VISIBLE_DATE.sub(observe, folded), evidence
+
+
+def _continuation_duration_month_frontier(surface: str) -> dict[str, Any]:
+    """Inspect folded, date-masked text; retain bad as well as valid counts."""
+
+    evidence = []
+
+    def observe(match: re.Match[str]) -> str:
+        # The sign remains part of the observed token even across whitespace.
+        # This is not arithmetic: "- 2" must never become unsigned "2".
+        token = " ".join(match["count"].split())
+        count = (
+            int(token) if token.isdecimal() and len(token) <= 4
+            else _CONTINUATION_MONTH_WORD_VALUES.get(token)
+        )
+        evidence.append({
+            "count": count,
+            "count_token": token,
+            "valid": count is not None and 1 <= count <= 12,
+        })
+        return " "
+
+    remainder = _CONTINUATION_MONTH_PHRASE.sub(observe, surface)
+    unexplained_month_surface = bool(re.search(r"\b(?:thang|months?)\b", remainder))
+    counts = sorted({item["count"] for item in evidence if item["count"] is not None})
+    return {
+        "counts": counts,
+        "evidence": evidence,
+        "unexplained_month_surface": unexplained_month_surface,
+        "valid": not unexplained_month_surface and len(counts) <= 1
+        and all(item["valid"] for item in evidence),
+    }
+
+
+def _continuation_period_qualifiers(
+    table: Mapping[str, Any], money_ordinals: Sequence[int]
+) -> list[dict[str, Any]]:
+    """Keep explicit duration qualifiers that the shared bare-year axis omits.
+
+    This comparison-only axis assigns no period/date. In particular a Roman
+    quarter label remains observable even when shared parsing returns a year.
+    """
+
+    roman = {"i": 1, "ii": 2, "iii": 3, "iv": 4}
+    result = []
+    for ordinal in money_ordinals:
+        path = table["columns"][ordinal - 1]["header_path_exact"]
+        raw_surface = " ".join(segment for segment in path if type(segment) is str)
+        duration_surface, calendar_evidence = _continuation_calendar_frontier(raw_surface)
+        month_frontier = _continuation_duration_month_frontier(duration_surface)
+        surface = _normalized(raw_surface)
+        quarter_tokens = re.findall(r"\b(?:quy|quarter)\s+([a-z0-9]+)\b", surface)
+        quarters = [
+            roman.get(token, int(token) if token in {"1", "2", "3", "4"} else None)
+            for token in quarter_tokens
+        ]
+        result.append({
+            "money_column_ordinal": ordinal,
+            "raw_header_path_exact": canonical_clone_v1(path),
+            "calendar_evidence": calendar_evidence,
+            "duration_month_frontier": month_frontier,
+            "qualifiers": {
+                "calendar_dates": list(dict.fromkeys(
+                    item["calendar_date"] for item in calendar_evidence if item["calendar_valid"]
+                )),
+                "cumulative": bool(re.search(
+                    r"\b(?:luy ke|tu dau nam|year to date|cumulative|accumulated)\b", surface
+                )),
+                "duration_month_counts": month_frontier["counts"],
+                "quarter_numbers": sorted({value for value in quarters if value is not None}),
+            },
+            "valid": None not in quarters and len(set(quarters)) <= 1
+            and month_frontier["valid"]
+            and all(item["calendar_valid"] for item in calendar_evidence),
+        })
+    return result
+
+
+def _continuation_period_alignment(
+    prior_table: Mapping[str, Any],
+    receiver_table: Mapping[str, Any],
+    *,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Prove source-period compatibility and a semantic/physical bijection.
+
+    A blank receiver inherits *physical* positions from its sender. Explicit
+    headers must instead agree in source precision, dates and duration basis;
+    their parsed semantic ordinals determine any private cell permutation.
+    """
+
+    prior_axis = _duration_multitable_lane_axis(prior_table, compiled_specs=compiled_specs)
+    receiver_axis = _duration_multitable_lane_axis(receiver_table, compiled_specs=compiled_specs)
+    prior_physical = _money_column_ordinals(prior_table)
+    receiver_physical = _money_column_ordinals(receiver_table)
+    expected_lanes = [["SEMANTIC_ALIAS", role] for role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")]
+    receiver_blank = _blank_money_header_axis(receiver_table)
+
+    def complete_axis(axis: Mapping[str, Any], physical: Sequence[int]) -> bool:
+        ordinals = axis.get("money_column_ordinals")
+        return bool(
+            len(physical) == 2
+            and axis.get("complete") is True
+            and same_typed_json_v1(axis.get("lane_keys"), expected_lanes)
+            and type(ordinals) is list
+            and len(ordinals) == 2
+            and all(type(ordinal) is int for ordinal in ordinals)
+            and len(set(ordinals)) == 2
+            and set(ordinals) == set(physical)
+            and type(axis.get("source_lane_keys")) is list
+            and len(axis["source_lane_keys"]) == 2
+        )
+
+    reasons = []
+    prior_complete = complete_axis(prior_axis, prior_physical)
+    receiver_complete = complete_axis(receiver_axis, receiver_physical)
+    if not prior_complete:
+        reasons.append("PRIOR_SOURCE_DURATION_AXIS_INCOMPLETE")
+    if len(receiver_physical) != 2:
+        reasons.append("RECEIVER_SOURCE_MONEY_AXIS_NOT_BIJECTIVE")
+    if not receiver_blank and not receiver_complete:
+        reasons.append("RECEIVER_EXPLICIT_DURATION_AXIS_INCOMPLETE")
+    prior_semantic = prior_axis["money_column_ordinals"] if prior_complete else []
+    receiver_semantic = receiver_axis["money_column_ordinals"] if receiver_complete else []
+    prior_qualifiers = _continuation_period_qualifiers(prior_table, prior_semantic)
+    receiver_qualifiers = _continuation_period_qualifiers(receiver_table, receiver_semantic)
+    for axis, qualifiers in ((prior_axis, prior_qualifiers), (receiver_axis, receiver_qualifiers)):
+        for key, item in zip(axis.get("source_lane_keys", []), qualifiers, strict=False):
+            visible_dates = item["qualifiers"]["calendar_dates"]
+            if visible_dates and (
+                key[0] not in {"DURATION_DATE_RANGE", "DURATION_END_DATE"}
+                or not same_typed_json_v1(visible_dates, key[1:])
+            ):
+                reasons.append("EXPLICIT_CALENDAR_TOKENS_NOT_FULLY_BOUND_BY_SOURCE_DURATION_AXIS")
+    if prior_complete and receiver_blank and len(receiver_physical) == 2:
+        receiver_semantic = [
+            receiver_physical[prior_physical.index(ordinal)] for ordinal in prior_semantic
+        ]
+    elif prior_complete and receiver_complete:
+        if not same_typed_json_v1(prior_axis["source_lane_keys"], receiver_axis["source_lane_keys"]):
+            reasons.append("EXPLICIT_SOURCE_DURATION_OR_PRECISION_CONFLICT")
+        if not same_typed_json_v1(
+            [item["qualifiers"] for item in prior_qualifiers],
+            [item["qualifiers"] for item in receiver_qualifiers],
+        ):
+            reasons.append("EXPLICIT_SOURCE_DURATION_QUALIFIER_CONFLICT")
+    if any(item["valid"] is not True for item in [*prior_qualifiers, *receiver_qualifiers]):
+        reasons.append("EXPLICIT_SOURCE_DURATION_QUALIFIER_INVALID")
+    material = {
+        "compatible": not reasons,
+        "prior_lane_axis": canonical_clone_v1(prior_axis),
+        "prior_money_column_ordinals": canonical_clone_v1(prior_semantic),
+        "prior_period_qualifiers": prior_qualifiers,
+        "receiver_headers_blank": receiver_blank,
+        "receiver_lane_axis": canonical_clone_v1(receiver_axis),
+        "receiver_money_column_ordinals": canonical_clone_v1(receiver_semantic),
+        "receiver_period_qualifiers": receiver_qualifiers,
+        "reasons": sorted(set(reasons)),
+        "rule": (
+            "COMPLETE_SEMANTIC_LANE_BIJECTION_WITH_EXACT_SOURCE_DURATION_AND_"
+            "QUALIFIERS_OR_BLANK_RECEIVER_PHYSICAL_POSITION_INHERITANCE_"
+            "NO_VALUE_PERIOD_SCALE_OR_BLANK_INFERENCE"
+        ),
+    }
+    return {
+        **material,
+        "alignment_id": "gjoefav1:continuation-period-alignment:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _aligned_continuation_row(
+    row: Mapping[str, Any], *, before_ordinals: Sequence[int], after_ordinals: Sequence[int], width: int
+) -> dict[str, Any]:
+    values = row.get("values_exact")
+    if (
+        type(values) is not list or len(before_ordinals) != len(after_ordinals)
+        or len(set(before_ordinals)) != len(before_ordinals)
+        or len(set(after_ordinals)) != len(after_ordinals)
+        or any(type(ordinal) is not int or not 1 <= ordinal <= len(values) for ordinal in before_ordinals)
+        or any(type(ordinal) is not int or not 1 <= ordinal <= width for ordinal in after_ordinals)
+    ):
+        raise _error("operating-expense continuation source column bijection is invalid")
+    projected = canonical_clone_v1(row)
+    aligned = [None] * width
+    for before, after in zip(before_ordinals, after_ordinals, strict=True):
+        aligned[after - 1] = canonical_clone_v1(values[before - 1])
+    projected["values_exact"] = aligned
+    return projected
+
+
 def _complete_owner_continuation_projection(
     *,
     pages: Mapping[str, dict[str, Any]],
@@ -1009,20 +1283,15 @@ def _complete_owner_continuation_projection(
     if prior_axis_result is None:
         return None
     projected_prior_source, prior_lane_axis, header_changes = prior_axis_result
-    prior_money_ordinals = _money_column_ordinals(projected_prior_source)
-    receiver_money_ordinals = _money_column_ordinals(receiver_table)
-    if len(prior_money_ordinals) != 2 or len(receiver_money_ordinals) != 2:
+    period_alignment = _continuation_period_alignment(
+        projected_prior_source, receiver_table, compiled_specs=compiled_specs
+    )
+    if period_alignment["compatible"] is not True:
         return None
-    receiver_headers_blank = _blank_money_header_axis(receiver_table)
-    receiver_lane_axis = None
-    if not receiver_headers_blank:
-        receiver_lane_axis = _duration_multitable_lane_axis(
-            receiver_table, compiled_specs=compiled_specs
-        )
-        if receiver_lane_axis.get("complete") is not True or receiver_lane_axis.get(
-            "lane_keys"
-        ) != prior_lane_axis.get("lane_keys"):
-            return None
+    prior_money_ordinals = period_alignment["prior_money_column_ordinals"]
+    receiver_money_ordinals = period_alignment["receiver_money_column_ordinals"]
+    receiver_headers_blank = period_alignment["receiver_headers_blank"]
+    receiver_lane_axis = None if receiver_headers_blank else period_alignment["receiver_lane_axis"]
     # The exact owner prefix has already been authenticated and removed from
     # the projected period headers above.  Unit parsing must use that private
     # header projection too; on the raw table the owner text is deliberately
@@ -1229,18 +1498,11 @@ def _complete_owner_continuation_projection(
         normalize_detail_subtotal: bool,
     ) -> None:
         projected_row = canonical_clone_v1(row)
-        if list(before_money_ordinals) != prior_money_ordinals:
-            values = row.get("values_exact")
-            if type(values) is not list:
-                raise _error("operating-expense continuation row value axis is invalid")
-            aligned = [None] * len(projected_prior_table["columns"])
-            for before_ordinal, after_ordinal in zip(
-                before_money_ordinals, prior_money_ordinals, strict=True
-            ):
-                if before_ordinal > len(values):
-                    raise _error("operating-expense continuation MONEY cell is absent")
-                aligned[after_ordinal - 1] = canonical_clone_v1(values[before_ordinal - 1])
-            projected_row["values_exact"] = aligned
+        if region == receiver_region:
+            projected_row = _aligned_continuation_row(
+                row, before_ordinals=before_money_ordinals, after_ordinals=prior_money_ordinals,
+                width=len(projected_prior_table["columns"]),
+            )
         if scope_to_parent:
             if type(parent_label) is not str:
                 raise _error("operating-expense continuation parent label is invalid")
@@ -1341,6 +1603,7 @@ def _complete_owner_continuation_projection(
         "original_regions": original_regions,
         "prior_classification_id": prior_classification["classification_id"],
         "prior_lane_axis": prior_lane_axis,
+        "period_alignment_receipt": period_alignment,
         "prior_locator": _region_locator(prior_region),
         "prior_marker": prior_table.get("continuation"),
         "prior_scoped_row_ordinals": prior_scoped_ordinals,
@@ -1384,6 +1647,7 @@ def _internal_owner_continuation_projection(
     regions: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
     unit_rejections: list[dict[str, Any]] | None = None,
+    period_rejections: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], dict[str, Any]] | None:
     """Expose one exact internal owner that begins a split source schedule.
 
@@ -1502,10 +1766,8 @@ def _internal_owner_continuation_projection(
     receiver_title = receiver_table.get("title_exact")
     receiver_section_title = receiver_section.get("title_exact")
     receiver_money_ordinals = _money_column_ordinals(receiver_table)
-    if (
-        unit_rejections is not None
-        and prior_axis_result is not None
-        and len(receiver_money_ordinals) == 2
+    receiver_structurally_proven = bool(
+        len(receiver_money_ordinals) == 2
         and type(receiver_rows) is list
         and len(receiver_rows) >= 2
         and _receiver_continuation_narratives(receiver_section) is not None
@@ -1527,7 +1789,8 @@ def _internal_owner_continuation_projection(
         and receiver_classification.get("total_rows")
         == [{"row_kind": "TOTAL", "row_ordinal": len(receiver_rows), "source_order": len(receiver_rows)}]
         and _observed_vector(receiver_rows[-1], receiver_money_ordinals) is not None
-    ):
+    )
+    if unit_rejections is not None and prior_axis_result is not None and receiver_structurally_proven:
         unit_frontiers = []
         for region, raw_page, raw_table, unit_table in (
             (prior_region, prior_page, prior_table, prior_axis_result[0]),
@@ -1602,6 +1865,56 @@ def _internal_owner_continuation_projection(
                 }
             )
             return None
+    if period_rejections is not None and receiver_structurally_proven:
+        period_alignment = _continuation_period_alignment(
+            prior_axis_result[0] if prior_axis_result is not None else prepared_table,
+            receiver_table,
+            compiled_specs=compiled_specs,
+        )
+        if period_alignment["compatible"] is not True:
+            material = {
+                "family_id": FAMILY_ID,
+                "original_query_receipt": (
+                    build_gemini_json_multitable_hierarchical_region_query_receipt_v1(
+                        [prior_region, receiver_region]
+                    )
+                ),
+                "original_regions": canonical_clone_v1([prior_region, receiver_region]),
+                "owner_proof": {
+                    "declared_roles": sorted(declared_roles),
+                    "owner_row": canonical_clone_v1(owner_row),
+                    "owner_row_ordinal": owner_ordinal,
+                    "prepared_classification_id": prepared_classification["classification_id"],
+                    "required_role_combinations": canonical_clone_v1(
+                        compiled_specs["topology"]["required_role_combinations"]
+                    ),
+                },
+                "period_alignment_receipt": period_alignment,
+                "reason": _INTERNAL_OWNER_PERIOD_REJECTION,
+                "rule": (
+                    "EXACT_VISIBLE_INTERNAL_OWNER_WITH_REQUIRED_ROLES_AND_ADJACENT_"
+                    "RECIPROCAL_RECEIVER_IS_OBSERVED_BUT_INCOMPLETE_OR_CONFLICTING_"
+                    "SOURCE_PERIOD_AXES_PREVENT_MAPPING_NO_SOURCE_MUTATION"
+                ),
+                "source_frontiers": [
+                    {
+                        "locator": _region_locator(region),
+                        "raw_columns": canonical_clone_v1(raw_table["columns"]),
+                        "source_page_sha256": canonical_json_sha256_v1(raw_page),
+                        "source_table_sha256": canonical_json_sha256_v1(raw_table),
+                    }
+                    for region, raw_page, raw_table in (
+                        (prior_region, prior_page, prior_table),
+                        (receiver_region, receiver_page, receiver_table),
+                    )
+                ],
+            }
+            period_rejections.append({
+                **material,
+                "receipt_id": "gjoefav1:internal-owner-period-rejection:"
+                + canonical_json_sha256_v1(material),
+            })
+            return None
     projected = _complete_owner_continuation_projection(
         pages=prepared_pages,
         regions=[prepared_prior_region, receiver_region],
@@ -1643,13 +1956,13 @@ def _internal_owner_continuation_projection(
     return projected_pages, projected_regions, receipt
 
 
-def _internal_owner_unit_rejection_axis(
+def _internal_owner_rejection_axes(
     *,
     document: Mapping[str, Any],
     selected_page_axis: Sequence[Mapping[str, Any]],
     pages: Mapping[str, dict[str, Any]],
     compiled_specs: Mapping[str, Any],
-) -> list[dict[str, Any]]:
+) -> dict[str, list[dict[str, Any]]]:
     """Rebuild rejected-owner evidence from selected source, not query claims.
 
     Scanning raw selected table locators also detects a receipt that was removed
@@ -1666,7 +1979,8 @@ def _internal_owner_unit_rejection_axis(
         key=lambda item: item["selected_page_ordinal"],
     )
     selected_by_ordinal = {item["selected_page_ordinal"]: item for item in selected}
-    receipts: list[dict[str, Any]] = []
+    unit_receipts: list[dict[str, Any]] = []
+    period_receipts: list[dict[str, Any]] = []
 
     def region_for(
         page_axis: Mapping[str, Any], section_id: str, table_id: str, fragment: int
@@ -1722,9 +2036,13 @@ def _internal_owner_unit_rejection_axis(
                         region_for(receiver_axis, "s1", "t1", 2),
                     ],
                     compiled_specs=compiled_specs,
-                    unit_rejections=receipts,
+                    unit_rejections=unit_receipts,
+                    period_rejections=period_receipts,
                 )
-    return receipts
+    return {
+        _INTERNAL_OWNER_UNIT_REJECTION_FIELD: unit_receipts,
+        _INTERNAL_OWNER_PERIOD_REJECTION_FIELD: period_receipts,
+    }
 
 
 def _continuation_projection(
@@ -1806,6 +2124,13 @@ def _continuation_projection(
     prior_lane_axis = _duration_multitable_lane_axis(
         stripped_prior_table, compiled_specs=compiled_specs
     )
+    period_alignment = _continuation_period_alignment(
+        stripped_prior_table, receiver_table, compiled_specs=compiled_specs
+    )
+    if period_alignment["compatible"] is not True:
+        return None
+    prior_money_ordinals = period_alignment["prior_money_column_ordinals"]
+    receiver_semantic_ordinals = period_alignment["receiver_money_column_ordinals"]
     prior_unit = _local_explicit_unit(stripped_prior_table, compiled_specs=compiled_specs)
     receiver_unit = _local_explicit_unit(receiver_table, compiled_specs=compiled_specs)
     prior_classification = classify_gemini_json_multitable_hierarchical_table_v1(
@@ -1931,15 +2256,20 @@ def _continuation_projection(
         projected_rows.append(canonical_clone_v1(row))
         row_projections.append(
             {
+                "after_money_column_ordinals": canonical_clone_v1(prior_money_ordinals),
                 "after_row": canonical_clone_v1(projected_rows[-1]),
                 "before_locator": _region_locator(prior_region),
+                "before_money_column_ordinals": canonical_clone_v1(prior_money_ordinals),
                 "before_row": canonical_clone_v1(row),
                 "before_row_ordinal": row_ordinal,
                 "projected_row_ordinal": len(projected_rows),
             }
         )
     for row_ordinal, row in enumerate(receiver_rows, start=1):
-        projected_row = canonical_clone_v1(row)
+        projected_row = _aligned_continuation_row(
+            row, before_ordinals=receiver_semantic_ordinals, after_ordinals=prior_money_ordinals,
+            width=len(projected_prior_table["columns"]),
+        )
         if row_ordinal < boundary_ordinal:
             projected_row["hierarchy_path_exact"] = [
                 prior_title,
@@ -1949,8 +2279,10 @@ def _continuation_projection(
         projected_rows.append(projected_row)
         row_projections.append(
             {
+                "after_money_column_ordinals": canonical_clone_v1(prior_money_ordinals),
                 "after_row": canonical_clone_v1(projected_row),
                 "before_locator": _region_locator(receiver_region),
+                "before_money_column_ordinals": canonical_clone_v1(receiver_semantic_ordinals),
                 "before_row": canonical_clone_v1(row),
                 "before_row_ordinal": row_ordinal,
                 "projected_row_ordinal": len(projected_rows),
@@ -1999,6 +2331,7 @@ def _continuation_projection(
         "original_regions": original_regions,
         "prior_classification_id": prior_classification["classification_id"],
         "prior_lane_axis": canonical_clone_v1(prior_lane_axis),
+        "period_alignment_receipt": period_alignment,
         "prior_locator": _region_locator(prior_region),
         "prior_unit": canonical_clone_v1(prior_unit),
         "projected_classification_id": projected_classification["classification_id"],
@@ -2110,8 +2443,27 @@ def _restore_continuation_mapping_source_refs(
             )
             source_ref["row_kind"] = before_row.get("row_kind")
             before_money_ordinals = projection.get("before_money_column_ordinals")
-            if type(before_money_ordinals) is list:
-                source_ref["money_column_ordinals"] = canonical_clone_v1(before_money_ordinals)
+            after_money_ordinals = projection.get("after_money_column_ordinals")
+            referenced_ordinals = source_ref.get("money_column_ordinals")
+            if (
+                type(before_money_ordinals) is not list
+                or type(after_money_ordinals) is not list
+                or type(referenced_ordinals) is not list
+                or len(before_money_ordinals) != len(after_money_ordinals)
+                or any(
+                    type(ordinal) is not int or ordinal <= 0
+                    for ordinal in [*before_money_ordinals, *after_money_ordinals, *referenced_ordinals]
+                )
+                or len(set(before_money_ordinals)) != len(before_money_ordinals)
+                or len(set(after_money_ordinals)) != len(after_money_ordinals)
+                or len(set(referenced_ordinals)) != len(referenced_ordinals)
+                or not set(referenced_ordinals) <= set(after_money_ordinals)
+            ):
+                raise _error("operating-expense continuation inverse source column map drifted")
+            inverse_columns = dict(zip(after_money_ordinals, before_money_ordinals, strict=True))
+            source_ref["money_column_ordinals"] = [
+                inverse_columns[ordinal] for ordinal in referenced_ordinals
+            ]
         mapping_material = {key: item for key, item in mapping.items() if key != "item_mapping_id"}
         mapping["item_mapping_id"] = "gjmthfmv1:item:" + canonical_json_sha256_v1(mapping_material)
     candidate["component_regions"] = canonical_clone_v1(original_regions)
@@ -3497,20 +3849,26 @@ def build_gemini_json_operating_expense_indexed_query_evidence_v1(
     for disposition in base["candidate_dispositions"]:
         cluster = canonical_clone_v1(disposition["cluster"])
         pages = page_json_by_document.get(disposition["document_ordinal"])
-        unit_rejections = (
-            _internal_owner_unit_rejection_axis(
+        rejection_axes = (
+            _internal_owner_rejection_axes(
                 document=cluster,
                 selected_page_axis=base["selected_page_axis"],
                 pages=pages,
                 compiled_specs=compiled_specs,
             )
             if type(pages) is dict
-            else []
+            else {}
         )
-        if unit_rejections:
-            cluster[_INTERNAL_OWNER_UNIT_REJECTION_FIELD] = unit_rejections
+        rejection_reasons = [
+            reason for field, reason, _kind in _INTERNAL_OWNER_REJECTION_TYPES
+            if rejection_axes.get(field)
+        ]
+        if rejection_reasons:
+            for field, _reason, _kind in _INTERNAL_OWNER_REJECTION_TYPES:
+                if rejection_axes.get(field):
+                    cluster[field] = rejection_axes[field]
             cluster["component_regions"] = []
-            cluster["reasons"] = [_INTERNAL_OWNER_UNIT_REJECTION]
+            cluster["reasons"] = sorted(rejection_reasons)
             cluster["status"] = UNRESOLVED
             material = {key: item for key, item in cluster.items() if key != "cluster_id"}
             cluster["cluster_id"] = "gjmthfcv1:cluster:" + canonical_json_sha256_v1(material)
@@ -3938,30 +4296,33 @@ def build_gemini_json_operating_expense_trials_v1(
         source_pages = page_json_by_document.get(document_ordinal)
         if type(source_pages) is not dict:
             raise _error("operating-expense unit-rejection replay selected document is absent")
-        expected_unit_rejections = _internal_owner_unit_rejection_axis(
+        expected_rejection_axes = _internal_owner_rejection_axes(
             document=cluster,
             selected_page_axis=evidence["selected_page_axis"],
             pages=source_pages,
             compiled_specs=compiled_specs,
         )
-        recorded_unit_rejections = cluster.get(_INTERNAL_OWNER_UNIT_REJECTION_FIELD)
-        if (
-            (
-                expected_unit_rejections
-                and (
-                    not same_typed_json_v1(recorded_unit_rejections, expected_unit_rejections)
-                    or cluster["status"] != UNRESOLVED
-                    or cluster["component_regions"] != []
-                    or cluster["reasons"] != [_INTERNAL_OWNER_UNIT_REJECTION]
+        expected_reasons = sorted(
+            reason for field, reason, _kind in _INTERNAL_OWNER_REJECTION_TYPES
+            if expected_rejection_axes[field]
+        )
+        for field, reason, kind in _INTERNAL_OWNER_REJECTION_TYPES:
+            expected_rejections = expected_rejection_axes[field]
+            recorded_rejections = cluster.get(field)
+            if (
+                (
+                    expected_rejections
+                    and (
+                        not same_typed_json_v1(recorded_rejections, expected_rejections)
+                        or cluster["status"] != UNRESOLVED
+                        or cluster["component_regions"] != []
+                        or cluster["reasons"] != expected_reasons
+                    )
                 )
-            )
-            or (not expected_unit_rejections and recorded_unit_rejections is not None)
-            or (
-                not expected_unit_rejections
-                and _INTERNAL_OWNER_UNIT_REJECTION in cluster.get("reasons", [])
-            )
-        ):
-            raise _error("operating-expense internal-owner unit-rejection source replay drifted")
+                or (not expected_rejections and recorded_rejections is not None)
+                or (not expected_rejections and reason in cluster.get("reasons", []))
+            ):
+                raise _error(f"operating-expense internal-owner {kind}-rejection source replay drifted")
         candidates = []
         mappings = []
         reasons = []
