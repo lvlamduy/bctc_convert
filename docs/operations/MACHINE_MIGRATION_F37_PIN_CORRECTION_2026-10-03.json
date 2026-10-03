@@ -1,0 +1,24 @@
+{
+  "classification": "DOCUMENTATION_TRANSCRIPTION_ERROR",
+  "base_git_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+  "migration_document": "docs/operations/MACHINE_MIGRATION_CHECKPOINT_2026-09-05.md",
+  "migration_manifest": {
+    "bucket": "test-s3-duylv",
+    "key": "bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/manifest/migration-manifest-final.json",
+    "sha256": "2376cb2cbebdbe8d55f18679ee0982b7ee77a9bf610a5d214b75d32fe8bb6312",
+    "version_id": "0_OPgrF.1VhQ9unZoVC4fyuNV2a0GF4a"
+  },
+  "affected_file": "config/families/tm-credit-risk-provision-expense-pdf-residual-audit-common204-v1.json",
+  "incorrect_63_character_pin": "6fdb4c377eea3a6e84262c4203e850950301edc721c72a08f864ca8e0ad4801",
+  "correct_64_character_pin": "6fdb4c377ee2a3a6e84262c4203e850950301edc721c72a08f864ca8e0ad4801",
+  "actual_base_git_blob_sha256": "6fdb4c377ee2a3a6e84262c4203e850950301edc721c72a08f864ca8e0ad4801",
+  "external_correction_receipt_sha256": "725e60c179b419556c85fa6b5f1e4bd3354b800c5d23c2de2be91dc9346c9817",
+  "scope": "Only the printed F37 pin above. No other pin, artifact, base history or S3 manifest is changed.",
+  "other_26_migration_pins_unchanged": true,
+  "final_restore_preflight_receipt": {
+    "filename": "FINAL_RESTORE_PREFLIGHT_2025_CURRENT_V4_1791026731375043106.json",
+    "sha256": "9429c4660646f3caba9febab90b8de951f41e8fe6ce9c36ab683b62989cd1383",
+    "status": "PASS"
+  },
+  "F37_family_acceptance_claimed": false
+}

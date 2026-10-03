@@ -1,0 +1,28 @@
+{
+  "authority": "Explicit user instruction in the project thread on 2026-10-03",
+  "active_integrator": "LAPTOP_INTEGRATOR",
+  "vps_wait_required": false,
+  "objective": "Complete remaining financial-statement families and improve earlier families when evidence shows errors or omissions. Digitize source PDFs into authenticated database values and Excel matching the schema/template.",
+  "conceptual_family_count": 55,
+  "report_year_from": 2025,
+  "through": "current",
+  "production_2024_allowed": false,
+  "continuation_order": ["F39", "F36", "F37", "remaining_families"],
+  "F41_before_F39_F36_F37_terminal_allowed": false,
+  "active_work_branch": "codex/f39-income-tax-laptop",
+  "branch_base_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+  "direct_common_branch_push_allowed": false,
+  "provider_calls_in_restore_or_F39_F36_F37_allowed": false,
+  "shared_files_frozen": true,
+  "VPS_work_policy": "Preserve, independently review, rerun focused regression, and integrate only supported changes. The stopped worker's release is not fabricated.",
+  "accuracy_policy": "Source-visible and receipt-authenticated; blank is not zero, units are not guessed from magnitude, source values are not backsolved. Genuine ambiguity stays explicit.",
+  "performance_policy": "Reuse immutable selected Gemini JSON in SQLite. Bound caches to source/config/receipt identities; verify independently from the source before sealing.",
+  "restore_preflight": {
+    "status": "PASS",
+    "receipt_sha256": "9429c4660646f3caba9febab90b8de951f41e8fe6ce9c36ab683b62989cd1383",
+    "focused_F39_shared_tests": 221,
+    "focused_F39_shared_failures": 0,
+    "preserved_broader_diagnostic": "325 tests: 323 PASS, two F36 runner-test failures. Not waived; update in F36's phase per migration sections 5 and 10."
+  },
+  "family_or_Excel_completion_claimed": false
+}
