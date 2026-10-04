@@ -75,10 +75,13 @@ Artifact roots:
 
 ## Still required
 
-The new full271 accounting run is in progress at this checkpoint. Counts, cold
-replay, fresh SQLite persistence and integrity are not yet claimed as passed.
-An accounting run remains EXPERIMENTAL until its full source/PDF residual audit,
-common204 independent accounting run, projection and release ledger are sealed.
+The full271 accounting run has now completed as **EXPERIMENTAL**, with 200 READY /
+0 NOT_OBSERVED / 71 UNRESOLVED and 720 exported mappings. Exact independent cold
+source replay, fresh SQLite persistence, exact reload, quick_check (`ok`) and
+foreign_key_check (no rows) pass. The source-observation contract reports zero
+violations. All 13 registered pixel repairs replay. These results are not family
+acceptance: the full source/PDF residual audit, independent common204 accounting
+run, projection and release ledger still require completion.
 
 The six-document panel on the preceding 364-test bytes gave 3 READY / 3 UNRESOLVED.
 It is not full-corpus acceptance. SSB's opposite expense sign presentation and
@@ -88,3 +91,66 @@ visibly prints different prior-year adjustments, 8.966 versus 9.035, in two
 presentations; retain and authenticate that source conflict without changing
 either amount. Its current early semantic rejection is not yet a sealed conflict
 disposition. No family completion or Excel completion is claimed here.
+
+## Completed experimental full271 accounting result
+
+Run directory:
+`/srv/bctc-receipts/f39-full271-sourcefix-d4c7b792d4334a01b518618f414d3147/`.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `income-tax-sweep.json` (49,082,721 bytes) | `a574d9f5803fd0bb77c1b47c007307427ce94c7ecd06dd3ceeee18eae7eead9c` |
+| `income-tax-audit.json` (411,562 bytes) | `55baf2ff213aedfcbb08101116e13eee727c133b972529b6a790c5c7ef9f23e8` |
+| `f39-results.sqlite3` (82,530,304 bytes) | `707cb0a91440230cf473eceb2465252b998cb180f338f2c4ab225c0a4173de28` |
+
+Run ID: `gjfafstorev1:run:07118535579e1bbc6f4dd6ad99a854eff0ad9265e419bcfb9d41d45df75a1477`.
+Sweep ID: `gjfafsv1:sweep:174592230190ff87854ea4a5642dd97a49e83f59f46d0a0c37a8bb4989334478`.
+
+Post-run gate report:
+`/srv/bctc-receipts/f39-full271-sourcefix-gate-report-d876c3980b7f44b18bc184606715e382/F39_FULL271_SOURCEFIX_EXPERIMENTAL_GATE_REPORT.json`,
+SHA-256 `e655432ff69dac5f7f1623addc21405ca1d4850a124a33876bf2eba98b7171fa`.
+It independently verifies artifact hashes, the fresh SQLite checks, the 13
+registered repair receipts, and every source/config/test byte from the focused
+witness. Its state is explicitly `PASS_EXPERIMENTAL_WORKFLOW_FAMILY_ACCEPTANCE_INCOMPLETE`.
+
+The 71 held documents are an investigation frontier, **not** 71 authenticated
+genuine source conflicts. The new controls reveal these groups:
+
+| Current reason | Documents | Next investigation |
+| --- | ---: | --- |
+| Opposite direct note / primary signs | 29 | Prove source-visible expense presentation, periods and units; retain original numeric values |
+| Other direct note / primary mismatch | 17 | Compare actual role, period, unit and population evidence |
+| Current-tax parent semantic guard | 9 | Exact aliases and explicit source hierarchy; known other subtotals remain vetoed |
+| Supplemental root control mismatch | 7 | Root/source periods and independently authenticated presentation controls |
+| Multiple supplemental roots | 6 | Determine distinct source populations/periods versus genuine duplicates |
+| Invalid primary money cell | 2 | Inspect exact PDF-visible transcription; no provider retry or inferred digit |
+| Incomplete current-tax frontier | 1 | Inspect every source-visible component and blank independently |
+
+Timing, without any base cache: selected JSON loading 24.33 seconds (271 batched
+API calls, 14,945 rows, 70,266,089 bytes); shared base clustering 306.49 seconds;
+family evaluation 130.77 seconds; independent cold replay and persistence 540.12
+seconds. These identify clustering/replay, not Gemini ingestion, as the dominant
+work. Preserve cold replay as an acceptance gate; target immutable evidence reuse
+and bounded retrieval rather than rerunning providers or weakening checks.
+
+An external prospective exact-alias probe compiled a private topology copy,
+without touching repository configs, code or source JSON. Adding the full phrase
+`Chi phí thuế thu nhập doanh nghiệp hiện hành` makes VBB ordinal 259 READY with
+seven mappings and keeps four wrong-semantic-parent probes UNRESOLVED. However,
+it also makes ABB ordinal 1 enter the direct-note branch and hit the existing
+opposite-sign rejection. **The alias-only proposal was not adopted.** It needs a
+generic, source-authenticated presentation/context treatment with regression for
+the existing ABB success before production implementation.
+
+Prospective probe:
+`/srv/bctc-receipts/f39-exact-current-tax-alias-probe-a966aa84b9f747e088a54bbfe6e51cef/F39_EXACT_CURRENT_TAX_ALIAS_PROSPECTIVE_PROBE.json`,
+SHA-256 `7d1824c186482a1d86590259048adea6231a4d45d931bf3a014e4f989e17f308`.
+
+The five earlier witness receipts were published under fresh, non-overwriting
+S3 keys at
+`bctc-ai/coordination/2025-current/v1/artifacts/F39/20261004T011943248786Z-012b43b626a448b580ccc293c8b3c856/`.
+Each exact VersionId was downloaded and compared byte-for-byte. Publication
+receipt SHA-256:
+`a3bdb3b70ad0922987720bf82d4d87c1b732736c6f3dfc3646c83470633a64b5`.
+This backup and the successful workflow do not authorize READY_FOR_INTEGRATION,
+F39 terminal, changes to frozen shared files, or opening F41.
