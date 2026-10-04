@@ -16,6 +16,7 @@ from test_gemini_json_income_tax_root_controls_v1 import _evaluate_query
 
 from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
     GeminiJsonIncomeTaxFamilyV1Error,
+    _at_rate_cross_presentation_conflicts,
     _authenticated_root_comparison_orientations,
     _post_merge_root_closure,
     _primary_presentations,
@@ -206,3 +207,263 @@ def test_resealed_query_still_cannot_replace_the_actual_printed_profit_bridge():
         value[key] = prefix + canonical_json_sha256_v1(material)
     with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="drifted"):
         _evaluate_query(records, compiled, cluster, receipt)
+
+
+@pytest.mark.parametrize("label", [
+    "Tổng lợi nhuận trước thuế\n(mang sang từ trang trước)",
+    "Tổng lợi nhuận trước thuế\n(mang từ trang trước)",
+    "XI. Tổng lợi nhuận trước thuế\n(mang sang từ trang trước)",
+    "XI. Tổng lợi nhuận trước thuế\n(mang từ trang trước)",
+])
+def test_exact_printed_carry_forward_profit_row_is_observed_not_backsolved(label):
+    records = _records()
+    row = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"][0]
+    row["label_exact"] = label
+    row["hierarchy_path_exact"] = [label]
+    before = deepcopy(records)
+    candidate = _candidate(records)
+    assert candidate["status"] == READY
+    assert records == before
+    bridge = candidate["closure_receipt"]["income_tax_adapter_receipt"]["primary_projection_receipt"]["expense_display_receipt"]
+    assert bridge["before_source_row"]["source_row"]["label_exact"] == label
+    assert bridge["before_source_row"]["source_row"]["values_exact"] == ["30", "40", "100", "80"]
+    assert bridge["missing_root_created"] is False
+    assert bridge["source_values_changed"] is False
+
+
+@pytest.mark.parametrize("label", [
+    "Tổng lợi nhuận trước thuế (Ngân hàng mẹ)",
+    "Tổng lợi nhuận trước thuế (công ty con)",
+    "Tổng lợi nhuận trước thuế (mang từ trang trước, đã điều chỉnh)",
+    "Tổng lợi nhuận trước thuế (mang sang từ trang trước) sau điều chỉnh",
+    "Lợi nhuận sau thuế (mang từ trang trước)",
+    "Tổng lợi nhuận trước thuế (ước tính)",
+])
+def test_carry_forward_allowlist_does_not_strip_other_population_or_qualifier(label):
+    records = _records()
+    row = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"][0]
+    row["label_exact"] = label
+    row["hierarchy_path_exact"] = [label]
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+
+
+@pytest.mark.parametrize("label", ["Năm hiện hành", "I. Năm hiện hành"])
+@pytest.mark.parametrize("include_primary", [True, False])
+def test_current_year_expense_cannot_be_added_to_explicit_rate_base_even_if_parent_closes(label, include_primary):
+    records = _records()
+    note = records[0]["page_json"]["sections"][0]["tables"][0]["rows"]
+    note.insert(1, _row(label, "19", "16"))
+    next(row for row in note if row["label_exact"] == "Chi phí thuế TNDN hiện hành")["values_exact"] = ["39", "32"]
+    next(row for row in note if row["label_exact"] == "Chi phí thuế thu nhập doanh nghiệp")["values_exact"] = ["41", "33"]
+    primary = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    primary[1]["values_exact"][-2:] = ["(39)", "(32)"]
+    primary[3]["values_exact"][-2:] = ["(41)", "(33)"]
+    primary[-1]["values_exact"][-2:] = ["59", "47"]
+    if not include_primary:
+        records.pop()
+    original = deepcopy(records)
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["CURRENT_TAX_AT_RATE_CROSS_PRESENTATION_POPULATION_AMBIGUITY"]
+    assert records == original
+    proof = candidate["closure_receipt"]["income_tax_unresolved_evidence_receipt"]["evidence"]["at_rate_population_conflicts"][0]
+    assert proof["classification"] == "ALGORITHM_ROLE_POPULATION_AMBIGUITY_NOT_GENUINE_SOURCE_CONFLICT"
+    assert proof["mapping"]["values"][0]["coefficient"] == 39
+    assert len(proof["explicit_rate_source_refs"]) == len(proof["generic_current_year_source_refs"]) == 1
+
+
+@pytest.mark.parametrize("qualified_row", [0, 1, 2, 3, 4])
+def test_signed_profit_bridge_cannot_mix_a_qualified_population_with_unqualified_rows(qualified_row):
+    records = _records()
+    rows = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    row = rows[qualified_row]
+    row["hierarchy_path_exact"] = ["Ngân hàng mẹ", row["label_exact"]]
+    original = deepcopy(records)
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    assert records == original
+
+
+def test_signed_profit_bridge_rejects_explicit_different_profit_populations():
+    records = _records()
+    rows = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    rows[0]["hierarchy_path_exact"] = ["Ngân hàng mẹ", rows[0]["label_exact"]]
+    rows[-1]["hierarchy_path_exact"] = ["Công ty con", rows[-1]["label_exact"]]
+    assert _candidate(records)["status"] == UNRESOLVED
+
+
+def test_signed_profit_bridge_retains_equal_explicit_population_ancestry():
+    records = _records()
+    rows = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    for row in rows:
+        row["hierarchy_path_exact"] = ["Ngân hàng mẹ", row["label_exact"]]
+    before = deepcopy(records)
+    descriptor = _primary_presentations(records, compiled_specs=_adapter_compiled())[0]
+    bridge = descriptor["expense_display_receipt"]
+    assert bridge is not None
+    assert bridge["population_ancestry_receipt"]["common_normalized_ancestry"] == ["ngan hang me"]
+    assert records == before
+
+
+def test_standalone_printed_roman_ordinals_are_not_different_profit_populations():
+    records = _records()
+    rows = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    for row, ordinal in zip(rows, ["XI", "XII", "XII", "XII", "XIII"], strict=True):
+        row["hierarchy_path_exact"] = [ordinal, row["label_exact"]]
+    original = deepcopy(records)
+    candidate = _candidate(records)
+    assert candidate["status"] == READY
+    assert records == original
+
+
+@pytest.mark.parametrize("path", [[], None, ["Ngân hàng mẹ"], ["", "Tổng lợi nhuận trước thuế"]])
+def test_profit_population_bridge_does_not_accept_missing_or_malformed_source_ancestry(path):
+    records = _records()
+    row = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"][0]
+    row["hierarchy_path_exact"] = path
+    assert _primary_presentations(records, compiled_specs=_adapter_compiled())[0]["expense_display_receipt"] is None
+
+
+def test_profit_population_prefix_is_not_equal_to_its_subsidiary_population():
+    records = _records()
+    rows = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    for row in rows:
+        row["hierarchy_path_exact"] = ["Ngân hàng mẹ", row["label_exact"]]
+    rows[-1]["hierarchy_path_exact"].insert(1, "Công ty con")
+    assert _candidate(records)["status"] == UNRESOLVED
+
+
+@pytest.mark.parametrize("before_scope,after_scope", [("2024", "2025"), ("1", "2"), ("123456", "654321"), ("Entity A-B", "Entity A/B")])
+def test_numeric_year_or_entity_identifier_is_not_a_discardable_population_ordinal(before_scope, after_scope):
+    records = _records()
+    rows = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    for row in rows:
+        row["hierarchy_path_exact"] = [after_scope, row["label_exact"]]
+    rows[0]["hierarchy_path_exact"] = [before_scope, rows[0]["label_exact"]]
+    assert _candidate(records)["status"] == UNRESOLVED
+
+
+def test_note_and_primary_explicit_different_populations_cannot_prove_opposite_tax_display():
+    records = _records()
+    for row in records[0]["page_json"]["sections"][0]["tables"][0]["rows"]:
+        row["hierarchy_path_exact"] = ["Công ty con", row["label_exact"]]
+    for row in records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]:
+        row["hierarchy_path_exact"] = ["Ngân hàng mẹ", row["label_exact"]]
+    original = deepcopy(records)
+    assert _candidate(records)["status"] == UNRESOLVED
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", [None, "missing_group", "wrong_group_kind", "later_group", "different_population"])
+def test_only_an_actual_preceding_root_tax_group_can_explain_tax_row_ancestry(mutation):
+    records = _records()
+    rows = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    group = rows[3]
+    group["row_kind"] = "GROUP"
+    rows.insert(1, rows.pop(3))
+    for row in rows[2:4]:
+        row["hierarchy_path_exact"] = [group["label_exact"], row["label_exact"]]
+    if mutation == "missing_group":
+        rows.remove(group)
+    elif mutation == "wrong_group_kind":
+        group["row_kind"] = "TOTAL"
+    elif mutation == "later_group":
+        rows.insert(4, rows.pop(1))
+    elif mutation == "different_population":
+        rows[2]["hierarchy_path_exact"].insert(0, "Công ty con")
+    original = deepcopy(records)
+    descriptor = _primary_presentations(records, compiled_specs=_adapter_compiled())[0]
+    bridge = descriptor["expense_display_receipt"]
+    if mutation is None:
+        assert bridge is not None
+        population = bridge["population_ancestry_receipt"]
+        assert population["common_normalized_ancestry"] == []
+        assert population["structural_tax_group_sources"][0]["source_row"] == group
+        assert _candidate(records)["status"] == READY
+    else:
+        assert bridge is None
+    assert records == original
+
+
+def test_note_ancestry_can_only_remove_the_actual_declared_tax_owner_surface():
+    records = _records()
+    section = records[0]["page_json"]["sections"][0]
+    owner = section["title_exact"]
+    for row in section["tables"][0]["rows"]:
+        row["hierarchy_path_exact"] = [owner, row["label_exact"]]
+    original = deepcopy(records)
+    candidate = _candidate(records)
+    assert candidate["status"] == READY
+    signed = candidate["closure_receipt"]["income_tax_adapter_receipt"]["primary_candidate_proof"]["signed_display_proof"]
+    assert all(item["population_ancestry_receipt"]["structural_owner_sources"] for item in signed["note_source_tables"])
+    assert records == original
+
+
+@pytest.mark.parametrize("scope", ["Ngân hàng mẹ", "Chi phí thuế TNDN ghi nhận trong báo cáo kết quả hoạt động riêng giữa niên độ:"])
+def test_note_qualifiers_cannot_be_discarded_as_unobserved_tax_owner_aliases(scope):
+    records = _records()
+    for row in records[0]["page_json"]["sections"][0]["tables"][0]["rows"]:
+        row["hierarchy_path_exact"] = [scope, row["label_exact"]]
+    assert _candidate(records)["status"] == UNRESOLVED
+
+
+def test_resealed_population_receipt_does_not_replace_original_source_ancestry():
+    records = _records()
+    compiled = _adapter_compiled()
+    cluster, receipt = _query(records, compiled)
+    adapter = receipt["adapter_receipt"]
+    bridge = adapter["primary_projection_receipt"]["expense_display_receipt"]
+    population = bridge["population_ancestry_receipt"]
+    population["common_population_ancestry_exact"] = ["Ngân hàng mẹ"]
+    for value, prefix, key in (
+        (population, "gjitfav1:bridge-population:", "receipt_id"),
+        (bridge, "gjitfav1:expense-display:", "receipt_id"),
+        (adapter, "gjitfav1:query:", "receipt_id"),
+        (receipt, "gjitfav1:query-receipt:", "query_receipt_id"),
+    ):
+        value[key] = prefix + canonical_json_sha256_v1({name: item for name, item in value.items() if name != key})
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="drifted"):
+        _evaluate_query(records, compiled, cluster, receipt)
+
+
+@pytest.mark.parametrize("use_owner_ancestry", [True, False])
+@pytest.mark.parametrize("qualifier", ["Công ty con", "Ngân hàng mẹ", "Hợp nhất"])
+def test_tax_owner_alias_line_does_not_erase_another_printed_population_qualifier(use_owner_ancestry, qualifier):
+    records = _records()
+    section = records[0]["page_json"]["sections"][0]
+    owner = section["title_exact"]
+    section["title_exact"] = owner + "\n" + qualifier
+    if use_owner_ancestry:
+        for row in section["tables"][0]["rows"]:
+            row["hierarchy_path_exact"] = [owner, row["label_exact"]]
+    original = deepcopy(records)
+    assert _candidate(records)["status"] == UNRESOLVED
+    assert records == original
+
+
+def test_equal_explicit_population_titles_remain_bound_without_changing_source():
+    records = _records()
+    for record in records:
+        section = record["page_json"]["sections"][0]
+        section["title_exact"] += "\nNgân hàng mẹ"
+    original = deepcopy(records)
+    candidate = _candidate(records)
+    assert candidate["status"] == READY
+    proof = candidate["closure_receipt"]["income_tax_adapter_receipt"]["primary_candidate_proof"]["signed_display_proof"]
+    assert all(item["printed_population_scope_receipt"]["note_scope"] == ["PARENT_ENTITY"] for item in proof["note_source_tables"])
+    assert records == original
+
+
+@pytest.mark.parametrize("labels", [
+    ["Chi phí thuế TNDN theo thuế suất"], ["Năm hiện hành"],
+    ["Chi phí thuế TNDN theo thuế suất", "Điều chỉnh khác"],
+])
+def test_at_rate_guard_is_not_a_generic_duplicate_or_label_substring_veto(labels):
+    candidate = {"mappings": [{"role": "CURRENT_TAX_AT_RATE", "source_refs": [{"label_exact": label} for label in labels]}]}
+    assert _at_rate_cross_presentation_conflicts(candidate, compiled_specs=_adapter_compiled()) == []

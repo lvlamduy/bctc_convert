@@ -796,6 +796,77 @@ def _primary_equation_mismatch_axis(
     return mismatches
 
 
+def _primary_bridge_population_ancestry(
+    table: Mapping[str, Any], *, row_ordinals: Sequence[int],
+    structural_owner_surfaces: Sequence[Any] = (), structural_owner_aliases: Sequence[str] = (),
+) -> dict[str, Any] | None:
+    """Same printed ancestry only; amounts cannot establish entity population."""
+    roman_ordinals = {"i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv", "xv"}
+    groups = [
+        {"row_ordinal": ordinal, "source_row": canonical_clone_v1(row)}
+        for ordinal, row in enumerate(table["rows"], 1)
+        if row.get("row_kind") == "GROUP"
+        and _role_for_primary_label(row.get("label_exact")) == "FAMILY_ROOT_TOTAL"
+    ]
+    owner_aliases = {_without_leading_ordinal(_normalized(alias)) for alias in structural_owner_aliases}
+    owner_sources = [
+        {"surface_exact": surface,
+         "normalized_owner": _without_leading_ordinal(_normalized(surface))}
+        for surface in structural_owner_surfaces if type(surface) is str
+        if _without_leading_ordinal(_normalized(surface)) in owner_aliases
+    ]
+    used_groups, used_owners = {}, {}
+    proofs = []
+    for ordinal in row_ordinals:
+        row = table["rows"][ordinal - 1]
+        path, label = row.get("hierarchy_path_exact"), row.get("label_exact")
+        if (
+            type(path) is not list or not path
+            or any(type(item) is not str or not item.strip() for item in path)
+            or type(label) is not str
+            or _normalized(path[-1]) != _normalized(label)
+        ):
+            return None
+        # Only the reviewed Roman row-ordinal vocabulary is stripped. Numeric
+        # years/entity IDs and unknown qualifiers remain exact source evidence.
+        ancestry = []
+        for index, item in enumerate(path[:-1]):
+            if _normalized(item) in roman_ordinals:
+                continue
+            parent_groups = [group for group in groups
+                             if group["row_ordinal"] < ordinal
+                             and group["source_row"].get("hierarchy_path_exact") == path[:index + 1]]
+            if len(parent_groups) == 1:
+                group = parent_groups[0]
+                used_groups[group["row_ordinal"]] = group
+                continue
+            owners = [source for source in owner_sources
+                      if source["normalized_owner"] == _without_leading_ordinal(_normalized(item))]
+            if owners:
+                for owner in owners:
+                    used_owners[canonical_json_sha256_v1(owner)] = owner
+                continue
+            ancestry.append(item)
+        proofs.append({
+            "row_ordinal": ordinal, "source_row": canonical_clone_v1(row),
+            "population_ancestry_exact": ancestry,
+            "normalized_ancestry": [_normalized(item) for item in ancestry],
+        })
+    if not proofs or any(
+        proof["population_ancestry_exact"] != proofs[0]["population_ancestry_exact"] for proof in proofs
+    ):
+        return None
+    material = {
+        "rule": "EXACT_EQUAL_PRINTED_POPULATION_ANCESTRY_ONLY_OBSERVED_TAX_STRUCTURE_REMOVED_NO_AMOUNT_INFERENCE",
+        "common_normalized_ancestry": proofs[0]["normalized_ancestry"],
+        "common_population_ancestry_exact": proofs[0]["population_ancestry_exact"],
+        "structural_tax_group_sources": [used_groups[key] for key in sorted(used_groups)],
+        "structural_owner_sources": [used_owners[key] for key in sorted(used_owners)],
+        "source_rows": proofs, "original_table_json_sha256": canonical_json_sha256_v1(table),
+    }
+    return {**material, "receipt_id": "gjitfav1:bridge-population:" + canonical_json_sha256_v1(material)}
+
+
 def _primary_expense_display_receipt(
     table: Mapping[str, Any], *, rows: Sequence[Mapping[str, Any]],
     money_ordinals: Sequence[int], locator: Mapping[str, Any], lane: Mapping[str, Any],
@@ -805,6 +876,12 @@ def _primary_expense_display_receipt(
     before_aliases = {
         "loi nhuan truoc thue", "tong loi nhuan truoc thue",
         "loi nhuan ke toan truoc thue", "tong loi nhuan ke toan truoc thue",
+    }
+    # These exact printed annotations describe an observed carried row, not a
+    # different profit population. Never strip arbitrary parenthetical text.
+    before_aliases |= {
+        _normalized(alias + suffix) for alias in before_aliases
+        for suffix in (" (mang sang tu trang truoc)", " (mang tu trang truoc)")
     }
     after_aliases = {
         "loi nhuan sau thue", "tong loi nhuan sau thue",
@@ -842,6 +919,11 @@ def _primary_expense_display_receipt(
     before, after = anchors["before"][0], anchors["after"][0]
     if not before["row_ordinal"] < expense["row_ordinal"] < after["row_ordinal"]:
         return None
+    population_ancestry = _primary_bridge_population_ancestry(
+        table, row_ordinals=[before["row_ordinal"], *(row["row_ordinal"] for row in rows), after["row_ordinal"]],
+    )
+    if population_ancestry is None:
+        return None
     if any(
         len(anchor["parsed_values"]) != 2
         or any(cell.get("reasons") or cell.get("coefficient") is None for cell in anchor["parsed_values"])
@@ -871,6 +953,7 @@ def _primary_expense_display_receipt(
         "money_column_ordinals": list(money_ordinals), "lane_axis": canonical_clone_v1(lane),
         "before_source_row": before, "expense_source_row": canonical_clone_v1(expense),
         "after_source_row": after, "lane_receipts": lane_receipts,
+        "population_ancestry_receipt": population_ancestry,
         "source_values_changed": False, "missing_root_created": False,
     }
     return {**material, "receipt_id": "gjitfav1:expense-display:" + canonical_json_sha256_v1(material)}
@@ -3266,6 +3349,19 @@ def _merge_supplemental_and_primary_candidates(
     )
 
 
+def _printed_population_qualifiers(surfaces: Sequence[Any]) -> list[str]:
+    """Conservative veto of explicit population words, never infer absent scope."""
+    aliases = {
+        "CONSOLIDATED": "hop nhat", "SEPARATE": "rieng",
+        "PARENT_ENTITY": "ngan hang me", "SUBSIDIARY_ENTITY": "cong ty con",
+    }
+    return sorted({
+        role for surface in surfaces if type(surface) is str
+        for role, alias in aliases.items()
+        if " " + alias + " " in " " + _normalized(surface) + " "
+    })
+
+
 def _note_primary_signed_display_proof(
     note_candidate: Mapping[str, Any], primary_candidate: Mapping[str, Any], *,
     descriptor: Mapping[str, Any], page_records: Sequence[Mapping[str, Any]],
@@ -3279,6 +3375,15 @@ def _note_primary_signed_display_proof(
     if display.get("receipt_id") != "gjitfav1:expense-display:" + canonical_json_sha256_v1(material):
         raise _error("income-tax signed expense display receipt drifted")
     pages = {record["page_json_version_id"]: record["page_json"] for record in page_records}
+    primary_section, primary_table = _source_table(
+        pages[descriptor["locator"]["page_json_version_id"]],
+        section_id=descriptor["locator"]["section_id"], table_id=descriptor["locator"]["table_id"],
+    )
+    primary_scope_surfaces = [
+        primary_section.get("title_exact"), primary_table.get("title_exact"),
+        *display["population_ancestry_receipt"]["common_population_ancestry_exact"],
+    ]
+    primary_scope = _printed_population_qualifiers(primary_scope_surfaces)
     primary_by_role = {mapping["role"]: mapping for mapping in primary_candidate["mappings"]}
     overlaps, tables = [], {}
     tax_roles = {"CURRENT_TAX_PARENT", "DEFERRED_TAX_NET", "FAMILY_ROOT_TOTAL"}
@@ -3317,6 +3422,33 @@ def _note_primary_signed_display_proof(
                 or not same_typed_json_v1(lane.get("money_column_ordinals"), ref.get("money_column_ordinals"))
             ):
                 return None
+            population = _primary_bridge_population_ancestry(
+                table, row_ordinals=[ref["row_ordinal"]],
+                structural_owner_surfaces=[section.get("title_exact"), table.get("title_exact")],
+                structural_owner_aliases=[
+                    *compiled_specs["topology"]["parent"]["aliases"],
+                    *compiled_specs["evaluation"]["query_owner_aliases"],
+                ],
+            )
+            if population is None or not same_typed_json_v1(
+                population["common_population_ancestry_exact"],
+                display["population_ancestry_receipt"]["common_population_ancestry_exact"],
+            ):
+                return None
+            note_scope_surfaces = [
+                section.get("title_exact"), table.get("title_exact"),
+                *population["common_population_ancestry_exact"],
+            ]
+            note_scope = _printed_population_qualifiers(note_scope_surfaces)
+            if note_scope and note_scope != primary_scope:
+                return None
+            scope_material = {
+                "rule": "EXPLICIT_NOTE_POPULATION_QUALIFIERS_MUST_MATCH_PRINTED_PRIMARY_NO_AMOUNT_INFERENCE",
+                "primary_source_surfaces": canonical_clone_v1(primary_scope_surfaces),
+                "note_source_surfaces": canonical_clone_v1(note_scope_surfaces),
+                "primary_scope": primary_scope, "note_scope": note_scope,
+                "absent_scope_inferred": False,
+            }
             table_material = {
                 "locator": {key: canonical_clone_v1(locator[key]) for key in descriptor["locator"]},
                 "canonical_unit": mapping["unit"],
@@ -3324,6 +3456,10 @@ def _note_primary_signed_display_proof(
                 "original_table_json_sha256": canonical_json_sha256_v1(table),
                 "money_column_ordinals": canonical_clone_v1(ref["money_column_ordinals"]),
                 "lane_axis": lane,
+                "population_ancestry_receipt": population,
+                "printed_population_scope_receipt": {
+                    **scope_material, "receipt_id": "gjitfav1:printed-scope:" + canonical_json_sha256_v1(scope_material),
+                },
             }
             tables[canonical_json_sha256_v1(table_material)] = table_material
         primary = primary_by_role.get(role)
@@ -3351,6 +3487,46 @@ def _note_primary_signed_display_proof(
         "cross_source_orientation": -1, "source_values_changed": False,
     }
     return {**proof_material, "receipt_id": "gjitfav1:signed-display:" + canonical_json_sha256_v1(proof_material)}
+
+
+def _at_rate_cross_presentation_conflicts(
+    candidate: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Never sum a generic current-year expense with explicitly rate-based tax."""
+    role = next(child for child in compiled_specs["topology"]["children"]
+                if child["role"] == "CURRENT_TAX_AT_RATE")
+    strong_aliases = {
+        _without_leading_ordinal(_normalized(alias))
+        for matcher in role["matchers"] if matcher.get("presence_anchor", True)
+        for alias in matcher["aliases"]
+    }
+    weak_aliases = {
+        _without_leading_ordinal(_normalized(alias))
+        for matcher in role["matchers"] if not matcher.get("presence_anchor", True)
+        for alias in matcher["aliases"]
+    }
+    conflicts = []
+    for mapping in candidate.get("mappings", []):
+        if mapping.get("role") != "CURRENT_TAX_AT_RATE":
+            continue
+        strong, weak = [], []
+        for ref in mapping.get("source_refs", []):
+            label = _without_leading_ordinal(_normalized(ref.get("label_exact")))
+            if label in strong_aliases:
+                strong.append(canonical_clone_v1(ref))
+            if label in weak_aliases:
+                weak.append(canonical_clone_v1(ref))
+        if not strong or not weak:
+            continue
+        material = {
+            "rule": "CURRENT_YEAR_EXPENSE_AND_EXPLICIT_RATE_BASE_ARE_NOT_AN_ADDITIVE_TAX_POPULATION",
+            "mapping": canonical_clone_v1(mapping),
+            "explicit_rate_source_refs": strong, "generic_current_year_source_refs": weak,
+            "source_values_changed": False,
+            "classification": "ALGORITHM_ROLE_POPULATION_AMBIGUITY_NOT_GENUINE_SOURCE_CONFLICT",
+        }
+        conflicts.append({**material, "receipt_id": "gjitfav1:at-rate-population:" + canonical_json_sha256_v1(material)})
+    return conflicts
 
 
 def _merge_note_and_primary_candidates(
@@ -3381,6 +3557,15 @@ def _merge_note_and_primary_candidates(
         "primary_projection_receipt": canonical_clone_v1(descriptor),
         "source_repair_receipts": canonical_clone_v1(list(repair_receipts)),
     }
+    population_conflicts = _at_rate_cross_presentation_conflicts(
+        note_candidate, compiled_specs=compiled_specs,
+    )
+    if population_conflicts:
+        return _unresolved_from_candidate(
+            note_candidate,
+            reason="CURRENT_TAX_AT_RATE_CROSS_PRESENTATION_POPULATION_AMBIGUITY",
+            evidence={**conflict_evidence, "at_rate_population_conflicts": population_conflicts},
+        )
     overlap_pairs = []
     for role, note_mapping in note_by_role.items():
         primary_mapping = primary_by_role.get(role)
@@ -3638,6 +3823,18 @@ def _seal_income_tax_source_controls(
 ) -> dict[str, Any]:
     if candidate.get("status") != READY:
         return canonical_clone_v1(candidate)
+    population_conflicts = _at_rate_cross_presentation_conflicts(
+        candidate, compiled_specs=compiled_specs,
+    )
+    if population_conflicts:
+        return _unresolved_from_candidate(
+            candidate,
+            reason="CURRENT_TAX_AT_RATE_CROSS_PRESENTATION_POPULATION_AMBIGUITY",
+            evidence={
+                "source_context_receipt": canonical_clone_v1(source_context),
+                "at_rate_population_conflicts": population_conflicts,
+            },
+        )
     closure, mismatch = _post_merge_root_closure(
         candidate, comparison_orientations=_authenticated_root_comparison_orientations(candidate),
     )
