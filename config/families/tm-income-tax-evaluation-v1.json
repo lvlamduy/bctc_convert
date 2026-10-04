@@ -5,6 +5,7 @@
     "NON_DEDUCTIBLE_EXPENSE",
     "TAXABLE_INCOME",
     "CURRENT_TAX_AT_RATE",
+    "CURRENT_YEAR_TAX_EXPENSE",
     "CURRENT_TAX_BANK",
     "FOREIGN_BRANCH_TAX",
     "SUBSIDIARY_TAX",
@@ -65,6 +66,7 @@
       "scope_id": "CURRENT_TAX_EXPENSE",
       "scoped_roles": [
         "CURRENT_TAX_AT_RATE",
+        "CURRENT_YEAR_TAX_EXPENSE",
         "CURRENT_TAX_BANK",
         "FOREIGN_BRANCH_TAX",
         "SUBSIDIARY_TAX",
@@ -136,6 +138,8 @@
   ],
   "unmapped_direct_family_row_policy": "IGNORE",
   "validation_only_roles": [
+    "CURRENT_TAX_AT_RATE",
+    "CURRENT_YEAR_EXPENSE_CONTEXT",
     "TAX_RATE_SOURCE_ONLY",
     "STATUTORY_TAX_AMOUNT_SOURCE_ONLY",
     "PROFIT_BEFORE_TAX_BANK_SOURCE_ONLY",

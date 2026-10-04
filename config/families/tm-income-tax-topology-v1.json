@@ -134,15 +134,26 @@
             "Thuế TNDN theo thuế suất quy định (20%)"
           ],
           "within_role": null
-        },
-        {
-          "aliases": ["Năm hiện hành"],
-          "presence_anchor": false,
-          "within_role": null
         }
       ],
       "presence": "OPTIONAL",
       "role": "CURRENT_TAX_AT_RATE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Chi phí thuế hiện hành"], "presence_anchor": false, "within_role": null}
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENT_YEAR_EXPENSE_CONTEXT",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {"aliases": ["Năm hiện hành"], "presence_anchor": false, "within_role": "CURRENT_YEAR_EXPENSE_CONTEXT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENT_YEAR_TAX_EXPENSE",
       "role_kind": "ADDITIVE_CHILD"
     },
     {

@@ -162,7 +162,7 @@ def test_actual_nonempty_repair_receipt_order_cannot_be_resealed(mutation: str) 
     )
     page = _page([
         _row("Lợi nhuận kế toán trước thuế TNDN", "100", "80"),
-        _row("Thuế tính ở thuế suất 20%", "20", "16"),
+        _row("Thu nhập chịu thuế", "100", "80", kind="SUBTOTAL"),
         _row("Thu nhập không chịu thuế", "-", "-"),
         _row("Chi phí không được khấu trừ", "1", "2"),
         _row("Chi phí thuế TNDN tính trên thu nhập chịu thuế kỳ hiện hành", "20", "15", kind="SUBTOTAL"),

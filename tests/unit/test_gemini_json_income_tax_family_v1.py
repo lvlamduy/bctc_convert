@@ -316,6 +316,12 @@ def test_income_tax_config_binds_schema_and_generic_stage_policy() -> None:
     assert compiled["topology"]["family_id"] == "INCOME_TAX"
     assert compiled["schema"]["family_root_report_norm_id"] == 5727
     assert set(compiled["bindings"].values()) == set(range(5723, 5738)) - {5727}
+    assert compiled["bindings"]["CURRENT_YEAR_TAX_EXPENSE"] == 5724
+    assert "CURRENT_TAX_AT_RATE" not in compiled["bindings"]
+    assert "CURRENT_TAX_AT_RATE" in compiled["validation_only_roles"]
+    assert "CURRENT_TAX_AT_RATE" not in compiled["non_money_metric_roles"]
+    assert "CURRENT_YEAR_EXPENSE_CONTEXT" not in compiled["bindings"]
+    assert "CURRENT_YEAR_EXPENSE_CONTEXT" not in compiled["root_component_roles"]
     assert compiled["accepted_value_column_kinds"] == ["MONEY", "UNKNOWN"]
     adapter_compiled = _adapter_compiled()
     assert adapter_compiled["income_tax_adapter_spec"][
@@ -509,12 +515,17 @@ def test_rate_reconciliation_without_taxable_income_uses_exact_visible_roles() -
     assert [item["role"] for item in candidate["mappings"]] == [
         "PROFIT_BEFORE_TAX",
         "NON_DEDUCTIBLE_EXPENSE",
-        "CURRENT_TAX_AT_RATE",
         "CURRENT_TAX_PARENT",
     ]
     assert [
         [value["coefficient"] for value in item["values"]] for item in candidate["mappings"]
-    ] == [[100, 80], [1, 2], [20, 16], [21, 18]]
+    ] == [[100, 80], [1, 2], [21, 18]]
+    source_only = candidate["closure_receipt"]["table_receipts"][0]["source_only_rows"]
+    rate = next(item for item in source_only if item["row_ordinal"] == 2)
+    assert rate["declared_validation_role"] == "CURRENT_TAX_AT_RATE"
+    assert rate["source_ref"]["money_column_ordinals"] == [1, 2]
+    # The shared arithmetic engine does not decide measurement basis. The
+    # family adapter separately vetoes its income-basis adjustment export.
 
 
 def test_bare_other_row_is_not_a_non_taxable_alias() -> None:
@@ -787,13 +798,16 @@ def test_source_repair_recoalesces_private_note_before_candidate_replay() -> Non
             cluster["component_regions"], cluster=cluster
         ),
     )
-    assert candidate["status"] == READY
-    current = next(
-        mapping for mapping in candidate["mappings"] if mapping["role"] == "CURRENT_TAX_PARENT"
-    )
-    assert [value["coefficient"] for value in current["values"]] == [20, 15]
-    assert [value["source_text"] for value in current["values"]] == ["20", "15"]
-    assert current["source_refs"][0]["label_exact"] == "Chi phí thuế TNDN - hiện hành"
+    # Re-coalescing and authenticated repair still succeed. This original
+    # fixture also contains tax-effect rows, which cannot populate income-
+    # basis fields merely because the generic arithmetic engine accepted them.
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["reasons"] == ["INCOME_TAX_RATE_RECONCILIATION_MEASUREMENT_BASIS_AMBIGUITY"]
+    assert candidate["mappings"] == []
+    source_context = candidate["closure_receipt"]["income_tax_unresolved_evidence_receipt"]["evidence"]["source_context_receipt"]
+    repaired_row = source_context["tax_population_inventory"][0]["source_table_rows_exact"][5]
+    assert repaired_row == _repaired_current_tax_row()
+    assert len(source_context["repair_receipt_ids"]) == 1
     assert record == original
 
 
@@ -1852,8 +1866,11 @@ def test_rich_supplemental_reconciliation_keeps_unknown_adjustment_source_only()
     compiled = _adapter_compiled()
     current_table = _table(
         [
-            _row("Năm hiện hành", "20", "16"),
-            _row("Chi phí năm trước", "1", "2"),
+            _row("Chi phí thuế hiện hành", None, None, kind="GROUP"),
+            {**_row("Năm hiện hành", "19", "15"),
+             "hierarchy_path_exact": ["Chi phí thuế hiện hành", "Năm hiện hành"]},
+            {**_row("Chi phí năm trước", "2", "3"),
+             "hierarchy_path_exact": ["Chi phí thuế hiện hành", "Chi phí năm trước"]},
             _row("Chi phí thuế TNDN hiện hành", "21", "18", kind="TOTAL"),
         ]
     )
@@ -1878,18 +1895,16 @@ def test_rich_supplemental_reconciliation_keeps_unknown_adjustment_source_only()
     _cluster, candidate = _evaluate_supplemental_records(records, compiled=compiled)
     assert candidate["status"] == READY
     by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
-    assert [value["coefficient"] for value in by_role["CURRENT_TAX_AT_RATE"]["values"]] == [
-        20,
-        16,
+    assert "CURRENT_TAX_AT_RATE" not in by_role
+    assert "NON_DEDUCTIBLE_EXPENSE" not in by_role
+    assert [value["coefficient"] for value in by_role["CURRENT_YEAR_TAX_EXPENSE"]["values"]] == [
+        19,
+        15,
     ]
     assert (
-        by_role["CURRENT_TAX_AT_RATE"]["source_refs"][0]["locator"]["table_id"]
+        by_role["CURRENT_YEAR_TAX_EXPENSE"]["source_refs"][0]["locator"]["table_id"]
         == "t1"
     )
-    assert [value["coefficient"] for value in by_role["NON_DEDUCTIBLE_EXPENSE"]["values"]] == [
-        2,
-        3,
-    ]
     proof = candidate["closure_receipt"]["income_tax_adapter_receipt"][
         "primary_candidate_proof"
     ]
@@ -1903,14 +1918,246 @@ def test_rich_supplemental_reconciliation_keeps_unknown_adjustment_source_only()
         for component in reconciliation_receipt["equation_receipts"][0]["component_rows"]
     ] == [
         "CURRENT_TAX_AT_RATE",
-        "NON_DEDUCTIBLE_EXPENSE",
+        "SOURCE_ONLY_EQUATION_COMPONENT",
         "SOURCE_ONLY_EQUATION_COMPONENT",
     ]
     assert all(
         mapping["source_refs"][0]["locator"]["table_id"] != "t2"
         for mapping in candidate["mappings"]
-        if mapping["role"] in {"CURRENT_TAX_AT_RATE", "CURRENT_TAX_PARENT"}
+        if mapping["role"] in {"CURRENT_YEAR_TAX_EXPENSE", "CURRENT_TAX_PARENT"}
     )
+
+
+def _year_population_rows() -> list[dict[str, Any]]:
+    return [
+        _row("Chi phí thuế hiện hành", None, None, kind="GROUP"),
+        {**_row("Năm hiện hành", "19", "15"),
+         "hierarchy_path_exact": ["Chi phí thuế hiện hành", "Năm hiện hành"]},
+        {**_row("Chi phí năm trước", "2", "3"),
+         "hierarchy_path_exact": ["Chi phí thuế hiện hành", "Chi phí năm trước"]},
+        {**_row(None, "21", "18", kind="SUBTOTAL"), "hierarchy_path_exact": [None]},
+    ]
+
+
+@pytest.mark.parametrize("reverse_tables", [False, True])
+def test_year_anonymous_subtotal_ownership_and_unequal_rate_population_are_independent(reverse_tables) -> None:
+    year_table = _table(_year_population_rows())
+    rate_table = _table([
+        _row("Chi phí thuế TNDN theo thuế suất", "20", "16"),
+        _row("Chi phí không được khấu trừ", "1", "2"),
+        _row("Chi phí thuế TNDN hiện hành", "21", "18", kind="TOTAL"),
+    ])
+    tables = [year_table, rate_table]
+    if reverse_tables:
+        tables.reverse()
+    records, _, _ = _supplemental_records([], primary_current=("21", "18"),
+                                         primary_root=("23", "19"))
+    records[0]["page_json"] = _page([], tables=tables)
+    original = deepcopy(records)
+    cluster, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == READY, candidate["reasons"]
+    assert records == original
+    by_role = {item["role"]: item for item in candidate["mappings"]}
+    year = by_role["CURRENT_YEAR_TAX_EXPENSE"]
+    assert year["report_norm_id"] == 5724
+    assert [value["coefficient"] for value in year["values"]] == [19, 15]
+    assert year["source_refs"][0]["label_exact"] == "Năm hiện hành"
+    assert year["source_refs"][0]["hierarchy_path_exact"] == ["Chi phí thuế hiện hành", "Năm hiện hành"]
+    assert "CURRENT_TAX_AT_RATE" not in by_role
+    assert "NON_DEDUCTIBLE_EXPENSE" not in by_role
+    receipt = cluster["owner_receipt"]["income_tax_source_context_receipt"]
+    assert len(receipt["tax_population_inventory"]) == 2
+    inventory = next(item for item in receipt["tax_population_inventory"] if item["current_year_surface_ordinals"])
+    boundary = inventory["current_year_frontier"]
+    assert boundary["anonymous_parent_owned_by_ordered_group"] is True
+    assert boundary["ownership_inferred_from_values"] is False
+    assert boundary["parent_source_row"]["label_exact"] is None
+    assert inventory["source_table_rows_exact"] == year_table["rows"]
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing_group", "numeric_group", "foreign_child", "intervening_group",
+    "competing_year", "foreign_anonymous_path", "income_parent", "weak_period",
+])
+def test_year_source_ownership_cannot_be_established_from_a_closing_equation(mutation) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _tax_population_inventory
+    rows = _year_population_rows()
+    if mutation == "missing_group":
+        rows.pop(0)
+    elif mutation == "numeric_group":
+        rows[0]["values_exact"] = ["19", "15"]
+    elif mutation == "foreign_child":
+        rows[1]["hierarchy_path_exact"].insert(0, "Công ty con")
+    elif mutation == "intervening_group":
+        rows.insert(3, _row("Nhóm khác", None, None, kind="GROUP"))
+    elif mutation == "competing_year":
+        rows.insert(2, deepcopy(rows[1]))
+    elif mutation == "foreign_anonymous_path":
+        rows[-1]["hierarchy_path_exact"] = ["Công ty con", None]
+    elif mutation == "income_parent":
+        rows[-1] = _row("Thu nhập chịu thuế", "21", "18", kind="SUBTOTAL")
+    else:
+        rows[1]["label_exact"] = "Kỳ hiện hành"
+        rows[1]["hierarchy_path_exact"][-1] = "Kỳ hiện hành"
+    records = [_record(_page(rows))]
+    original = deepcopy(records)
+    inventory = _tax_population_inventory(records, compiled_specs=_adapter_compiled())
+    assert inventory[0]["current_year_frontier"] is None
+    assert inventory[0]["source_table_rows_exact"] == rows
+    assert records == original
+
+
+def test_flat_year_presentation_is_not_silently_reclassified_as_rate() -> None:
+    rows = [_row("Năm hiện hành", "20", "16"), _row("Chi phí năm trước", "1", "2"),
+            _row("Chi phí thuế TNDN hiện hành", "21", "18", kind="TOTAL")]
+    records, _, _ = _supplemental_records(rows, primary_current=("21", "18"),
+                                         primary_root=("23", "19"))
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=records, compiled_specs=compiled)
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(
+        page_records=records, base_cluster=base, compiled_specs=compiled)
+    if cluster["status"] == READY:
+        candidate = evaluate_gemini_json_income_tax_family_cluster_v1(
+            regions=cluster["component_regions"],
+            page_json_by_version={record["page_json_version_id"]: record["page_json"] for record in records},
+            selected_page_axis=[{key: value for key, value in record.items() if key != "page_json"} for record in records],
+            compiled_specs=compiled,
+            query_receipt=build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster))
+        assert candidate["status"] == UNRESOLVED
+        assert candidate["mappings"] == []
+    else:
+        assert cluster["status"] == UNRESOLVED
+        assert cluster["component_regions"] == []
+    assert records == original
+
+
+@pytest.mark.parametrize("rate_label", ["Chi phí thuế TNDN theo thuế suất", "Thuế tính ở thuế suất 20%"])
+@pytest.mark.parametrize("owner", [OWNER, None])
+def test_direct_note_rate_tax_effect_is_not_exported_as_income_adjustment(rate_label, owner) -> None:
+    page = _page([
+        _row("Tổng lợi nhuận trước thuế", "100", "80"),
+        _row(rate_label, "20", "16"),
+        _row("Chi phí không được khấu trừ", "1", "2"),
+        _row("Chi phí thuế TNDN hiện hành", "21", "18", kind="TOTAL"),
+    ], owner=owner)
+    records = [_record(page)]
+    compiled = _adapter_compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=records, compiled_specs=compiled)
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(
+        page_records=records, base_cluster=base, compiled_specs=compiled)
+    assert cluster["status"] == READY
+    candidate = evaluate_gemini_json_income_tax_family_cluster_v1(
+        regions=cluster["component_regions"], page_json_by_version={VERSION_ID: page},
+        selected_page_axis=[{key: value for key, value in records[0].items() if key != "page_json"}],
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster),
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["INCOME_TAX_RATE_RECONCILIATION_MEASUREMENT_BASIS_AMBIGUITY"]
+
+
+@pytest.mark.parametrize("field", ["tax_population_inventory", "semantic_spec_sha256"])
+def test_resealed_source_population_or_semantic_pin_cannot_bypass_independent_query_replay(field) -> None:
+    records, _, _ = _supplemental_records(_year_population_rows(), primary_current=("21", "18"),
+                                         primary_root=("23", "19"))
+    compiled = _adapter_compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=records, compiled_specs=compiled)
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
+    assert cluster["status"] == READY
+    receipt = build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster)
+    context = receipt["source_context_receipt"]
+    context[field] = [] if field == "tax_population_inventory" else "0" * 64
+    context["receipt_id"] = "gjitfav1:source-context:" + canonical_json_sha256_v1(
+        {key: value for key, value in context.items() if key != "receipt_id"})
+    receipt["query_receipt_id"] = "gjitfav1:query-receipt:" + canonical_json_sha256_v1(
+        {key: value for key, value in receipt.items() if key != "query_receipt_id"})
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="source context query replay drifted"):
+        evaluate_gemini_json_income_tax_family_cluster_v1(
+            regions=cluster["component_regions"],
+            page_json_by_version={record["page_json_version_id"]: record["page_json"] for record in records},
+            selected_page_axis=[{key: value for key, value in record.items() if key != "page_json"} for record in records],
+            compiled_specs=compiled, query_receipt=receipt)
+
+
+def test_valid_year_frontier_does_not_hide_an_additional_unscoped_period_component() -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _at_rate_cross_presentation_conflicts,
+        _tax_population_inventory,
+    )
+    rows = [*_year_population_rows(), _row("Kỳ hiện hành", "5", "4")]
+    compiled = _adapter_compiled()
+    inventory = _tax_population_inventory([_record(_page(rows))], compiled_specs=compiled)
+    assert inventory[0]["current_year_frontier"] is not None
+    conflicts = _at_rate_cross_presentation_conflicts(
+        {"mappings": []}, compiled_specs=compiled,
+        source_context={"tax_population_inventory": inventory})
+    assert len(conflicts) == 1
+    assert conflicts[0]["population_inventory"]["current_year_surface_ordinals"] == [2, 5]
+
+
+@pytest.mark.parametrize("note_scope,primary_scope", [
+    ("RIÊNG", "HỢP NHẤT"), ("Ngân hàng mẹ", "HỢP NHẤT"),
+    ("RIÊNG", ""), ("", "HỢP NHẤT"),
+])
+def test_equal_year_totals_do_not_prove_compatible_source_population(note_scope, primary_scope) -> None:
+    records, _, _ = _supplemental_records(_year_population_rows(), primary_current=("21", "18"),
+                                         primary_root=("23", "19"))
+    records[0]["page_json"]["sections"][0]["title_exact"] += "\n" + note_scope
+    records[-1]["page_json"]["sections"][0]["title_exact"] += "\n" + primary_scope
+    original = deepcopy(records)
+    _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["CURRENT_YEAR_TAX_EXPENSE_SOURCE_POPULATION_AMBIGUITY"]
+    assert records == original
+
+
+@pytest.mark.parametrize("missing_closure", [False, True])
+def test_statutory_rate_basis_guard_is_not_disabled_by_missing_closure(missing_closure) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _tax_effect_basis_conflicts,
+        _tax_population_inventory,
+    )
+    rows = [_row("Thuế tính ở thuế suất 20%", "20", "16")]
+    if not missing_closure:
+        rows.append(_row("Nhóm khác", None, None, kind="GROUP"))
+    rows.append(_row("Chi phí không được khấu trừ", "1", "2"))
+    inventory = _tax_population_inventory([_record(_page(rows))], compiled_specs=_adapter_compiled())
+    mapping = {"role": "NON_DEDUCTIBLE_EXPENSE", "source_refs": [{
+        "locator": inventory[0]["locator"], "row_ordinal": len(rows),
+    }]}
+    conflicts = _tax_effect_basis_conflicts({"mappings": [mapping]},
+                                          source_context={"tax_population_inventory": inventory})
+    assert len(conflicts) == 1
+    assert inventory[0]["rate_frontiers"][0]["source_boundary_status"] == "MISSING_OR_GROUP_RESET_CLOSURE"
+
+
+@pytest.mark.parametrize("changed_spec", ["evaluation", "schema"])
+def test_receipt_binds_complete_evaluation_and_schema_semantics(changed_spec) -> None:
+    records, _, _ = _supplemental_records(_year_population_rows(), primary_current=("21", "18"),
+                                         primary_root=("23", "19"))
+    compiled = _adapter_compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=records, compiled_specs=compiled)
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
+    receipt = build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster)
+    evaluation = _json("tm-income-tax-evaluation-v1.json")
+    schema = _json("tm-income-tax-schema-binding-v1.json")
+    if changed_spec == "evaluation":
+        evaluation["query_owner_aliases"].append("Thuế kiểm thử")
+    else:
+        schema["root_mapping_policy"] = "STRUCTURAL_CONTEXT_ONLY"
+    altered = compile_gemini_json_income_tax_family_specs_v1(
+        _json("tm-income-tax-topology-v1.json"), evaluation, schema)
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="source context query replay drifted"):
+        evaluate_gemini_json_income_tax_family_cluster_v1(
+            regions=cluster["component_regions"],
+            page_json_by_version={record["page_json_version_id"]: record["page_json"] for record in records},
+            selected_page_axis=[{key: value for key, value in record.items() if key != "page_json"} for record in records],
+            compiled_specs=altered, query_receipt=receipt)
 
 
 def test_rich_reconciliation_parent_conflict_with_primary_fails_closed() -> None:

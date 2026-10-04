@@ -272,8 +272,11 @@ def test_current_year_expense_cannot_be_added_to_explicit_rate_base_even_if_pare
     assert records == original
     proof = candidate["closure_receipt"]["income_tax_unresolved_evidence_receipt"]["evidence"]["at_rate_population_conflicts"][0]
     assert proof["classification"] == "ALGORITHM_ROLE_POPULATION_AMBIGUITY_NOT_GENUINE_SOURCE_CONFLICT"
-    assert proof["mapping"]["values"][0]["coefficient"] == 39
-    assert len(proof["explicit_rate_source_refs"]) == len(proof["generic_current_year_source_refs"]) == 1
+    inventory = proof["population_inventory"]
+    assert inventory["source_table_rows_exact"][1]["values_exact"] == ["19", "16"]
+    assert inventory["source_table_row_axis"][1]["normalized_label"] == "nam hien hanh"
+    assert len(inventory["explicit_rate_surface_ordinals"]) == len(inventory["current_year_surface_ordinals"]) == 1
+    assert inventory["current_year_frontier"] is None
 
 
 @pytest.mark.parametrize("qualified_row", [0, 1, 2, 3, 4])

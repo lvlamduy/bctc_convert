@@ -79,6 +79,9 @@ _CANONICAL_LABEL = {
     "PROFIT_BEFORE_TAX": "Lợi nhuận kế toán trước thuế",
     "NON_DEDUCTIBLE_EXPENSE": "Chi phí không được khấu trừ",
     "CURRENT_TAX_AT_RATE": "Chi phí thuế TNDN theo thuế suất",
+    "STATUTORY_TAX_AMOUNT_SOURCE_ONLY": "Thuế tính ở thuế suất 20%",
+    "CURRENT_YEAR_TAX_EXPENSE": "Năm hiện hành",
+    "CURRENT_YEAR_EXPENSE_CONTEXT": "Chi phí thuế hiện hành",
     "CURRENT_TAX_BANK": "Chi phí thuế TNDN hiện hành ước tính của Ngân hàng",
     "SUBSIDIARY_TAX": "Chi phí thuế TNDN hiện hành của công ty con",
     "PRIOR_PERIOD_TAX_ADJUSTMENT": "Điều chỉnh thuế TNDN các năm trước",
@@ -92,6 +95,8 @@ _SUPPLEMENTAL_DIRECT_ROLES = (
     "PROFIT_BEFORE_TAX",
     "NON_DEDUCTIBLE_EXPENSE",
     "CURRENT_TAX_AT_RATE",
+    "STATUTORY_TAX_AMOUNT_SOURCE_ONLY",
+    "CURRENT_YEAR_TAX_EXPENSE",
     "CURRENT_TAX_BANK",
     "SUBSIDIARY_TAX",
     "PRIOR_PERIOD_TAX_ADJUSTMENT",
@@ -1377,6 +1382,7 @@ def _finalize_supplemental_descriptor(
     presentation_kind: str,
     equation_receipts: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
+    source_population_receipt: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     descriptor = {
         "canonical_unit": canonical_unit,
@@ -1395,6 +1401,8 @@ def _finalize_supplemental_descriptor(
         "projected_unit_exact": "Triệu VND" if canonical_unit == "MILLION_VND" else "VND",
         "rows": canonical_clone_v1(list(rows)),
         "source_table_row_axis": canonical_clone_v1(list(source_rows)),
+        "source_population_receipt": canonical_clone_v1(source_population_receipt),
+        "projected_semantic_spec_sha256": _semantic_spec_sha256(compiled_specs["income_tax_supplemental_specs"]),
         "unit_evidence": canonical_clone_v1(unit_evidence),
     }
     projected_page = _project_primary_page(page, descriptor=descriptor)
@@ -1659,6 +1667,52 @@ def _supplemental_presentations(
                 table_equation_receipts: list[dict[str, Any]] = []
                 certified_adjustment_ordinals: set[int] = set()
 
+                year_frontier = _current_year_source_frontier(
+                    source_rows, compiled_specs=compiled_specs,
+                )
+                if year_frontier is not None:
+                    components = [
+                        _projected_source_row(
+                            item, role=("CURRENT_YEAR_TAX_EXPENSE" if index == 0
+                                        else "PRIOR_PERIOD_TAX_ADJUSTMENT"),
+                            projected_row_kind="ITEM",
+                        ) for index, item in enumerate(year_frontier["component_source_rows"])
+                    ]
+                    parent = _projected_source_row(
+                        year_frontier["parent_source_row"], role="CURRENT_TAX_PARENT",
+                        projected_row_kind="TOTAL",
+                    )
+                    group = _projected_source_row(
+                        year_frontier["group_source_row"], role="CURRENT_YEAR_EXPENSE_CONTEXT",
+                        projected_row_kind="GROUP",
+                    )
+                    if not _exact_sum(components, parent):
+                        if issues is not None:
+                            issues.append("SUPPLEMENTAL_CURRENT_YEAR_EQUATION_NOT_COMPLETE_OR_EXACT")
+                    else:
+                        equation = _supplemental_equation_receipt(
+                            component_rows=components, parent_row=parent,
+                            equation_kind="CURRENT_YEAR_PLUS_PRINTED_PRIOR_ADJUSTMENTS_EQUALS_CURRENT_TAX",
+                        )
+                        descriptor = _finalize_supplemental_descriptor(
+                            record=record, page=page, section_ordinal=section_ordinal,
+                            table_ordinal=table_ordinal, table=table,
+                            money_column_ordinals=money_ordinals, canonical_unit=canonical_unit,
+                            unit_evidence=unit_evidence, unit_receipt=unit_receipt,
+                            source_rows=all_source_rows, rows=[group, *components, parent],
+                            presentation_kind="CURRENT_YEAR_TAX_EXPENSE_EXACT_SUM",
+                            equation_receipts=[equation], compiled_specs=compiled_specs,
+                            source_population_receipt=year_frontier,
+                        )
+                        if descriptor is None:
+                            if issues is not None:
+                                issues.append("SUPPLEMENTAL_CURRENT_YEAR_PRIVATE_PROJECTION_NOT_READY")
+                        else:
+                            descriptors.append(descriptor)
+                            claimed.update(item["row_ordinal"] for item in [group, *components, parent])
+                            table_has_certified_equation = True
+                            table_equation_receipts.append(equation)
+
                 bank_surface_rows = [
                     item
                     for item in source_rows
@@ -1787,8 +1841,7 @@ def _supplemental_presentations(
                 rate_rows = [
                     item
                     for item in source_rows
-                    if item["matched_role"] == "CURRENT_TAX_AT_RATE"
-                    or item["normalized_label"] in {"ky hien hanh", "nam hien hanh"}
+                    if item["matched_role"] in {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"}
                 ]
                 if len(rate_rows) > 1 and issues is not None:
                     issues.append("SUPPLEMENTAL_CURRENT_TAX_RATE_AXIS_NOT_UNIQUE")
@@ -1832,12 +1885,16 @@ def _supplemental_presentations(
                             _projected_source_row(
                                 item,
                                 role=(
-                                    "CURRENT_TAX_AT_RATE"
+                                    item["matched_role"]
                                     if item is rate_rows[0]
                                     else (
                                         item["matched_role"]
                                         if item["matched_role"]
                                         in _SUPPLEMENTAL_DIRECT_ROLES
+                                        and item["matched_role"] not in {
+                                            "NON_DEDUCTIBLE_EXPENSE",
+                                            "CURRENT_YEAR_TAX_EXPENSE",
+                                        }
                                         else "SOURCE_ONLY_EQUATION_COMPONENT"
                                     )
                                 ),
@@ -2068,10 +2125,13 @@ def _project_primary_page(
             raise _error("income-tax primary source row image drifted")
         role = item["role"]
         canonical = _CANONICAL_LABEL[role]
+        ancestry = [root_label, canonical]
+        if role == "CURRENT_YEAR_TAX_EXPENSE":
+            ancestry = [root_label, _CANONICAL_LABEL["CURRENT_YEAR_EXPENSE_CONTEXT"], canonical]
         projected_rows.append(
             {
                 "hierarchy_path_exact": (
-                    [root_label] if role == "FAMILY_ROOT_TOTAL" else [root_label, canonical]
+                    [root_label] if role == "FAMILY_ROOT_TOTAL" else ancestry
                 ),
                 "label_exact": canonical,
                 "row_kind": item.get(
@@ -2393,11 +2453,130 @@ def _candidate_source_row_axis(
     return frozenset(axis)
 
 
+def _semantic_spec_sha256(specs: Mapping[str, Any]) -> str:
+    return canonical_json_sha256_v1({
+        "topology": specs["topology"], "evaluation": specs["evaluation"], "schema": specs["schema"],
+    })
+
+
+def _current_year_source_frontier(
+    source_rows: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Authenticate ownership before checking any arithmetic or consuming rows."""
+    year = [item for item in source_rows if item["normalized_label"] == "nam hien hanh"]
+    groups = [item for item in source_rows
+              if item["normalized_label"] == "chi phi thue hien hanh"
+              and item["row_kind"] == "GROUP"]
+    if len(year) != 1 or len(groups) != 1:
+        return None
+    start, child = groups[0], year[0]
+    closings = [item for item in source_rows
+                if item["row_ordinal"] > start["row_ordinal"]
+                and item["row_kind"] in {"GROUP", "SUBTOTAL", "TOTAL"}]
+    if not closings or closings[0]["row_kind"] == "GROUP":
+        return None
+    parent = closings[0]
+    components = [item for item in source_rows
+                  if start["row_ordinal"] < item["row_ordinal"] < parent["row_ordinal"]]
+    ancestry = start["hierarchy_path_exact"]
+    if (ancestry != [start["label_exact"]]
+            or not components or components[0] is not child
+            or any(value is not None for value in start["source_values_exact"])):
+        return None
+    for item in components:
+        path = item["hierarchy_path_exact"]
+        if (item["row_kind"] != "ITEM" or type(path) is not list
+                or path != [*ancestry, item["label_exact"]]
+                or (item is not child and item["matched_role"] != "PRIOR_PERIOD_TAX_ADJUSTMENT")):
+            return None
+    anonymous = parent["normalized_label"] in {"", "cong", "tong cong"}
+    if anonymous:
+        if parent["hierarchy_path_exact"] not in ([], [None], ancestry):
+            return None
+    elif not _supplemental_rate_parent_matches(parent, compiled_specs=compiled_specs):
+        return None
+    material = {
+        "rule": "EXACT_PRINTED_CURRENT_YEAR_GROUP_DESCENDANTS_FIRST_CLOSING_SOURCE_SUBTOTAL",
+        "group_source_row": canonical_clone_v1(start),
+        "component_source_rows": canonical_clone_v1(components),
+        "parent_source_row": canonical_clone_v1(parent),
+        "anonymous_parent_owned_by_ordered_group": anonymous,
+        "ownership_inferred_from_values": False,
+    }
+    return {**material, "receipt_id": "gjitfav1:year-frontier:" + canonical_json_sha256_v1(material)}
+
+
+def _tax_population_inventory(
+    page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Bind original tax populations even when generic evaluation consumed them."""
+    aliases = _supplemental_role_alias_axis(compiled_specs)
+    output = []
+    for record in page_records:
+        page = record["page_json"]
+        for section_ordinal, section in enumerate(page.get("sections") or [], start=1):
+            if section.get("content_kind") != "FINANCIAL_NOTE":
+                continue
+            for table_ordinal, table in enumerate(section.get("tables") or [], start=1):
+                lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+                money_ordinals = lane.get("money_column_ordinals") or []
+                source_rows = _supplemental_source_rows(
+                    table, money_column_ordinals=money_ordinals, role_alias_axis=aliases,
+                )
+                if not (_supplemental_owner_matches(section, table, compiled_specs=compiled_specs)
+                        or any(item["matched_role"] in {
+                            "CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY", "CURRENT_TAX_PARENT",
+                        } or item["normalized_label"] == "chi phi thue hien hanh" for item in source_rows)):
+                    continue
+                years = [item["row_ordinal"] for item in source_rows
+                         if item["normalized_label"] in {"nam hien hanh", "ky hien hanh"}]
+                rates = [item["row_ordinal"] for item in source_rows
+                         if item["matched_role"] in {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"}]
+                rate_frontiers = []
+                for start in rates:
+                    closings = [item for item in source_rows if item["row_ordinal"] > start
+                                and item["row_kind"] in {"GROUP", "SUBTOTAL", "TOTAL"}]
+                    parent = closings[0] if closings and closings[0]["row_kind"] != "GROUP" else None
+                    # An untyped GROUP is not evidence that the following
+                    # adjustments changed from tax effects to income basis.
+                    end = parent["row_ordinal"] if parent is not None else len(source_rows) + 1
+                    rate_frontiers.append({
+                        "start_row_ordinal": start,
+                        "parent_source_row": canonical_clone_v1(parent),
+                        "component_row_ordinals": [item["row_ordinal"] for item in source_rows
+                                                   if start <= item["row_ordinal"] < end],
+                        "source_boundary_status": "PRINTED_CLOSING_ROW" if parent is not None else "MISSING_OR_GROUP_RESET_CLOSURE",
+                        "measurement_basis": "TAX_EFFECT_NOT_TAXABLE_INCOME_ADJUSTMENT",
+                    })
+                material = {
+                    "locator": _record_locator(record, section_id=f"s{section_ordinal}", table_id=f"t{table_ordinal}"),
+                    "original_page_json_sha256": canonical_json_sha256_v1(page),
+                    "original_table_json_sha256": canonical_json_sha256_v1(table),
+                    "source_table_row_axis": source_rows,
+                    "source_table_rows_exact": canonical_clone_v1(table.get("rows") or []),
+                    "owner_surfaces_exact": [section.get("title_exact"), table.get("title_exact")],
+                    "lane_axis": lane,
+                    "unit_axis": _unit_axis(table, compiled_specs=compiled_specs),
+                    "current_year_surface_ordinals": years,
+                    "explicit_rate_surface_ordinals": rates,
+                    "current_year_frontier": _current_year_source_frontier(source_rows, compiled_specs=compiled_specs),
+                    "rate_frontiers": rate_frontiers,
+                    "rule": "ORIGINAL_TAX_POPULATION_BEFORE_GENERIC_CONSUMED_ROW_SUPPRESSION",
+                }
+                output.append({**material, "receipt_id": "gjitfav1:tax-population:" + canonical_json_sha256_v1(material)})
+    return sorted(output, key=lambda item: (
+        item["locator"]["selected_page_ordinal"],
+        int(item["locator"]["section_id"][1:]),
+        int(item["locator"]["table_id"][1:]),
+    ))
+
+
 def _source_context_receipt(
     *,
     compiled_specs: Mapping[str, Any],
     repair_receipts: Sequence[Mapping[str, Any]],
     root_controls: Sequence[Mapping[str, Any]],
+    page_records: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     # Empty repair/control axes are meaningful, authenticated declarations too.
     material = {
@@ -2405,6 +2584,10 @@ def _source_context_receipt(
         "source_repair_spec_sha256": compiled_specs["income_tax_source_repair_spec_sha256"],
         "repair_receipt_ids": [item["receipt_id"] for item in repair_receipts],
         "supplemental_root_controls": canonical_clone_v1(list(root_controls)),
+        "tax_population_inventory": _tax_population_inventory(
+            page_records, compiled_specs=compiled_specs,
+        ),
+        "semantic_spec_sha256": _semantic_spec_sha256(compiled_specs),
         "rule": "EXACT_INCOME_TAX_SOURCE_CONTEXT_ALL_QUERY_STRATEGIES",
     }
     return {
@@ -2454,6 +2637,7 @@ def recover_gemini_json_income_tax_query_cluster_v1(
         compiled_specs=compiled_specs,
         repair_receipts=repair_receipts,
         root_controls=root_controls,
+        page_records=repaired_records,
     )
     if root_issues:
         owner = canonical_clone_v1(selected_base.get("owner_receipt"))
@@ -2860,6 +3044,9 @@ def _evaluate_supplemental_descriptor(
     if canonical_json_sha256_v1(projected_page) != descriptor["projected_page_json_sha256"]:
         raise _error("income-tax supplemental projection output drifted")
     specs = compiled_specs["income_tax_supplemental_specs"]
+    if (descriptor.get("projected_specs_key") != "income_tax_supplemental_specs"
+            or descriptor.get("projected_semantic_spec_sha256") != _semantic_spec_sha256(specs)):
+        raise _error("income-tax supplemental semantic spec replay drifted")
     projected_record = {
         key: canonical_clone_v1(locator[key])
         for key in (
@@ -3491,6 +3678,7 @@ def _note_primary_signed_display_proof(
 
 def _at_rate_cross_presentation_conflicts(
     candidate: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
+    source_context: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Never sum a generic current-year expense with explicitly rate-based tax."""
     role = next(child for child in compiled_specs["topology"]["children"]
@@ -3500,11 +3688,7 @@ def _at_rate_cross_presentation_conflicts(
         for matcher in role["matchers"] if matcher.get("presence_anchor", True)
         for alias in matcher["aliases"]
     }
-    weak_aliases = {
-        _without_leading_ordinal(_normalized(alias))
-        for matcher in role["matchers"] if not matcher.get("presence_anchor", True)
-        for alias in matcher["aliases"]
-    }
+    weak_aliases = {"nam hien hanh", "ky hien hanh"}
     conflicts = []
     for mapping in candidate.get("mappings", []):
         if mapping.get("role") != "CURRENT_TAX_AT_RATE":
@@ -3526,6 +3710,48 @@ def _at_rate_cross_presentation_conflicts(
             "classification": "ALGORITHM_ROLE_POPULATION_AMBIGUITY_NOT_GENUINE_SOURCE_CONFLICT",
         }
         conflicts.append({**material, "receipt_id": "gjitfav1:at-rate-population:" + canonical_json_sha256_v1(material)})
+    for inventory in (source_context or {}).get("tax_population_inventory", []):
+        years = inventory["current_year_surface_ordinals"]
+        if not years:
+            continue
+        boundary = inventory["current_year_frontier"]
+        covered_years = {item["row_ordinal"] for item in boundary["component_source_rows"]
+                         if item["normalized_label"] == "nam hien hanh"} if boundary is not None else set()
+        if set(years) <= covered_years:
+            continue
+        material = {
+            "rule": "CURRENT_YEAR_EXPENSE_REQUIRES_INDEPENDENT_SOURCE_OWNERSHIP_NOT_RATE_ADDITIVE_CONSUMPTION",
+            "population_inventory": canonical_clone_v1(inventory),
+            "classification": "ALGORITHM_ROLE_POPULATION_AMBIGUITY_NOT_GENUINE_SOURCE_CONFLICT",
+            "source_values_changed": False,
+        }
+        conflicts.append({**material, "receipt_id": "gjitfav1:at-rate-population:" + canonical_json_sha256_v1(material)})
+    return conflicts
+
+
+def _tax_effect_basis_conflicts(
+    candidate: Mapping[str, Any], *, source_context: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    conflicts = []
+    for inventory in source_context["tax_population_inventory"]:
+        locator = inventory["locator"]
+        rate_rows = {ordinal for frontier in inventory["rate_frontiers"]
+                     for ordinal in frontier["component_row_ordinals"]}
+        for mapping in candidate.get("mappings", []):
+            if mapping.get("role") not in {"NON_DEDUCTIBLE_EXPENSE", "NON_TAXABLE_AGGREGATE"}:
+                continue
+            refs = [ref for ref in mapping.get("source_refs", [])
+                    if all(ref.get("locator", {}).get(key) == locator[key]
+                           for key in ("page_json_version_id", "section_id", "table_id"))
+                    and ref.get("row_ordinal") in rate_rows]
+            if refs:
+                conflicts.append({
+                    "mapping": canonical_clone_v1(mapping),
+                    "source_refs": canonical_clone_v1(refs),
+                    "population_inventory_id": inventory["receipt_id"],
+                    "classification": "ALGORITHM_MEASUREMENT_BASIS_AMBIGUITY_NOT_GENUINE_SOURCE_CONFLICT",
+                    "rule": "RATE_RECONCILIATION_TAX_EFFECT_MUST_NOT_EXPORT_INCOME_BASIS_SCHEMA_TARGET",
+                })
     return conflicts
 
 
@@ -3823,8 +4049,44 @@ def _seal_income_tax_source_controls(
 ) -> dict[str, Any]:
     if candidate.get("status") != READY:
         return canonical_clone_v1(candidate)
+    year_domain_conflicts = []
+    primary = candidate.get("closure_receipt", {}).get("income_tax_adapter_receipt", {}).get("primary_projection_receipt")
+    if type(primary) is dict:
+        pages = {item["page_json_version_id"]: item["page_json"] for item in repaired_records}
+        section, table = _source_table(pages[primary["locator"]["page_json_version_id"]],
+                                       section_id=primary["locator"]["section_id"], table_id=primary["locator"]["table_id"])
+        primary_surfaces = [section.get("title_exact"), table.get("title_exact")]
+        primary_ancestries = [item["hierarchy_path_exact"][:-1] for item in primary["rows"]
+                             if type(item.get("hierarchy_path_exact")) is list]
+        primary_surfaces.extend(value for ancestry in primary_ancestries for value in ancestry)
+        primary_scope = _printed_population_qualifiers(primary_surfaces)
+        unknown_primary_ancestry = [value for ancestry in primary_ancestries for value in ancestry
+                                    if _without_leading_ordinal(_normalized(value)) not in _ROOT_LABELS]
+        for mapping in candidate.get("mappings", []):
+            if mapping.get("role") != "CURRENT_YEAR_TAX_EXPENSE":
+                continue
+            for ref in mapping["source_refs"]:
+                locator = ref["locator"]
+                note_section, note_table = _source_table(pages[locator["page_json_version_id"]],
+                                                       section_id=locator["section_id"], table_id=locator["table_id"])
+                note_surfaces = [note_section.get("title_exact"), note_table.get("title_exact"),
+                                 *(ref.get("hierarchy_path_exact") or [])]
+                note_scope = _printed_population_qualifiers(note_surfaces)
+                if note_scope != primary_scope or unknown_primary_ancestry:
+                    year_domain_conflicts.append({
+                        "source_ref": canonical_clone_v1(ref), "note_surfaces_exact": note_surfaces,
+                        "primary_surfaces_exact": primary_surfaces, "note_scope": note_scope,
+                        "primary_scope": primary_scope,
+                        "primary_ancestries_exact": canonical_clone_v1(primary_ancestries),
+                        "unknown_primary_ancestry_exact": canonical_clone_v1(unknown_primary_ancestry),
+                        "rule": "PRINTED_YEAR_EXPENSE_POPULATION_MUST_MATCH_PRIMARY_NOT_JUST_TOTAL_AMOUNT",
+                    })
+    if year_domain_conflicts:
+        return _unresolved_from_candidate(candidate, reason="CURRENT_YEAR_TAX_EXPENSE_SOURCE_POPULATION_AMBIGUITY",
+                                          evidence={"year_domain_conflicts": year_domain_conflicts,
+                                                    "source_context_receipt": canonical_clone_v1(source_context)})
     population_conflicts = _at_rate_cross_presentation_conflicts(
-        candidate, compiled_specs=compiled_specs,
+        candidate, compiled_specs=compiled_specs, source_context=source_context,
     )
     if population_conflicts:
         return _unresolved_from_candidate(
@@ -3834,6 +4096,13 @@ def _seal_income_tax_source_controls(
                 "source_context_receipt": canonical_clone_v1(source_context),
                 "at_rate_population_conflicts": population_conflicts,
             },
+        )
+    basis_conflicts = _tax_effect_basis_conflicts(candidate, source_context=source_context)
+    if basis_conflicts:
+        return _unresolved_from_candidate(
+            candidate, reason="INCOME_TAX_RATE_RECONCILIATION_MEASUREMENT_BASIS_AMBIGUITY",
+            evidence={"source_context_receipt": canonical_clone_v1(source_context),
+                      "tax_effect_basis_conflicts": basis_conflicts},
         )
     closure, mismatch = _post_merge_root_closure(
         candidate, comparison_orientations=_authenticated_root_comparison_orientations(candidate),
@@ -3975,6 +4244,7 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
         compiled_specs=compiled_specs,
         repair_receipts=repair_receipts,
         root_controls=root_controls,
+        page_records=repaired_records,
     )
     if root_issues or not same_typed_json_v1(checked["source_context_receipt"], expected_context):
         raise _error("income-tax source context query replay drifted")
