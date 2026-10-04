@@ -16,6 +16,7 @@ from typing import Any
 
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _normalized,
+    _path_has_role,
     _without_leading_ordinal,
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
@@ -1014,6 +1015,72 @@ def _supplemental_role_alias_axis(
     return axis
 
 
+def _supplemental_negative_surface(
+    item: Mapping[str, Any], negative_aliases: Sequence[str]
+) -> bool:
+    """Fence source labels and ancestors independently of the proposed row kind."""
+
+    path = item.get("hierarchy_path_exact")
+    surfaces = [item.get("normalized_label", item.get("label_exact"))]
+    if type(path) is list:
+        surfaces.extend(path)
+    return any(
+        _normalized(alias) in _normalized(surface)
+        for surface in surfaces
+        if _normalized(surface)
+        for alias in negative_aliases
+        if _normalized(alias)
+    )
+
+
+def _supplemental_candidate_surface(item: Mapping[str, Any]) -> bool:
+    label = item["normalized_label"]
+    return bool(
+        item["matched_role"] in _SUPPLEMENTAL_DIRECT_ROLES
+        or ("ngan hang" in label and "cong ty" not in label and "thue" not in label)
+        or (
+            "cong ty" in label
+            and any(alias in label for alias in ("quan ly no", "khai thac tai san", "amc"))
+        )
+        or label in {"ky hien hanh", "nam hien hanh"}
+    )
+
+
+def _supplemental_rate_parent_matches(
+    item: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
+) -> bool:
+    """Arithmetic cannot relabel another declared semantic subtotal as current tax."""
+
+    label = item["normalized_label"]
+    aliases_by_role = {
+        child["role"]: [alias for matcher in child["matchers"] for alias in matcher["aliases"]]
+        for child in compiled_specs["topology"]["children"]
+    }
+    label_roles = {
+        role
+        for role, aliases in aliases_by_role.items()
+        if label in {_without_leading_ordinal(_normalized(alias)) for alias in aliases}
+    }
+    path_roles = {
+        role
+        for role, aliases in aliases_by_role.items()
+        if _path_has_role(
+            item.get("hierarchy_path_exact"), aliases=aliases, label_exact=item.get("label_exact")
+        )
+    }
+    if label_roles - {"CURRENT_TAX_PARENT"} or path_roles - {"CURRENT_TAX_PARENT"}:
+        return False
+    if label in _ROOT_LABELS:
+        return False
+    return bool(
+        label_roles == {"CURRENT_TAX_PARENT"}
+        or (
+            label in {"", "cong", "tong cong"}
+            and path_roles == {"CURRENT_TAX_PARENT"}
+        )
+    )
+
+
 def _supplemental_source_rows(
     table: Mapping[str, Any],
     *,
@@ -1202,6 +1269,130 @@ def _finalize_supplemental_descriptor(
     return descriptor
 
 
+def _supplemental_root_controls(
+    page_records: Sequence[Mapping[str, Any]],
+    *,
+    compiled_specs: Mapping[str, Any],
+    issues: list[str],
+) -> list[dict[str, Any]]:
+    """Bind exact supplemental roots as source controls, never as mappings."""
+
+    controls: list[dict[str, Any]] = []
+    root_surface_count = 0
+    role_alias_axis = _supplemental_role_alias_axis(compiled_specs)
+    document_unit = _primary_statement_unit_corroboration(
+        page_records, compiled_specs=compiled_specs
+    )
+    negative_aliases = {
+        *compiled_specs.get("query_policy", {}).get("hard_negative_aliases", []),
+        *compiled_specs.get("query_policy", {}).get("reset_aliases", []),
+    }
+    for record in page_records:
+        page = record["page_json"]
+        for section_ordinal, section in enumerate(page.get("sections") or [], start=1):
+            if type(section) is not dict or section.get("content_kind") != "FINANCIAL_NOTE":
+                continue
+            for table_ordinal, table in enumerate(section.get("tables") or [], start=1):
+                if type(table) is not dict or not _supplemental_owner_matches(
+                    section, table, compiled_specs=compiled_specs
+                ):
+                    continue
+                root_ordinals = [
+                    ordinal
+                    for ordinal, row in enumerate(table.get("rows") or [], start=1)
+                    if type(row) is dict
+                    and _without_leading_ordinal(_normalized(row.get("label_exact")))
+                    in _ROOT_LABELS
+                ]
+                if not root_ordinals:
+                    continue
+                root_surface_count += len(root_ordinals)
+                lane_axis = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+                money_ordinals = lane_axis.get("money_column_ordinals")
+                if (
+                    not lane_axis.get("complete")
+                    or type(money_ordinals) is not list
+                    or len(money_ordinals) != 2
+                ):
+                    issues.append("SUPPLEMENTAL_ROOT_LANE_AXIS_NOT_COMPLETE")
+                    continue
+                unit_axis = _unit_axis(table, compiled_specs=compiled_specs)
+                unit_receipt = None
+                if unit_axis.get("complete") and unit_axis.get("canonical_unit") in {
+                    "MILLION_VND", "VND"
+                }:
+                    canonical_unit = unit_axis["canonical_unit"]
+                    unit_evidence = canonical_clone_v1(unit_axis["evidence"])
+                elif document_unit is not None and _local_money_unit_is_truly_absent(unit_axis):
+                    canonical_unit = document_unit["canonical_unit"]
+                    unit_evidence = canonical_clone_v1(document_unit["sources"])
+                    unit_receipt = canonical_clone_v1(document_unit)
+                else:
+                    issues.append("SUPPLEMENTAL_ROOT_UNIT_AXIS_NOT_COMPLETE")
+                    continue
+                source_rows = _supplemental_source_rows(
+                    table,
+                    money_column_ordinals=money_ordinals,
+                    role_alias_axis=role_alias_axis,
+                )
+                resets = [
+                    item["row_ordinal"] for item in source_rows
+                    if _supplemental_negative_surface(item, negative_aliases)
+                ]
+                locator = _record_locator(
+                    record, section_id=f"s{section_ordinal}", table_id=f"t{table_ordinal}"
+                )
+                for row_ordinal in root_ordinals:
+                    item = source_rows[row_ordinal - 1]
+                    if resets and row_ordinal >= min(resets):
+                        issues.append("SUPPLEMENTAL_ROOT_AFTER_STRUCTURAL_RESET")
+                    if not item["values_usable"] or not _all_observed(item["parsed_values"]):
+                        issues.append("SUPPLEMENTAL_ROOT_FRONTIER_NOT_COMPLETE")
+                    source_ref = {
+                        "hierarchy_path_exact": canonical_clone_v1(item["hierarchy_path_exact"]),
+                        "label_exact": item["label_exact"],
+                        "locator": canonical_clone_v1(locator),
+                        "money_column_ordinals": canonical_clone_v1(money_ordinals),
+                        "row_id": f"r{row_ordinal}",
+                        "row_kind": item["row_kind"],
+                        "row_ordinal": row_ordinal,
+                    }
+                    root_row = canonical_clone_v1(item)
+                    root_row.update({
+                        "coefficients": canonical_clone_v1(item["parsed_values"]),
+                        "role": "FAMILY_ROOT_TOTAL",
+                        "source_ref": source_ref,
+                        "values_exact": canonical_clone_v1(item["source_values_exact"]),
+                    })
+                    material = {
+                        "canonical_unit": canonical_unit,
+                        "lane_axis": canonical_clone_v1(lane_axis),
+                        "locator": canonical_clone_v1(locator),
+                        "money_column_ordinals": canonical_clone_v1(money_ordinals),
+                        "original_page_json_sha256": canonical_json_sha256_v1(page),
+                        "original_table_json_sha256": canonical_json_sha256_v1(table),
+                        "primary_unit_corroboration_receipt": unit_receipt,
+                        "root_source_row": root_row,
+                        "source_table_row_axis": canonical_clone_v1(source_rows),
+                        "unit_evidence": canonical_clone_v1(unit_evidence),
+                        "rule": "EXACT_SOURCE_VISIBLE_SUPPLEMENTAL_ROOT_IS_CONTROL_ONLY",
+                    }
+                    controls.append({
+                        **material,
+                        "control_id": "gjitfav1:supplemental-root-control:"
+                        + canonical_json_sha256_v1(material),
+                    })
+    if root_surface_count > 1:
+        issues.append("SUPPLEMENTAL_ROOT_AXIS_NOT_UNIQUE")
+    issues[:] = sorted(set(issues))
+    return sorted(controls, key=lambda item: (
+        item["locator"]["selected_page_ordinal"],
+        item["locator"]["section_id"],
+        item["locator"]["table_id"],
+        item["root_source_row"]["row_ordinal"],
+    ))
+
+
 def _supplemental_presentations(
     page_records: Sequence[Mapping[str, Any]],
     *,
@@ -1254,33 +1445,6 @@ def _supplemental_presentations(
                     money_column_ordinals=money_ordinals,
                     role_alias_axis=role_alias_axis,
                 )
-                if consumed_source_rows and not any(
-                    (
-                        item["matched_role"] in _SUPPLEMENTAL_DIRECT_ROLES
-                        or (
-                            "ngan hang" in item["normalized_label"]
-                            and "thue" not in item["normalized_label"]
-                        )
-                        or (
-                            "cong ty" in item["normalized_label"]
-                            and (
-                                "quan ly no" in item["normalized_label"]
-                                or "khai thac tai san" in item["normalized_label"]
-                                or "amc" in item["normalized_label"]
-                            )
-                        )
-                        or item["normalized_label"] in {"ky hien hanh", "nam hien hanh"}
-                    )
-                    and (
-                        record["page_json_version_id"],
-                        f"s{section_ordinal}",
-                        f"t{table_ordinal}",
-                        item["row_ordinal"],
-                    )
-                    not in consumed_source_rows
-                    for item in all_source_rows
-                ):
-                    continue
                 negative_aliases = {
                     *compiled_specs.get("query_policy", {}).get(
                         "hard_negative_aliases", []
@@ -1290,16 +1454,13 @@ def _supplemental_presentations(
                 reset_ordinals = [
                     item["row_ordinal"]
                     for item in all_source_rows
-                    if item["row_kind"] in {"GROUP", "SUBTOTAL", "TOTAL"}
-                    and any(
-                        alias in item["normalized_label"] for alias in negative_aliases
-                    )
+                    if _supplemental_negative_surface(item, negative_aliases)
                 ]
                 if reset_ordinals:
                     first_reset = min(reset_ordinals)
                     if any(
-                        item["row_ordinal"] > first_reset
-                        and item["matched_role"] in _SUPPLEMENTAL_DIRECT_ROLES
+                        item["row_ordinal"] >= first_reset
+                        and _supplemental_candidate_surface(item)
                         for item in all_source_rows
                     ):
                         if issues is not None:
@@ -1312,6 +1473,20 @@ def _supplemental_presentations(
                     ]
                 else:
                     source_rows = all_source_rows
+                # A generic note may already have claimed the row.  That is
+                # never authority to bypass a contradictory source boundary.
+                if consumed_source_rows and not any(
+                    _supplemental_candidate_surface(item)
+                    and (
+                        record["page_json_version_id"],
+                        f"s{section_ordinal}",
+                        f"t{table_ordinal}",
+                        item["row_ordinal"],
+                    )
+                    not in consumed_source_rows
+                    for item in all_source_rows
+                ):
+                    continue
                 claimed: set[int] = set()
                 table_has_certified_equation = False
                 table_equation_receipts: list[dict[str, Any]] = []
@@ -1459,6 +1634,12 @@ def _supplemental_presentations(
                     ]
                     if parent_options:
                         parent = parent_options[0]
+                        if not _supplemental_rate_parent_matches(
+                            parent, compiled_specs=compiled_specs
+                        ):
+                            if issues is not None:
+                                issues.append("SUPPLEMENTAL_CURRENT_TAX_PARENT_SEMANTIC_CONFLICT")
+                            continue
                         component_items = [
                             item
                             for item in source_rows
@@ -2045,6 +2226,36 @@ def _candidate_source_row_axis(
     return frozenset(axis)
 
 
+def _source_context_receipt(
+    *,
+    compiled_specs: Mapping[str, Any],
+    repair_receipts: Sequence[Mapping[str, Any]],
+    root_controls: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    # Empty repair/control axes are meaningful, authenticated declarations too.
+    material = {
+        "adapter_spec_sha256": compiled_specs["income_tax_adapter_spec_sha256"],
+        "source_repair_spec_sha256": compiled_specs["income_tax_source_repair_spec_sha256"],
+        "repair_receipt_ids": [item["receipt_id"] for item in repair_receipts],
+        "supplemental_root_controls": canonical_clone_v1(list(root_controls)),
+        "rule": "EXACT_INCOME_TAX_SOURCE_CONTEXT_ALL_QUERY_STRATEGIES",
+    }
+    return {
+        **material,
+        "receipt_id": "gjitfav1:source-context:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _bind_source_context(
+    cluster: Mapping[str, Any], *, context: Mapping[str, Any]
+) -> dict[str, Any]:
+    owner = canonical_clone_v1(cluster.get("owner_receipt"))
+    if type(owner) is not dict:
+        raise _error("income-tax ready query owner receipt is absent")
+    owner["income_tax_source_context_receipt"] = canonical_clone_v1(context)
+    return _reseal_cluster(cluster, owner_receipt=owner)
+
+
 def recover_gemini_json_income_tax_query_cluster_v1(
     *,
     page_records: Any,
@@ -2067,6 +2278,26 @@ def recover_gemini_json_income_tax_query_cluster_v1(
         # document and carry those freshly sealed regions through evaluation.
         selected_base = coalesce_gemini_json_multitable_hierarchical_document_v1(
             page_records=repaired_records, compiled_specs=compiled_specs
+        )
+    root_issues: list[str] = []
+    root_controls = _supplemental_root_controls(
+        repaired_records, compiled_specs=compiled_specs, issues=root_issues
+    )
+    context = _source_context_receipt(
+        compiled_specs=compiled_specs,
+        repair_receipts=repair_receipts,
+        root_controls=root_controls,
+    )
+    if root_issues:
+        owner = canonical_clone_v1(selected_base.get("owner_receipt"))
+        if type(owner) is dict:
+            owner["income_tax_source_context_receipt"] = context
+        return _reseal_cluster(
+            selected_base,
+            component_regions=[],
+            **({"owner_receipt": owner} if type(owner) is dict else {}),
+            reasons=root_issues,
+            status=UNRESOLVED,
         )
     note_candidate = None
     if selected_base.get("status") == READY:
@@ -2110,7 +2341,21 @@ def recover_gemini_json_income_tax_query_cluster_v1(
                 reasons=reasons,
                 status=UNRESOLVED,
             )
-        return selected_base
+        supplemental_issues: list[str] = []
+        supplemental_descriptors = _supplemental_presentations(
+            repaired_records,
+            compiled_specs=compiled_specs,
+            issues=supplemental_issues,
+            consumed_source_rows=_candidate_source_row_axis(note_candidate),
+        )
+        if supplemental_issues or supplemental_descriptors:
+            return _reseal_cluster(
+                selected_base,
+                component_regions=[],
+                reasons=supplemental_issues or ["SUPPLEMENTAL_SOURCE_WITHOUT_PRIMARY_PRESENTATION"],
+                status=UNRESOLVED,
+            )
+        return _bind_source_context(selected_base, context=context)
     if primary is None:
         owner = canonical_clone_v1(selected_base.get("owner_receipt"))
         if any(
@@ -2205,6 +2450,7 @@ def recover_gemini_json_income_tax_query_cluster_v1(
             "source_exact": None,
         }
     owner["income_tax_query_adapter_receipt"] = adapter
+    owner["income_tax_source_context_receipt"] = context
     return _reseal_cluster(
         output_cluster,
         owner_receipt=owner,
@@ -2261,11 +2507,16 @@ def build_gemini_json_income_tax_region_query_receipt_v1(
 ) -> dict[str, Any]:
     shared = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions)
     adapter = None
+    context = None
     if cluster is not None and type(cluster.get("owner_receipt")) is dict:
         adapter = cluster["owner_receipt"].get("income_tax_query_adapter_receipt")
+        context = cluster["owner_receipt"].get("income_tax_source_context_receipt")
+    if type(context) is not dict:
+        raise _error("income-tax query source context receipt is absent")
     material = {
         "adapter_receipt": canonical_clone_v1(adapter),
         "format_version": QUERY_RECEIPT_FORMAT_VERSION,
+        "source_context_receipt": canonical_clone_v1(context),
         "shared_query_receipt": shared,
     }
     return {
@@ -2283,6 +2534,7 @@ def _validate_query_receipt(value: Any, *, regions: Any) -> dict[str, Any]:
             "adapter_receipt",
             "format_version",
             "query_receipt_id",
+            "source_context_receipt",
             "shared_query_receipt",
         }
         or value.get("format_version") != QUERY_RECEIPT_FORMAT_VERSION
@@ -2484,6 +2736,92 @@ def _evaluate_supplemental_descriptor(
     return candidate
 
 
+def _post_merge_root_closure(candidate: Mapping[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Veto complete observed-lane conflicts without imputing a missing operand."""
+
+    from bctc_ai.evaluation.source_observation_lane_math_v1 import (
+        SourceObservationLaneMathError,
+        observed_source_coefficient_v1,
+    )
+
+    roles = ("CURRENT_TAX_PARENT", "DEFERRED_TAX_NET", "FAMILY_ROOT_TOTAL")
+    by_role: dict[str, dict[str, Any]] = {}
+    economic_values: dict[str, list[int | None]] = {}
+    reasons: list[str] = []
+    mappings = candidate.get("mappings")
+    if type(mappings) is not list:
+        reasons.append("POST_MERGE_MAPPING_AXIS_INVALID")
+        mappings = []
+    for mapping in mappings:
+        if type(mapping) is not dict:
+            reasons.append("POST_MERGE_MAPPING_AXIS_INVALID")
+            continue
+        role = mapping.get("role")
+        if role not in roles:
+            continue
+        if role in by_role:
+            reasons.append("POST_MERGE_ROOT_ROLE_AXIS_NOT_UNIQUE:" + role)
+            continue
+        by_role[role] = canonical_clone_v1(mapping)
+        power = {"MILLION_VND": 6, "VND": 0}.get(mapping.get("unit"))
+        cells = mapping.get("values")
+        if power is None or type(cells) is not list or len(cells) != 2:
+            reasons.append("POST_MERGE_ROOT_VALUE_AXIS_INVALID:" + role)
+            continue
+        try:
+            coefficients = [observed_source_coefficient_v1(cell) for cell in cells]
+        except SourceObservationLaneMathError:
+            reasons.append("POST_MERGE_ROOT_SOURCE_CELL_INVALID:" + role)
+            continue
+        economic_values[role] = [
+            None if value is None else value * (10**power) for value in coefficients
+        ]
+    lanes = []
+    for lane in range(2):
+        operands = {
+            role: economic_values[role][lane] if role in economic_values else None
+            for role in roles
+        }
+        complete = all(value is not None for value in operands.values())
+        expected = (
+            operands["CURRENT_TAX_PARENT"] + operands["DEFERRED_TAX_NET"]
+            if complete else None
+        )
+        observed = operands["FAMILY_ROOT_TOTAL"]
+        residual = observed - expected if complete else None
+        lanes.append({
+            "component_sum_vnd": expected,
+            "lane_ordinal": lane,
+            "operands_vnd": operands,
+            "residual_vnd": residual,
+            "status": (
+                "EXACT_OBSERVED_SOURCE_LANE" if complete and residual == 0
+                else "SOURCE_LANE_EQUATION_CONFLICT" if complete
+                else "INCOMPLETE_DUE_TO_UNOBSERVED_SOURCE_LANE"
+            ),
+        })
+    mismatch = bool(reasons) or any(
+        lane["status"] == "SOURCE_LANE_EQUATION_CONFLICT" for lane in lanes
+    )
+    material = {
+        "economic_unit": "VND",
+        "lane_receipts": lanes,
+        "mappings": [by_role[role] for role in roles if role in by_role],
+        "missing_roles": [role for role in roles if role not in by_role],
+        "reasons": sorted(set(reasons)),
+        "rule": "POST_MERGE_OBSERVED_CURRENT_PLUS_DEFERRED_EQUALS_SOURCE_ROOT_NO_IMPUTATION",
+        "status": (
+            "MISMATCH" if mismatch else "EXACT_ALL_OBSERVED_LANES"
+            if all(lane["status"] == "EXACT_OBSERVED_SOURCE_LANE" for lane in lanes)
+            else "INCOMPLETE_SOURCE_LANES_PRESERVED"
+        ),
+    }
+    return ({
+        **material,
+        "receipt_id": "gjitfav1:post-merge-root-closure:" + canonical_json_sha256_v1(material),
+    }, mismatch)
+
+
 def _mapping_economic_values(mapping: Mapping[str, Any]) -> tuple[int | None, ...] | None:
     power = {"MILLION_VND": 6, "VND": 0}.get(mapping.get("unit"))
     values = mapping.get("values")
@@ -2502,6 +2840,64 @@ def _supplemental_mappings_compatible(
     left: Mapping[str, Any], right: Mapping[str, Any]
 ) -> bool:
     return _cross_source_mappings_compatible(left, right, allow_sign_inversion=False)
+
+
+def _select_supplemental_role_mappings(
+    supplemental: Sequence[tuple[Mapping[str, Any], Mapping[str, Any]]],
+) -> tuple[
+    dict[str, tuple[dict[str, Any], Mapping[str, Any]]], list[dict[str, Any]], str | None
+]:
+    """Select evidence-dominant roles, then a unique explicit VND presentation."""
+
+    grouped: dict[str, list[tuple[Mapping[str, Any], Mapping[str, Any]]]] = {}
+    for descriptor, candidate in supplemental:
+        if candidate.get("status") != READY:
+            raise _error("income-tax supplemental source candidate is not ready")
+        for mapping in candidate["mappings"]:
+            grouped.setdefault(mapping["role"], []).append((mapping, descriptor))
+    selected = {}
+    suppressed = []
+    for role, occurrences in grouped.items():
+        for ordinal, (mapping, _descriptor) in enumerate(occurrences):
+            for other, _other_descriptor in occurrences[ordinal + 1:]:
+                if not _supplemental_mappings_compatible(mapping, other):
+                    return {}, [], "CONFLICTING_DIRECT_SUPPLEMENTAL_INCOME_TAX_PRESENTATIONS"
+                left_lanes = _observed_mapping_lane_axis(mapping)
+                right_lanes = _observed_mapping_lane_axis(other)
+                if not (left_lanes.issubset(right_lanes) or right_lanes.issubset(left_lanes)):
+                    return {}, [], "INCOMPARABLE_PARTIAL_DIRECT_SUPPLEMENTAL_PRESENTATIONS"
+        if sum(occurrence[0].get("unit") == "VND" for occurrence in occurrences) > 1:
+            return {}, [], "MULTIPLE_HIGH_PRECISION_DIRECT_SUPPLEMENTAL_PRESENTATIONS"
+        dominant = [
+            occurrence
+            for occurrence in occurrences
+            if all(
+                _observed_mapping_lane_axis(occurrence[0]).issuperset(
+                    _observed_mapping_lane_axis(other[0])
+                )
+                for other in occurrences
+            )
+        ]
+        vnd = [occurrence for occurrence in dominant if occurrence[0].get("unit") == "VND"]
+        pool = vnd or dominant
+        # The locator order keeps the existing equivalent million-unit control
+        # deterministic; it is not used to choose between economic interpretations.
+        chosen = min(
+            pool,
+            key=lambda occurrence: (
+                occurrence[1].get("locator", {}).get("selected_page_ordinal", 0),
+                occurrence[1].get("locator", {}).get("section_id", ""),
+                occurrence[1].get("locator", {}).get("table_id", ""),
+                canonical_json_sha256_v1([occurrence[0], occurrence[1]]),
+            ),
+        )
+        selected[role] = (canonical_clone_v1(chosen[0]), chosen[1])
+        suppressed.extend(
+            canonical_clone_v1(occurrence[0])
+            for occurrence in occurrences
+            if occurrence is not chosen
+        )
+    return selected, sorted(suppressed, key=canonical_json_sha256_v1), None
 
 
 def _cross_source_mappings_compatible(
@@ -2649,55 +3045,20 @@ def _merge_supplemental_and_primary_candidates(
     repair_receipts: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
-    supplemental_by_role: dict[str, tuple[dict[str, Any], Mapping[str, Any]]] = {}
-    suppressed_supplemental = []
-    for supplement_descriptor, candidate in supplemental:
-        if candidate.get("status") != READY:
-            raise _error("income-tax supplemental source candidate is not ready")
-        for mapping in candidate["mappings"]:
-            role = mapping["role"]
-            existing = supplemental_by_role.get(role)
-            if existing is None:
-                supplemental_by_role[role] = (
-                    canonical_clone_v1(mapping),
-                    supplement_descriptor,
-                )
-                continue
-            if not _supplemental_mappings_compatible(existing[0], mapping):
-                return _unresolved_from_candidate(
-                    primary_candidate,
-                    reason="CONFLICTING_DIRECT_SUPPLEMENTAL_INCOME_TAX_PRESENTATIONS",
-                    evidence=_supplemental_merge_evidence(
-                        supplemental,
-                        primary_candidate,
-                        descriptor=descriptor,
-                        repair_receipts=repair_receipts,
-                    ),
-                )
-            existing_lanes = _observed_mapping_lane_axis(existing[0])
-            incoming_lanes = _observed_mapping_lane_axis(mapping)
-            if not (
-                existing_lanes.issubset(incoming_lanes)
-                or incoming_lanes.issubset(existing_lanes)
-            ):
-                return _unresolved_from_candidate(
-                    primary_candidate,
-                    reason="INCOMPARABLE_PARTIAL_DIRECT_SUPPLEMENTAL_PRESENTATIONS",
-                    evidence=_supplemental_merge_evidence(
-                        supplemental,
-                        primary_candidate,
-                        descriptor=descriptor,
-                        repair_receipts=repair_receipts,
-                    ),
-                )
-            if incoming_lanes > existing_lanes:
-                suppressed_supplemental.append(existing[0])
-                supplemental_by_role[role] = (
-                    canonical_clone_v1(mapping),
-                    supplement_descriptor,
-                )
-            else:
-                suppressed_supplemental.append(canonical_clone_v1(mapping))
+    supplemental_by_role, suppressed_supplemental, conflict = (
+        _select_supplemental_role_mappings(supplemental)
+    )
+    if conflict is not None:
+        return _unresolved_from_candidate(
+            primary_candidate,
+            reason=conflict,
+            evidence=_supplemental_merge_evidence(
+                supplemental,
+                primary_candidate,
+                descriptor=descriptor,
+                repair_receipts=repair_receipts,
+            ),
+        )
 
     primary_by_role = {item["role"]: item for item in primary_candidate["mappings"]}
     if len(primary_by_role) != len(primary_candidate["mappings"]):
@@ -2790,6 +3151,11 @@ def _merge_supplemental_and_primary_candidates(
         "suppressed_duplicate_primary_mappings": suppressed_primary,
         "suppressed_equivalent_supplemental_mappings": suppressed_supplemental,
     }
+    proof["post_merge_root_closure"], mismatch = _post_merge_root_closure(merged)
+    if mismatch:
+        return _unresolved_from_candidate(
+            merged, reason="POST_MERGE_INCOME_TAX_ROOT_EQUATION_CONFLICT", evidence=proof
+        )
     return _reseal_candidate(
         merged,
         descriptor=descriptor,
@@ -2840,13 +3206,13 @@ def _merge_note_and_primary_candidates(
     cross_source_orientation = _cross_source_orientation(overlap_pairs)
     if overlap_pairs and cross_source_orientation is None:
         return _unresolved_from_candidate(
-            primary_candidate,
+            note_candidate,
             reason="CONFLICTING_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS",
             evidence=conflict_evidence,
         )
     if cross_source_orientation == -1:
         return _unresolved_from_candidate(
-            primary_candidate,
+            note_candidate,
             reason="SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS",
             evidence=conflict_evidence,
         )
@@ -2902,6 +3268,11 @@ def _merge_note_and_primary_candidates(
         "suppressed_note_root_mappings": suppressed_note_roots,
         "suppressed_duplicate_primary_mappings": suppressed_primary,
     }
+    proof["post_merge_root_closure"], mismatch = _post_merge_root_closure(merged)
+    if mismatch:
+        return _unresolved_from_candidate(
+            merged, reason="POST_MERGE_INCOME_TAX_ROOT_EQUATION_CONFLICT", evidence=proof
+        )
     return _reseal_candidate(
         merged,
         descriptor=descriptor,
@@ -2911,6 +3282,184 @@ def _merge_note_and_primary_candidates(
         restore_primary_source_refs=False,
         primary_candidate_proof=proof,
     )
+
+
+def _root_control_orientation_receipt(
+    candidate: Mapping[str, Any], control: Mapping[str, Any], root_mapping: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Reuse an independently proven same-table orientation, never infer it from a root."""
+    matched = []
+    adapter = candidate.get("closure_receipt", {}).get("income_tax_adapter_receipt")
+    seen = set()
+    while type(adapter) is dict:
+        material = {key: value for key, value in adapter.items() if key != "receipt_id"}
+        if adapter.get("receipt_id") != "gjitfav1:candidate:" + canonical_json_sha256_v1(material):
+            raise _error("income-tax root-control presentation proof drifted")
+        if adapter["receipt_id"] in seen:
+            raise _error("income-tax root-control presentation proof is cyclic")
+        seen.add(adapter["receipt_id"])
+        proof = adapter.get("primary_candidate_proof", {})
+        primary = adapter.get("primary_projection_receipt")
+        primary_matches_target = (
+            type(primary) is dict and type(root_mapping) is dict
+            and bool(root_mapping.get("source_refs"))
+            and root_mapping.get("unit") == primary["canonical_unit"]
+            and all(
+                all(ref["locator"].get(key) == value for key, value in primary["locator"].items())
+                and same_typed_json_v1(ref.get("money_column_ordinals"), primary["money_column_ordinals"])
+                for ref in root_mapping["source_refs"]
+            )
+        )
+        if (
+            adapter.get("strategy") == "DIRECT_SUPPLEMENTAL_NOTE_PLUS_PRIMARY_INCOME_STATEMENT_SOURCE_PRESENTATION"
+            and proof.get("cross_source_sign_orientation") == -1 and primary_matches_target
+        ):
+            for descriptor in proof.get("supplemental_projection_receipts", []):
+                if (
+                    same_typed_json_v1(descriptor["locator"], control["locator"])
+                    and descriptor["original_page_json_sha256"] == control["original_page_json_sha256"]
+                    and descriptor["original_table_json_sha256"] == control["original_table_json_sha256"]
+                    and descriptor["canonical_unit"] == control["canonical_unit"]
+                    and same_typed_json_v1(descriptor["money_column_ordinals"], control["money_column_ordinals"])
+                ):
+                    primary_rows = {row["role"]: row for row in primary["rows"]}
+                    overlaps = []
+                    for mapping in proof.get("suppressed_cross_source_supplemental_mappings", []):
+                        role = mapping["role"]
+                        if role == "FAMILY_ROOT_TOTAL" or role not in primary_rows:
+                            continue
+                        if not mapping.get("source_refs") or not all(
+                            all(ref["locator"].get(key) == value for key, value in descriptor["locator"].items())
+                            and same_typed_json_v1(ref.get("money_column_ordinals"), descriptor["money_column_ordinals"])
+                            for ref in mapping["source_refs"]
+                        ):
+                            continue
+                        primary_row = primary_rows[role]
+                        primary_mapping = {
+                            "unit": primary["canonical_unit"],
+                            "values": [_source_money(value) for value in primary_row["source_values_exact"]],
+                        }
+                        if _cross_source_mapping_signs(mapping, primary_mapping, allow_sign_inversion=True) == frozenset({-1}):
+                            overlaps.append({
+                                "supplemental_source_mapping": canonical_clone_v1(mapping),
+                                "primary_source_row": canonical_clone_v1(primary_row),
+                                "primary_source_unit": primary["canonical_unit"],
+                                "orientation_signs": [-1],
+                            })
+                    if not overlaps:
+                        continue
+                    matched.append({
+                        "adapter_receipt_id": adapter["receipt_id"],
+                        "descriptor_id": descriptor["descriptor_id"],
+                        "independent_overlap_orientation": -1,
+                        "primary_projection_sha256": canonical_json_sha256_v1(primary),
+                        "independent_same_table_nonroot_overlap_receipts": overlaps,
+                    })
+        adapter = proof.get("primary_closure_receipt", {}).get("income_tax_adapter_receipt")
+    material = {
+        "control_id": control["control_id"],
+        "matched_same_source_table_proofs": matched,
+        "orientation": -1 if matched else 1,
+        "rule": "ONLY_REPLAYED_SAME_TABLE_INDEPENDENT_ROLE_OVERLAP_ORIENTATION_NO_ROOT_SIGN_INFERENCE_NO_SOURCE_VALUE_CHANGE",
+    }
+    return {**material, "receipt_id": "gjitfav1:root-presentation:" + canonical_json_sha256_v1(material)}
+
+
+def _seal_income_tax_source_controls(
+    candidate: Mapping[str, Any], *, source_context: Mapping[str, Any],
+    repaired_records: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    if candidate.get("status") != READY:
+        return canonical_clone_v1(candidate)
+    closure, mismatch = _post_merge_root_closure(candidate)
+    root_mappings = [
+        item for item in candidate["mappings"] if item.get("role") == "FAMILY_ROOT_TOTAL"
+    ]
+    root_mapping = root_mappings[0] if len(root_mappings) == 1 else None
+    root_period_proofs = []
+    if root_mapping is not None and source_context["supplemental_root_controls"]:
+        pages = {item["page_json_version_id"]: item["page_json"] for item in repaired_records}
+        for ref in root_mapping["source_refs"]:
+            locator = ref["locator"]
+            section, table = _source_table(
+                pages[locator["page_json_version_id"]],
+                section_id=locator["section_id"], table_id=locator["table_id"],
+            )
+            axis = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+            root_period_proofs.append({
+                "source_ref": canonical_clone_v1(ref),
+                "source_table_json_sha256": canonical_json_sha256_v1(table),
+                "lane_axis": axis,
+                "matches_exact_mapping_columns": same_typed_json_v1(
+                    axis.get("money_column_ordinals"), ref.get("money_column_ordinals")
+                ),
+            })
+    comparisons = []
+    for control in source_context["supplemental_root_controls"]:
+        power = {"MILLION_VND": 6, "VND": 0}[control["canonical_unit"]]
+        orientation_receipt = _root_control_orientation_receipt(candidate, control, root_mapping)
+        orientation = orientation_receipt["orientation"]
+        same_period = bool(root_period_proofs) and all(
+            proof["matches_exact_mapping_columns"] and proof["lane_axis"].get("complete")
+            and same_typed_json_v1(
+                proof["lane_axis"].get("source_lane_keys"),
+                control["lane_axis"].get("source_lane_keys"),
+            ) for proof in root_period_proofs
+        )
+        lanes = []
+        for lane, coefficient in enumerate(control["root_source_row"]["coefficients"]):
+            source_value = None if coefficient is None else coefficient * (10**power)
+            final_value = closure["lane_receipts"][lane]["operands_vnd"]["FAMILY_ROOT_TOTAL"]
+            if root_mapping is None:
+                status = "NO_FINAL_ROOT_MAPPING_CONTROL_RETAINED_NOT_EXPORTED"
+            elif not same_period:
+                status = "SOURCE_ROOT_CONTROL_PERIOD_CONFLICT"
+            elif final_value is None:
+                status = "UNOBSERVED_FINAL_ROOT_LANE_CONTROL_RETAINED_NOT_COMPARED"
+            else:
+                compatible = source_value is not None and source_value * orientation == final_value
+                status = (
+                    "EXACT_AUTHENTICATED_OPPOSITE_SIGN_PRESENTATION_CONTROL" if compatible and orientation == -1
+                    else "EXACT_OBSERVED_SOURCE_LANE" if compatible
+                    else "SOURCE_ROOT_CONTROL_CONFLICT"
+                )
+            lanes.append({
+                "lane_ordinal": lane,
+                "source_root_vnd": source_value,
+                "final_root_vnd": final_value,
+                "status": status,
+            })
+        comparisons.append({
+            "control_id": control["control_id"],
+            "root_mapping": canonical_clone_v1(root_mapping),
+            "root_period_proofs": canonical_clone_v1(root_period_proofs),
+            "presentation_orientation_receipt": orientation_receipt,
+            "lanes": lanes,
+        })
+    material = {
+        "source_context_receipt": canonical_clone_v1(source_context),
+        "post_merge_root_closure": closure,
+        "supplemental_root_lane_receipts": comparisons,
+        "rule": "ALL_SOURCE_ROOT_CONTROLS_REPLAYED_AGAINST_FINAL_SOURCE_MAPPING_NO_BACKSOLVE",
+    }
+    if mismatch or any(
+        lane["status"] in {"SOURCE_ROOT_CONTROL_CONFLICT", "SOURCE_ROOT_CONTROL_PERIOD_CONFLICT"}
+        for item in comparisons for lane in item["lanes"]
+    ):
+        return _unresolved_from_candidate(
+            candidate,
+            reason=("POST_MERGE_INCOME_TAX_ROOT_EQUATION_CONFLICT" if mismatch
+                    else "CONFLICTING_SUPPLEMENTAL_INCOME_TAX_ROOT_CONTROL"),
+            evidence=material,
+        )
+    output = canonical_clone_v1(candidate)
+    output["closure_receipt"]["income_tax_source_control_receipt"] = {
+        **material,
+        "receipt_id": "gjitfav1:source-controls:" + canonical_json_sha256_v1(material),
+    }
+    candidate_material = {key: value for key, value in output.items() if key != "candidate_id"}
+    output["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(candidate_material)
+    return output
 
 
 def evaluate_gemini_json_income_tax_family_cluster_v1(
@@ -2952,6 +3501,17 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
     repaired_records, repair_receipts = _apply_source_repairs(
         page_records, compiled_specs=compiled_specs
     )
+    root_issues: list[str] = []
+    root_controls = _supplemental_root_controls(
+        repaired_records, compiled_specs=compiled_specs, issues=root_issues
+    )
+    expected_context = _source_context_receipt(
+        compiled_specs=compiled_specs,
+        repair_receipts=repair_receipts,
+        root_controls=root_controls,
+    )
+    if root_issues or not same_typed_json_v1(checked["source_context_receipt"], expected_context):
+        raise _error("income-tax source context query replay drifted")
     repaired_pages = {item["page_json_version_id"]: item["page_json"] for item in repaired_records}
     adapter = checked["adapter_receipt"]
     if adapter is None:
@@ -2982,12 +3542,16 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
         )
         if supplemental_issues or supplemental_descriptors:
             raise _error("income-tax adapter receipt is absent for supplemental source")
-        return _reseal_candidate(
-            candidate,
-            descriptor=None,
-            repair_receipts=repair_receipts,
-            strategy="DIRECT_NOTE_SOURCE_PRESENTATION",
-            compiled_specs=compiled_specs,
+        return _seal_income_tax_source_controls(
+            _reseal_candidate(
+                candidate,
+                descriptor=None,
+                repair_receipts=repair_receipts,
+                strategy="DIRECT_NOTE_SOURCE_PRESENTATION",
+                compiled_specs=compiled_specs,
+            ),
+            source_context=expected_context,
+            repaired_records=repaired_records, compiled_specs=compiled_specs,
         )
     if (
         type(adapter) is not dict
@@ -3062,14 +3626,21 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
                 )
                 for item in supplemental_descriptors
             ]
-            return _merge_supplemental_and_primary_candidates(
-                supplemental_candidates,
-                primary_candidate,
-                descriptor=descriptor,
-                repair_receipts=repair_receipts,
-                compiled_specs=compiled_specs,
+            return _seal_income_tax_source_controls(
+                _merge_supplemental_and_primary_candidates(
+                    supplemental_candidates,
+                    primary_candidate,
+                    descriptor=descriptor,
+                    repair_receipts=repair_receipts,
+                    compiled_specs=compiled_specs,
+                ),
+                source_context=expected_context,
+                repaired_records=repaired_records, compiled_specs=compiled_specs,
             )
-        return primary_candidate
+        return _seal_income_tax_source_controls(
+            primary_candidate, source_context=expected_context,
+            repaired_records=repaired_records, compiled_specs=compiled_specs,
+        )
     note_strategies = {
         "DIRECT_NOTE_PLUS_PRIMARY_INCOME_STATEMENT_SOURCE_PRESENTATION",
         (
@@ -3124,14 +3695,26 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
             compiled_specs=compiled_specs,
         )
         if merged_primary.get("status") != READY:
-            return merged_primary
-    return _merge_note_and_primary_candidates(
-        note_candidate,
-        merged_primary,
-        descriptor=descriptor,
-        repair_receipts=repair_receipts,
-        compiled_specs=compiled_specs,
-        strategy=strategy,
+            return _unresolved_from_candidate(
+                note_candidate,
+                reason="UNRESOLVED_SUPPLEMENTAL_AND_PRIMARY_INCOME_TAX_PRESENTATIONS",
+                evidence={
+                    "rule": "RETAIN_QUERIED_NOTE_REGION_AND_AUTHENTICATED_REJECTED_PRIMARY_CANDIDATE",
+                    "rejected_primary_candidate": canonical_clone_v1(merged_primary),
+                    "source_context_receipt": canonical_clone_v1(expected_context),
+                },
+            )
+    return _seal_income_tax_source_controls(
+        _merge_note_and_primary_candidates(
+            note_candidate,
+            merged_primary,
+            descriptor=descriptor,
+            repair_receipts=repair_receipts,
+            compiled_specs=compiled_specs,
+            strategy=strategy,
+        ),
+        source_context=expected_context,
+        repaired_records=repaired_records, compiled_specs=compiled_specs,
     )
 
 

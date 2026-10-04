@@ -1,0 +1,77 @@
+{
+  "format_version": "INCOME_TAX_REGISTERED_SOURCE_REPAIR_RENDER_BINDINGS_V1",
+  "family_id": "INCOME_TAX",
+  "classification": "REGISTERED_RENDER_PROFILE_METADATA_ERROR",
+  "base_git_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+  "original_source_repair_spec_sha256": "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4",
+  "original_render_contract": {
+    "alpha": false,
+    "colorspace": "RGB",
+    "format": "PNG",
+    "matrix": [
+      2,
+      2
+    ],
+    "renderer": "PyMuPDF"
+  },
+  "diagnostic_ref": {
+    "path": "/srv/bctc-receipts/f39-render-profile-probe-22b81e8b83e845ab97519587f9ee831b/F39_REGISTERED_RENDER_PROFILE_DIAGNOSTIC.json",
+    "sha256": "9bdeb27d28ca2b7fd3eafe296a9091afe6ff94a2e2d62b145165e380c475aad9"
+  },
+  "correction_scope": "Render matrix metadata only for the 11 enumerated pre-existing F39 repair IDs. The other two retain the original matrix. No PDF, Gemini JSON, repair ID, before/after source value, image hash, crop hash, migration manifest, base commit, or other family is modified.",
+  "family_terminal_claimed": false,
+  "bindings": [
+    {
+      "repair_id": "gjitfav1:repair:194bbd486716331f15277a244aa4a5a55f549b8f7f4d61a19aac75d3817415fa",
+      "profile": "DECLARED_MATRIX_2_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:f3301a62e2a9b3652bd79ca6856106d3f5fcc3cbd3d42169aed216ee576d8baf",
+      "profile": "DECLARED_MATRIX_2_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:545c8224f1ef247c3eedc16ffa74fdfc0ad414e8d224843861aa1d99a1e75315",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:91c128c505dc75de43b1bb11e53e15d8fa2ef49751469a38aae9363d1ff2a070",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:ef02b379319dc6911ec9c2de4299b10a3a111b96d8a945af67e8868c3e9dc455",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:12e4df8b978809eae669dbc9a1d0f1350f3df07854df2accf858a23d2267d903",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:225a1fd657a415a4bc0f7639a0a0a445b211077291b9e90866eec402e0c56781",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:d8423d3c369b16f1a8e06740ced498b93537904529b3c9d458bd2120c0cc3125",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:b74cce9a9fdc60cbf7f8dbb5ef3103e6d94d898047a57b9081b993d406c11c75",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:18cc1fba6426693db8650d3e49abca008b5eed570ade8d4c254a26226adf49a6",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:d7b1abb31a8f1b6f8569a504623b68fe1a447e8187ea33b1bdf56b64fa057e5f",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:a3f6d2ca25b56d62559f19d0176c80000451e93e6605731db661ddb5be974335",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    },
+    {
+      "repair_id": "gjitfav1:repair:b448af1588262aca674fbe4ecfb17e2ae4180369cfe50290a019b29e8d3797ad",
+      "profile": "EXISTING_RENDERING_PDF_MATRIX_300_DPI_OVER_72_RGB_PNG"
+    }
+  ]
+}
