@@ -1892,6 +1892,7 @@ def test_rich_supplemental_reconciliation_keeps_unknown_adjustment_source_only()
     )
     records[0]["page_json"] = note_page
     records[1]["page_json"] = primary_page
+    _printed_annual_primary(records)
     _cluster, candidate = _evaluate_supplemental_records(records, compiled=compiled)
     assert candidate["status"] == READY
     by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
@@ -1939,9 +1940,20 @@ def _year_population_rows() -> list[dict[str, Any]]:
     ]
 
 
+def _printed_annual_primary(records) -> None:
+    table = records[-1]["page_json"]["sections"][0]["tables"][0]
+    table["columns"] = deepcopy(_table([])["columns"])
+    for row in table["rows"]:
+        row["values_exact"] = row["values_exact"][-2:]
+
+
 @pytest.mark.parametrize("reverse_tables", [False, True])
-def test_year_anonymous_subtotal_ownership_and_unequal_rate_population_are_independent(reverse_tables) -> None:
-    year_table = _table(_year_population_rows())
+@pytest.mark.parametrize("component_label", ["Năm hiện hành", "Kỳ hiện hành"])
+def test_year_anonymous_subtotal_ownership_and_unequal_rate_population_are_independent(reverse_tables, component_label) -> None:
+    rows = _year_population_rows()
+    rows[1]["label_exact"] = component_label
+    rows[1]["hierarchy_path_exact"][-1] = component_label
+    year_table = _table(rows)
     rate_table = _table([
         _row("Chi phí thuế TNDN theo thuế suất", "20", "16"),
         _row("Chi phí không được khấu trừ", "1", "2"),
@@ -1953,16 +1965,22 @@ def test_year_anonymous_subtotal_ownership_and_unequal_rate_population_are_indep
     records, _, _ = _supplemental_records([], primary_current=("21", "18"),
                                          primary_root=("23", "19"))
     records[0]["page_json"] = _page([], tables=tables)
+    _printed_annual_primary(records)
     original = deepcopy(records)
     cluster, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
     assert candidate["status"] == READY, candidate["reasons"]
     assert records == original
     by_role = {item["role"]: item for item in candidate["mappings"]}
-    year = by_role["CURRENT_YEAR_TAX_EXPENSE"]
-    assert year["report_norm_id"] == 5724
-    assert [value["coefficient"] for value in year["values"]] == [19, 15]
-    assert year["source_refs"][0]["label_exact"] == "Năm hiện hành"
-    assert year["source_refs"][0]["hierarchy_path_exact"] == ["Chi phí thuế hiện hành", "Năm hiện hành"]
+    if component_label == "Năm hiện hành":
+        year = by_role["CURRENT_YEAR_TAX_EXPENSE"]
+        assert year["report_norm_id"] == 5724
+        assert [value["coefficient"] for value in year["values"]] == [19, 15]
+        assert year["source_refs"][0]["label_exact"] == "Năm hiện hành"
+        assert year["source_refs"][0]["hierarchy_path_exact"] == ["Chi phí thuế hiện hành", "Năm hiện hành"]
+    else:
+        assert "CURRENT_YEAR_TAX_EXPENSE" not in by_role
+        assert "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY" not in by_role
+        assert all(mapping["report_norm_id"] != 5724 for mapping in candidate["mappings"])
     assert "CURRENT_TAX_AT_RATE" not in by_role
     assert "NON_DEDUCTIBLE_EXPENSE" not in by_role
     receipt = cluster["owner_receipt"]["income_tax_source_context_receipt"]
@@ -1977,7 +1995,8 @@ def test_year_anonymous_subtotal_ownership_and_unequal_rate_population_are_indep
 
 @pytest.mark.parametrize("mutation", [
     "missing_group", "numeric_group", "foreign_child", "intervening_group",
-    "competing_year", "foreign_anonymous_path", "income_parent", "weak_period",
+    "competing_year", "foreign_anonymous_path", "income_parent", "unowned_period",
+    "foreign_named_parent", "unknown_named_parent", "unknown_component",
 ])
 def test_year_source_ownership_cannot_be_established_from_a_closing_equation(mutation) -> None:
     from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _tax_population_inventory
@@ -1996,9 +2015,17 @@ def test_year_source_ownership_cannot_be_established_from_a_closing_equation(mut
         rows[-1]["hierarchy_path_exact"] = ["Công ty con", None]
     elif mutation == "income_parent":
         rows[-1] = _row("Thu nhập chịu thuế", "21", "18", kind="SUBTOTAL")
+    elif mutation in {"foreign_named_parent", "unknown_named_parent"}:
+        rows[-1] = _row("Chi phí thuế TNDN hiện hành", "21", "18", kind="TOTAL")
+        rows[-1]["hierarchy_path_exact"].insert(0, "Công ty con" if mutation == "foreign_named_parent" else "Nhóm khác")
+    elif mutation == "unknown_component":
+        rows.insert(3, {**_row("Điều chỉnh không rõ", "1", "2"),
+                        "hierarchy_path_exact": ["Chi phí thuế hiện hành", "Điều chỉnh không rõ"]})
+        rows[-1]["values_exact"] = ["22", "20"]
     else:
         rows[1]["label_exact"] = "Kỳ hiện hành"
         rows[1]["hierarchy_path_exact"][-1] = "Kỳ hiện hành"
+        rows.pop(0)
     records = [_record(_page(rows))]
     original = deepcopy(records)
     inventory = _tax_population_inventory(records, compiled_specs=_adapter_compiled())
@@ -2031,6 +2058,338 @@ def test_flat_year_presentation_is_not_silently_reclassified_as_rate() -> None:
         assert cluster["status"] == UNRESOLVED
         assert cluster["component_regions"] == []
     assert records == original
+
+
+def _period_population_records() -> list[dict[str, Any]]:
+    group = "Chi phí thuế TNDN hiện hành"
+    rows = [
+        _row(group, None, None, kind="GROUP"),
+        {**_row("Kỳ hiện hành", "19", "15"), "hierarchy_path_exact": [group, "Kỳ hiện hành"]},
+        {**_row("Dự phòng thiếu trong những năm trước", "2", "3"),
+         "hierarchy_path_exact": [group, "Dự phòng thiếu trong những năm trước"]},
+        {**_row(None, "21", "18", kind="SUBTOTAL"), "hierarchy_path_exact": [group, None]},
+    ]
+    records, note_page, primary_page = _supplemental_records(
+        rows, primary_current=("21", "18"), primary_root=("23", "19"))
+    columns = [{"header_path_exact": ["Kỳ sáu tháng kết thúc ngày 30/6/" + year, "Triệu VND"],
+                "value_kind": "MONEY"} for year in ("2025", "2024")]
+    note_page["sections"][0]["tables"][0]["columns"] = deepcopy(columns)
+    note_page["sections"][0]["narratives_exact"] = ["(a) Ghi nhận trong báo cáo kết quả hoạt động hợp nhất"]
+    primary_page["sections"][0]["title_exact"] = "Báo cáo kết quả hoạt động hợp nhất cho kỳ sáu tháng kết thúc ngày 30/6/2025"
+    primary_table = primary_page["sections"][0]["tables"][0]
+    primary_table["columns"] = deepcopy(columns)
+    for row in primary_table["rows"]:
+        row["values_exact"] = row["values_exact"][-2:]
+    return records
+
+
+def test_abb_shaped_period_frontier_validates_current_and_prior_without_annualizing() -> None:
+    records = _period_population_records()
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    cluster, candidate = _evaluate_supplemental_records(records, compiled=compiled)
+    assert candidate["status"] == READY, candidate["reasons"]
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert "CURRENT_YEAR_TAX_EXPENSE" not in by_role
+    assert "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY" not in by_role
+    assert all(mapping["report_norm_id"] != 5724 for mapping in candidate["mappings"])
+    assert by_role["PRIOR_PERIOD_TAX_ADJUSTMENT"]["source_refs"][0]["label_exact"] == "Dự phòng thiếu trong những năm trước"
+    assert [value["coefficient"] for value in by_role["CURRENT_TAX_PARENT"]["values"]] == [21, 18]
+    context = cluster["owner_receipt"]["income_tax_source_context_receipt"]
+    boundary = context["tax_population_inventory"][0]["current_year_frontier"]
+    assert boundary["source_component_role"] == "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY"
+    assert boundary["parent_source_row"]["hierarchy_path_exact"] == ["Chi phí thuế TNDN hiện hành", None]
+    proof = candidate["closure_receipt"]["income_tax_adapter_receipt"]["primary_candidate_proof"]
+    descriptor = next(item for item in proof["supplemental_projection_receipts"]
+                      if item["presentation_kind"] == "CURRENT_PERIOD_TAX_EXPENSE_EXACT_SUM")
+    assert descriptor["equation_receipts"][0]["equation_kind"] == "CURRENT_PERIOD_PLUS_PRINTED_PRIOR_ADJUSTMENTS_EQUALS_CURRENT_TAX"
+    assert descriptor["equation_receipts"][0]["component_rows"][0]["role"] == "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY"
+    scopes = candidate["closure_receipt"]["income_tax_source_control_receipt"]["expense_population_scope_receipts"]
+    assert scopes[0]["note_report_scope_receipt"]["origin"] == "LOCAL_PRINTED_SOURCE"
+    assert scopes[0]["note_scope"] == ["CONSOLIDATED"]
+    assert records == original
+
+
+@pytest.mark.parametrize("narrative", [
+    "(a) Ghi nhận trong báo cáo kết quả hoạt động riêng",
+    "Khoản này không được ghi nhận trong báo cáo kết quả hoạt động hợp nhất",
+    "Báo cáo tài chính hợp nhất",
+    "",
+])
+def test_period_population_scope_cannot_be_supplied_by_equal_totals_or_unowned_prose(narrative) -> None:
+    records = _period_population_records()
+    records[0]["page_json"]["sections"][0]["narratives_exact"] = [narrative]
+    original = deepcopy(records)
+    _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["CURRENT_YEAR_TAX_EXPENSE_SOURCE_POPULATION_AMBIGUITY"]
+    assert records == original
+
+
+@pytest.mark.parametrize("blank", [None, "", "-"])
+def test_period_frontier_never_completes_a_blank_component_from_the_printed_total(blank) -> None:
+    records = _period_population_records()
+    records[0]["page_json"]["sections"][0]["tables"][0]["rows"][1]["values_exact"][0] = blank
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=[records[-1]], compiled_specs=compiled)
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["component_regions"] == []
+    assert "SUPPLEMENTAL_CURRENT_YEAR_EQUATION_NOT_COMPLETE_OR_EXACT" in cluster["reasons"]
+    assert records == original
+
+
+def test_scoped_prior_phrase_is_not_a_global_schema_alias() -> None:
+    compiled = _adapter_compiled()
+    prior = next(child for child in compiled["topology"]["children"] if child["role"] == "PRIOR_PERIOD_TAX_ADJUSTMENT")
+    assert all("du phong thieu trong nhung nam truoc" not in matcher["aliases"] for matcher in prior["matchers"])
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _supplemental_role_alias_axis
+    assert "du phong thieu trong nhung nam truoc" not in _supplemental_role_alias_axis(compiled)
+
+
+def _scope_statement_record(statement_type, caption, token, *, table_caption=None):
+    page = _primary_page(_primary_tax_rows())
+    section = page["sections"][0]
+    section["statement_type"] = statement_type
+    section["title_exact"] = caption
+    section["tables"][0]["title_exact"] = table_caption
+    return _primary_record(page, page_json_version_id="gfpstorev1:json:" + token * 64,
+                           physical_page=int(token, 16), selected_page_ordinal=int(token, 16))
+
+
+def test_note_inherits_only_unique_two_statement_type_report_scope_with_exact_source_inventory() -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _document_report_scope_receipt, _note_report_scope_receipt,
+    )
+    records = [
+        _scope_statement_record("INCOME_STATEMENT", "Báo cáo kết quả hoạt động riêng", "d"),
+        _scope_statement_record("CASH_FLOW", "Báo cáo lưu chuyển tiền tệ riêng", "e"),
+    ]
+    original = deepcopy(records)
+    document_scope = _document_report_scope_receipt(records)
+    assert document_scope == _document_report_scope_receipt(list(reversed(records)))
+    assert document_scope["report_scope"] == "SEPARATE"
+    assert document_scope["qualified_statement_types"] == ["CASH_FLOW", "INCOME_STATEMENT"]
+    section = _page(_year_population_rows())["sections"][0]
+    note_scope = _note_report_scope_receipt(section, section["tables"][0], source_paths=[], document_scope=document_scope)
+    assert note_scope["report_scope"] == "SEPARATE"
+    assert note_scope["origin"] == "INHERITED_UNIQUE_DOCUMENT_REPORT_SCOPE"
+    assert note_scope["conflict"] is False
+    assert records == original
+
+
+@pytest.mark.parametrize("conflict_kind", ["third_type", "bare_table", "entity", "cross_document", "continuation_only", "negation", "unknown_cf_alias"])
+def test_document_report_scope_rejects_conflicting_captions_entities_and_duplicate_type_votes(conflict_kind) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _document_report_scope_receipt
+    records = [
+        _scope_statement_record("INCOME_STATEMENT", "Báo cáo kết quả hoạt động hợp nhất", "d"),
+        _scope_statement_record("CASH_FLOW", "Báo cáo lưu chuyển tiền tệ hợp nhất", "e"),
+    ]
+    if conflict_kind == "third_type":
+        records.append(_scope_statement_record("BALANCE_SHEET", "Bảng cân đối kế toán riêng", "f"))
+    elif conflict_kind in {"bare_table", "entity"}:
+        records[1]["page_json"]["sections"][0]["tables"][0]["title_exact"] = "RIÊNG" if conflict_kind == "bare_table" else "Ngân hàng mẹ"
+    elif conflict_kind == "cross_document":
+        records[1]["source_sha256"] = "f" * 64
+    elif conflict_kind == "negation":
+        records[1]["page_json"]["sections"][0]["title_exact"] = "Báo cáo lưu chuyển tiền tệ không hợp nhất"
+    elif conflict_kind == "unknown_cf_alias":
+        records[1]["page_json"]["sections"][0]["statement_type"] = "CASH_FLOW_STATEMENT"
+    else:
+        records[1]["page_json"]["sections"][0]["statement_type"] = "INCOME_STATEMENT"
+        records[1]["page_json"]["sections"][0]["title_exact"] = "Báo cáo kết quả hoạt động hợp nhất"
+    original = deepcopy(records)
+    assert _document_report_scope_receipt(records)["report_scope"] is None
+    assert records == original
+
+
+def test_actual_cash_flow_conflict_cannot_be_hidden_by_two_other_consolidated_statement_types() -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _document_report_scope_receipt
+    records = [
+        _scope_statement_record("INCOME_STATEMENT", "Báo cáo kết quả hoạt động hợp nhất", "d"),
+        _scope_statement_record("BALANCE_SHEET", "Bảng cân đối kế toán hợp nhất", "e"),
+        _scope_statement_record("CASH_FLOW", "Báo cáo lưu chuyển tiền tệ riêng", "f"),
+    ]
+    scope = _document_report_scope_receipt(records)
+    assert scope["report_scope"] is None
+    assert scope["all_printed_report_scopes"] == ["CONSOLIDATED", "SEPARATE"]
+    assert len(scope["sources"]) == 3
+
+
+@pytest.mark.parametrize("mutation", ["different_end", "same_end_wrong_duration", "different_comparative"])
+def test_period_frontier_matches_source_duration_even_without_a_note_root_control(mutation) -> None:
+    records = _period_population_records()
+    columns = records[0]["page_json"]["sections"][0]["tables"][0]["columns"]
+    if mutation == "same_end_wrong_duration":
+        for column in columns:
+            column["header_path_exact"][0] = column["header_path_exact"][0].replace("sáu tháng", "ba tháng")
+    elif mutation == "different_end":
+        for column in columns:
+            column["header_path_exact"][0] = column["header_path_exact"][0].replace("30/6", "30/9").replace("sáu tháng", "chín tháng")
+    else:
+        columns[1]["header_path_exact"][0] = columns[1]["header_path_exact"][0].replace("2024", "2023")
+    original = deepcopy(records)
+    _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["CURRENT_TAX_EXPENSE_SOURCE_PERIOD_AMBIGUITY"]
+    assert records == original
+
+
+@pytest.mark.parametrize("phrase", ["", "mười ba tháng", "mười sáu tháng", "13 tháng", "16 tháng", "twenty three months", "thirty six months"])
+def test_equal_endpoints_do_not_prove_an_unknown_or_unsupported_duration(phrase) -> None:
+    records = _period_population_records()
+    for record in records:
+        section = record["page_json"]["sections"][0]
+        section["title_exact"] = section["title_exact"].replace("sáu tháng", phrase)
+        for column in section["tables"][0]["columns"]:
+            column["header_path_exact"][0] = column["header_path_exact"][0].replace("sáu tháng", phrase)
+    original = deepcopy(records)
+    _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["reasons"] == ["CURRENT_TAX_EXPENSE_SOURCE_PERIOD_AMBIGUITY"]
+    assert candidate["mappings"] == []
+    assert records == original
+
+
+def test_printed_duration_cannot_contradict_its_own_explicit_source_date_range() -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _source_duration_correspondence_complete
+    records = _period_population_records()
+    table = records[0]["page_json"]["sections"][0]["tables"][0]
+    lane = {"complete": True, "money_column_ordinals": [1, 2],
+            "source_lane_keys": [["DURATION_DATE_RANGE", "2025-01-01", "2025-03-31"],
+                                 ["DURATION_DATE_RANGE", "2024-01-01", "2024-03-31"]]}
+    assert _source_duration_correspondence_complete(lane, lane, note_table=table, primary_table=table,
+                                                   note_lengths=[[3], [3]], primary_lengths=[[3], [3]])
+    assert not _source_duration_correspondence_complete(lane, lane, note_table=table, primary_table=table,
+                                                       note_lengths=[[6], [6]], primary_lengths=[[6], [6]])
+
+
+def test_period_dash_is_not_numeric_zero_even_when_other_printed_operands_close_the_equation() -> None:
+    records = _period_population_records()
+    rows = records[0]["page_json"]["sections"][0]["tables"][0]["rows"]
+    rows[1]["values_exact"] = ["-", "-"]
+    rows[2]["values_exact"] = ["21", "18"]
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=[records[-1]], compiled_specs=compiled)
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["component_regions"] == []
+    assert "SUPPLEMENTAL_CURRENT_YEAR_EQUATION_NOT_COMPLETE_OR_EXACT" in cluster["reasons"]
+    assert records == original
+
+
+def test_caption_only_owned_duration_is_bound_and_conflicting_caption_is_not_ignored() -> None:
+    records = _period_population_records()
+    note_section = records[0]["page_json"]["sections"][0]
+    note_section["title_exact"] += " cho kỳ sáu tháng kết thúc ngày 30 tháng 6 năm 2025"
+    primary_section = records[-1]["page_json"]["sections"][0]
+    primary_section["title_exact"] = "Báo cáo kết quả hoạt động hợp nhất cho kỳ sáu tháng kết thúc ngày 30 tháng 6 năm 2025"
+    for record in records:
+        for column in record["page_json"]["sections"][0]["tables"][0]["columns"]:
+            column["header_path_exact"][0] = column["header_path_exact"][0].replace("Kỳ sáu tháng kết thúc ngày ", "")
+    _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == READY, candidate["reasons"]
+    period = candidate["closure_receipt"]["income_tax_source_control_receipt"]["expense_population_period_receipts"][0]
+    assert period["note_printed_duration_lengths"] == [[6], [6]]
+    assert period["primary_printed_duration_lengths"] == [[6], [6]]
+    primary_section["title_exact"] = primary_section["title_exact"].replace("sáu tháng", "ba tháng")
+    _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["reasons"] == ["CURRENT_TAX_EXPENSE_SOURCE_PERIOD_AMBIGUITY"]
+
+
+def test_equal_bare_years_cannot_annualize_a_primary_year_to_date_lane() -> None:
+    records, _, _ = _supplemental_records(_year_population_rows(), primary_current=("21", "18"), primary_root=("23", "19"))
+    _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["CURRENT_TAX_EXPENSE_SOURCE_PERIOD_AMBIGUITY"]
+
+
+@pytest.mark.parametrize("caption", ["Lũy kế từ đầu năm", "Báo cáo kết quả hoạt động cho Quý III", "Year to date"])
+def test_bare_year_correspondence_cannot_ignore_an_owned_caption_period_contradiction(caption) -> None:
+    records, _, _ = _supplemental_records(_year_population_rows(), primary_current=("21", "18"), primary_root=("23", "19"))
+    _printed_annual_primary(records)
+    records[-1]["page_json"]["sections"][0]["title_exact"] += "\n" + caption
+    _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["CURRENT_TAX_EXPENSE_SOURCE_PERIOD_AMBIGUITY"]
+
+
+def test_validation_only_period_cannot_skip_counterpart_when_primary_receipt_is_absent() -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _seal_income_tax_source_controls, _source_context_receipt
+    records = _period_population_records()
+    compiled = _adapter_compiled()
+    _, candidate = _evaluate_supplemental_records(records, compiled=compiled)
+    assert candidate["status"] == READY
+    candidate["closure_receipt"].pop("income_tax_adapter_receipt")
+    context = _source_context_receipt(compiled_specs=compiled, repair_receipts=[], root_controls=[], page_records=records[:1])
+    result = _seal_income_tax_source_controls(candidate, source_context=context, repaired_records=records[:1], compiled_specs=compiled)
+    assert result["status"] == UNRESOLVED
+    assert result["mappings"] == []
+    assert result["reasons"] == ["CURRENT_TAX_EXPENSE_SOURCE_POPULATION_WITHOUT_AUTHENTICATED_COUNTERPART"]
+
+
+def test_statement_narrative_cannot_authorize_a_different_table_or_override_local_entity() -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _document_report_scope_receipt, _note_report_scope_receipt, _owned_statement_scope_narratives,
+    )
+    records = _period_population_records()
+    section = records[0]["page_json"]["sections"][0]
+    assert len(_owned_statement_scope_narratives(section)) == 1
+    document_scope = _document_report_scope_receipt(records)
+    scope = _note_report_scope_receipt(section, section["tables"][0], source_paths=[["Công ty con"]], document_scope=document_scope)
+    assert scope["local_entity_qualifiers"] == ["SUBSIDIARY_ENTITY"]
+    assert scope["report_scope"] is None
+    section["tables"].append(_table([_row("Chi phí thuế TNDN hiện hành", "21", "18", kind="TOTAL")]))
+    assert _owned_statement_scope_narratives(section) == []
+    scope = _note_report_scope_receipt(section, section["tables"][1], source_paths=[], document_scope=document_scope)
+    assert scope["report_scope"] is None
+
+
+@pytest.mark.parametrize("component_label", ["Năm hiện hành", "Kỳ hiện hành"])
+def test_named_current_parent_can_close_only_the_exact_owned_group_path(component_label) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _tax_population_inventory
+    rows = _year_population_rows()
+    rows[1]["label_exact"] = component_label
+    rows[1]["hierarchy_path_exact"][-1] = component_label
+    rows[-1] = {**_row("Chi phí thuế TNDN hiện hành", "21", "18", kind="TOTAL"),
+                "hierarchy_path_exact": ["Chi phí thuế hiện hành", "Chi phí thuế TNDN hiện hành"]}
+    records = [_record(_page(rows))]
+    original = deepcopy(records)
+    boundary = _tax_population_inventory(records, compiled_specs=_adapter_compiled())[0]["current_year_frontier"]
+    assert boundary is not None
+    assert boundary["parent_source_row"]["hierarchy_path_exact"] == rows[-1]["hierarchy_path_exact"]
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", ["annualize", "foreign_parent", "scope"])
+def test_resealed_period_inventory_cannot_change_source_semantics(mutation) -> None:
+    records = _period_population_records()
+    compiled = _adapter_compiled()
+    cluster, candidate = _evaluate_supplemental_records(records, compiled=compiled)
+    assert candidate["status"] == READY
+    receipt = build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster)
+    context = receipt["source_context_receipt"]
+    population = context["tax_population_inventory"][0]
+    if mutation == "annualize":
+        population["current_year_frontier"]["source_component_role"] = "CURRENT_YEAR_TAX_EXPENSE"
+    elif mutation == "foreign_parent":
+        population["current_year_frontier"]["parent_source_row"]["hierarchy_path_exact"] = ["Công ty con", None]
+    else:
+        population["owned_statement_scope_narratives"][0]["source_exact"] = "Ghi nhận trong báo cáo kết quả hoạt động riêng"
+    context["receipt_id"] = "gjitfav1:source-context:" + canonical_json_sha256_v1({key: value for key, value in context.items() if key != "receipt_id"})
+    receipt["query_receipt_id"] = "gjitfav1:query-receipt:" + canonical_json_sha256_v1({key: value for key, value in receipt.items() if key != "query_receipt_id"})
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="source context query replay drifted"):
+        evaluate_gemini_json_income_tax_family_cluster_v1(
+            regions=cluster["component_regions"], page_json_by_version={item["page_json_version_id"]: item["page_json"] for item in records},
+            selected_page_axis=[{key: value for key, value in item.items() if key != "page_json"} for item in records],
+            compiled_specs=compiled, query_receipt=receipt)
 
 
 @pytest.mark.parametrize("rate_label", ["Chi phí thuế TNDN theo thuế suất", "Thuế tính ở thuế suất 20%"])
@@ -2091,7 +2450,7 @@ def test_valid_year_frontier_does_not_hide_an_additional_unscoped_period_compone
     rows = [*_year_population_rows(), _row("Kỳ hiện hành", "5", "4")]
     compiled = _adapter_compiled()
     inventory = _tax_population_inventory([_record(_page(rows))], compiled_specs=compiled)
-    assert inventory[0]["current_year_frontier"] is not None
+    assert inventory[0]["current_year_frontier"] is None
     conflicts = _at_rate_cross_presentation_conflicts(
         {"mappings": []}, compiled_specs=compiled,
         source_context={"tax_population_inventory": inventory})

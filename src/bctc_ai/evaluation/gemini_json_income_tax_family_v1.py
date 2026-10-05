@@ -10,6 +10,8 @@ blank into zero, or changes the shared evaluator/query policy.
 from __future__ import annotations
 
 import json
+import re
+from datetime import date, timedelta
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -81,6 +83,7 @@ _CANONICAL_LABEL = {
     "CURRENT_TAX_AT_RATE": "Chi phí thuế TNDN theo thuế suất",
     "STATUTORY_TAX_AMOUNT_SOURCE_ONLY": "Thuế tính ở thuế suất 20%",
     "CURRENT_YEAR_TAX_EXPENSE": "Năm hiện hành",
+    "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY": "Kỳ hiện hành",
     "CURRENT_YEAR_EXPENSE_CONTEXT": "Chi phí thuế hiện hành",
     "CURRENT_TAX_BANK": "Chi phí thuế TNDN hiện hành ước tính của Ngân hàng",
     "SUBSIDIARY_TAX": "Chi phí thuế TNDN hiện hành của công ty con",
@@ -97,6 +100,7 @@ _SUPPLEMENTAL_DIRECT_ROLES = (
     "CURRENT_TAX_AT_RATE",
     "STATUTORY_TAX_AMOUNT_SOURCE_ONLY",
     "CURRENT_YEAR_TAX_EXPENSE",
+    "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY",
     "CURRENT_TAX_BANK",
     "SUBSIDIARY_TAX",
     "PRIOR_PERIOD_TAX_ADJUSTMENT",
@@ -1673,7 +1677,7 @@ def _supplemental_presentations(
                 if year_frontier is not None:
                     components = [
                         _projected_source_row(
-                            item, role=("CURRENT_YEAR_TAX_EXPENSE" if index == 0
+                            item, role=(year_frontier["source_component_role"] if index == 0
                                         else "PRIOR_PERIOD_TAX_ADJUSTMENT"),
                             projected_row_kind="ITEM",
                         ) for index, item in enumerate(year_frontier["component_source_rows"])
@@ -1686,13 +1690,17 @@ def _supplemental_presentations(
                         year_frontier["group_source_row"], role="CURRENT_YEAR_EXPENSE_CONTEXT",
                         projected_row_kind="GROUP",
                     )
-                    if not _exact_sum(components, parent):
+                    if (not _exact_sum(components, parent)
+                            or not all(type(value) is str and re.search(r"[0-9]", value)
+                                       for item in [*components, parent] for value in item["source_values_exact"])):
                         if issues is not None:
                             issues.append("SUPPLEMENTAL_CURRENT_YEAR_EQUATION_NOT_COMPLETE_OR_EXACT")
                     else:
                         equation = _supplemental_equation_receipt(
                             component_rows=components, parent_row=parent,
-                            equation_kind="CURRENT_YEAR_PLUS_PRINTED_PRIOR_ADJUSTMENTS_EQUALS_CURRENT_TAX",
+                            equation_kind=("CURRENT_PERIOD_PLUS_PRINTED_PRIOR_ADJUSTMENTS_EQUALS_CURRENT_TAX"
+                                           if year_frontier["source_component_role"] == "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY"
+                                           else "CURRENT_YEAR_PLUS_PRINTED_PRIOR_ADJUSTMENTS_EQUALS_CURRENT_TAX"),
                         )
                         descriptor = _finalize_supplemental_descriptor(
                             record=record, page=page, section_ordinal=section_ordinal,
@@ -1700,7 +1708,9 @@ def _supplemental_presentations(
                             money_column_ordinals=money_ordinals, canonical_unit=canonical_unit,
                             unit_evidence=unit_evidence, unit_receipt=unit_receipt,
                             source_rows=all_source_rows, rows=[group, *components, parent],
-                            presentation_kind="CURRENT_YEAR_TAX_EXPENSE_EXACT_SUM",
+                            presentation_kind=("CURRENT_PERIOD_TAX_EXPENSE_EXACT_SUM"
+                                               if year_frontier["source_component_role"] == "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY"
+                                               else "CURRENT_YEAR_TAX_EXPENSE_EXACT_SUM"),
                             equation_receipts=[equation], compiled_specs=compiled_specs,
                             source_population_receipt=year_frontier,
                         )
@@ -1894,6 +1904,7 @@ def _supplemental_presentations(
                                         and item["matched_role"] not in {
                                             "NON_DEDUCTIBLE_EXPENSE",
                                             "CURRENT_YEAR_TAX_EXPENSE",
+                                            "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY",
                                         }
                                         else "SOURCE_ONLY_EQUATION_COMPONENT"
                                     )
@@ -2126,7 +2137,7 @@ def _project_primary_page(
         role = item["role"]
         canonical = _CANONICAL_LABEL[role]
         ancestry = [root_label, canonical]
-        if role == "CURRENT_YEAR_TAX_EXPENSE":
+        if role in {"CURRENT_YEAR_TAX_EXPENSE", "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY"}:
             ancestry = [root_label, _CANONICAL_LABEL["CURRENT_YEAR_EXPENSE_CONTEXT"], canonical]
         projected_rows.append(
             {
@@ -2463,9 +2474,13 @@ def _current_year_source_frontier(
     source_rows: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any] | None:
     """Authenticate ownership before checking any arithmetic or consuming rows."""
-    year = [item for item in source_rows if item["normalized_label"] == "nam hien hanh"]
+    year = [item for item in source_rows if item["normalized_label"] in {"nam hien hanh", "ky hien hanh"}]
+    context_aliases = {"chi phi thue hien hanh"}
+    context_aliases.update(alias for child in compiled_specs["topology"]["children"]
+                           if child["role"] == "CURRENT_TAX_PARENT"
+                           for matcher in child["matchers"] for alias in matcher["aliases"])
     groups = [item for item in source_rows
-              if item["normalized_label"] == "chi phi thue hien hanh"
+              if item["normalized_label"] in context_aliases
               and item["row_kind"] == "GROUP"]
     if len(year) != 1 or len(groups) != 1:
         return None
@@ -2487,16 +2502,23 @@ def _current_year_source_frontier(
         path = item["hierarchy_path_exact"]
         if (item["row_kind"] != "ITEM" or type(path) is not list
                 or path != [*ancestry, item["label_exact"]]
-                or (item is not child and item["matched_role"] != "PRIOR_PERIOD_TAX_ADJUSTMENT")):
+                or (item is not child and item["matched_role"] != "PRIOR_PERIOD_TAX_ADJUSTMENT"
+                    and item["normalized_label"] != "du phong thieu trong nhung nam truoc")):
             return None
     anonymous = parent["normalized_label"] in {"", "cong", "tong cong"}
     if anonymous:
-        if parent["hierarchy_path_exact"] not in ([], [None], ancestry):
+        if parent["hierarchy_path_exact"] not in ([], [None], ancestry, [*ancestry, None]):
             return None
-    elif not _supplemental_rate_parent_matches(parent, compiled_specs=compiled_specs):
+    elif (parent["hierarchy_path_exact"] not in (
+              [parent["label_exact"]], [*ancestry, parent["label_exact"]],
+          ) or not _supplemental_rate_parent_matches(
+              {**parent, "hierarchy_path_exact": [parent["label_exact"]]}, compiled_specs=compiled_specs,
+          )):
         return None
     material = {
-        "rule": "EXACT_PRINTED_CURRENT_YEAR_GROUP_DESCENDANTS_FIRST_CLOSING_SOURCE_SUBTOTAL",
+        "rule": "EXACT_PRINTED_CURRENT_YEAR_OR_PERIOD_GROUP_DESCENDANTS_FIRST_CLOSING_SOURCE_SUBTOTAL",
+        "source_component_role": ("CURRENT_YEAR_TAX_EXPENSE" if child["normalized_label"] == "nam hien hanh"
+                                  else "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY"),
         "group_source_row": canonical_clone_v1(start),
         "component_source_rows": canonical_clone_v1(components),
         "parent_source_row": canonical_clone_v1(parent),
@@ -2555,6 +2577,7 @@ def _tax_population_inventory(
                     "source_table_row_axis": source_rows,
                     "source_table_rows_exact": canonical_clone_v1(table.get("rows") or []),
                     "owner_surfaces_exact": [section.get("title_exact"), table.get("title_exact")],
+                    "owned_statement_scope_narratives": _owned_statement_scope_narratives(section),
                     "lane_axis": lane,
                     "unit_axis": _unit_axis(table, compiled_specs=compiled_specs),
                     "current_year_surface_ordinals": years,
@@ -2588,6 +2611,7 @@ def _source_context_receipt(
             page_records, compiled_specs=compiled_specs,
         ),
         "semantic_spec_sha256": _semantic_spec_sha256(compiled_specs),
+        "document_report_scope_receipt": _document_report_scope_receipt(page_records),
         "rule": "EXACT_INCOME_TAX_SOURCE_CONTEXT_ALL_QUERY_STRATEGIES",
     }
     return {
@@ -3549,6 +3573,193 @@ def _printed_population_qualifiers(surfaces: Sequence[Any]) -> list[str]:
     })
 
 
+def _owned_statement_scope_narratives(section: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Only a direct recognition statement owns scope; arbitrary prose cannot."""
+    if section.get("content_kind") != "FINANCIAL_NOTE" or len(section.get("tables") or []) != 1:
+        return []
+    return [{"narrative_ordinal": ordinal, "source_exact": narrative,
+             "source_sha256": canonical_json_sha256_v1(narrative),
+             "rule": "OWNED_NOTE_DIRECT_RECOGNITION_IN_INCOME_STATEMENT"}
+            for ordinal, narrative in enumerate(section.get("narratives_exact") or [], start=1)
+            if type(narrative) is str
+            and re.fullmatch(
+                r"(?:[a-z] )?ghi nhan trong bao cao ket qua hoat dong (?:hop nhat|rieng)(?: giua nien do)?",
+                _normalized(narrative),
+            ) is not None]
+
+
+def _document_report_scope_receipt(
+    page_records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Bind every typed statement caption, not a majority or filename guess."""
+    caption_aliases = {
+        "INCOME_STATEMENT": ("bao cao ket qua hoat dong", "bao cao ket qua kinh doanh"),
+        "CASH_FLOW": ("bao cao luu chuyen tien te",),
+        "BALANCE_SHEET": ("bang can doi ke toan", "bao cao tinh hinh tai chinh"),
+    }
+    sources = []
+    identities = {(record["document_id"], record["document_ordinal"], record["source_sha256"])
+                  for record in page_records}
+    for record in page_records:
+        page = record["page_json"]
+        if page.get("status") != "PRIMARY_FINANCIAL_STATEMENT":
+            continue
+        for section_ordinal, section in enumerate(page.get("sections") or [], start=1):
+            statement_type = section.get("statement_type")
+            if section.get("content_kind") != "PRIMARY_STATEMENT" or statement_type not in caption_aliases:
+                continue
+            for table_ordinal, table in enumerate(section.get("tables") or [], start=1):
+                captions = [section.get("title_exact"), table.get("title_exact")]
+                eligible = [caption for caption in captions if type(caption) is str
+                            and any(alias in _normalized(caption) for alias in caption_aliases[statement_type])]
+                # A bare table caption such as RIÊNG still vetoes a qualified
+                # section caption; eligibility is not permission to drop it.
+                qualifiers = _printed_population_qualifiers(captions)
+                sources.append({
+                    "locator": _record_locator(record, section_id=f"s{section_ordinal}", table_id=f"t{table_ordinal}"),
+                    "statement_type": statement_type,
+                    "captions_exact": canonical_clone_v1(captions),
+                    "eligible_captions_exact": eligible,
+                    "qualifiers": qualifiers,
+                    "ambiguous_scope_caption": _ambiguous_report_scope_surface(captions),
+                    "original_page_json_sha256": canonical_json_sha256_v1(page),
+                    "original_table_json_sha256": canonical_json_sha256_v1(table),
+                })
+    sources.sort(key=lambda item: (item["locator"]["selected_page_ordinal"],
+                                  int(item["locator"]["section_id"][1:]), int(item["locator"]["table_id"][1:])))
+    scopes = {qualifier for item in sources for qualifier in item["qualifiers"]
+              if qualifier in {"CONSOLIDATED", "SEPARATE"}}
+    qualified_types = {item["statement_type"] for item in sources
+                       if item["eligible_captions_exact"] and len(item["qualifiers"]) == 1
+                       and item["qualifiers"][0] in scopes}
+    entity_overrides = any(set(item["qualifiers"]) & {"PARENT_ENTITY", "SUBSIDIARY_ENTITY"}
+                           for item in sources)
+    ambiguity = any(item["ambiguous_scope_caption"] for item in sources)
+    scope = next(iter(scopes)) if len(identities) == 1 and len(scopes) == 1 and len(qualified_types) >= 2 and not entity_overrides and not ambiguity else None
+    material = {
+        "report_scope": scope, "all_printed_report_scopes": sorted(scopes),
+        "qualified_statement_types": sorted(qualified_types), "sources": sources,
+        "document_identity_unique": len(identities) == 1,
+        "entity_override_present": entity_overrides,
+        "ambiguous_scope_caption_present": ambiguity,
+        "rule": "TWO_DISTINCT_TYPED_STATEMENT_TYPES_ONE_PRINTED_REPORT_SCOPE_NO_CONFLICT_NO_AMOUNT_INFERENCE",
+    }
+    return {**material, "receipt_id": "gjitfav1:document-report-scope:" + canonical_json_sha256_v1(material)}
+
+
+def _note_report_scope_receipt(
+    section: Mapping[str, Any], table: Mapping[str, Any], *,
+    source_paths: Sequence[Sequence[Any]], document_scope: Mapping[str, Any],
+) -> dict[str, Any]:
+    narratives = _owned_statement_scope_narratives(section)
+    surfaces = [section.get("title_exact"), table.get("title_exact"),
+                *[item["source_exact"] for item in narratives],
+                *[value for path in source_paths for value in path]]
+    qualifiers = _printed_population_qualifiers(surfaces)
+    local_scopes = sorted(set(qualifiers) & {"CONSOLIDATED", "SEPARATE"})
+    local_entities = sorted(set(qualifiers) & {"PARENT_ENTITY", "SUBSIDIARY_ENTITY"})
+    inherited = not qualifiers and document_scope.get("report_scope") is not None
+    scope = (local_scopes[0] if len(local_scopes) == 1 and not local_entities
+             else document_scope["report_scope"] if inherited else None)
+    conflict = (len(local_scopes) > 1 or _ambiguous_report_scope_surface(surfaces)
+                or len(document_scope["all_printed_report_scopes"]) > 1
+                or not document_scope["document_identity_unique"]
+                or document_scope["ambiguous_scope_caption_present"]
+                or (scope is not None and document_scope.get("report_scope") is not None
+                    and scope != document_scope["report_scope"]))
+    material = {
+        "report_scope": scope, "local_qualifiers": qualifiers,
+        "local_entity_qualifiers": local_entities, "conflict": conflict,
+        "origin": "INHERITED_UNIQUE_DOCUMENT_REPORT_SCOPE" if inherited else "LOCAL_PRINTED_SOURCE",
+        "source_surfaces_exact": canonical_clone_v1(surfaces),
+        "owned_statement_scope_narratives": narratives,
+        "document_report_scope_receipt_id": document_scope["receipt_id"],
+        "rule": "LOCAL_NOTE_STATEMENT_SCOPE_PRECEDENCE_WITH_ENTITY_OVERRIDE_VETO",
+    }
+    return {**material, "receipt_id": "gjitfav1:note-report-scope:" + canonical_json_sha256_v1(material)}
+
+
+def _ambiguous_report_scope_surface(surfaces: Sequence[Any]) -> bool:
+    return any(_printed_population_qualifiers([surface])
+               and any(token in _normalized(surface).split() for token in ("khong", "not"))
+               for surface in surfaces if type(surface) is str)
+
+
+def _printed_duration_lengths(
+    table: Mapping[str, Any], ordinals: Sequence[int], *, section: Mapping[str, Any],
+) -> list[list[int]]:
+    """Retain printed month lengths; an endpoint alone does not define duration."""
+    written = {"mot": 1, "hai": 2, "ba": 3, "bon": 4, "nam": 5, "sau": 6,
+               "bay": 7, "tam": 8, "chin": 9, "muoi": 10, "muoi mot": 11, "muoi hai": 12,
+               "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+               "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12}
+    output = []
+    for ordinal in ordinals:
+        path = table["columns"][ordinal - 1].get("header_path_exact") or []
+        surfaces = [*path, table.get("title_exact")]
+        # Single-table statement captions are source-owned context.  A
+        # multi-table section cannot silently lend duration to another table.
+        if len(section.get("tables") or []) == 1:
+            surfaces.append(section.get("title_exact"))
+        lengths = set()
+        for value in surfaces:
+            surface = _normalized(value)
+            lengths.update(int(number) for number in re.findall(r"\b(\d+) (?:thang|months?)\b(?! \d)", surface))
+            for phrase in re.findall(
+                r"\b((?:(?:mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi|tram|nghin|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand) )+)(?:thang|months?)\b",
+                surface,
+            ):
+                lengths.add(written.get(phrase.strip(), -1))
+        output.append(sorted(lengths))
+    return output
+
+
+def _source_duration_correspondence_complete(
+    note_lane: Mapping[str, Any], primary_lane: Mapping[str, Any], *,
+    note_table: Mapping[str, Any], primary_table: Mapping[str, Any],
+    note_lengths: Sequence[Sequence[int]], primary_lengths: Sequence[Sequence[int]],
+) -> bool:
+    keys = note_lane.get("source_lane_keys")
+    if (not note_lane.get("complete") or not primary_lane.get("complete")
+            or not same_typed_json_v1(keys, primary_lane.get("source_lane_keys"))
+            or len(keys or []) != 2 or note_lengths != primary_lengths
+            or any(len(lengths) > 1 or any(length < 1 or length > 12 for length in lengths)
+                   for lengths in [*note_lengths, *primary_lengths])):
+        return False
+    for index, key in enumerate(keys):
+        if key[0] == "DURATION_DATE_RANGE":
+            if note_lengths[index]:
+                try:
+                    start, end = date.fromisoformat(key[1]), date.fromisoformat(key[2])
+                    end_exclusive = end + timedelta(days=1)
+                except (ValueError, TypeError, IndexError, OverflowError):
+                    return False
+                printed_months = note_lengths[index][0]
+                if (start.day != end_exclusive.day or start > end
+                        or (end_exclusive.year - start.year) * 12 + end_exclusive.month - start.month != printed_months):
+                    return False
+            continue
+        if key[0] == "DURATION_END_DATE":
+            if len(note_lengths[index]) != 1:
+                return False
+            continue
+        if key[0] in {"BARE_YEAR", "DURATION_BARE_YEAR"}:
+            # Printed annual years are not an authority to annualize a
+            # year-to-date header whose actual endpoint remains unspecified.
+            for lane, table in ((note_lane, note_table), (primary_lane, primary_table)):
+                path = table["columns"][lane["money_column_ordinals"][index] - 1].get("header_path_exact") or []
+                if any("luy ke" in _normalized(value) or "year to date" in _normalized(value)
+                       or "quarter" in _normalized(value)
+                       or re.search(r"\bquy (?:i|ii|iii|iv|1|2|3|4)\b", _normalized(value))
+                       for value in [*path, table.get("title_exact")]):
+                    return False
+            if note_lengths[index] not in ([], [12]):
+                return False
+            continue
+        return False
+    return True
+
+
 def _note_primary_signed_display_proof(
     note_candidate: Mapping[str, Any], primary_candidate: Mapping[str, Any], *,
     descriptor: Mapping[str, Any], page_records: Sequence[Mapping[str, Any]],
@@ -3571,6 +3782,9 @@ def _note_primary_signed_display_proof(
         *display["population_ancestry_receipt"]["common_population_ancestry_exact"],
     ]
     primary_scope = _printed_population_qualifiers(primary_scope_surfaces)
+    document_scope = _document_report_scope_receipt(page_records)
+    if not primary_scope and document_scope["report_scope"] is not None:
+        primary_scope = [document_scope["report_scope"]]
     primary_by_role = {mapping["role"]: mapping for mapping in primary_candidate["mappings"]}
     overlaps, tables = [], {}
     tax_roles = {"CURRENT_TAX_PARENT", "DEFERRED_TAX_NET", "FAMILY_ROOT_TOTAL"}
@@ -3622,19 +3836,23 @@ def _note_primary_signed_display_proof(
                 display["population_ancestry_receipt"]["common_population_ancestry_exact"],
             ):
                 return None
-            note_scope_surfaces = [
-                section.get("title_exact"), table.get("title_exact"),
-                *population["common_population_ancestry_exact"],
-            ]
-            note_scope = _printed_population_qualifiers(note_scope_surfaces)
-            if note_scope and note_scope != primary_scope:
+            note_scope_receipt = _note_report_scope_receipt(
+                section, table, source_paths=[population["common_population_ancestry_exact"]],
+                document_scope=document_scope,
+            )
+            note_scope_surfaces = note_scope_receipt["source_surfaces_exact"]
+            note_scope = ([note_scope_receipt["report_scope"]] if note_scope_receipt["report_scope"] is not None
+                          else note_scope_receipt["local_qualifiers"])
+            if note_scope_receipt["conflict"] or (note_scope and note_scope != primary_scope):
                 return None
             scope_material = {
                 "rule": "EXPLICIT_NOTE_POPULATION_QUALIFIERS_MUST_MATCH_PRINTED_PRIMARY_NO_AMOUNT_INFERENCE",
                 "primary_source_surfaces": canonical_clone_v1(primary_scope_surfaces),
                 "note_source_surfaces": canonical_clone_v1(note_scope_surfaces),
                 "primary_scope": primary_scope, "note_scope": note_scope,
-                "absent_scope_inferred": False,
+                "note_report_scope_receipt": note_scope_receipt,
+                "document_report_scope_receipt": document_scope,
+                "absent_scope_inferred": note_scope_receipt["origin"] == "INHERITED_UNIQUE_DOCUMENT_REPORT_SCOPE",
             }
             table_material = {
                 "locator": {key: canonical_clone_v1(locator[key]) for key in descriptor["locator"]},
@@ -3716,7 +3934,7 @@ def _at_rate_cross_presentation_conflicts(
             continue
         boundary = inventory["current_year_frontier"]
         covered_years = {item["row_ordinal"] for item in boundary["component_source_rows"]
-                         if item["normalized_label"] == "nam hien hanh"} if boundary is not None else set()
+                         if item["normalized_label"] in {"nam hien hanh", "ky hien hanh"}} if boundary is not None else set()
         if set(years) <= covered_years:
             continue
         material = {
@@ -4050,7 +4268,17 @@ def _seal_income_tax_source_controls(
     if candidate.get("status") != READY:
         return canonical_clone_v1(candidate)
     year_domain_conflicts = []
+    expense_population_scope_receipts = []
+    expense_population_period_receipts = []
+    expense_population_period_conflicts = []
     primary = candidate.get("closure_receipt", {}).get("income_tax_adapter_receipt", {}).get("primary_projection_receipt")
+    if type(primary) is not dict and any(item["current_year_frontier"] is not None
+                                       for item in source_context["tax_population_inventory"]):
+        return _unresolved_from_candidate(
+            candidate, reason="CURRENT_TAX_EXPENSE_SOURCE_POPULATION_WITHOUT_AUTHENTICATED_COUNTERPART",
+            evidence={"source_context_receipt": canonical_clone_v1(source_context),
+                      "classification": "ALGORITHM_NOTE_ONLY_POPULATION_ROUTE_NOT_YET_AUTHENTICATED"},
+        )
     if type(primary) is dict:
         pages = {item["page_json_version_id"]: item["page_json"] for item in repaired_records}
         section, table = _source_table(pages[primary["locator"]["page_json_version_id"]],
@@ -4060,31 +4288,77 @@ def _seal_income_tax_source_controls(
                              if type(item.get("hierarchy_path_exact")) is list]
         primary_surfaces.extend(value for ancestry in primary_ancestries for value in ancestry)
         primary_scope = _printed_population_qualifiers(primary_surfaces)
+        primary_lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+        primary_duration_lengths = _printed_duration_lengths(table, primary["money_column_ordinals"], section=section)
+        document_scope = source_context["document_report_scope_receipt"]
+        if not primary_scope and document_scope["report_scope"] is not None:
+            primary_scope = [document_scope["report_scope"]]
         unknown_primary_ancestry = [value for ancestry in primary_ancestries for value in ancestry
                                     if _without_leading_ordinal(_normalized(value)) not in _ROOT_LABELS]
-        for mapping in candidate.get("mappings", []):
-            if mapping.get("role") != "CURRENT_YEAR_TAX_EXPENSE":
+        # Validation-only PERIOD has no mapping.  Authenticate the source
+        # population itself, including its parent and adjustment rows.
+        for inventory in source_context["tax_population_inventory"]:
+            boundary = inventory["current_year_frontier"]
+            if boundary is None:
                 continue
-            for ref in mapping["source_refs"]:
-                locator = ref["locator"]
-                note_section, note_table = _source_table(pages[locator["page_json_version_id"]],
-                                                       section_id=locator["section_id"], table_id=locator["table_id"])
-                note_surfaces = [note_section.get("title_exact"), note_table.get("title_exact"),
-                                 *(ref.get("hierarchy_path_exact") or [])]
-                note_scope = _printed_population_qualifiers(note_surfaces)
-                if note_scope != primary_scope or unknown_primary_ancestry:
-                    year_domain_conflicts.append({
-                        "source_ref": canonical_clone_v1(ref), "note_surfaces_exact": note_surfaces,
-                        "primary_surfaces_exact": primary_surfaces, "note_scope": note_scope,
-                        "primary_scope": primary_scope,
-                        "primary_ancestries_exact": canonical_clone_v1(primary_ancestries),
-                        "unknown_primary_ancestry_exact": canonical_clone_v1(unknown_primary_ancestry),
-                        "rule": "PRINTED_YEAR_EXPENSE_POPULATION_MUST_MATCH_PRIMARY_NOT_JUST_TOTAL_AMOUNT",
-                    })
+            locator = inventory["locator"]
+            note_section, note_table = _source_table(pages[locator["page_json_version_id"]],
+                                                   section_id=locator["section_id"], table_id=locator["table_id"])
+            note_lane = inventory["lane_axis"]
+            note_duration_lengths = _printed_duration_lengths(note_table, note_lane["money_column_ordinals"], section=note_section)
+            period_material = {
+                "source_locator": canonical_clone_v1(locator),
+                "source_population_receipt_id": boundary["receipt_id"],
+                "note_lane_axis": canonical_clone_v1(note_lane),
+                "primary_lane_axis": canonical_clone_v1(primary_lane),
+                "primary_locator": canonical_clone_v1(primary["locator"]),
+                "note_printed_duration_lengths": note_duration_lengths,
+                "primary_printed_duration_lengths": primary_duration_lengths,
+                "rule": "EXACT_SOURCE_PERIOD_KEYS_AND_PRINTED_DURATION_LENGTHS_FOR_ALL_YEAR_OR_PERIOD_POPULATIONS",
+            }
+            expense_population_period_receipts.append(period_material)
+            if (not same_typed_json_v1(primary_lane.get("money_column_ordinals"), primary["money_column_ordinals"])
+                    or (all(key[0] in {"BARE_YEAR", "DURATION_BARE_YEAR"} for key in note_lane.get("source_lane_keys") or [])
+                        and any("luy ke" in _normalized(value) or "year to date" in _normalized(value)
+                                or "quarter" in _normalized(value)
+                                or re.search(r"\bquy (?:i|ii|iii|iv|1|2|3|4)\b", _normalized(value))
+                                for value in [note_section.get("title_exact"), section.get("title_exact")]))
+                    or not _source_duration_correspondence_complete(
+                        note_lane, primary_lane, note_table=note_table, primary_table=table,
+                        note_lengths=note_duration_lengths, primary_lengths=primary_duration_lengths,
+                    )):
+                expense_population_period_conflicts.append(period_material)
+            scope_receipt = _note_report_scope_receipt(
+                note_section, note_table,
+                source_paths=[item["hierarchy_path_exact"] for item in [
+                    boundary["group_source_row"], *boundary["component_source_rows"], boundary["parent_source_row"],
+                ]], document_scope=document_scope,
+            )
+            note_scope = ([scope_receipt["report_scope"]] if scope_receipt["report_scope"] is not None
+                          else scope_receipt["local_qualifiers"])
+            material = {
+                "source_population_receipt": canonical_clone_v1(boundary),
+                "source_locator": canonical_clone_v1(locator),
+                "note_report_scope_receipt": scope_receipt,
+                "primary_surfaces_exact": primary_surfaces, "note_scope": note_scope,
+                "primary_scope": primary_scope,
+                "primary_ancestries_exact": canonical_clone_v1(primary_ancestries),
+                "unknown_primary_ancestry_exact": canonical_clone_v1(unknown_primary_ancestry),
+                "rule": "PRINTED_YEAR_OR_PERIOD_EXPENSE_POPULATION_MUST_MATCH_PRIMARY_NOT_JUST_TOTAL_AMOUNT",
+            }
+            expense_population_scope_receipts.append(material)
+            if scope_receipt["conflict"] or note_scope != primary_scope or unknown_primary_ancestry:
+                year_domain_conflicts.append(material)
     if year_domain_conflicts:
         return _unresolved_from_candidate(candidate, reason="CURRENT_YEAR_TAX_EXPENSE_SOURCE_POPULATION_AMBIGUITY",
                                           evidence={"year_domain_conflicts": year_domain_conflicts,
                                                     "source_context_receipt": canonical_clone_v1(source_context)})
+    if expense_population_period_conflicts:
+        return _unresolved_from_candidate(
+            candidate, reason="CURRENT_TAX_EXPENSE_SOURCE_PERIOD_AMBIGUITY",
+            evidence={"expense_population_period_conflicts": expense_population_period_conflicts,
+                      "source_context_receipt": canonical_clone_v1(source_context)},
+        )
     population_conflicts = _at_rate_cross_presentation_conflicts(
         candidate, compiled_specs=compiled_specs, source_context=source_context,
     )
@@ -4173,6 +4447,8 @@ def _seal_income_tax_source_controls(
         })
     material = {
         "source_context_receipt": canonical_clone_v1(source_context),
+        "expense_population_scope_receipts": expense_population_scope_receipts,
+        "expense_population_period_receipts": expense_population_period_receipts,
         "post_merge_root_closure": closure,
         "supplemental_root_lane_receipts": comparisons,
         "rule": "ALL_SOURCE_ROOT_CONTROLS_REPLAYED_AGAINST_FINAL_SOURCE_MAPPING_NO_BACKSOLVE",

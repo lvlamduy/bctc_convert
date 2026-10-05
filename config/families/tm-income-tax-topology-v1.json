@@ -158,6 +158,14 @@
     },
     {
       "matchers": [
+        {"aliases": ["Kỳ hiện hành"], "presence_anchor": false, "within_role": "CURRENT_YEAR_EXPENSE_CONTEXT"}
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
         {
           "aliases": [
             "Chi phí thuế TNDN hiện hành (20%) của Ngân hàng (i)",
