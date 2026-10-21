@@ -13,7 +13,7 @@ import os
 import sqlite3
 import sys
 import time
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from hashlib import sha256
 from io import BytesIO
@@ -73,6 +73,11 @@ from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     query_selected_multitable_hierarchical_family_regions_v1,
+)
+from bctc_ai.storage.gemini_income_tax_raw_money_census_v1 import (  # noqa: E402
+    IncomeTaxOriginalCensusSourceV1,
+    load_income_tax_original_document_census_v1,
+    open_income_tax_original_census_source_v1,
 )
 from bctc_ai.storage.gemini_income_tax_source_page_loader_v1 import (  # noqa: E402
     load_income_tax_source_page_json_versions_v1,
@@ -426,8 +431,24 @@ def _trial_v1(cluster, records, compiled):
 
 
 def _evaluate_stream_v1(
-    database, documents, compiled, *, cache=None, implementation_refs=(), independent_base=None
+    database, documents, compiled, *, cache=None, implementation_refs=(), independent_base=None,
+    original_census_source=None, raw_census_sink=None, original_document_callback=None,
 ):
+    # Legacy internal fixture/replay calls may supply neither capability. They
+    # make no authenticated raw-denominator claim. The official run always
+    # supplies the owned source context and a per-document sink together.
+    require((original_census_source is None) == (raw_census_sink is None),
+            "Original census source and sink must be supplied together")
+    require(raw_census_sink is None or callable(raw_census_sink), "Raw census sink must be callable")
+    require(original_census_source is None or type(original_census_source) is IncomeTaxOriginalCensusSourceV1,
+            "An owned authenticated original census source is required")
+    require(original_document_callback is None or original_census_source is not None
+            and callable(original_document_callback), "Original document callback requires an authenticated source")
+    source_documents = None if original_census_source is None else original_census_source.document_authorities
+    source_positions = {} if source_documents is None else {
+        item["manifest"]["document_manifest_id"]: (ordinal, item)
+        for ordinal, item in enumerate(source_documents, 1)
+    }
     doc_axis, page_axis, clusters, trials, source_replay_receipts = [], [], [], [], []
     timing = {
         "selected_json_load_seconds": 0.0,
@@ -455,11 +476,28 @@ def _evaluate_stream_v1(
     )
     for ordinal, document in enumerate(documents, 1):
         started = time.perf_counter()
-        loaded = load_income_tax_source_page_json_versions_v1(
-            database, page_json_version_ids=document["ids"]
-        )
+        census = None
+        if original_census_source is None:
+            loaded = load_income_tax_source_page_json_versions_v1(
+                database, page_json_version_ids=document["ids"]
+            )
+            axis, records = _records_v1(document, loaded, ordinal)
+        else:
+            selected = source_positions.get(document["manifest"]["document_manifest_id"])
+            require(selected is not None and same_typed_json_v1(document, selected[1]),
+                    "Stream document differs from authenticated original corpus authority")
+            bundle = load_income_tax_original_document_census_v1(
+                original_census_source, corpus_document_ordinal=selected[0], run_document_ordinal=ordinal,
+            )
+            loaded, axis, records, census = (bundle[key] for key in ("loaded", "axis_document", "records", "census"))
+        original_hashes = tuple(canonical_json_sha256_v1(value) for value in (document, loaded, records, census))
+        if census is not None:
+            raw_census_sink(census)
+            if original_document_callback is not None:
+                original_document_callback(document, loaded)
+            require(original_hashes == tuple(canonical_json_sha256_v1(value) for value in (document, loaded, records, census)),
+                    "Original source/census changed in a document callback")
         source_replay_receipts.extend(r["source_json_replay_receipt"] for r in loaded)
-        axis, records = _records_v1(document, loaded, ordinal)
         timing["selected_json_load_seconds"] += time.perf_counter() - started
         timing["selected_json_api_calls"] += 1
         timing["selected_json_sql_rows"] += len(loaded)
@@ -495,6 +533,8 @@ def _evaluate_stream_v1(
             )
             clusters.append(cluster)
             trials.append(_trial_v1(cluster, records, compiled))
+        require(original_hashes == tuple(canonical_json_sha256_v1(value) for value in (document, loaded, records, census)),
+                "Family evaluation changed original source/census objects")
         for key, value in period_metrics.items():
             if key.startswith("peak_"):
                 timing["document_period_inventory_cache"][key] = max(timing["document_period_inventory_cache"][key], value)
@@ -578,6 +618,205 @@ def replay_income_tax_trials_from_source_v1(
     if replay_metrics is not None:
         replay_metrics.update(json.loads(canonical_json_bytes_v1(_timing)))
     return trials
+
+
+def _write_raw_census_document_v1(output_dir, census):
+    """Write a provisional original denominator once, never an acceptance result."""
+    output_dir = _safe_path(Path(output_dir))
+    require(output_dir.is_dir(), "Existing fresh run output directory required")
+    binding = census["source_binding"]
+    run_ordinal, source_ordinal = binding["run_document_ordinal"], binding["corpus_document_ordinal"]
+    require(all(type(value) is int and value > 0 for value in (run_ordinal, source_ordinal)),
+            "Raw census source/run ordinals invalid")
+    directory = _safe_path(output_dir / "raw-census")
+    directory.mkdir(mode=0o700, exist_ok=True)
+    path = directory / f"document-{run_ordinal:04d}-source-{source_ordinal:04d}.json"
+    require(not path.exists(), "Raw census output already exists")
+    with path.open("xb") as stream:
+        stream.write(canonical_json_bytes_v1(census))
+        stream.flush()
+        os.fsync(stream.fileno())
+    descriptor = {
+        "document_ordinal": run_ordinal, "corpus_document_ordinal": source_ordinal,
+        "census_id": census["census_id"], "counts": json.loads(canonical_json_bytes_v1(census["counts"])),
+        "census_ref": generic._file_ref(path),
+    }
+    _read_raw_census_ref_v1(descriptor)
+    return descriptor
+
+
+def _read_raw_census_ref_v1(descriptor):
+    """Check retained bytes only; hashes and self-IDs are not source approval."""
+    require(type(descriptor) is dict and set(descriptor) == {
+        "document_ordinal", "corpus_document_ordinal", "census_id", "counts", "census_ref",
+    }, "Raw census descriptor fields differ")
+    ref = descriptor["census_ref"]
+    require(type(ref) is dict and set(ref) == {"path", "sha256", "size_bytes"}
+            and type(ref["path"]) is str and type(ref["sha256"]) is str and len(ref["sha256"]) == 64
+            and all(character in "0123456789abcdef" for character in ref["sha256"])
+            and type(ref["size_bytes"]) is int and ref["size_bytes"] > 0, "Raw census file ref differs")
+    path = _safe_path(Path(ref["path"]))
+    require(path.is_file() and path.resolve(strict=True) == path and path.suffix == ".json"
+            and path.parent.name == "raw-census", "Canonical raw-census JSON file required")
+    raw = path.read_bytes()
+    require(len(raw) == ref["size_bytes"] and sha256(raw).hexdigest() == ref["sha256"],
+            "Raw census artifact bytes differ")
+    census = _json(path)
+    require(raw == canonical_json_bytes_v1(census), "Raw census artifact is not canonical")
+    material = {key: value for key, value in census.items() if key != "census_id"}
+    binding = census["source_binding"]
+    require(census["format_version"] == "F39_AUTHENTICATED_ORIGINAL_RAW_MONEY_CELL_CENSUS_V1"
+            and census["census_id"] == descriptor["census_id"]
+            == "f39rawcellv1:census:" + canonical_json_sha256_v1(material)
+            and type(descriptor["document_ordinal"]) is int and descriptor["document_ordinal"] > 0
+            and type(descriptor["corpus_document_ordinal"]) is int and descriptor["corpus_document_ordinal"] > 0
+            and binding["run_document_ordinal"] == descriptor["document_ordinal"]
+            and binding["corpus_document_ordinal"] == descriptor["corpus_document_ordinal"]
+            and same_typed_json_v1(census["counts"], descriptor["counts"])
+            and census["relevance"] == "UNASSESSED_NO_FAMILY_OWNER_ROLE_LANE_OR_ACCEPTANCE_DECISION"
+            and census["family_acceptance_claimed"] is False and census["dispositions_classified"] is False
+            and census["source_values_modified"] is False and census["pdf_bytes_or_visuals_verified"] is False,
+            "Raw census retention identity/boundary differs")
+    return raw, census
+
+
+def _raw_census_summary_v1(census_refs):
+    require(type(census_refs) is list and bool(census_refs), "One raw census per selected document required")
+    require([item["document_ordinal"] for item in census_refs] == list(range(1, len(census_refs) + 1))
+            and len({item["corpus_document_ordinal"] for item in census_refs}) == len(census_refs)
+            and len({item["census_ref"]["path"] for item in census_refs}) == len(census_refs),
+            "Raw census document/file axis duplicated or incomplete")
+    counts = {}
+    for item in census_refs:
+        _raw, census = _read_raw_census_ref_v1(item)
+        for key, value in census["counts"].items():
+            require(type(value) is int and value >= 0, "Invalid raw census denominator count")
+            counts[key] = counts.get(key, 0) + value
+    return {
+        "format_version": "F39_ORIGINAL_RAW_MONEY_DENOMINATOR_SUMMARY_V1",
+        "status": "PASS_RETAINED_RAW_CENSUS_BYTES_NOT_SOURCE_AUTHENTICATION_OR_ACCEPTANCE",
+        "document_count": len(census_refs), "counts": counts,
+        "document_census_refs": json.loads(canonical_json_bytes_v1(census_refs)),
+        "relevance": "UNASSESSED_NO_FAMILY_OWNER_ROLE_LANE_OR_ACCEPTANCE_DECISION",
+        "all_raw_family_coverage_acceptance_claimed": False, "family_acceptance_claimed": False,
+        "dispositions_classified": False, "raw_cells_normalized_or_repaired": False,
+    }
+
+
+def _make_authenticated_source_replay_adapter_v1(
+    *, database, database_ref, artifact_root, corpus_index_ref, documents, expected_census_refs,
+):
+    """Bind an independent cold pass to original authority and warm raw bytes.
+
+    The returned Python function is defined in this runner, satisfying the
+    generic store's implementation-origin fence without changing shared code.
+    No returned trial escapes the fresh source context's successful exit.
+    """
+    document_bytes = canonical_json_bytes_v1(documents)
+    census_ref_bytes = canonical_json_bytes_v1(expected_census_refs)
+    database_ref_bytes, index_ref_bytes = map(canonical_json_bytes_v1, (database_ref, corpus_index_ref))
+    database, artifact_root = Path(database), Path(artifact_root)
+
+    def replay(*, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence):
+        require(Path(source_page_database) == database, "Cold raw census source database path differs")
+        cold_documents, refs = json.loads(document_bytes), json.loads(census_ref_bytes)
+        require(len(cold_documents) == len(refs)
+                and list(selected_page_json_version_ids) == [item for document in cold_documents for item in document["ids"]],
+                "Cold raw census selected document/page axis differs")
+        before = _raw_census_summary_v1(refs)
+        specs, family_compiled = _compile_specs_v1()
+        require(same_typed_json_v1(compiled_specs, compile_gemini_json_flat_family_specs_v1(
+            specs["topology"], specs["evaluation"], specs["schema"],
+        )), "Cold replay declarative specs differ")
+        seen = []
+
+        def compare(census):
+            ordinal = census["source_binding"]["run_document_ordinal"]
+            require(type(ordinal) is int and ordinal == len(seen) + 1 and ordinal <= len(refs),
+                    "Cold raw census order/denominator differs")
+            expected_raw, _expected = _read_raw_census_ref_v1(refs[ordinal - 1])
+            require(canonical_json_bytes_v1(census) == expected_raw,
+                    "Cold original raw MONEY census differs from warm source bytes")
+            seen.append(refs[ordinal - 1]["census_id"])
+
+        with open_income_tax_original_census_source_v1(
+            database, database_ref=json.loads(database_ref_bytes), artifact_root=artifact_root,
+            corpus_index_ref=json.loads(index_ref_bytes),
+        ) as source:
+            base = query_selected_multitable_hierarchical_family_regions_v1(
+                database, selected_page_json_version_ids=selected_page_json_version_ids, compiled_specs=family_compiled,
+            )
+            indexed, trials, _timing = _evaluate_stream_v1(
+                database, cold_documents, family_compiled, independent_base=base,
+                original_census_source=source, raw_census_sink=compare,
+            )
+            require(same_typed_json_v1(indexed, indexed_query_evidence), "Cold replay indexed source query differs")
+            require(len(seen) == len(refs), "Cold raw census omitted a document")
+            require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed during cold replay")
+        require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed at cold source close")
+        return trials
+
+    return replay
+
+
+def _store_raw_money_censuses_v1(results_database, *, family_run_id, census_refs):
+    """Persist/reload exact raw denominators after authenticated cold replay.
+
+    This family-local table adds no semantic acceptance or generic-store schema
+    migration. A fresh insertion is mandatory; existing census rows are never
+    replaced. Each BLOB is materialized/reloaded one document at a time.
+    """
+    summary = _raw_census_summary_v1(census_refs)
+    with closing(sqlite3.connect(results_database)) as connection, connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        family = connection.execute("SELECT family_id FROM family_run WHERE family_run_id=?", (family_run_id,)).fetchone()
+        require(family == (FAMILY_ID,), "Raw census store family run absent/different")
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS f39_raw_money_census_v1 ("
+            "family_run_id TEXT NOT NULL,document_ordinal INTEGER NOT NULL,corpus_document_ordinal INTEGER NOT NULL,"
+            "census_id TEXT NOT NULL,census_sha256 TEXT NOT NULL,census_bytes BLOB NOT NULL,source_ref_json BLOB NOT NULL,"
+            "PRIMARY KEY(family_run_id,document_ordinal),UNIQUE(family_run_id,corpus_document_ordinal),"
+            "FOREIGN KEY(family_run_id,document_ordinal) REFERENCES family_trial(family_run_id,document_ordinal))"
+        )
+        require(connection.execute("SELECT COUNT(*) FROM f39_raw_money_census_v1 WHERE family_run_id=?", (family_run_id,)).fetchone() == (0,),
+                "Raw census store already contains this family run")
+        trial_count = connection.execute("SELECT COUNT(*) FROM family_trial WHERE family_run_id=?", (family_run_id,)).fetchone()[0]
+        require(trial_count == len(census_refs), "Raw census store/trial denominator differs")
+        for item in census_refs:
+            raw, census = _read_raw_census_ref_v1(item)
+            source = census["source_binding"]["document_source_axis"]
+            trial = connection.execute(
+                "SELECT source_logical_name,source_sha256 FROM family_trial WHERE family_run_id=? AND document_ordinal=?",
+                (family_run_id, item["document_ordinal"]),
+            ).fetchone()
+            require(trial == (source["source_logical_name"], source["source_sha256"]), "Stored trial/raw census source identity differs")
+            connection.execute("INSERT INTO f39_raw_money_census_v1 VALUES (?,?,?,?,?,?,?)", (
+                family_run_id, item["document_ordinal"], item["corpus_document_ordinal"], item["census_id"],
+                sha256(raw).hexdigest(), raw, canonical_json_bytes_v1(item["census_ref"]),
+            ))
+        require(same_typed_json_v1(summary, _raw_census_summary_v1(census_refs)),
+                "Raw census files changed before persistence commit")
+    # Reload from a separately opened read-only connection after commit/close,
+    # not from the insertion transaction's own uncommitted view.
+    with closing(sqlite3.connect(Path(results_database).as_uri() + "?mode=ro", uri=True)) as connection:
+        connection.execute("PRAGMA query_only=ON")
+        require(connection.execute("PRAGMA query_only").fetchone() == (1,), "Raw census reload is not query-only")
+        require(connection.execute("SELECT COUNT(*) FROM f39_raw_money_census_v1 WHERE family_run_id=?", (family_run_id,)).fetchone()
+                == (len(census_refs),), "Persisted raw census document denominator differs")
+        for item in census_refs:
+            raw, _census = _read_raw_census_ref_v1(item)
+            row = connection.execute(
+                "SELECT corpus_document_ordinal,census_id,census_sha256,census_bytes,source_ref_json "
+                "FROM f39_raw_money_census_v1 WHERE family_run_id=? AND document_ordinal=?",
+                (family_run_id, item["document_ordinal"]),
+            ).fetchone()
+            require(row == (item["corpus_document_ordinal"], item["census_id"], sha256(raw).hexdigest(), raw,
+                            canonical_json_bytes_v1(item["census_ref"])), "Stored raw census BLOB does not reload exactly")
+        require(connection.execute("PRAGMA quick_check").fetchall() == [("ok",)]
+                and connection.execute("PRAGMA foreign_key_check").fetchall() == [], "Raw census results SQLite integrity failed")
+    require(same_typed_json_v1(summary, _raw_census_summary_v1(census_refs)), "Raw census files changed during persistence")
+    return {"table": "f39_raw_money_census_v1", "document_count": len(census_refs),
+            "exact_per_document_blob_reload": True, "family_acceptance_claimed": False}
 
 
 def _validate_repair_render_bindings_v1(value, compiled):
@@ -766,6 +1005,9 @@ def run(args):
         RENDER_BINDINGS_PATH,
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_income_tax_source_page_loader_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_income_tax_raw_money_census_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_current_corpus_manifest_index_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_current_document_manifest_selection_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_financial_page_json_v1.py",
         ROOT / "src/bctc_ai/source_structure/contracts_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
@@ -784,36 +1026,41 @@ def run(args):
             for name in ("document_manifest_ref", "selection_ref")
         )
     authority_refs = [generic._file_ref(p) for p in authority_paths]
-    pdf_checked, repair_ids = [], []
+    require(args.corpus_index.is_relative_to(args.artifact_root), "Corpus index must be inside explicit artifact root")
+    corpus_index_ref = {**generic._file_ref(args.corpus_index),
+                        "path": args.corpus_index.relative_to(args.artifact_root).as_posix()}
+    pdf_checked, repair_ids, census_refs = [], [], []
+    args.output_dir.mkdir(mode=0o700)
     cache = BaseClusterCache(args.base_cluster_cache)
-    try:
-        with _authenticated_source_v1(args.source_page_database, index["database_ref"]) as database:
-            for document in documents:
-                source = document["manifest"]["document"]
-                path = _safe_path(args.source_pdf_root / source["source_logical_name"])
-                require(
-                    path.is_file()
-                    and path.stat().st_size == source["source_size_bytes"]
-                    and generic._sha256(path) == source["source_sha256"],
-                    "Source PDF missing/hash/byte mismatch: " + str(path),
-                )
-                import fitz
 
-                with fitz.open(path) as source_pdf:
-                    coverage = _check_page_scope_v1(document, len(source_pdf), scope_rows)
-                pdf_checked.append(
-                    {**source, **coverage, "status": "PASS_BYTES_ONLY_NOT_VISUAL_AUDIT"}
-                )
-                if any(
-                    r["pdf_source"]["sha256"] == source["source_sha256"]
-                    for r in compiled["income_tax_source_repairs"]
-                ):
-                    loaded = load_income_tax_source_page_json_versions_v1(
-                        database, page_json_version_ids=document["ids"]
-                    )
-                    repair_ids.extend(_authenticate_repairs_v1(document, loaded, compiled, path))
+    def retain_original_census(census):
+        census_refs.append(_write_raw_census_document_v1(args.output_dir, census))
+
+    def authenticate_original_document(document, loaded):
+        # The bundle's one original loader result is shared with pixel repair
+        # authentication. Never reload JSON just to inspect registered repairs.
+        source = document["manifest"]["document"]
+        path = _safe_path(args.source_pdf_root / source["source_logical_name"])
+        require(path.is_file() and path.stat().st_size == source["source_size_bytes"]
+                and generic._sha256(path) == source["source_sha256"],
+                "Source PDF missing/hash/byte mismatch: " + str(path))
+        import fitz
+
+        with fitz.open(path) as source_pdf:
+            coverage = _check_page_scope_v1(document, len(source_pdf), scope_rows)
+        pdf_checked.append({**source, **coverage, "status": "PASS_BYTES_ONLY_NOT_VISUAL_AUDIT"})
+        repair_ids.extend(_authenticate_repairs_v1(document, loaded, compiled, path))
+
+    try:
+        with open_income_tax_original_census_source_v1(
+            args.source_page_database, database_ref=index["database_ref"],
+            artifact_root=args.artifact_root, corpus_index_ref=corpus_index_ref,
+        ) as original_source:
+            require(same_typed_json_v1(original_source.corpus_index, index), "Original census corpus index differs")
             indexed, trials, timing = _evaluate_stream_v1(
-                database, documents, compiled, cache=cache, implementation_refs=implementation_refs
+                args.source_page_database, documents, compiled, cache=cache, implementation_refs=implementation_refs,
+                original_census_source=original_source, raw_census_sink=retain_original_census,
+                original_document_callback=authenticate_original_document,
             )
             sweep = build_gemini_json_flat_family_sweep_v1(
                 corpus_manifest_index_id=index["corpus_manifest_index_id"],
@@ -829,35 +1076,6 @@ def run(args):
                 sweep["metrics"]["document_count"] == len(documents),
                 "Sweep document denominator differs",
             )
-            if diagnostic_ordinals is None:
-                args.output_dir.mkdir(mode=0o700)
-                started = time.perf_counter()
-                stored = ingest_gemini_accounting_family_sweep_v1(
-                    args.results_database,
-                    sweep=sweep,
-                    corpus_index_ref=generic._file_ref(args.corpus_index),
-                    implementation_refs=implementation_refs,
-                    run_kind="EXPERIMENTAL",
-                    source_page_database=database,
-                    selected_page_json_version_ids=selected_ids,
-                    corpus_artifact_root=args.artifact_root,
-                    source_replay_adapter=replay_income_tax_trials_from_source_v1,
-                    source_replay_adapter_ref=generic._file_ref(Path(__file__).resolve()),
-                )
-                timing["cold_source_replay_and_persistence_seconds"] = time.perf_counter() - started
-                reloaded = load_gemini_accounting_family_sweep_v1(
-                    args.results_database, stored["family_run_id"]
-                )
-                require(
-                    same_typed_json_v1(reloaded, sweep), "Persisted sweep does not reload exactly"
-                )
-                validate_source_observation_mapping_contract_v1(reloaded)
-                with sqlite3.connect(args.results_database) as connection:
-                    require(
-                        connection.execute("PRAGMA quick_check").fetchall() == [("ok",)]
-                        and connection.execute("PRAGMA foreign_key_check").fetchall() == [],
-                        "Results SQLite integrity failed",
-                    )
             for source in pdf_checked:
                 path = _safe_path(args.source_pdf_root / source["source_logical_name"])
                 require(
@@ -876,6 +1094,48 @@ def run(args):
         authority_refs == [generic._file_ref(p) for p in authority_paths],
         "Index/immutable manifest/selection bytes changed during run",
     )
+    # Acceptance barrier: all warm results/files above were provisional. Only
+    # successful source-context exit plus source/code rechecks may hand a sweep
+    # to persistence. The generic store invokes another independently owned
+    # source context through this runner-file closure before inserting trials.
+    raw_census = _raw_census_summary_v1(census_refs)
+    require(raw_census["document_count"] == len(documents)
+            and raw_census["counts"]["pages"] == len(indexed["selected_page_axis"]),
+            "Original raw census selected denominator differs")
+    raw_census.update(status="PASS_AUTHENTICATED_ORIGINAL_RAW_DENOMINATOR_NOT_ACCEPTANCE",
+                      source_context_successfully_exited=True)
+    raw_census_store = None
+    if diagnostic_ordinals is None:
+        replay_adapter = _make_authenticated_source_replay_adapter_v1(
+            database=args.source_page_database, database_ref=index["database_ref"],
+            artifact_root=args.artifact_root, corpus_index_ref=corpus_index_ref,
+            documents=documents, expected_census_refs=census_refs,
+        )
+        started = time.perf_counter()
+        stored = ingest_gemini_accounting_family_sweep_v1(
+            args.results_database, sweep=sweep, corpus_index_ref=generic._file_ref(args.corpus_index),
+            implementation_refs=implementation_refs, run_kind="EXPERIMENTAL",
+            source_page_database=args.source_page_database, selected_page_json_version_ids=selected_ids,
+            corpus_artifact_root=args.artifact_root, source_replay_adapter=replay_adapter,
+            source_replay_adapter_ref=generic._file_ref(Path(__file__).resolve()),
+        )
+        timing["cold_source_replay_and_persistence_seconds"] = time.perf_counter() - started
+        raw_census_store = _store_raw_money_censuses_v1(
+            args.results_database, family_run_id=stored["family_run_id"], census_refs=census_refs,
+        )
+        reloaded = load_gemini_accounting_family_sweep_v1(args.results_database, stored["family_run_id"])
+        require(same_typed_json_v1(reloaded, sweep), "Persisted sweep does not reload exactly")
+        validate_source_observation_mapping_contract_v1(reloaded)
+    _assert_shared_pins_v1()
+    require(implementation_refs == [generic._file_ref(p) for p in implementation_paths]
+            and authority_refs == [generic._file_ref(p) for p in authority_paths],
+            "Family/source authority bytes changed during cold replay/persistence")
+    for source in pdf_checked:
+        path = _safe_path(args.source_pdf_root / source["source_logical_name"])
+        require(path.stat().st_size == source["source_size_bytes"] and generic._sha256(path) == source["source_sha256"],
+                "Source PDF changed before output handoff")
+    require(same_typed_json_v1(raw_census["document_census_refs"], census_refs), "Raw census reference axis changed")
+    _raw_census_summary_v1(census_refs)
     if diagnostic_ordinals is not None:
         material = {
             "format_version": "INCOME_TAX_BOUNDED_DIAGNOSTIC_V1",
@@ -892,13 +1152,13 @@ def run(args):
             "indexed_query_evidence": indexed,
             "timing": timing,
             "source_observation_contract": observation,
+            "original_raw_money_census": raw_census,
             "pdf_source_byte_bindings": pdf_checked,
             "authenticated_repair_ids": repair_ids,
             "implementation_refs": implementation_refs,
             "immutable_input_refs": authority_refs,
         }
         material["diagnostic_id"] = "gjitfarunv1:bounded:" + canonical_json_sha256_v1(material)
-        args.output_dir.mkdir(mode=0o700)
         generic._write_once(args.output_dir / "income-tax-bounded-diagnostic.json", material)
         return {
             "disposition": "SUCCEEDED_BOUNDED_DIAGNOSTIC_NOT_ACCEPTANCE",
@@ -922,6 +1182,8 @@ def run(args):
         "metrics": sweep["metrics"],
         "timing": timing,
         "source_observation_contract": observation,
+        "original_raw_money_census": raw_census,
+        "original_raw_money_census_store": raw_census_store,
         "pdf_source_byte_bindings": pdf_checked,
         "authenticated_repair_ids": repair_ids,
         "selected_page_ids_sha256": canonical_json_sha256_v1(selected_ids),

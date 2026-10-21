@@ -717,7 +717,36 @@ def _apply_source_repairs(
     return records, receipts
 
 
-def _role_for_primary_label(value: Any) -> str | None:
+def _primary_root_printed_text(value: Any) -> str | None:
+    """Permit declared layout, not glyphs erased by the legacy normalizer."""
+    if type(value) is not str:
+        return None
+    layout = value.replace("\\n", "\n")
+    if any(unicodedata.category(char) == "Cc" and char not in "\t\r\n" for char in layout):
+        return None
+    return _recognition_printed_text(" ".join(layout.split()))
+
+
+def _primary_quoted_tndn_root_label_matches(value: Any) -> bool:
+    """Recognize one whole PRIMARY label, not NOTE or population authority.
+
+    Keep punctuation and the literal ASCII quoted acronym. Folding Vietnamese
+    letters cannot manufacture an acronym by erasing its source annotations.
+    Layout recognition never changes the original row, unit, period or sign.
+    """
+    if type(value) is not str:
+        return False
+    layout = value.replace("\\n", "\n")
+    if any(unicodedata.category(char) == "Cc" and char not in "\t\r\n" for char in layout):
+        return False
+    if re.search(r'(?<!\S)\("[Tt][Nn][Dd][Nn]"\)\s*\Z', layout) is None:
+        return False
+    printed = _primary_root_printed_text(value)
+    return re.fullmatch(r'chi phi thue thu nhap doanh nghiep \("tndn"\)', printed or "") is not None
+
+
+def _legacy_primary_role_for_label(value: Any) -> str | None:
+    """Preserve existing role vocabulary for shared NOTE/ancestry consumers."""
     label = _without_leading_ordinal(_normalized(value))
     if "hien hanh" in label and "chi phi thue" in label:
         return "CURRENT_TAX_PARENT"
@@ -728,6 +757,21 @@ def _role_for_primary_label(value: Any) -> str | None:
     if label in _ROOT_LABELS:
         return "FAMILY_ROOT_TOTAL"
     return None
+
+
+def _role_for_primary_label(value: Any) -> str | None:
+    role = _legacy_primary_role_for_label(value)
+    if role == "FAMILY_ROOT_TOTAL" and (
+        _primary_root_printed_text(value) is None
+        or any(char in "\"'" or unicodedata.category(char) in {"Pi", "Pf"} for char in value)
+        and not _primary_quoted_tndn_root_label_matches(value)
+    ):
+        # E.g. a fullwidth quoted acronym must not disappear and manufacture a
+        # legacy expanded ROOT before the literal quoted-label rule can veto it.
+        return None
+    if role is not None:
+        return role
+    return "FAMILY_ROOT_TOTAL" if _primary_quoted_tndn_root_label_matches(value) else None
 
 
 def _record_locator(record: Mapping[str, Any], *, section_id: str, table_id: str) -> dict[str, Any]:
@@ -1050,7 +1094,10 @@ def _primary_bridge_population_ancestry(
         {"row_ordinal": ordinal, "source_row": canonical_clone_v1(row)}
         for ordinal, row in enumerate(table["rows"], 1)
         if row.get("row_kind") == "GROUP"
-        and _role_for_primary_label(row.get("label_exact")) == "FAMILY_ROOT_TOTAL"
+        # This helper is also used by original-NOTE ancestry fallback. A new
+        # PRIMARY row-label spelling must not discharge a NOTE GROUP ancestor.
+        # Keep structural GROUP recognition at its pre-existing legacy scope.
+        and _legacy_primary_role_for_label(row.get("label_exact")) == "FAMILY_ROOT_TOTAL"
     ]
     owner_aliases = {_without_leading_ordinal(_normalized(alias)) for alias in structural_owner_aliases}
     owner_sources = [
@@ -3885,7 +3932,7 @@ def _temporary_difference_rollforward_control(
                        for specs in (compiled_specs, compiled_specs["income_tax_original_rate_specs"])]
     if (any(item["role_hits"] for item in classifications)
             or any(any(_original_basis_label_roles(table, specs)) for specs in (compiled_specs, compiled_specs["income_tax_original_rate_specs"]))
-            or any(_role_for_primary_label(row.get("label_exact")) is not None for row in table["rows"])):
+            or any(_legacy_primary_role_for_label(row.get("label_exact")) is not None for row in table["rows"])):
         return None
     # The frozen unit parser reads "hoạt động" as currency "đồng" after
     # normalization.  Only this exact non-unit semantic phrase is separated;

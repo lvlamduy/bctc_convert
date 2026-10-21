@@ -700,6 +700,373 @@ def test_contextual_period_reordered_cash_flow_columns_keep_exact_printed_source
     assert records == original
 
 
+_QUOTED_PRIMARY_ROOT = 'Chi phí thuế thu nhập doanh nghiệp ("TNDN")'
+
+
+def _quoted_primary_root_records(*, label=_QUOTED_PRIMARY_ROOT, kind="ITEM"):
+    records = _records()
+    root = records[1]["page_json"]["sections"][0]["tables"][0]["rows"][3]
+    root.update(label_exact=label, hierarchy_path_exact=[label], row_kind=kind)
+    return records
+
+
+def _quoted_primary_public_candidate(records):
+    compiled = _adapter_compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=records, compiled_specs=compiled,
+    )
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(
+        page_records=records, base_cluster=base, compiled_specs=compiled,
+    )
+    if cluster["status"] != READY:
+        return cluster
+    query = build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster)
+    return _evaluate_query(records, compiled, cluster, query)
+
+
+@pytest.mark.parametrize("kind", ["ITEM", "TOTAL"])
+@pytest.mark.parametrize("layout", [
+    "source", "upper", "lower", "nfd", "newline", "serialized_newline", "tab_crlf",
+    "nbsp", "narrow_nbsp", "ideographic_space", "line_separator", "paragraph_separator",
+])
+def test_primary_quoted_tndn_root_preserves_signed_source_and_independent_bridge(kind, layout):
+    import unicodedata
+
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _primary_quoted_tndn_root_label_matches,
+    )
+
+    label = _QUOTED_PRIMARY_ROOT
+    if layout == "upper":
+        label = label.upper()
+    elif layout == "lower":
+        label = label.lower()
+    elif layout == "nfd":
+        label = unicodedata.normalize("NFD", label)
+    elif layout != "source":
+        separator = {
+            "newline": "\n", "serialized_newline": "\\n", "tab_crlf": "\t\r\n",
+            "nbsp": "\u00a0", "narrow_nbsp": "\u202f", "ideographic_space": "\u3000",
+            "line_separator": "\u2028", "paragraph_separator": "\u2029",
+        }[layout]
+        label = label.replace(" ", separator)
+    records = _quoted_primary_root_records(label=label, kind=kind)
+    original = deepcopy(records)
+    assert _primary_quoted_tndn_root_label_matches(label) is True
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    roles = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["source_text"] for cell in roles["FAMILY_ROOT_TOTAL"]["values"]] == ["(22)", "(17)"]
+    assert [cell["coefficient"] for cell in roles["FAMILY_ROOT_TOTAL"]["values"]] == [-22, -17]
+    assert [cell["source_text"] for cell in roles["CURRENT_TAX_PARENT"]["values"]] == ["20", "16"]
+    adapter = candidate["closure_receipt"]["income_tax_adapter_receipt"]
+    projection = adapter["primary_projection_receipt"]
+    root = next(row for row in projection["source_role_rows"] if row["role"] == "FAMILY_ROOT_TOTAL")
+    assert root["label_exact"] == label and root["hierarchy_path_exact"] == [label]
+    assert root["row_kind"] == kind and root["row_ordinal"] == 4
+    assert root["source_values_exact"] == ["(22)", "(17)"]
+    bridge = projection["expense_display_receipt"]
+    assert bridge["before_source_row"]["source_row"]["values_exact"] == ["30", "40", "100", "80"]
+    assert bridge["after_source_row"]["source_row"]["values_exact"] == ["25", "35", "78", "63"]
+    assert bridge["source_values_changed"] is False and bridge["missing_root_created"] is False
+    assert bridge["original_table_json_sha256"] == canonical_json_sha256_v1(
+        records[1]["page_json"]["sections"][0]["tables"][0]
+    )
+    assert adapter["primary_candidate_proof"]["post_merge_root_closure"]["status"] == "EXACT_ALL_OBSERVED_LANES"
+    assert records == original
+
+
+@pytest.mark.parametrize("label", [
+    'Chi phí thuế thu nhập doanh nghiệp (TNDN)',
+    "Chi phí thuế thu nhập doanh nghiệp ('TNDN')",
+    'Chi phí thuế thu nhập doanh nghiệp (“TNDN”)',
+    'Chi phí thuế thu nhập doanh nghiệp ("T N D N")',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN"',
+    'Chi phí thuế thu nhập doanh nghiệp "TNDN")',
+    'Chi phí thuế thu nhập doanh nghiệp (("TNDN"))',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN") (*)',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN") 2025',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN")¹',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN").',
+    'Không phải Chi phí thuế thu nhập doanh nghiệp ("TNDN")',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN") của công ty con',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN") hoãn lại',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN") hiện hành',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN")\\N',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN")\\t',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN")\u200b',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN")\u0304',
+    'Chi phí thuế thu nhập doanh nghiệp ("ＴＮＤＮ")',
+    'Chi phí thuế thu nhập doanh nghiệp ("")',
+    "Chi phí thuế thu nhập doanh nghiệp ('')",
+    'Chi phí thuế thu nhập doanh nghiệp (“”)',
+    'Chi phí thuế thu nhập doanh nghiệp («»)',
+    'Chi phí thuế thu nhập doanh nghiệp ("ΤΝΔΝ")',
+    'Chi phí thuế thu nhập doanh nghiệp ("税")',
+    'Chi phí thuế thu nhập doanh nghiệp ("\u200b")',
+    'Chi phí thuế thu nhập doanh nghiệp ("\ufeff")',
+    'Chi phí thuế thu nhập doanh nghiệp ("ＴＮＤＮ")\u200b',
+    'Chi phí thuế thu nhập doanh nghiệp\u200b',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNĐN")',
+    'Chi phí thuế thu nhập doanh nghiệp ("TN\u200bDN")',
+    'Chi phí thuế thu nhập doanh nghiệp ("TNDN\u0304")',
+    'Chi phí\vthuế thu nhập doanh nghiệp ("TNDN")',
+    'Chi phí\fthuế thu nhập doanh nghiệp ("TNDN")',
+    'Chi phí\u0085thuế thu nhập doanh nghiệp ("TNDN")',
+    'Chi phí\u001cthuế thu nhập doanh nghiệp ("TNDN")',
+    'Chi phí\u0000thuế thu nhập doanh nghiệp ("TNDN")',
+])
+def test_primary_quoted_tndn_root_finite_lexical_rejections_cannot_gain_a_signed_bridge(label):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _primary_quoted_tndn_root_label_matches,
+    )
+
+    assert _primary_quoted_tndn_root_label_matches(label) is False
+    records = _quoted_primary_root_records(label=label)
+    original = deepcopy(records)
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate.get("mappings", []) == []
+    assert records == original
+
+
+@pytest.mark.parametrize("value", [None, True, 1, 1.0, [], {}, b'Chi phi thue ("TNDN")'])
+def test_primary_quoted_tndn_root_matcher_requires_a_plain_string(value):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _primary_quoted_tndn_root_label_matches,
+    )
+
+    assert _primary_quoted_tndn_root_label_matches(value) is False
+
+
+def test_primary_quoted_tndn_root_matcher_rejects_string_subclasses():
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _primary_quoted_tndn_root_label_matches,
+    )
+
+    class PrintedLabel(str):
+        pass
+
+    assert _primary_quoted_tndn_root_label_matches(PrintedLabel(_QUOTED_PRIMARY_ROOT)) is False
+
+
+def test_primary_quoted_tndn_root_is_primary_local_and_preserves_current_deferred_precedence():
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _ROOT_LABELS,
+        _normalized,
+        _role_for_primary_label,
+    )
+
+    assert _normalized(_QUOTED_PRIMARY_ROOT) not in _ROOT_LABELS
+    assert _role_for_primary_label(_QUOTED_PRIMARY_ROOT) == "FAMILY_ROOT_TOTAL"
+    assert _role_for_primary_label(_QUOTED_PRIMARY_ROOT + " hiện hành") == "CURRENT_TAX_PARENT"
+    assert _role_for_primary_label(_QUOTED_PRIMARY_ROOT + " hoãn lại") == "DEFERRED_TAX_NET"
+
+
+@pytest.mark.parametrize("duplicate_values", [["(22)", "(17)"], [None, None], ["không rõ", "(17)"]])
+def test_primary_quoted_tndn_root_and_legacy_root_are_duplicate_even_if_unusable(duplicate_values):
+    records = _quoted_primary_root_records()
+    rows = records[1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    duplicate = deepcopy(rows[3])
+    duplicate.update(label_exact="Chi phí thuế TNDN", hierarchy_path_exact=["Chi phí thuế TNDN"])
+    duplicate["values_exact"][-2:] = duplicate_values
+    rows.insert(4, duplicate)
+    original = deepcopy(records)
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert "DUPLICATE_PRIMARY_INCOME_TAX_SOURCE_ROLE" in candidate["reasons"]
+    assert candidate.get("mappings", []) == []
+    assert records == original
+
+
+@pytest.mark.parametrize("ancestry", ["7", "2025", "Unknown population", "Công ty con"])
+def test_primary_quoted_tndn_root_does_not_erase_numeric_or_unknown_population_ancestry(ancestry):
+    records = _quoted_primary_root_records()
+    root = records[1]["page_json"]["sections"][0]["tables"][0]["rows"][3]
+    root["hierarchy_path_exact"] = [ancestry, root["label_exact"]]
+    original = deepcopy(records)
+    descriptor = _primary_presentations(records, compiled_specs=_adapter_compiled())[0]
+    assert descriptor["expense_display_receipt"] is None
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    assert records == original
+
+
+def test_primary_quoted_tndn_root_preserves_existing_finite_roman_outline_permission():
+    records = _quoted_primary_root_records()
+    rows = records[1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    for row, ordinal in zip(rows, ["XI", "XII", "XII", "XII", "XIII"], strict=True):
+        row["hierarchy_path_exact"] = [ordinal, row["label_exact"]]
+    original = deepcopy(records)
+    assert _quoted_primary_public_candidate(records)["status"] == READY
+    assert records == original
+
+
+@pytest.mark.parametrize("raw_values", [["(22)", None], [None, None], ["(22)", ""], ["(22)", "không rõ"]])
+def test_primary_quoted_tndn_root_cannot_complete_blank_or_invalid_observed_cell(raw_values):
+    records = _quoted_primary_root_records()
+    records[1]["page_json"]["sections"][0]["tables"][0]["rows"][3]["values_exact"][-2:] = raw_values
+    original = deepcopy(records)
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    if raw_values[-1] == "không rõ":
+        assert "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_CELL" in candidate["reasons"]
+    else:
+        assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    assert records == original
+
+
+def test_primary_quoted_tndn_root_explicit_unit_conflict_cannot_fall_back_to_valid_note():
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _primary_invalid_source_role_rows,
+    )
+
+    records = _quoted_primary_root_records()
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for column in table["columns"][-2:]:
+        column["header_path_exact"].append("VND")
+    original = deepcopy(records)
+    invalid = _primary_invalid_source_role_rows(records, compiled_specs=_adapter_compiled())
+    root = next(row for row in invalid if row["role"] == "FAMILY_ROOT_TOTAL")
+    assert root["row_ordinal"] == 4 and root["source_row_exact"]["label_exact"] == _QUOTED_PRIMARY_ROOT
+    assert "INVALID_PRIMARY_SOURCE_MONEY_UNIT_CONFLICT" in root["reasons"]
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT" in candidate["reasons"]
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", ["missing", "wrong", "blank", "duplicate"])
+def test_primary_quoted_tndn_root_still_requires_observed_unique_pat_bridge(mutation):
+    records = _quoted_primary_root_records()
+    rows = records[1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    if mutation == "missing":
+        rows.pop()
+    elif mutation == "wrong":
+        rows[-1]["values_exact"][-1] = "64"
+    elif mutation == "blank":
+        rows[-1]["values_exact"][-1] = None
+    else:
+        rows.append(deepcopy(rows[-1]))
+    original = deepcopy(records)
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", ["root_label", "root_path", "root_value", "table_hash"])
+def test_primary_quoted_tndn_root_fully_resealed_query_cannot_replace_fresh_original_source(mutation):
+    from test_gemini_json_income_tax_comparative_flow_policy_v1 import _reseal_receipts
+
+    records = _quoted_primary_root_records()
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    cluster, query = _query(records, compiled)
+    forged = deepcopy(query)
+    projection = forged["adapter_receipt"]["primary_projection_receipt"]
+    if mutation == "table_hash":
+        projection["original_table_json_sha256"] = "0" * 64
+    else:
+        root = next(row for row in projection["source_role_rows"] if row["role"] == "FAMILY_ROOT_TOTAL")
+        if mutation == "root_label":
+            root["label_exact"] = "Chi phí thuế TNDN"
+        elif mutation == "root_path":
+            root["hierarchy_path_exact"] = ["Ngân hàng mẹ", root["label_exact"]]
+        else:
+            root["source_values_exact"][0] = "(23)"
+    _reseal_receipts(forged)
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="drifted"):
+        _evaluate_query(records, compiled, cluster, forged)
+    assert records == original
+
+
+@pytest.mark.parametrize("mark", ["\u0301", "\u0300", "\u031b"])
+@pytest.mark.parametrize("position", ["inside_acronym", "ending_acronym"])
+def test_primary_quoted_tndn_root_vietnamese_combining_marks_cannot_change_literal_acronym_authority(mark, position):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _primary_quoted_tndn_root_label_matches,
+    )
+
+    acronym = "TN" + mark + "DN" if position == "inside_acronym" else "TNDN" + mark
+    label = _QUOTED_PRIMARY_ROOT.replace("TNDN", acronym)
+    records = _quoted_primary_root_records(label=label)
+    original = deepcopy(records)
+    assert _primary_quoted_tndn_root_label_matches(label) is False
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == original
+
+
+@pytest.mark.parametrize("label", [
+    "XII. " + _QUOTED_PRIMARY_ROOT,
+    "12. " + _QUOTED_PRIMARY_ROOT,
+    _QUOTED_PRIMARY_ROOT.replace("thuế", "thu\u200bế"),
+    _QUOTED_PRIMARY_ROOT.replace("TNDN", "TN\u200dDN"),
+    _QUOTED_PRIMARY_ROOT + "\ufeff",
+    _QUOTED_PRIMARY_ROOT + "\ud800",
+    _QUOTED_PRIMARY_ROOT.replace("TNDN", "TN\udfffDN"),
+])
+def test_primary_quoted_tndn_root_pure_matcher_rejects_ordinal_zero_width_and_surrogate_tokens(label):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _primary_quoted_tndn_root_label_matches,
+    )
+
+    assert _primary_quoted_tndn_root_label_matches(label) is False
+
+
+@pytest.mark.parametrize("parent", [_QUOTED_PRIMARY_ROOT, "Chi phí thuế TNDN"])
+def test_primary_quoted_tndn_root_does_not_expand_original_note_fallback_structural_group_authority(parent):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _original_note_population_ancestry,
+    )
+
+    group = _row(parent, None, None, kind="GROUP")
+    child = _row("Khoản mục tài chính khác", "1", "2")
+    child["hierarchy_path_exact"] = [parent, child["label_exact"]]
+    section = _page([group, child], owner="Thuyết minh khác")["sections"][0]
+    table = section["tables"][0]
+    original = deepcopy(section)
+    proof = _original_note_population_ancestry(
+        table, section, row_ordinal=2, compiled_specs=_adapter_compiled(),
+    )
+    assert proof is not None
+    assert proof["original_table_json_sha256"] == canonical_json_sha256_v1(table)
+    if parent == _QUOTED_PRIMARY_ROOT:
+        assert proof["common_population_ancestry_exact"] == [parent]
+        assert proof["source_rows"][0]["population_ancestry_exact"] == [parent]
+        assert proof["structural_tax_group_sources"] == []
+    else:
+        assert proof["common_population_ancestry_exact"] == []
+        assert proof["structural_tax_group_sources"] == [{"row_ordinal": 1, "source_row": group}]
+    assert section == original
+
+
+@pytest.mark.parametrize("mutation", ["present", "missing", "later", "wrong_kind"])
+def test_primary_quoted_tndn_group_does_not_grant_unreviewed_structural_ancestry_permission(mutation):
+    records = _quoted_primary_root_records()
+    rows = records[1]["page_json"]["sections"][0]["tables"][0]["rows"]
+    group = rows.pop(3)
+    group["row_kind"] = "GROUP"
+    rows.insert(1, group)
+    for row in rows[2:4]:
+        row["hierarchy_path_exact"] = [group["label_exact"], row["label_exact"]]
+    if mutation == "missing":
+        rows.remove(group)
+    elif mutation == "later":
+        rows.insert(4, rows.pop(1))
+    elif mutation == "wrong_kind":
+        group["row_kind"] = "TOTAL"
+    original = deepcopy(records)
+    descriptor = _primary_presentations(records, compiled_specs=_adapter_compiled())[0]
+    assert descriptor["expense_display_receipt"] is None
+    candidate = _quoted_primary_public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    assert records == original
+
+
 @pytest.mark.parametrize("field", ["document_id", "source_sha256"])
 def test_contextual_period_absolute_years_cannot_cross_original_document_identity(field):
     records = _contextual_period_records(quarter="IV", include_cash_flow=False, absolute_primary=True)
