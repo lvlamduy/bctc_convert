@@ -21,6 +21,10 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 MIGRATION_BASE = "8efd618b6c77f0cdbb402a440e7ba3b3549184f1"
+PRIMARY_PREFIXES = (
+    "src/bctc_ai/primary_statements/", "config/primary_statements/", "scripts/primary_statements/",
+    "tests/unit/test_primary_statements_", "docs/operations/primary-statements/",
+)
 FROZEN = {
     "src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py": (
         "bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2"
@@ -101,10 +105,18 @@ def main() -> int:
         line for line in status
         if not any(line[3:].startswith(prefix) for prefix in args.allowed_dirty_prefix)
     ]
-    _gate(gates, "git_base_worktree", head == args.base_commit and ancestor and not dirty_outside, {
-        "head": head, "base_commit": args.base_commit, "migration_base_is_ancestor": ancestor,
-        "branch": _git("branch", "--show-current"), "status_porcelain": status,
-        "dirty_outside_allowed_prefixes": dirty_outside,
+    # Before any commit HEAD is the base; afterwards the base must be an
+    # ancestor and every committed change must stay inside the PRIMARY namespace.
+    base_is_ancestor = subprocess.run(
+        [*_git_command(), "merge-base", "--is-ancestor", args.base_commit, head]
+    ).returncode == 0
+    changed = [path for path in _git("diff", "--name-only", f"{args.base_commit}..{head}").splitlines() if path]
+    changed_outside = [path for path in changed if not path.startswith(PRIMARY_PREFIXES)]
+    _gate(gates, "git_base_worktree", base_is_ancestor and ancestor and not dirty_outside and not changed_outside, {
+        "head": head, "base_commit": args.base_commit, "base_is_ancestor_of_head": base_is_ancestor,
+        "migration_base_is_ancestor": ancestor, "branch": _git("branch", "--show-current"),
+        "status_porcelain": status, "dirty_outside_allowed_prefixes": dirty_outside,
+        "committed_paths_since_base": changed, "committed_paths_outside_primary_namespace": changed_outside,
     })
 
     import bctc_ai
