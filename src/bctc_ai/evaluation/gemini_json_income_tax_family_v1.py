@@ -5677,6 +5677,306 @@ def _printed_ytd_sibling_period_evidence(section: Mapping[str, Any], table: Mapp
     return {**material, "receipt_id": "gjitfav1:printed-ytd-siblings:" + canonical_json_sha256_v1(material)}
 
 
+def _unsupported_english_comparative_flow_assertion(source_exact: Any) -> bool:
+    search = _normalized(source_exact)
+    return bool(
+        re.search(r"\b(?:comparative|prior (?:year|period))\b", search)
+        and re.search(r"\b(?:income statement|statement of (?:cash flows?|profit|income)|cash flow statement)\b", search)
+    )
+
+
+def _parse_printed_comparative_flow_policy(source_exact: Any) -> dict[str, Any]:
+    """Read finite printed comparative FLOW prose, never supply its missing year."""
+    folded = _recognition_printed_text(source_exact)
+    search = _normalized(source_exact)
+    comparative_assertion = ("so sanh" in search or re.search(r"\bso lieu (?:cua )?(?:ky|nam) truoc\b", search) is not None)
+    relevant = (comparative_assertion and any(surface in search for surface in (
+        "bao cao ket qua hoat dong", "bao cao ket qua kinh doanh", "bao cao luu chuyen tien te")))
+    # English comparative assertions are relevance-only: unsupported wording
+    # must veto a competing policy, never silently disappear or supply dates.
+    relevant = relevant or _unsupported_english_comparative_flow_assertion(source_exact)
+    clauses, periods, reasons = [], [], []
+    ending = r"(?P<months>\d{1,2}) thang ket thuc ngay (?P<day>\d{1,2}) thang (?P<month>\d{1,2}) nam (?P<year>\d{4})"
+    scope = r"(?P<scope> rieng| hop nhat|)"
+    flow_head = (r"bao cao ket qua hoat dong" + scope + r" giua nien do, "
+                 r"bao cao luu chuyen tien te(?P=scope) giua nien do va cac thuyet minh tuong ung la so lieu ")
+    flow_patterns = (
+        ("TREN_REVIEW_BEFORE_DURATION", r"so lieu so sanh tren " + flow_head
+         + r"tren bao cao tai chinh(?P=scope) giua nien do da duoc soat xet cho ky hoat dong " + ending + r"\."),
+        ("CUA_CUA_REVIEW_BEFORE_INTERIM", r"so lieu so sanh cua cua " + flow_head
+         + r"cua bao cao tai chinh(?P=scope) da duoc soat xet giua nien do cho ky hoat dong " + ending + r"\."),
+        ("CUA_REVIEW_AFTER_DURATION", r"so lieu so sanh cua " + flow_head
+         + r"cua bao cao tai chinh(?P=scope) giua nien do cho ky hoat dong " + ending + r" da duoc soat xet\."),
+        ("TREN_RELATED_NOTES_WRITTEN_NINE_MONTHS", r"so lieu so sanh tren bao cao ket qua hoat dong" + scope
+         + r" giua nien do, bao cao luu chuyen tien te(?P=scope) giua nien do va cac thuyet minh lien quan "
+         + r"la so lieu cua bao cao tai chinh(?P=scope) giua nien do cho ky (?P<months>chin) thang ket thuc ngay "
+         + r"(?P<day>\d{1,2}) thang (?P<month>\d{1,2}) nam (?P<year>\d{4}) da duoc soat xet\."),
+        ("TREN_ANNUAL_ALL_STATEMENTS_RELATED_NOTES", r"so lieu so sanh tren bao cao tinh hinh tai chinh" + scope
+         + r", bao cao ket qua hoat dong(?P=scope), bao cao luu chuyen tien te(?P=scope) va cac thuyet minh lien quan "
+         + r"la so lieu cua bao cao tai chinh(?P=scope) cho nam tai chinh ket thuc ngay "
+         + r"(?P<day>\d{1,2}) thang (?P<month>\d{1,2}) nam (?P<year>\d{4}) da duoc kiem toan\."),
+    )
+    stock_pattern = (
+        r"so lieu so sanh (?:cua|tren) bao cao tinh hinh tai chinh" + scope
+        + r" giua nien do va cac thuyet minh (?:tuong ung|lien quan) la so lieu cua bao cao tai chinh(?P=scope) "
+        r"cho nam tai chinh ket thuc ngay (?P<day>\d{1,2}) thang (?P<month>\d{1,2}) nam (?P<year>\d{4}) da duoc kiem toan\."
+    )
+    if relevant:
+        if folded is None:
+            reasons.append("COMPARATIVE_FLOW_POLICY_UNSUPPORTED_PRINTED_CHARACTERS")
+        else:
+            for sentence in re.finditer(r"\S[^.!?]*(?:[.!?]|$)", source_exact):
+                raw = sentence.group()
+                surface = _recognition_printed_text(raw)
+                matched = next(((name, match) for name, pattern in flow_patterns
+                                if (match := re.fullmatch(pattern, surface or "")) is not None), None)
+                clause = {"start": sentence.start(), "end": sentence.end(), "source_exact": raw,
+                          "source_sha256": canonical_json_sha256_v1(raw)}
+                if matched is not None:
+                    name, match = matched
+                    try:
+                        end = date(int(match["year"]), int(match["month"]), int(match["day"]))
+                        if name == "TREN_ANNUAL_ALL_STATEMENTS_RELATED_NOTES":
+                            months = 12
+                        else:
+                            printed_months = match["months"]
+                            months = 9 if printed_months == "chin" else int(printed_months)
+                        if not 1 <= months <= 12:
+                            raise ValueError("unsupported printed month count")
+                    except ValueError:
+                        reasons.append("COMPARATIVE_FLOW_POLICY_INVALID_PRINTED_DURATION")
+                        clause.update({"kind": "UNRECOGNIZED_FLOW_ASSERTION", "scaffold": name})
+                    else:
+                        period = {"printed_months": months, "printed_end_date": end.isoformat(),
+                                  "report_scope": {" rieng": "SEPARATE", " hop nhat": "CONSOLIDATED", "": None}[match["scope"]]}
+                        periods.append(period)
+                        clause.update({"kind": "COMPARATIVE_FLOW_POLICY", "scaffold": name,
+                                       "comparative_period": period,
+                                       "applies_to": ["INCOME_STATEMENT", "CASH_FLOW", "CORRESPONDING_NOTES"]})
+                else:
+                    stock = re.fullmatch(stock_pattern, surface or "")
+                    if stock is not None:
+                        try:
+                            stock_end = date(int(stock["year"]), int(stock["month"]), int(stock["day"]))
+                        except ValueError:
+                            reasons.append("RETAINED_STOCK_POLICY_INVALID_PRINTED_DATE")
+                            clause.update({"kind": "UNRECOGNIZED_NON_FLOW_SENTENCE"})
+                        else:
+                            clause.update({"kind": "RETAINED_NON_FLOW_SENTENCE", "applies_to": ["BALANCE_SHEET"],
+                                           "printed_snapshot_date": stock_end.isoformat(),
+                                           "report_scope": {" rieng": "SEPARATE", " hop nhat": "CONSOLIDATED", "": None}[stock["scope"]],
+                                           "used_as_flow_period_authority": False})
+                    else:
+                        clause.update({"kind": "UNRECOGNIZED_FLOW_ASSERTION"})
+                        reasons.append("COMPARATIVE_FLOW_POLICY_UNRECOGNIZED_SENTENCE_OR_SUFFIX")
+                clauses.append(clause)
+            if len(periods) != 1:
+                reasons.append("EXACTLY_ONE_PRINTED_COMPARATIVE_FLOW_CLAUSE_REQUIRED")
+    material = {"complete": relevant and not reasons, "status": "ALGORITHM_HOLD" if relevant and reasons else "PASS" if relevant else "NOT_APPLICABLE",
+                "source_exact": source_exact, "source_sha256": canonical_json_sha256_v1(source_exact),
+                "clause_receipts": clauses, "comparative_period": periods[0] if relevant and not reasons else None,
+                "applies_to": ["INCOME_STATEMENT", "CASH_FLOW", "CORRESPONDING_NOTES"] if relevant and not reasons else [],
+                "reasons": sorted(set(reasons)), "rule": "FINITE_FULL_PRINTED_FLOW_COMPARATIVE_CLAUSE_WITH_SEPARATELY_RETAINED_STOCK_SENTENCE"}
+    return {**material, "receipt_id": "gjitfav1:printed-comparative-flow-policy:" + canonical_json_sha256_v1(material)}
+
+
+def _document_comparative_flow_policy_receipt(
+    page_records: Sequence[Mapping[str, Any]], sources: Sequence[Mapping[str, Any]], document_scope: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Independent printed comparative policy plus every owned current FLOW anchor."""
+    if not same_typed_json_v1(document_scope, _document_report_scope_receipt(page_records)):
+        raise _error("income-tax comparative flow document scope source replay drifted")
+    page_axis, policies, reasons, period_reasons, scope_reasons = [], [], [], [], []
+    records = {record["page_json_version_id"]: record for record in page_records}
+    for record in page_records:
+        page = record["page_json"]
+        page_axis.append({**{key: canonical_clone_v1(record[key]) for key in (
+            "document_id", "document_ordinal", "page_json_version_id", "physical_page", "selected_page_ordinal", "source_logical_name", "source_sha256")},
+                          "original_page_json_sha256": canonical_json_sha256_v1(page)})
+        for section_ordinal, section in enumerate(page.get("sections") or [], 1):
+            for narrative_ordinal, narrative in enumerate(section.get("narratives_exact") or [], 1):
+                parsed = _parse_printed_comparative_flow_policy(narrative)
+                if parsed["status"] == "NOT_APPLICABLE":
+                    continue
+                owner = (page.get("status") == "FINANCIAL_NOTE_CONTENT"
+                         and section.get("content_kind") == "FINANCIAL_NOTE"
+                         and section.get("statement_type") == "NOT_APPLICABLE")
+                qualifiers = _printed_population_qualifiers([section.get("title_exact"), narrative])
+                local_scopes = sorted(set(qualifiers) & {"SEPARATE", "CONSOLIDATED"})
+                entities = sorted(set(qualifiers) & {"PARENT_ENTITY", "SUBSIDIARY_ENTITY"})
+                policy_reasons = list(parsed["reasons"])
+                if not owner:
+                    policy_reasons.append("PRINTED_FLOW_POLICY_NOT_OWNED_BY_ORIGINAL_FINANCIAL_NOTE_SECTION")
+                if entities or len(local_scopes) > 1 or _ambiguous_report_scope_surface([section.get("title_exact"), narrative]):
+                    scope_reasons.append("COMPARATIVE_FLOW_POLICY_LOCAL_REPORT_POPULATION_CONFLICT")
+                if (local_scopes and document_scope.get("report_scope") is not None
+                        and local_scopes != [document_scope["report_scope"]]):
+                    scope_reasons.append("COMPARATIVE_FLOW_POLICY_DOCUMENT_SCOPE_CONFLICT")
+                policies.append({"locator": _record_locator(record, section_id=f"s{section_ordinal}", table_id="NONE"),
+                                 "page_status": page.get("status"), "section_content_kind": section.get("content_kind"),
+                                 "section_statement_type": section.get("statement_type"), "section_title_exact": section.get("title_exact"),
+                                 "section_table_count": len(section.get("tables") or []), "narrative_ordinal": narrative_ordinal,
+                                 "original_page_json_sha256": canonical_json_sha256_v1(page),
+                                 "original_section_json_sha256": canonical_json_sha256_v1(section),
+                                 "original_narrative_sha256": canonical_json_sha256_v1(narrative),
+                                 "source_exact": narrative, "parser_receipt": parsed, "owned": owner,
+                                 "local_qualifiers": qualifiers, "reasons": sorted(set(policy_reasons))})
+                period_reasons.extend(policy_reasons)
+    page_axis.sort(key=lambda item: item["selected_page_ordinal"])
+    common = {"comparative_origin": "PRINTED_DOCUMENT_COMPARATIVE_FLOW_POLICY", "source_period_keys_modified": False,
+              "amounts_used_as_authority": False, "start_dates_inferred": False,
+              "selected_page_axis_sha256": canonical_json_sha256_v1(page_axis),
+              "document_report_scope_receipt_id": document_scope["receipt_id"]}
+    if not policies:
+        material = {**common, "complete": False, "status": "NOT_APPLICABLE", "period_evidence_complete": False,
+                    "scope_complete": False, "resolved_source_duration_semantics": None,
+                    "policy_source_receipts": [], "anchor_source_receipts": [],
+                    "reasons": ["NO_PRINTED_COMPARATIVE_FLOW_POLICY"],
+                    "rule": "NO_FLOW_POLICY_PRESENT_NO_DOCUMENT_PERIOD_AUTHORITY"}
+        return {**material, "receipt_id": "gjitfav1:document-comparative-flow-policy:" + canonical_json_sha256_v1(material)}
+    identities = {(record["document_id"], record["document_ordinal"], record["source_sha256"], record["source_logical_name"]) for record in page_records}
+    if (len(identities) != 1 or len(records) != len(page_records) or not document_scope["document_identity_unique"]
+            or len({record["physical_page"] for record in page_records}) != len(page_records)
+            or len({record["selected_page_ordinal"] for record in page_records}) != len(page_records)):
+        period_reasons.append("DOCUMENT_COMPARATIVE_FLOW_SOURCE_IDENTITY_NOT_UNIQUE")
+    if (document_scope.get("report_scope") is None or document_scope["entity_override_present"]
+            or document_scope["ambiguous_scope_caption_present"] or len(document_scope["all_printed_report_scopes"]) != 1):
+        scope_reasons.append("DOCUMENT_COMPARATIVE_FLOW_REPORT_POPULATION_NOT_PROVEN")
+    comparative = [item["parser_receipt"]["comparative_period"] for item in policies if item["parser_receipt"]["complete"] and item["owned"]]
+    if not comparative or any(not same_typed_json_v1(item, comparative[0]) for item in comparative[1:]):
+        period_reasons.append("DOCUMENT_PRINTED_COMPARATIVE_FLOW_POLICY_NOT_UNIQUE")
+    comparative_period = comparative[0] if comparative else None
+    anchors, current_periods = [], []
+    scope_sources = {canonical_json_sha256_v1(item["locator"]): item for item in document_scope["sources"]}
+    expected_locators = []
+    for record in page_records:
+        if record["page_json"].get("status") != "PRIMARY_FINANCIAL_STATEMENT":
+            continue
+        for si, section in enumerate(record["page_json"].get("sections") or [], 1):
+            if section.get("content_kind") != "PRIMARY_STATEMENT" or section.get("statement_type") not in {"INCOME_STATEMENT", "CASH_FLOW"}:
+                continue
+            expected_locators.extend(_record_locator(record, section_id=f"s{si}", table_id=f"t{ti}")
+                                     for ti, _ in enumerate(section.get("tables") or [], 1))
+    if sorted(canonical_json_sha256_v1(item) for item in expected_locators) != sorted(canonical_json_sha256_v1(item["locator"]) for item in sources):
+        period_reasons.append("ALL_ORIGINAL_TYPED_FLOW_TABLES_AND_CONTINUATIONS_REQUIRED")
+    for source in sorted(sources, key=lambda item: (item["locator"]["selected_page_ordinal"], int(item["locator"]["section_id"][1:]), int(item["locator"]["table_id"][1:]))):
+        locator, failures = source["locator"], []
+        record = records.get(locator["page_json_version_id"])
+        if record is None:
+            raise _error("income-tax comparative flow anchor selected source page drifted")
+        section, table = _source_table(record["page_json"], section_id=locator["section_id"], table_id=locator["table_id"])
+        if (not same_typed_json_v1(locator, _record_locator(record, section_id=locator["section_id"], table_id=locator["table_id"]))
+                or source["original_page_json_sha256"] != canonical_json_sha256_v1(record["page_json"])
+                or source["original_section_json_sha256"] != canonical_json_sha256_v1(section)
+                or source["original_table_json_sha256"] != canonical_json_sha256_v1(table)
+                or not same_typed_json_v1(source["columns_exact"], table["columns"])
+                or not same_typed_json_v1(source["owned_current_period_constraints"], _owned_current_period_constraints(section, table))):
+            raise _error("income-tax comparative flow anchor original source binding drifted")
+        caption = scope_sources.get(canonical_json_sha256_v1(locator))
+        eligible = caption["eligible_captions_exact"] if caption is not None else []
+        if not eligible:
+            failures.append("FLOW_ANCHOR_STATEMENT_TYPE_NOT_AUTHENTICATED_BY_OWNED_CAPTION")
+        anchor_scope = source["scope_receipt"]
+        constraints = source["owned_current_period_constraints"]
+        current = []
+        if not constraints or any(not item["supported"] for item in constraints):
+            failures.append("FLOW_ANCHOR_INDEPENDENT_OWNED_CURRENT_DURATION_REQUIRED")
+        for constraint in constraints:
+            if not constraint["supported"]:
+                continue
+            if "printed_end_date" in constraint:
+                current.append({"printed_months": constraint["printed_months"], "printed_end_date": constraint["printed_end_date"]})
+            elif "printed_annual_year" in constraint:
+                current.append({"printed_months": 12, "printed_end_date": f"{constraint['printed_annual_year']:04d}-12-31"})
+            else:
+                failures.append("FLOW_ANCHOR_QUARTER_CAPTION_ALONE_DOES_NOT_PROVE_DURATION")
+        if not current or any(not same_typed_json_v1(item, current[0]) for item in current[1:]):
+            failures.append("FLOW_ANCHOR_CURRENT_DURATION_ASSERTIONS_NOT_UNIQUE")
+        owned_current = current[0] if current else None
+        periods = None
+        if owned_current is not None and comparative_period is not None:
+            resolved = []
+            for printed in (owned_current, comparative_period):
+                end = date.fromisoformat(printed["printed_end_date"])
+                months = printed["printed_months"]
+                if months not in {3, 6, 9, 12} or months != end.month or (end + timedelta(days=1)).day != 1:
+                    failures.append("FLOW_POLICY_PRINTED_PERIOD_NOT_COMPLETE_SUPPORTED_YTD_DURATION")
+                else:
+                    resolved.append(["ANNUAL_YEAR", end.year] if months == 12 else ["SOURCE_YTD_QUARTER", end.year, months // 3])
+            if len(resolved) == 2:
+                if resolved[0][0] != resolved[1][0] or resolved[0][2:] != resolved[1][2:] or resolved[0][1] <= resolved[1][1]:
+                    failures.append("FLOW_POLICY_CURRENT_COMPARATIVE_DURATION_NOT_COMPATIBLE")
+                else:
+                    periods = resolved
+        lane = source["lane_axis"]
+        ordinals = lane.get("money_column_ordinals") or []
+        if (not lane.get("complete") or len(ordinals) != 2 or len(set(ordinals)) != 2
+                or any(type(ordinal) is not int or ordinal < 1 or ordinal > len(table["columns"])
+                       or table["columns"][ordinal - 1]["value_kind"] != "MONEY" for ordinal in ordinals)):
+            failures.append("FLOW_ANCHOR_MONEY_AXIS_NOT_COMPLETE")
+            headers = None
+        else:
+            headers = [_recognition_printed_text(" ".join(table["columns"][ordinal - 1]["header_path_exact"])) for ordinal in ordinals]
+            suffix = r"(?: (?:trieu dong|trieu vnd|vnd|dong))?"
+            literal_ky = _relative_flow_column_paths(table, lane) is not None
+            literal_nam = all(re.fullmatch(r"nam " + token + r"(?: trinh bay lai)?" + suffix + r"(?: trinh bay lai)?", header or "") is not None
+                              for token, header in zip(("nay", "truoc"), headers, strict=True))
+            absolute = source["absolute_duration_semantics"]
+            if not (literal_ky or (literal_nam and periods is not None and periods[0][1] == periods[1][1] + 1)
+                    or (absolute is not None and same_typed_json_v1(absolute, periods))):
+                failures.append("FLOW_ANCHOR_LITERAL_RELATIVE_OR_EXACT_ABSOLUTE_AXIS_REQUIRED")
+            if absolute is not None and not same_typed_json_v1(absolute, periods):
+                failures.append("FLOW_ANCHOR_ABSOLUTE_AXIS_CONTRADICTS_PRINTED_POLICY")
+        local_surfaces, ancestors, local_failures = [], [], []
+        if periods is not None and headers is not None:
+            local_surfaces, ancestors, local_failures = _comparative_flow_local_surface_census(section, table, lane, periods)
+            failures.extend(local_failures)
+            anchor_scope = _note_report_scope_receipt(
+                section, table, source_paths=[*[column["header_path_exact"] for column in table["columns"]],
+                                               *ancestors, [item["source_exact"] for item in local_surfaces],
+                                               _comparative_flow_scope_row_labels(table)],
+                document_scope=document_scope,
+            )
+        anchor_scope_reasons = []
+        if (anchor_scope["conflict"] or anchor_scope["local_entity_qualifiers"] or anchor_scope["report_scope"] is None
+                or anchor_scope["report_scope"] != document_scope.get("report_scope")
+                or document_scope["entity_override_present"] or document_scope["ambiguous_scope_caption_present"]):
+            anchor_scope_reasons.append("FLOW_ANCHOR_REPORT_POPULATION_NOT_PROVEN")
+            scope_reasons.extend(anchor_scope_reasons)
+        if periods is not None and not failures:
+            current_periods.append(periods)
+        anchors.append({"locator": canonical_clone_v1(locator), "statement_type": source["statement_type"],
+                        "source_inventory_entry_sha256": canonical_json_sha256_v1(source),
+                        "original_page_json_sha256": source["original_page_json_sha256"],
+                        "original_section_json_sha256": source["original_section_json_sha256"],
+                        "original_table_json_sha256": source["original_table_json_sha256"],
+                        "captions_exact": canonical_clone_v1(source["captions_exact"]), "eligible_captions_exact": canonical_clone_v1(eligible),
+                        "owned_current_period_constraints": canonical_clone_v1(constraints), "columns_exact": canonical_clone_v1(source["columns_exact"]),
+                        "raw_lane_axis": canonical_clone_v1(lane), "header_surfaces_printed": headers,
+                        "scope_receipt": canonical_clone_v1(anchor_scope), "owned_current_duration": owned_current,
+                        "local_period_surface_census": local_surfaces,
+                        "resolved_source_duration_semantics": periods, "period_complete": not failures,
+                        "complete": not failures and not anchor_scope_reasons,
+                        "reasons": sorted(set([*failures, *anchor_scope_reasons]))})
+        period_reasons.extend(failures)
+    if {source["statement_type"] for source in sources} != {"INCOME_STATEMENT", "CASH_FLOW"}:
+        period_reasons.append("INDEPENDENT_CURRENT_INCOME_AND_CASH_FLOW_ANCHORS_REQUIRED")
+    if not current_periods or any(not same_typed_json_v1(item, current_periods[0]) for item in current_periods[1:]):
+        period_reasons.append("ALL_CURRENT_FLOW_ANCHORS_MUST_OWN_THE_SAME_PRINTED_DURATION")
+    period_complete, scope_complete = not period_reasons, not scope_reasons
+    reasons.extend(period_reasons)
+    reasons.extend(scope_reasons)
+    material = {**common, "complete": not reasons, "status": "ALGORITHM_HOLD" if reasons else "PASS_AUTHENTICATED_PRINTED_DOCUMENT_COMPARATIVE_FLOW_POLICY",
+                "period_evidence_complete": period_complete, "scope_complete": scope_complete,
+                "resolved_source_duration_semantics": canonical_clone_v1(current_periods[0]) if not reasons else None,
+                "printed_period_evidence": canonical_clone_v1(current_periods[0]) if period_complete else None,
+                "selected_page_axis": page_axis, "policy_source_receipts": policies, "anchor_source_receipts": anchors,
+                "all_typed_period_sources_included": True, "continuations_used_as_votes": False,
+                "reasons": sorted(set(reasons)),
+                "rule": "EXPLICIT_PRINTED_COMPARATIVE_FLOW_POLICY_AND_EVERY_INDEPENDENT_OWNED_CURRENT_TYPED_FLOW_ANCHOR_NO_YEAR_MINUS_ONE"}
+    return {**material, "receipt_id": "gjitfav1:document-comparative-flow-policy:" + canonical_json_sha256_v1(material)}
+
+
 def _document_annual_period_receipt(sources: Sequence[Mapping[str, Any]], document_scope: Mapping[str, Any]) -> dict[str, Any]:
     """Independent owned annual anchors; continuations cannot vote away gaps."""
     scope_sources = {canonical_json_sha256_v1(source["locator"]): source for source in document_scope["sources"]}
@@ -5797,6 +6097,307 @@ def _note_annual_period_inheritance_receipt(
     return {**material, "receipt_id": "gjitfav1:note-inherited-annual-period:" + canonical_json_sha256_v1(material)}
 
 
+def _relative_flow_column_paths(table: Mapping[str, Any], lane: Mapping[str, Any]) -> list[list[str]] | None:
+    """Recognize literal Kỳ labels without assigning a date or subtracting a year."""
+    if (not lane.get("complete") or lane.get("source_lane_keys") != [
+            ["SEMANTIC_ALIAS", "CURRENT_PERIOD"], ["SEMANTIC_ALIAS", "COMPARATIVE_PERIOD"]]):
+        return None
+    ordinals = lane.get("money_column_ordinals") or []
+    if len(ordinals) != 2:
+        return None
+    paths = [table["columns"][ordinal - 1]["header_path_exact"] for ordinal in ordinals]
+    for path, token in zip(paths, ("nay", "truoc"), strict=True):
+        if not path or any(type(value) is not str for value in path):
+            return None
+        printed = _recognition_printed_text(" ".join(path))
+        if printed is None or re.fullmatch(
+            r"ky " + token + r"(?: \(trinh bay lai\))?(?: (?:trieu dong|trieu vnd|vnd|dong))?(?: \(trinh bay lai\))?",
+            printed,
+        ) is None or printed.count("trinh bay lai") > 1:
+            return None
+    return canonical_clone_v1(paths)
+
+
+def _comparative_flow_local_surface_census(
+    section: Mapping[str, Any], table: Mapping[str, Any], lane: Mapping[str, Any], periods: Any,
+) -> tuple[list[dict[str, Any]], list[list[Any]], list[str]]:
+    """Veto local contrary assertions, including ancestors of unmapped source rows.
+
+    This census supplies no period authority. The independent document receipt
+    must already own both printed durations. Unknown period syntax is a hold.
+    """
+    surfaces = [{"kind": "SECTION_TITLE", "ordinal": 1, "source_exact": section.get("title_exact")},
+                {"kind": "TABLE_TITLE", "ordinal": 1, "source_exact": table.get("title_exact")}]
+    for ordinal in lane.get("money_column_ordinals") or []:
+        surfaces.extend({"kind": "MONEY_HEADER", "column_ordinal": ordinal, "ordinal": index, "source_exact": value}
+                        for index, value in enumerate(table["columns"][ordinal - 1]["header_path_exact"], 1))
+    surfaces.extend({"kind": "OWNED_NARRATIVE" if len(section.get("tables") or []) == 1 else "AMBIGUOUSLY_OWNED_NARRATIVE",
+                     "ordinal": index, "source_exact": value}
+                    for index, value in enumerate(section.get("narratives_exact") or [], 1))
+    ancestors = [row.get("hierarchy_path_exact", [])[:-1]
+                 if row.get("hierarchy_path_exact") and _without_leading_ordinal(_normalized(row["hierarchy_path_exact"][-1])) == _without_leading_ordinal(_normalized(row.get("label_exact")))
+                 else row.get("hierarchy_path_exact", []) for row in table["rows"]]
+    for ordinal, values in enumerate(ancestors, 1):
+        surfaces.extend({"kind": "SOURCE_ROW_ANCESTOR", "row_ordinal": ordinal, "ordinal": index, "source_exact": value}
+                        for index, value in enumerate(values, 1))
+    surfaces.extend({"kind": "STRUCTURAL_OR_BLANK_ROW_LABEL", "row_ordinal": ordinal,
+                     "ordinal": 1, "source_exact": row.get("label_exact")}
+                    for ordinal, row in enumerate(table["rows"], 1)
+                    if row.get("row_kind") == "GROUP"
+                    or not any(row["values_exact"][column - 1] is not None and row["values_exact"][column - 1] != ""
+                               for column in lane.get("money_column_ordinals") or []))
+    current = periods[0] if periods else None
+    year = current[1] if current else None
+    months = (12 if current[0] == "ANNUAL_YEAR" else current[2] * 3) if current else None
+    end = date(year, months, {3: 31, 6: 30, 9: 30, 12: 31}[months]) if current else None
+    month_words = {"mot": 1, "hai": 2, "ba": 3, "bon": 4, "nam": 5, "sau": 6,
+                   "bay": 7, "tam": 8, "chin": 9, "muoi": 10, "muoi mot": 11, "muoi hai": 12}
+    month_pattern = r"\b(\d+|muoi mot|muoi hai|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi) thang\b"
+    quarter_numbers = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "1": 1, "2": 2, "3": 3, "4": 4}
+    reasons = []
+    for surface in surfaces:
+        selected = (lane.get("money_column_ordinals") or []).index(surface["column_ordinal"]) if surface["kind"] == "MONEY_HEADER" else 0
+        expected = periods[selected] if periods else None
+        year = expected[1] if expected else None
+        months = (12 if expected[0] == "ANNUAL_YEAR" else expected[2] * 3) if expected else None
+        end = date(year, months, {3: 31, 6: 30, 9: 30, 12: 31}[months]) if expected else None
+        raw = surface["source_exact"]
+        normalized = _normalized(raw)
+        printed = _recognition_printed_text(raw)
+        failures, dates = [], []
+        temporal = bool(re.search(r"\b(?:quy|qui|quarter|months?|ended|ending|thang|ngay|nien do|tai khoa|ban nien|nua (?:dau|cuoi) nam|\d{4})\b", normalized)
+                        or re.search(r"\b(?:cho|trong) (?:nam|ky|giai doan)\b", normalized)
+                        or re.match(r"(?:\d+(?:\.\d+)*[.)]?\s+)?(?:nam|ky|giai doan)\b", printed or normalized))
+        narrative_starter = (
+            r"(?:cho |trong |ky\b|quy\b|giai doan\b|nam\b|nien do\b|tai khoa\b|ban nien\b|nua (?:dau|cuoi) nam\b|"
+            r"luy ke|tu ngay |bao cao |thuyet minh bao cao |"
+            r"(?:\d+|muoi mot|muoi hai|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi) thang\b|"
+            r"for (?:the )?(?:period|year|quarter|(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) months?)\b|"
+            r"(?:(?:reporting|accounting) )?period (?:ended|ending)\b|(?:fiscal|financial) year\b|"
+            r"year (?:ended|ending|to date|\d{4})\b|quarter\b|q(?:iii|ii|iv|i|[1-4])\b|ytd\b)"
+        )
+        reporting_narrative = any(re.match(narrative_starter, _normalized(line))
+                                  for line in re.split(r"\r\n|\r|\n|\\n", raw or ""))
+        explicit_history = bool(re.match(r"thong tin lich su\b", normalized))
+        historical_narrative = surface["kind"].endswith("NARRATIVE") and (explicit_history or not reporting_narrative)
+        if historical_narrative:
+            surface["printed_dates"] = []
+            surface["reasons"] = []
+            surface["disposition"] = "RETAINED_NARRATIVE_NOT_OWNED_REPORTING_PERIOD_AUTHORITY"
+            continue
+        if temporal and surface["kind"] == "AMBIGUOUSLY_OWNED_NARRATIVE":
+            failures.append("LOCAL_REPORTING_ASSERTION_OWNERSHIP_AMBIGUOUS")
+        if temporal and (printed is None or re.search(r"\b(?:khong|not|ngoai tru|except)\b", normalized)):
+            failures.append("UNREVIEWED_OR_NEGATED_LOCAL_PERIOD_ASSERTION")
+        if temporal and printed is not None:
+            if any(not (character.isalnum() or character.isspace() or character in ".,:/()-") for character in printed):
+                failures.append("UNREVIEWED_LOCAL_PERIOD_ANNOTATION")
+            if any(value not in {"tiep theo", "trinh bay lai"} for value in re.findall(r"\(([^()]*)\)", printed)):
+                failures.append("UNREVIEWED_LOCAL_PERIOD_PARENTHETICAL")
+            if "(" in re.sub(r"\((?:tiep theo|trinh bay lai)\)", "", printed) or ")" in re.sub(r"\((?:tiep theo|trinh bay lai)\)", "", printed):
+                failures.append("UNBALANCED_OR_UNREVIEWED_LOCAL_PERIOD_PARENTHETICAL")
+        remainder = printed or ""
+        # Whole printed dates are removed before looking for month counts;
+        # '30 tháng 6 năm ...' must not become a 30-month duration.
+        date_pattern = r"\b(?:ngay )?(\d{1,2}) (?:thang )?(\d{1,2}) nam (\d{4})\b|\b(\d{1,2})/(\d{1,2})/(\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b"
+        for matched in re.finditer(date_pattern, remainder):
+            try:
+                if matched[1] is not None:
+                    observed = date(int(matched[3]), int(matched[2]), int(matched[1]))
+                elif matched[4] is not None:
+                    observed = date(int(matched[6]), int(matched[5]), int(matched[4]))
+                else:
+                    observed = date(int(matched[7]), int(matched[8]), int(matched[9]))
+                dates.append(observed)
+            except ValueError:
+                failures.append("INVALID_LOCAL_PRINTED_DATE")
+        remainder = re.sub(date_pattern, " ", remainder)
+        range_asserted = bool(re.search(r"\btu(?: ngay)?\b.+\b(?:den|toi)\b|\bfrom\b.+\b(?:to|through)\b", printed or ""))
+        if range_asserted:
+            if end is None or dates != [date(year, 1, 1), end]:
+                failures.append("LOCAL_PRINTED_DATE_RANGE_NOT_COMPATIBLE")
+        elif len(dates) > 1 or any(observed != end for observed in dates):
+            failures.append("LOCAL_PRINTED_DATE_NOT_CURRENT_ENDPOINT")
+        for matched in re.finditer(month_pattern, remainder):
+            count = int(matched[1]) if matched[1].isdigit() else month_words[matched[1]]
+            if count != months:
+                failures.append("LOCAL_PRINTED_DURATION_NOT_COMPATIBLE")
+        quarters = re.findall(r"\b(?:quy|qui|q) (i|ii|iii|iv|1|2|3|4)\b", remainder)
+        if quarters and (months != 3 or any(quarter_numbers[value] * 3 != months for value in quarters)):
+            failures.append("LOCAL_QUARTER_CANNOT_RELABEL_CUMULATIVE_FLOW")
+        if re.search(r"\b(?:quarter|months?|for (?:the )?(?:year|period)|trong quy|quy (?:nay|truoc)|qui (?:nay|truoc))\b", remainder):
+            failures.append("UNREVIEWED_LOCAL_PERIOD_SYNTAX")
+        if re.search(r"\bthang (?:0?[1-9]|1[0-2])(?: nam)? \d{4}\b", remainder):
+            failures.append("PARTIAL_LOCAL_CALENDAR_DATE_NOT_DURATION")
+        if any(int(value) != year for value in re.findall(r"\b\d{4}\b", remainder)):
+            failures.append("LOCAL_PRINTED_YEAR_NOT_CURRENT_PERIOD")
+        if months != 12 and re.search(r"\b(?:cho nam|nam tai chinh)\b", remainder):
+            failures.append("LOCAL_ANNUAL_ASSERTION_CANNOT_RELABEL_INTERIM_FLOW")
+        # Consume finite temporal fragments. A matching endpoint/year cannot
+        # hide an additional unknown period or partial date in the same source.
+        unconsumed = re.sub(month_pattern, " ", remainder)
+        unconsumed = re.sub(r"\b(?:quy|qui|q) (?:i|ii|iii|iv|1|2|3|4)\b", " ", unconsumed)
+        unconsumed = re.sub(r"\bnam(?: tai chinh)? \d{4}\b", " ", unconsumed)
+        unconsumed = re.sub(r"\bky (?:nay|truoc)\b", " ", unconsumed)
+        unconsumed = re.sub(r"\bluy ke tu dau nam(?: den cuoi ky nay)?\b", " ", unconsumed)
+        unconsumed = re.sub(r"\b(?:cho )?(?:ky(?: hoat dong| ke toan)?|giai doan)\s+ket thuc(?: vao)?(?: ngay)?\b", " ", unconsumed)
+        unconsumed = re.sub(r"\b(?:cho )?nam tai chinh ket thuc(?: vao)?(?: ngay)?\b", " ", unconsumed)
+        # 'Same day' is admitted only by the independently parsed complete
+        # caption, never by this surface census searching for a nearby date.
+        same_day = _owned_same_day_period_constraint(section, source_kind=surface["kind"], source_exact=raw)
+        if same_day is not None and same_day["supported"]:
+            unconsumed = re.sub(r"\b(?:cho )?ky ke toan\s+ket thuc cung ngay\b", " ", unconsumed)
+        unconsumed = re.sub(r"\b(?:tai|vao) ngay\b", " ", unconsumed)
+        if range_asserted and end is not None and dates == [date(year, 1, 1), end]:
+            unconsumed = re.sub(r"\b(?:tu ngay|tu|den ngay|den|toi)\b", " ", unconsumed)
+        # Interim furniture belongs only to a whole finite, typed FLOW report
+        # caption with its own matching current-duration clause. Never erase
+        # bare 'niên độ' assertions on NOTE rows or unrelated narratives.
+        interim_caption = False
+        if (surface["kind"] in {"SECTION_TITLE", "TABLE_TITLE"} and printed is not None
+                and section.get("content_kind") == "PRIMARY_STATEMENT" and months in {3, 6, 9}):
+            title = {"INCOME_STATEMENT": "ket qua hoat dong", "CASH_FLOW": "luu chuyen tien te"}.get(section.get("statement_type"))
+            counts = r"(?:\d+|muoi mot|muoi hai|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)"
+            printed_date = r"(?:\d{1,2} thang \d{1,2} nam \d{4}|\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})"
+            whole_caption = (r"bao cao " + (title or "UNSUPPORTED")
+                             + r"(?: rieng| hop nhat)? giua nien do(?: \(tiep theo\))? "
+                             + r"cho ky hoat dong " + counts + r" thang ket thuc(?: vao)? ngay " + printed_date
+                             + r"(?: \(tiep theo\))?\.?")
+            owned_constraints = _owned_current_period_constraints(section, table)
+            interim_caption = bool(title and re.fullmatch(whole_caption, printed) and any(
+                item["source_kind"] == surface["kind"] and item["source_exact"] == raw and item["supported"]
+                and item.get("printed_months") == months and item.get("printed_end_date") == end.isoformat()
+                for item in owned_constraints
+            ))
+        surface["finite_owned_interim_flow_caption"] = interim_caption
+        if interim_caption:
+            unconsumed = re.sub(r"\bgiua nien do\b", " ", unconsumed, count=1)
+        if re.search(r"\b(?:ky|quy|qui|ngay|thang|giai doan|nien do|tai khoa|ban nien|nua (?:dau|cuoi)(?: nam)?|quarter|months?|ended|ending|year|period|q(?:iii|ii|iv|i|[1-4])|ytd)\b", unconsumed):
+            failures.append("UNCONSUMED_LOCAL_PERIOD_ASSERTION")
+        if re.search(r"\b\d{4}\b", unconsumed):
+            failures.append("UNCONSUMED_LOCAL_PRINTED_YEAR")
+        numbered_tax_caption = bool(
+            surface["kind"] in {"SECTION_TITLE", "TABLE_TITLE"} and not temporal and printed is not None
+            and re.fullmatch(
+                r"[1-9][0-9]*(?:\.[1-9][0-9]*)*\.?\s+chi phi thue thu nhap doanh nghiep(?: \(tndn\))?",
+                printed,
+            )
+        )
+        # A complete, finite tax caption can own a dotted outline such as
+        # '7.1.'. This is not permission to erase numeric ancestors, dates,
+        # unknown annotations or extra assertions from any source surface.
+        surface["finite_numbered_tax_caption_not_period_assertion"] = numbered_tax_caption
+        if not numbered_tax_caption and re.search(r"\b\d{1,4}[./-]\d{1,2}(?:[./-]\d{1,4})?\b", unconsumed):
+            failures.append("UNREVIEWED_LOCAL_DATE_SYNTAX")
+        # Direct assertions without an owned report-caption parser must match
+        # a whole finite clause, not just have removable familiar tokens.
+        direct = bool(re.match(r"(?:(?:cho|trong) )?(?:ky\b|giai doan\b|nam\b|quy\b|tai ngay\b|vao ngay\b|tu ngay\b|\d)", normalized))
+        direct = direct or bool(re.match(r"(?:mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)\b.*\bthang\b", normalized))
+        # A numbered tax caption is not a reporting-period assertion. Keep
+        # date/year/duration cues mandatory; never discard its outline number
+        # or an actual numeric date to make a source period pass.
+        direct = temporal and direct
+        if direct and surface["kind"] != "MONEY_HEADER":
+            counts = r"(?:\d+|muoi mot|muoi hai|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)"
+            printed_date = r"(?:\d{1,2} thang \d{1,2} nam \d{4}|\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})"
+            finite = (
+                r"(?:(?:cho|trong) )?(?:(?:ky(?: hoat dong| ke toan)?|giai doan) )?" + counts + r" thang ket thuc(?: vao)? ngay " + printed_date
+                + r"|nam(?: tai chinh)? \d{4}"
+                + r"|(?:tai |vao )?ngay " + printed_date
+                + r"|" + printed_date
+                + r"|(?:cho )?quy (?:i|ii|iii|iv|1|2|3|4) nam \d{4}"
+                + r"|(?:cho )?nam(?: tai chinh)? ket thuc(?: vao)? ngay " + printed_date
+                + r"|tu ngay " + printed_date + r" (?:den|toi)(?: ngay)? " + printed_date
+            )
+            if printed is None or re.fullmatch(r"(?:" + finite + r")(?: \(tiep theo\))?\.?", printed) is None:
+                failures.append("DIRECT_LOCAL_REPORTING_CLAUSE_NOT_FULLY_RECOGNIZED")
+        surface["printed_dates"] = [value.isoformat() for value in dates]
+        surface["reasons"] = sorted(set(failures))
+        surface["disposition"] = "LOCAL_PERIOD_CONTEXT_VETO" if failures else "RETAINED_COMPATIBLE_SURFACE_NOT_PERIOD_AUTHORITY"
+        reasons.extend(failures)
+    return surfaces, ancestors, sorted(set(reasons))
+
+
+def _comparative_flow_scope_row_labels(table: Mapping[str, Any]) -> list[Any]:
+    """Include standalone/structural scope labels even when their self path is stripped.
+
+    A populated tax component mentioning a subsidiary is not a blanket report
+    override. A blank or structural entity heading, irrespective of row_kind,
+    remains a veto on inheriting one unqualified period population.
+    """
+    return [row.get("label_exact") for row in table["rows"]
+            if row.get("row_kind") == "GROUP"
+            or not any(value is not None and value != "" for value in row.get("values_exact") or [])
+            or _normalized(row.get("label_exact")) in {"ngan hang me", "cong ty con", "rieng", "hop nhat"}]
+
+
+def _comparative_flow_period_inheritance_receipt(
+    section: Mapping[str, Any], table: Mapping[str, Any], lane: Mapping[str, Any], *,
+    locator: Mapping[str, Any], document_period_inventory: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    document = document_period_inventory["document_comparative_flow_policy_receipt"]
+    periods = document["resolved_source_duration_semantics"]
+    paths = _relative_flow_column_paths(table, lane)
+    note = section.get("content_kind") == "FINANCIAL_NOTE"
+    primary = section.get("content_kind") == "PRIMARY_STATEMENT" and section.get("statement_type") in {"INCOME_STATEMENT", "CASH_FLOW"}
+    reasons = []
+    if not document["complete"]:
+        reasons.append("AUTHENTICATED_PRINTED_DOCUMENT_COMPARATIVE_FLOW_POLICY_ABSENT")
+    if paths is None:
+        reasons.append("LITERAL_ORDERED_KY_NAY_KY_TRUOC_LABELS_REQUIRED")
+    owner = bool(note and compiled_specs is not None and _supplemental_owner_matches(section, table, compiled_specs=compiled_specs))
+    if not owner and not primary:
+        reasons.append("SOURCE_OWNER_NOT_PROVEN_FOR_COMPARATIVE_FLOW_POLICY")
+    if primary:
+        matches = [anchor for anchor in document["anchor_source_receipts"]
+                   if same_typed_json_v1(anchor["locator"], locator)
+                   and anchor["original_table_json_sha256"] == canonical_json_sha256_v1(table)]
+        if len(matches) != 1 or not matches[0]["complete"]:
+            reasons.append("PRIMARY_SAME_TABLE_INDEPENDENT_CURRENT_DURATION_NOT_PROVEN")
+    surfaces, ancestors, failures = _comparative_flow_local_surface_census(section, table, lane, periods)
+    reasons.extend(failures)
+    constraints = _owned_current_period_constraints(section, table)
+    if constraints and (periods is None or not _owned_current_period_constraints_match(section, table, lane, periods)):
+        reasons.append("OWNED_CURRENT_PERIOD_ASSERTION_NOT_COMPATIBLE_WITH_COMPARATIVE_FLOW_POLICY")
+    scope = _note_report_scope_receipt(
+        section, table, source_paths=[*(paths or []), *ancestors, [item["source_exact"] for item in surfaces],
+                                     _comparative_flow_scope_row_labels(table)],
+        document_scope=document_period_inventory["document_report_scope_receipt"],
+    )
+    if (scope["conflict"] or scope["local_entity_qualifiers"] or scope["report_scope"] is None
+            or scope["report_scope"] != document_period_inventory["document_report_scope_receipt"]["report_scope"]):
+        reasons.append("COMPARATIVE_FLOW_REPORT_POPULATION_NOT_PROVEN")
+    material = {"complete": not reasons, "status": "ALGORITHM_HOLD" if reasons else "PASS_AUTHENTICATED_PRINTED_COMPARATIVE_FLOW_POLICY",
+                "locator": canonical_clone_v1(locator), "original_section_json_sha256": canonical_json_sha256_v1(section),
+                "original_table_json_sha256": canonical_json_sha256_v1(table), "money_column_ordinals": canonical_clone_v1(lane.get("money_column_ordinals")),
+                "header_paths_exact": paths, "explicit_tax_owner_caption_matches": owner,
+                "local_period_surface_census": surfaces, "owned_current_period_constraints": constraints, "scope_receipt": scope,
+                "structural_scope_row_labels_exact": _comparative_flow_scope_row_labels(table),
+                "document_comparative_flow_policy_receipt": canonical_clone_v1(document),
+                "resolved_source_duration_semantics": canonical_clone_v1(periods) if not reasons else None,
+                "comparative_origin": "PRINTED_DOCUMENT_COMPARATIVE_FLOW_POLICY", "amounts_used_as_authority": False,
+                "source_period_keys_modified": False, "start_dates_inferred": False, "reasons": sorted(set(reasons)),
+                "rule": "LITERAL_RELATIVE_FLOW_COLUMNS_WITH_PRINTED_COMPARATIVE_POLICY_ALL_OWNED_CURRENT_ANCHORS_AND_EXHAUSTIVE_LOCAL_VETOES"}
+    return {**material, "receipt_id": "gjitfav1:inherited-comparative-flow-period:" + canonical_json_sha256_v1(material)}
+
+
+def _note_comparative_flow_inheritance_receipt(
+    section: Mapping[str, Any], table: Mapping[str, Any], lane: Mapping[str, Any], *,
+    locator: Mapping[str, Any], document_period_inventory: Mapping[str, Any], compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    return _comparative_flow_period_inheritance_receipt(section, table, lane, locator=locator,
+        document_period_inventory=document_period_inventory, compiled_specs=compiled_specs)
+
+
+def _primary_comparative_flow_period_receipt(
+    section: Mapping[str, Any], table: Mapping[str, Any], lane: Mapping[str, Any], *,
+    locator: Mapping[str, Any], document_period_inventory: Mapping[str, Any],
+) -> dict[str, Any]:
+    return _comparative_flow_period_inheritance_receipt(section, table, lane, locator=locator,
+        document_period_inventory=document_period_inventory, compiled_specs=None)
+
+
 def _document_statement_period_inventory(page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
     scope = _document_report_scope_receipt(page_records)
     sources, page_axis = [], []
@@ -5831,8 +6432,126 @@ def _document_statement_period_inventory(page_records: Sequence[Mapping[str, Any
                 "sources": sorted(sources, key=lambda item: (item["locator"]["selected_page_ordinal"], int(item["locator"]["section_id"][1:]), int(item["locator"]["table_id"][1:]))),
                 "document_report_scope_receipt": scope,
                 "document_annual_period_receipt": _document_annual_period_receipt(sources, scope),
+                "document_comparative_flow_policy_receipt": _document_comparative_flow_policy_receipt(page_records, sources, scope),
                 "rule": "ALL_ORIGINAL_TYPED_INCOME_AND_CASH_FLOW_PERIOD_SOURCES_NO_FILENAME_OR_AMOUNT_AUTHORITY"}
     return {**material, "receipt_id": "gjitfav1:document-statement-periods:" + canonical_json_sha256_v1(material)}
+
+
+def _selector_flow_window_for_policy_veto(
+    selector: Mapping[str, Any], periods: Any, *, literal: bool, column_index: int,
+) -> dict[str, Any] | None:
+    if periods is not None:
+        period = periods[column_index]
+        months = 12 if period[0] == "ANNUAL_YEAR" else period[2] * 3
+        return {"printed_months": months, "printed_end_date": date(period[1], months, {3: 31, 6: 30, 9: 30, 12: 31}[months]).isoformat()}
+    if not literal:
+        return None
+    key = selector["raw_lane_axis"]["source_lane_keys"][column_index]
+    if key[0] in {"BARE_YEAR", "DURATION_BARE_YEAR"}:
+        return {"printed_months": 12, "printed_end_date": f"{int(key[1]):04d}-12-31"}
+    if key[0] in {"DURATION_END_DATE", "DURATION_DATE_RANGE"}:
+        lengths = selector["printed_duration_lengths"][column_index]
+        end = date.fromisoformat(key[-1])
+        months = lengths[0] if len(lengths) == 1 else None
+        if months is None and key[0] == "DURATION_DATE_RANGE":
+            start, exclusive = date.fromisoformat(key[1]), end + timedelta(days=1)
+            if start.day == exclusive.day == 1:
+                months = (exclusive.year - start.year) * 12 + exclusive.month - start.month
+        if months is not None:
+            return {"printed_months": months, "printed_end_date": end.isoformat()}
+    return None
+
+
+def _printed_comparative_flow_policy_consistency_receipt(
+    selectors: Sequence[Mapping[str, Any]], resolutions: Sequence[Mapping[str, Any]], *,
+    literal: bool, document_period_inventory: Mapping[str, Any],
+) -> dict[str, Any]:
+    """An explicit printed policy can veto an otherwise successful older route.
+
+    Absence of new-route anchors is not a contradiction and cannot invalidate
+    an independently printed absolute pair. This is veto-only, never authority
+    to supply a missing date, duration or source value.
+    """
+    document = document_period_inventory["document_comparative_flow_policy_receipt"]
+    policies = [item for item in document["policy_source_receipts"] if item["owned"]]
+    def affirmative_policy(policy):
+        return (re.match(r"so lieu (?:so sanh|(?:cua )?(?:ky|nam) truoc)\b", _normalized(policy["source_exact"])) is not None
+                or _unsupported_english_comparative_flow_assertion(policy["source_exact"]))
+    reasons, checks, current_anchor_checks = [], [], []
+    applicability_holds = []
+    for policy in document["policy_source_receipts"]:
+        if not policy["owned"] and (policy["parser_receipt"]["complete"] or affirmative_policy(policy)):
+            applicability_holds.append({
+                "locator": canonical_clone_v1(policy["locator"]),
+                "original_narrative_sha256": policy["original_narrative_sha256"],
+                "policy_parser_receipt_id": policy["parser_receipt"]["receipt_id"],
+                "page_status": policy["page_status"], "section_content_kind": policy["section_content_kind"],
+                "section_statement_type": policy["section_statement_type"],
+                "section_title_exact": policy["section_title_exact"], "source_exact": policy["source_exact"],
+                "positive_period_authority_eligible": False,
+                "classification": "AFFIRMATIVE_POLICY_APPLICABILITY_UNPROVEN_NO_POSITIVE_AUTHORITY",
+            })
+            reasons.append("SOURCE_PERIOD_AFFIRMATIVE_UNOWNED_FLOW_POLICY_APPLICABILITY_NOT_PROVEN")
+    owned_active = any(item["parser_receipt"]["complete"] or affirmative_policy(item) for item in policies)
+    active = bool(applicability_holds) or owned_active
+    for policy in policies if active else []:
+        parser = policy["parser_receipt"]
+        affirmative = affirmative_policy(policy)
+        if not parser["complete"]:
+            if affirmative:
+                reasons.append("SOURCE_PERIOD_COMPETING_PRINTED_FLOW_POLICY_NOT_RECOGNIZED")
+            continue
+        printed = parser["comparative_period"]
+        scope = document_period_inventory["document_report_scope_receipt"]["report_scope"]
+        qualifiers = set(policy["local_qualifiers"])
+        if ((scope is not None and printed["report_scope"] is not None and scope != printed["report_scope"])
+                or qualifiers & {"PARENT_ENTITY", "SUBSIDIARY_ENTITY"}
+                or len(qualifiers & {"SEPARATE", "CONSOLIDATED"}) > 1):
+            reasons.append("SOURCE_PERIOD_PRINTED_FLOW_POLICY_POPULATION_CONFLICT")
+        for index, selector in enumerate(selectors):
+            periods = (resolutions[index]["resolved_source_duration_semantics"] if resolutions else None)
+            observed = _selector_flow_window_for_policy_veto(selector, periods, literal=literal, column_index=1)
+            expected = {name: printed[name] for name in ("printed_months", "printed_end_date")}
+            compatible = observed is not None and same_typed_json_v1(expected, observed)
+            checks.append({"policy_locator": canonical_clone_v1(policy["locator"]),
+                           "original_narrative_sha256": policy["original_narrative_sha256"],
+                           "policy_parser_receipt_id": parser["receipt_id"], "source_locator": canonical_clone_v1(selector["locator"]),
+                           "printed_policy_comparative_window": expected, "selected_comparative_window": observed,
+                           "compatible": compatible})
+            # A failed underlying correspondence remains a hold for its own
+            # reasons; an unknown window is never used as a positive proof.
+            if observed is not None and not compatible:
+                reasons.append("SOURCE_PERIOD_CONTRADICTS_EXPLICIT_PRINTED_COMPARATIVE_FLOW_POLICY")
+            current = _selector_flow_window_for_policy_veto(selector, periods, literal=literal, column_index=0)
+            if current is not None:
+                for anchor in document["anchor_source_receipts"]:
+                    # Missing/undated anchors cannot supply a contradiction.
+                    # Every *printed* duration assertion is checked, including
+                    # conflicting captions on an unselected continuation.
+                    for constraint in anchor["owned_current_period_constraints"]:
+                        if not constraint["supported"]:
+                            continue
+                        if "printed_end_date" in constraint:
+                            window = {name: constraint[name] for name in ("printed_months", "printed_end_date")}
+                        elif "printed_annual_year" in constraint:
+                            window = {"printed_months": 12, "printed_end_date": f"{constraint['printed_annual_year']:04d}-12-31"}
+                        else:
+                            continue
+                        compatible_current = same_typed_json_v1(current, window)
+                        current_anchor_checks.append({"source_locator": canonical_clone_v1(selector["locator"]),
+                            "anchor_locator": canonical_clone_v1(anchor["locator"]), "printed_constraint": canonical_clone_v1(constraint),
+                            "selected_current_window": current, "compatible": compatible_current})
+                        if not compatible_current:
+                            reasons.append("SOURCE_PERIOD_CONTRADICTED_BY_EXPLICIT_CURRENT_FLOW_ANCHOR")
+    material = {"complete": not reasons, "status": "ALGORITHM_HOLD" if reasons else "PASS_VETO_ONLY_PRINTED_POLICY_CONSISTENCY" if active else "NOT_APPLICABLE",
+                "finite_owned_policy_present": any(item["parser_receipt"]["complete"] for item in policies),
+                "affirmative_owned_policy_veto_active": owned_active, "policy_veto_active": active,
+                "checks": checks, "current_anchor_checks": current_anchor_checks,
+                "unowned_affirmative_policy_applicability_holds": applicability_holds,
+                "document_comparative_flow_policy_receipt_id": document["receipt_id"], "reasons": sorted(set(reasons)),
+                "amounts_used_as_authority": False, "source_period_keys_modified": False, "start_dates_inferred": False,
+                "rule": "PRINTED_COMPARATIVE_POLICY_CANNOT_BE_BYPASSED_BY_LITERAL_ABSOLUTE_OR_RELATIVE_YEAR_ROUTES_NO_MISSING_ANCHOR_VETO"}
+    return {**material, "receipt_id": "gjitfav1:printed-comparative-flow-consistency:" + canonical_json_sha256_v1(material)}
 
 
 def _source_period_correspondence_receipt(
@@ -5878,6 +6597,7 @@ def _source_period_correspondence_receipt(
             ytd = _printed_ytd_sibling_period_evidence(item["section"], item["table"], item["raw_lane_axis"])
             relative = _owned_relative_year_duration_evidence(item["section"], item["table"], item["raw_lane_axis"])
             inheritance = None
+            flow_inheritance = None
             anchors = []
             uses_cf_authority = False
             resolved = absolute if absolute is not None else ytd["intrinsic_absolute_periods"] if ytd is not None else None
@@ -5909,28 +6629,49 @@ def _source_period_correspondence_receipt(
                                                    or (period[0] == "SOURCE_YTD_QUARTER" and period[2] == ytd["quarter"]) for period in candidate):
                             resolved = canonical_clone_v1(candidate)
                             uses_cf_authority = True
+            if resolved is None and _relative_flow_column_paths(item["table"], item["raw_lane_axis"]) is not None:
+                if item["section"].get("content_kind") == "FINANCIAL_NOTE":
+                    flow_inheritance = _note_comparative_flow_inheritance_receipt(
+                        item["section"], item["table"], item["raw_lane_axis"], locator=item["locator"],
+                        document_period_inventory=fresh, compiled_specs=compiled_specs,
+                    )
+                elif item["section"].get("content_kind") == "PRIMARY_STATEMENT":
+                    flow_inheritance = _primary_comparative_flow_period_receipt(
+                        item["section"], item["table"], item["raw_lane_axis"], locator=item["locator"],
+                        document_period_inventory=fresh,
+                    )
+                if flow_inheritance is not None:
+                    resolved = flow_inheritance["resolved_source_duration_semantics"]
             if resolved is not None and not _owned_current_period_constraints_match(item["section"], item["table"], item["raw_lane_axis"], resolved):
                 resolved = None
                 reasons.append("SOURCE_PERIOD_OWNED_CURRENT_CAPTION_CONFLICT")
             resolutions.append({"resolved_source_duration_semantics": resolved, "ytd_sibling_evidence": ytd,
                                 "owned_relative_year_duration_evidence": relative,
                                 "inherited_document_annual_period_receipt": inheritance,
+                                "inherited_document_comparative_flow_policy_receipt": flow_inheritance,
                                 "owned_current_period_constraints": _owned_current_period_constraints(item["section"], item["table"]),
                                 "cash_flow_used_as_period_authority": uses_cf_authority,
                                 "cash_flow_anchor_sources": anchors, "intrinsic_absolute_source_semantics": absolute})
         if any(item["resolved_source_duration_semantics"] is None for item in resolutions) or not same_typed_json_v1(
                 resolutions[0]["resolved_source_duration_semantics"], resolutions[1]["resolved_source_duration_semantics"]):
             reasons.append("SOURCE_PERIOD_CONTEXTUAL_CORRESPONDENCE_NOT_PROVEN")
-        if any(resolution["cash_flow_used_as_period_authority"] or resolution["inherited_document_annual_period_receipt"] is not None for resolution in resolutions):
+        if any(resolution["cash_flow_used_as_period_authority"] or resolution["inherited_document_annual_period_receipt"] is not None
+               or resolution["inherited_document_comparative_flow_policy_receipt"] is not None for resolution in resolutions):
             scopes = [item["scope_receipt"] for item in selectors]
             if any(item["conflict"] or item["report_scope"] is None or item["local_entity_qualifiers"] for item in scopes) or scopes[0]["report_scope"] != scopes[1]["report_scope"]:
                 reasons.append("SOURCE_PERIOD_CONTEXTUAL_REPORT_POPULATION_NOT_PROVEN")
+    policy_consistency = _printed_comparative_flow_policy_consistency_receipt(
+        selectors, resolutions, literal=literal, document_period_inventory=fresh,
+    )
+    reasons.extend(policy_consistency["reasons"])
     material = {"complete": not reasons, "status": "ALGORITHM_HOLD" if reasons else "PASS_LITERAL_SOURCE_DURATION" if literal else
+                "PASS_AUTHENTICATED_PRINTED_COMPARATIVE_FLOW_POLICY" if any(item["inherited_document_comparative_flow_policy_receipt"] is not None for item in resolutions) else
                 "PASS_AUTHENTICATED_DOCUMENT_ANNUAL_PERIOD" if any(item["inherited_document_annual_period_receipt"] is not None for item in resolutions) else
                 "PASS_AUTHENTICATED_OWNED_RELATIVE_YEAR_DURATION" if any(item["owned_relative_year_duration_evidence"] is not None for item in resolutions) else
                 "PASS_AUTHENTICATED_SOURCE_YTD_CORRESPONDENCE",
                 "source_selectors": [{key: canonical_clone_v1(value) for key, value in item.items() if key not in {"section", "table"}} for item in selectors],
                 "period_resolution_evidence": resolutions, "document_period_inventory_receipt_id": fresh["receipt_id"],
+                "printed_comparative_flow_policy_consistency_receipt": policy_consistency,
                 "amounts_used_as_authority": False, "source_period_keys_modified": False, "start_dates_inferred": False,
                 "reasons": sorted(set(reasons)), "rule": "ORIGINAL_SOURCE_DURATION_CORRESPONDENCE_LITERAL_OR_PRINTED_YTD_SIBLINGS_AND_SAME_SCOPE_CF"}
     return {**material, "receipt_id": "gjitfav1:source-period-correspondence:" + canonical_json_sha256_v1(material)}
@@ -6197,14 +6938,15 @@ def _recognition_rate_source_only_projection(
             return _unresolved_from_candidate(candidate, reason="RECOGNITION_RATE_SOURCE_ONLY_MAPPING_IDENTITY_AMBIGUOUS",
                                               evidence={"mapping": mapping, "source_context_receipt": source_context})
         inventory, source, ref = matches[0]
-        def touches_source(value: Any) -> bool:
+        def touches_source(value: Any, *, source_row_ordinal: int = ref["row_ordinal"],
+                           source_locator: Mapping[str, Any] = inventory["locator"]) -> bool:
             if type(value) is list:
                 return any(touches_source(item) for item in value)
             if type(value) is not dict:
                 return False
-            if (value.get("row_ordinal") == ref["row_ordinal"] and type(value.get("locator")) is dict
+            if (value.get("row_ordinal") == source_row_ordinal and type(value.get("locator")) is dict
                     and all(same_typed_json_v1(value["locator"].get(key), item)
-                            for key, item in inventory["locator"].items())):
+                            for key, item in source_locator.items())):
                 return True
             return any(touches_source(item) for item in value.values())
 
@@ -6585,6 +7327,25 @@ def _seal_income_tax_source_controls(
     expense_population_period_receipts = []
     expense_population_period_conflicts = []
     cross_source_mapping_period_receipts = []
+    # A direct NOTE fallback cannot bypass a printed policy merely because
+    # its independent PRIMARY counterpart is absent. Legacy no-policy routes
+    # retain their own independently validated period contracts.
+    period_inventory = source_context["document_statement_period_inventory"]
+    if period_inventory["document_comparative_flow_policy_receipt"]["status"] != "NOT_APPLICABLE":
+        source_pages = {item["page_json_version_id"]: item["page_json"] for item in repaired_records}
+        for population in source_context["tax_population_inventory"]:
+            locator = population["locator"]
+            note_section, note_table = _source_table(source_pages[locator["page_json_version_id"]],
+                                                   section_id=locator["section_id"], table_id=locator["table_id"])
+            note_lane = population["lane_axis"]
+            if _relative_flow_column_paths(note_table, note_lane) is not None:
+                cross_source_mapping_period_receipts.append(_source_period_correspondence_receipt(
+                    left_locator=locator, right_locator=locator,
+                    left_money_column_ordinals=note_lane["money_column_ordinals"],
+                    right_money_column_ordinals=note_lane["money_column_ordinals"],
+                    page_records=repaired_records, compiled_specs=compiled_specs,
+                    document_period_inventory=period_inventory,
+                ))
     primary = candidate.get("closure_receipt", {}).get("income_tax_adapter_receipt", {}).get("primary_projection_receipt")
     if type(primary) is not dict and any(item["current_year_frontier"] is not None
                                        or item.get("recognition_expense_frontier", {}).get("status") == "PASS"
