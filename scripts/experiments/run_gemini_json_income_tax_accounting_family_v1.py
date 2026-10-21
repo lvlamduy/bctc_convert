@@ -31,10 +31,12 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (  # noqa: E402
+    _PERIOD_INVENTORY_DEPENDENCY_PATHS,
     FAMILY_ID,
     build_gemini_json_income_tax_region_query_receipt_v1,
     compile_gemini_json_income_tax_family_specs_v1,
     evaluate_gemini_json_income_tax_family_cluster_v1,
+    income_tax_document_period_evaluation_scope_v1,
     recover_gemini_json_income_tax_query_cluster_v1,
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (  # noqa: E402
@@ -437,6 +439,12 @@ def _evaluate_stream_v1(
         "base_cache_hits": 0,
         "peak_document_selected_pages": 0,
         "sql_total_statements_claimed": False,
+        "document_period_inventory_cache": {
+            "requests": 0, "hits": 0, "builds": 0, "disabled_requests": 0,
+            "key_seconds": 0.0, "build_seconds": 0.0, "clone_seconds": 0.0,
+            "dependency_checks": 0, "dependency_check_seconds": 0.0,
+            "peak_entries": 0, "peak_stored_bytes": 0,
+        },
     }
     bases = (
         None
@@ -481,11 +489,17 @@ def _evaluate_stream_v1(
         timing["base_cache_hits"] += int(hit)
         timing["base_cluster_seconds"] += time.perf_counter() - started
         started = time.perf_counter()
-        cluster = recover_gemini_json_income_tax_query_cluster_v1(
-            page_records=records, base_cluster=base_cluster, compiled_specs=compiled
-        )
-        clusters.append(cluster)
-        trials.append(_trial_v1(cluster, records, compiled))
+        with income_tax_document_period_evaluation_scope_v1(enabled=independent_base is None) as period_metrics:
+            cluster = recover_gemini_json_income_tax_query_cluster_v1(
+                page_records=records, base_cluster=base_cluster, compiled_specs=compiled
+            )
+            clusters.append(cluster)
+            trials.append(_trial_v1(cluster, records, compiled))
+        for key, value in period_metrics.items():
+            if key.startswith("peak_"):
+                timing["document_period_inventory_cache"][key] = max(timing["document_period_inventory_cache"][key], value)
+            else:
+                timing["document_period_inventory_cache"][key] += value
         timing["family_evaluation_seconds"] += time.perf_counter() - started
     indexed = build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
         selected_document_axis=doc_axis,
@@ -510,9 +524,12 @@ def _evaluate_stream_v1(
 
 
 def replay_income_tax_trials_from_source_v1(
-    *, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence
+    *, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence,
+    replay_metrics=None,
 ):
     """Independent storage query, fresh per-document JSON, no cache access."""
+    require(replay_metrics is None or type(replay_metrics) is dict and not replay_metrics,
+            "Cold replay metrics sink must be a fresh empty object")
     specs, family_compiled = _compile_specs_v1()
     require(
         same_typed_json_v1(
@@ -558,6 +575,8 @@ def replay_income_tax_trials_from_source_v1(
         same_typed_json_v1(indexed, indexed_query_evidence),
         "Cold replay indexed source query differs",
     )
+    if replay_metrics is not None:
+        replay_metrics.update(json.loads(canonical_json_bytes_v1(_timing)))
     return trials
 
 
@@ -753,6 +772,10 @@ def run(args):
         ROOT / "src/bctc_ai/evaluation/source_observation_mapping_contract_v1.py",
         scope_path,
     ]
+    implementation_paths = list(dict.fromkeys([
+        *implementation_paths,
+        *(ROOT / "src/bctc_ai" / relative for relative in _PERIOD_INVENTORY_DEPENDENCY_PATHS),
+    ]))
     implementation_refs = [generic._file_ref(p) for p in implementation_paths]
     authority_paths = [args.corpus_index]
     for document in documents:

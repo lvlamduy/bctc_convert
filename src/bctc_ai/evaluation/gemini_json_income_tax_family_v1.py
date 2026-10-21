@@ -12,9 +12,16 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from asyncio import current_task
 from collections.abc import Mapping, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import date, timedelta
+from functools import wraps
+from hashlib import sha256
 from pathlib import Path
+from threading import get_ident
+from time import perf_counter
 from typing import Any
 
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
@@ -44,7 +51,9 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    decode_canonical_json_bytes_v1,
     same_typed_json_v1,
 )
 
@@ -134,6 +143,157 @@ class GeminiJsonIncomeTaxFamilyV1Error(ValueError):
 
 def _error(message: str) -> GeminiJsonIncomeTaxFamilyV1Error:
     return GeminiJsonIncomeTaxFamilyV1Error(message)
+
+
+_DOCUMENT_PERIOD_OPERATION = ContextVar("f39_document_period_operation", default=None)
+_PERIOD_INVENTORY_DEPENDENCY_PATHS = (
+    "evaluation/gemini_json_income_tax_family_v1.py",
+    "evaluation/gemini_json_multitable_hierarchical_family_v1.py",
+    "evaluation/gemini_json_hierarchical_accounting_family_v1.py",
+    "evaluation/gemini_json_customer_deposit_family_v1.py",
+    "evaluation/gemini_json_other_long_term_investments_family_v1.py",
+    "evaluation/accounting_variant_graph_engine_v1.py",
+    "evaluation/source_observation_lane_math_v1.py",
+    "evaluation/gemini_json_flat_accounting_family_v1.py",
+    "source_structure/contracts_v1.py",
+)
+
+
+def _period_inventory_execution_owner_v1():
+    try:
+        task = current_task()
+    except RuntimeError:  # Synchronous caller, no running asyncio loop.
+        task = None
+    return get_ident(), task
+
+
+@contextmanager
+def income_tax_document_period_evaluation_scope_v1(*, enabled: bool = True):
+    """Memoize source-derived inventory only within one evaluation operation.
+
+    No candidate/READY result or caller-supplied receipt is cached. A disabled
+    scope is sticky through nested public APIs, including independent replay.
+    The yielded counters contain no cached values; all entries are discarded
+    in finally, including after early returns and exceptions. This operation
+    is synchronous: inherited contexts cannot share it across tasks/threads.
+    Acceptance requires a fresh, pinned, trusted Python runtime without hot
+    reload or arbitrary memory mutation. The entry-point fence below is only
+    supplemental invalidation, not authentication of Python runtime memory.
+    Implementation bytes are pinned at first use and verified again before
+    successful owner exit. Nested results are provisional until that exit:
+    no persistence, export or accepted handoff is permitted inside the scope.
+    This is an acceptance barrier, not a monitor for transient filesystem edits.
+    """
+    if type(enabled) is not bool:
+        raise _error("income-tax period inventory cache switch is invalid")
+    parent = _DOCUMENT_PERIOD_OPERATION.get()
+    if parent is not None and (parent["closed"] or parent["invalidated"]):
+        raise _error("income-tax period inventory operation is closed or invalidated")
+    if parent is not None and parent["execution_owner"] != _period_inventory_execution_owner_v1():
+        raise _error("income-tax period inventory operation cannot cross tasks or threads")
+    if parent is not None and (enabled or not parent["enabled"]):
+        yield parent["metrics"]
+        return
+    metrics = {"requests": 0, "hits": 0, "builds": 0, "disabled_requests": 0,
+               "key_seconds": 0.0, "build_seconds": 0.0, "clone_seconds": 0.0,
+               "dependency_checks": 0, "dependency_check_seconds": 0.0,
+               "peak_entries": 0, "peak_stored_bytes": 0}
+    state = {"enabled": enabled, "entries": {}, "metrics": metrics,
+             "execution_owner": _period_inventory_execution_owner_v1(),
+             "implementation_refs": None, "callable_fence": None,
+             "closed": False, "invalidated": False}
+    token = _DOCUMENT_PERIOD_OPERATION.set(state)
+    try:
+        yield metrics
+    finally:
+        try:
+            if state["enabled"] and state["implementation_refs"] is not None:
+                started = perf_counter()
+                try:
+                    _period_inventory_check_dependencies_v1(state)
+                    if (state["callable_fence"] is not None
+                            and not all(left is right for left, right in zip(
+                                state["callable_fence"], _period_inventory_callable_fence_v1(), strict=True))):
+                        state["invalidated"] = True
+                        raise _error("income-tax period inventory callable changed during operation")
+                finally:
+                    metrics["key_seconds"] += perf_counter() - started
+            if state["invalidated"]:
+                raise _error("income-tax period inventory operation is closed or invalidated")
+        finally:
+            state["closed"] = True
+            state["entries"].clear()
+            _DOCUMENT_PERIOD_OPERATION.reset(token)
+
+
+def _document_period_operation(function):
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        with income_tax_document_period_evaluation_scope_v1():
+            return function(*args, **kwargs)
+    return wrapped
+
+
+def _period_inventory_dependency_refs_v1() -> list[dict[str, Any]]:
+    """Read actual reviewed transitive implementation bytes, never mtime/IDs."""
+    root = Path(__file__).resolve().parents[1]
+    refs = []
+    try:
+        for relative in _PERIOD_INVENTORY_DEPENDENCY_PATHS:
+            raw = (root / relative).read_bytes()
+            refs.append({"path": relative, "size_bytes": len(raw), "sha256": sha256(raw).hexdigest()})
+    except OSError as exc:
+        raise _error("income-tax period inventory implementation dependency is absent") from exc
+    return refs
+
+
+def _period_inventory_check_dependencies_v1(state):
+    started = perf_counter()
+    state["metrics"]["dependency_checks"] += 1
+    try:
+        refs = _period_inventory_dependency_refs_v1()
+    except GeminiJsonIncomeTaxFamilyV1Error:
+        state["invalidated"] = True
+        raise
+    finally:
+        state["metrics"]["dependency_check_seconds"] += perf_counter() - started
+    if state["implementation_refs"] is None:
+        state["implementation_refs"] = canonical_clone_v1(refs)
+    elif not same_typed_json_v1(state["implementation_refs"], refs):
+        state["invalidated"] = True
+        raise _error("income-tax period inventory implementation changed during operation")
+    return refs
+
+
+def _period_inventory_key_v1(page_records, compiled_specs):
+    state = _DOCUMENT_PERIOD_OPERATION.get()
+    if state is None or not state["enabled"]:
+        refs = _period_inventory_dependency_refs_v1()
+    else:
+        if state["closed"] or state["invalidated"]:
+            raise _error("income-tax period inventory operation is closed or invalidated")
+        refs = state["implementation_refs"]
+        if refs is None:
+            refs = _period_inventory_check_dependencies_v1(state)
+    return canonical_json_sha256_v1({
+        "format_version": "F39_OPERATION_LOCAL_SOURCE_PERIOD_INVENTORY_CACHE_V1",
+        "page_records": list(page_records), "compiled_specs": dict(compiled_specs),
+        "implementation_refs": refs,
+    })
+
+
+def _period_inventory_callable_fence_v1():
+    # Supplemental invalidation for replaced entry points in a trusted Python
+    # runtime. Function objects are NOT source identities, provenance keys or
+    # receipt material. File/source/spec hashes remain the content key.
+    return (
+        _build_document_statement_period_inventory_uncached_v1,
+        _document_report_scope_receipt, _document_comparative_flow_policy_receipt,
+        _document_annual_period_receipt, _multitable_lane_axis,
+        _owned_current_period_constraints, _note_report_scope_receipt,
+        _printed_duration_lengths, _absolute_source_duration_semantics,
+        _owned_relative_year_duration_evidence, _printed_ytd_sibling_period_evidence,
+    )
 
 
 def _load_json(path: str, *, message: str) -> dict[str, Any]:
@@ -4195,6 +4355,7 @@ def _evaluate_original_note_adapter(
     return _seal_income_tax_source_controls(note, source_context=source_context, repaired_records=page_records, compiled_specs=compiled_specs)
 
 
+@_document_period_operation
 def recover_gemini_json_income_tax_query_cluster_v1(
     *,
     page_records: Any,
@@ -6399,6 +6560,64 @@ def _primary_comparative_flow_period_receipt(
 
 
 def _document_statement_period_inventory(page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
+    state = _DOCUMENT_PERIOD_OPERATION.get()
+    if state is None:
+        return _build_document_statement_period_inventory_uncached_v1(page_records, compiled_specs=compiled_specs)
+    if state["closed"] or state["invalidated"]:
+        raise _error("income-tax period inventory operation is closed or invalidated")
+    if state["execution_owner"] != _period_inventory_execution_owner_v1():
+        raise _error("income-tax period inventory operation cannot cross tasks or threads")
+    metrics = state["metrics"]
+    metrics["requests"] += 1
+    if not state["enabled"]:
+        metrics["disabled_requests"] += 1
+        started = perf_counter()
+        value = _build_document_statement_period_inventory_uncached_v1(page_records, compiled_specs=compiled_specs)
+        metrics["build_seconds"] += perf_counter() - started
+        metrics["builds"] += 1
+        return value
+    started = perf_counter()
+    key = _period_inventory_key_v1(page_records, compiled_specs)
+    fence = _period_inventory_callable_fence_v1()
+    if state["callable_fence"] is None:
+        state["callable_fence"] = fence
+    elif not all(left is right for left, right in zip(state["callable_fence"], fence, strict=True)):
+        state["invalidated"] = True
+        raise _error("income-tax period inventory callable changed during operation")
+    metrics["key_seconds"] += perf_counter() - started
+    entry = state["entries"].get(key)
+    if entry is not None and all(left is right for left, right in zip(entry[1], fence, strict=True)):
+        metrics["hits"] += 1
+        started = perf_counter()
+        value = decode_canonical_json_bytes_v1(entry[0])
+        metrics["clone_seconds"] += perf_counter() - started
+        return value
+    started = perf_counter()
+    value = _build_document_statement_period_inventory_uncached_v1(page_records, compiled_specs=compiled_specs)
+    metrics["build_seconds"] += perf_counter() - started
+    metrics["builds"] += 1
+    raw = canonical_json_bytes_v1(value)
+    started = perf_counter()
+    unchanged = (key == _period_inventory_key_v1(page_records, compiled_specs)
+                 and all(left is right for left, right in zip(fence, _period_inventory_callable_fence_v1(), strict=True)))
+    metrics["key_seconds"] += perf_counter() - started
+    if not unchanged:
+        state["invalidated"] = True
+        raise _error("income-tax period inventory input changed during construction")
+    # Bound memory even when a caller evaluates more than one private clone.
+    # Eviction is a recomputation, never a reason to omit a source dependency.
+    if key not in state["entries"] and len(state["entries"]) >= 2:
+        state["entries"].clear()
+    state["entries"][key] = (raw, fence)
+    metrics["peak_entries"] = max(metrics["peak_entries"], len(state["entries"]))
+    metrics["peak_stored_bytes"] = max(metrics["peak_stored_bytes"], sum(len(item[0]) for item in state["entries"].values()))
+    started = perf_counter()
+    value = decode_canonical_json_bytes_v1(raw)
+    metrics["clone_seconds"] += perf_counter() - started
+    return value
+
+
+def _build_document_statement_period_inventory_uncached_v1(page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
     scope = _document_report_scope_receipt(page_records)
     sources, page_axis = [], []
     for record in page_records:
@@ -7602,6 +7821,7 @@ def _seal_income_tax_source_controls(
     return output
 
 
+@_document_period_operation
 def evaluate_gemini_json_income_tax_family_cluster_v1(
     *,
     regions: Any,
