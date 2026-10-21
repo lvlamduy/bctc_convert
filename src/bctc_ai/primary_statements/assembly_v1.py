@@ -459,6 +459,7 @@ class StatementInstance:
     reasons: list[str] = field(default_factory=list)
     presentation_role: str = "PRIMARY"
     cell_vetoes: dict[tuple[int, str], str] = field(default_factory=dict)
+    dash_unvalidated: set[tuple[int, int]] = field(default_factory=set)
 
     @property
     def key(self) -> str:

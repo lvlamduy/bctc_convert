@@ -12,6 +12,7 @@ against a higher-precision unit of the same statement, period and scope.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
@@ -19,6 +20,7 @@ from typing import Any
 
 from bctc_ai.primary_statements.assembly_v1 import LogicalRow, StatementInstance
 from bctc_ai.primary_statements.catalog_v1 import PrimaryCatalog
+from bctc_ai.primary_statements.text_v1 import fold_vietnamese
 from bctc_ai.primary_statements.units_v1 import (
     SCALE,
     VND,
@@ -194,7 +196,12 @@ def _resolve_duplicate_targets(dispositions: list[RowDisposition]) -> None:
         group = valued
         raws = {tuple(cell.raw for cell in item.row.cells) for item in group}
         if len(raws) == 1:
-            plain = [item for item in group if not item.row.label_annotations]
+            # A row "brought forward from the previous page" repeats the original;
+            # the original is unannotated or "carried to the next page".
+            plain = [item for item in group if not any(
+                re.search(r"\b(?:tu|tu trang)\s+truoc\b|\btrang truoc\b", fold_vietnamese(annotation))
+                for annotation in item.row.label_annotations
+            )]
             keep = plain[0] if len(plain) == 1 else None
             if keep is None and len({item.row.label_key for item in group}) == 1 and group[0].disposition == MAPPED_HEADING:
                 keep = group[0]

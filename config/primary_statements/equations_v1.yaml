@@ -1,0 +1,43 @@
+# Accounting checks for PRIMARY statements. Parent/child structure comes from
+# the pinned schema registry (hierarchy reference + business formula overlay);
+# this file only declares how deduction-type identities enter a check, which
+# children are not additive, cross identities and the rounding policy.
+# Checks corroborate or veto; they never create or change a source value.
+format_version: PRIMARY_STATEMENT_EQUATIONS_V1
+schema_revision: UNIVERSAL_BANK_BCTC_SCHEMA@6076
+
+# Statements printed in millions (or larger) round every line independently.
+rounding_policy:
+  name: PER_LINE_ROUNDING_HALF_UNIT_PER_TERM_V1
+  minimum_unit_scale: 1000000
+  # tolerance in lane units = max(1, ceil(component_count / 2))
+
+statements:
+  CDKT:
+    # Always reduce their parent whatever sign is printed (contra assets,
+    # accumulated depreciation, treasury shares).
+    pure_deductions: [4345, 6035, 4347, 4349, 5324, 6036, 4352, 4355, 4368, 4370, 4372, 4332, 4358, 4340]
+    reversible_deductions: []
+    always_subtract_as_printed: []
+    convention_witnesses: []
+    non_additive_children: [6049, 4309]
+    cross_identities:
+      - {name: TOTAL_ASSETS_EQUALS_TOTAL_LIABILITIES_AND_EQUITY, left: 4375, right: 4305}
+  KQKD:
+    pure_deductions: [4396, 4398, 4395, 4391, 4383]
+    # Can be an expense or a reversal/income: read by the instance convention.
+    # Non-controlling-interest attribution (4379) is printed either signed or
+    # unsigned and can be a loss share, so it is read like a reversible item.
+    reversible_deductions: [4392, 4384, 4382, 4379]
+    always_subtract_as_printed: []
+    convention_witnesses: [4396, 4398, 4391]
+    non_additive_children: []
+    cross_identities: []
+  LCTT:
+    pure_deductions: [4124, 4122, 4128, 4142, 4118, 4143, 4144, 4146, 4120, 4150, 4153, 4151,
+                      4172, 4185, 4186, 4188, 4209, 4192, 4211, 4193, 4171, 4184]
+    reversible_deductions: []
+    always_subtract_as_printed: []
+    convention_witnesses: []
+    non_additive_children: []
+    cross_identities: []

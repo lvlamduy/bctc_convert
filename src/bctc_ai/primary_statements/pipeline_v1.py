@@ -42,6 +42,7 @@ from bctc_ai.primary_statements.source_v1 import (
     selected_table_label_census_v1,
 )
 from bctc_ai.primary_statements.text_v1 import label_key_v1
+from bctc_ai.primary_statements.validation_v1 import load_equation_config_v1, validate_instance_v1
 
 PIPELINE_VERSION = "PRIMARY_STATEMENT_PIPELINE_V1"
 PREFILTER_MIN_HITS = 2
@@ -57,6 +58,7 @@ class DocumentRun:
     other_tables: list[Any]
     presentation_receipts: list[dict[str, Any]]
     statement_status: dict[str, Any] = field(default_factory=dict)
+    validations: dict[str, list[Any]] = field(default_factory=dict)
 
 
 def candidate_pages_v1(
@@ -125,14 +127,15 @@ def run_corpus_v1(
     with metrics.timed("authenticated_page_load"):
         loaded = load_original_pages_v1(corpus.db_path, page_json_version_ids=wanted, metrics=metrics)
     rules_path = project_root / "config/mapping/lctt-v2.yaml"
+    equations = load_equation_config_v1(project_root)
     runs = []
-    with metrics.timed("assemble_and_map"):
+    with metrics.timed("assemble_map_validate"):
         for document in documents:
-            runs.append(run_document_v1(document, census, titles, loaded, catalog, rules_path))
+            runs.append(run_document_v1(document, census, titles, loaded, catalog, rules_path, equations))
     return runs
 
 
-def run_document_v1(document, census, titles, loaded, catalog, rules_path) -> DocumentRun:
+def run_document_v1(document, census, titles, loaded, catalog, rules_path, equations) -> DocumentRun:
     page_census = []
     tables = []
     for page in document.pages:
@@ -176,6 +179,8 @@ def run_document_v1(document, census, titles, loaded, catalog, rules_path) -> Do
         dispositions[instance.key] = map_instance_rows_v1(instance, catalog)
     receipts = resolve_duplicate_presentations_v1(instances, dispositions)
     run = DocumentRun(document, page_census, tables, instances, dispositions, others, receipts)
+    for instance in instances:
+        run.validations[instance.key] = validate_instance_v1(instance, dispositions[instance.key], catalog, equations)
     run.statement_status = _statement_status(run)
     return run
 
@@ -199,7 +204,7 @@ def _statement_status(run: DocumentRun) -> dict[str, Any]:
     result = {}
     for statement in ("CDKT", "KQKD", "LCTT"):
         chosen = [i for i in run.instances if i.statement == statement and i.presentation_role == "PRIMARY"]
-        scopes = Counter(i.scope for i in chosen)
+        scopes = Counter(i.scope or "SCOPE_UNRESOLVED" for i in chosen)
         result[statement] = {
             "instances": [i.key for i in chosen],
             "scopes": dict(scopes),
