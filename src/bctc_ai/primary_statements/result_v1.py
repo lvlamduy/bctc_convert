@@ -187,6 +187,7 @@ def build_document_result_v1(run, catalog: PrimaryCatalog, *, corpus_identity: d
         "document": document.identity(),
         "pins": pins,
         "page_census": run.page_census,
+        "notes_start_page": run.notes_start_page,
         "non_primary_tables": [
             {**source.locator, "classification": source.classification} for source in run.other_tables
         ],

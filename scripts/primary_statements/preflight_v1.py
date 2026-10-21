@@ -1,4 +1,4 @@
-﻿"""Evidence-producing preflight for the PRIMARY_STATEMENTS worktree.
+"""Evidence-producing preflight for the PRIMARY_STATEMENTS worktree.
 
 Every gate is recomputed from the actual inputs of this run. Nothing is copied
 from an older receipt. Source databases are opened read-only; PDFs are only

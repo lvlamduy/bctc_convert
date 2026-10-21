@@ -56,15 +56,43 @@ class RowDisposition:
     parent_report_norm_id: str | None = None
 
 
+def _identity_of(item: RowDisposition) -> str | None:
+    """Structural identity of a row for ancestry (not an exported mapping)."""
+
+    if item.report_norm_id is not None:
+        return str(item.report_norm_id)
+    if item.disposition == STRUCTURAL and item.reason.startswith("PSEUDO_HEADING:"):
+        return item.reason.split(":", 1)[1]
+    if item.disposition == SOURCE_ONLY and item.reason.startswith("POSSIBLE_SCHEMA_GAP_SCOPE") and len(item.candidates) == 1:
+        # The row is that identity in a scope the schema does not cover; its
+        # children still belong to it structurally.
+        return str(item.candidates[0])
+    return None
+
+
 def _parent_mapping(rows: list[RowDisposition], row: LogicalRow) -> str | None:
     if row.parent_row is None:
         return None
-    parent = rows[row.parent_row]
-    if parent.report_norm_id is not None:
-        return str(parent.report_norm_id)
-    if parent.disposition == STRUCTURAL and parent.reason.startswith("PSEUDO_HEADING:"):
-        return parent.reason.split(":", 1)[1]
-    return None
+    return _identity_of(rows[row.parent_row])
+
+
+def _ancestor_identities(rows: list[RowDisposition], row: LogicalRow) -> set[str]:
+    """Identities of every ancestor through the numbering and Gemini-path parent chains."""
+
+    found: set[str] = set()
+    pending = [index for index in (row.parent_row, row.alt_parent_row) if index is not None]
+    seen: set[int] = set()
+    while pending:
+        index = pending.pop()
+        if index in seen or index >= len(rows):
+            continue
+        seen.add(index)
+        identity = _identity_of(rows[index])
+        if identity is not None:
+            found.add(identity)
+        ancestor = rows[index].row
+        pending += [i for i in (ancestor.parent_row, ancestor.alt_parent_row) if i is not None]
+    return found
 
 
 def map_instance_rows_v1(instance: StatementInstance, catalog: PrimaryCatalog) -> list[RowDisposition]:
@@ -103,13 +131,27 @@ def _map_one(
             return RowDisposition(row, UNRESOLVED, "UNRECOGNIZED_VALUE_ROW_NO_CATALOG_IDENTITY")
         return RowDisposition(row, STRUCTURAL, "UNRECOGNIZED_HEADING_WITHOUT_VALUES")
     kinds = {hit.kind for hit in hits}
-    if kinds == {"SOURCE_ONLY"}:
-        return RowDisposition(row, SOURCE_ONLY, hits[0].target)
     if kinds == {"STRUCTURAL"}:
         if row.has_numeric:
             return RowDisposition(row, UNRESOLVED, "STRUCTURAL_LEAD_IN_CARRIES_VALUES")
         return RowDisposition(row, STRUCTURAL, hits[0].target)
     parent_id = _parent_mapping(done, row)
+    ancestors = _ancestor_identities(done, row)
+    preceded = {identity for item in done if item.disposition in {MAPPED, MAPPED_HEADING}
+                for identity in [_identity_of(item)] if identity is not None}
+    for hit in hits:
+        if hit.kind != "SOURCE_ONLY":
+            continue
+        spec = hit.source_only
+        if spec is None or (
+            (not spec.requires_parent or ancestors & set(spec.requires_parent))
+            and (not spec.requires_preceded_by or preceded & set(spec.requires_preceded_by))
+        ):
+            return RowDisposition(row, SOURCE_ONLY, hit.target)
+    if kinds == {"SOURCE_ONLY"}:
+        if row.has_numeric:
+            return RowDisposition(row, UNRESOLVED, "SOURCE_ONLY_CONTEXT_NOT_ESTABLISHED")
+        return RowDisposition(row, STRUCTURAL, "SOURCE_ONLY_HEADING_WITHOUT_VALUES")
     parent_row = done[row.parent_row].row if row.parent_row is not None else None
     survivors, rejected = [], []
     for hit in hits:
@@ -121,8 +163,12 @@ def _map_one(
             reason = "CASH_FLOW_BRANCH"
         elif item.requires_values and not row.has_numeric:
             reason = "REQUIRES_VALUES"
-        elif item.requires_parent and parent_id not in item.requires_parent:
-            reason = f"REQUIRES_PARENT:{','.join(item.requires_parent)}:GOT:{parent_id}"
+        elif item.requires_parent and not (ancestors & set(item.requires_parent)):
+            reason = f"REQUIRES_ANCESTOR:{','.join(item.requires_parent)}:GOT:{','.join(sorted(ancestors)) or None}"
+        elif item.forbids_ancestor and ancestors & set(item.forbids_ancestor):
+            reason = f"FORBIDDEN_ANCESTOR:{','.join(sorted(ancestors & set(item.forbids_ancestor)))}"
+        elif item.forbids_preceded_by and preceded & set(item.forbids_preceded_by):
+            reason = f"FORBIDDEN_AFTER:{','.join(sorted(preceded & set(item.forbids_preceded_by)))}"
         elif item.requires_top_level and not _is_top_level(row, parent_row, parent_id, statement_catalog):
             reason = "REQUIRES_TOP_LEVEL"
         elif item.requires_section and current_section != item.requires_section:

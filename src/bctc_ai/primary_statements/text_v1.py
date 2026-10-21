@@ -39,18 +39,29 @@ _TRAILING_ANNOTATIONS = (
     re.compile(r"\s*=\s*[ivxlc0-9+\- ]+\Z"),
     re.compile(r"\s*\((?:mang sang|chuyen sang|chuyen tu|mang tu|mang sang tu)[^)]*\)\s*\Z"),
     re.compile(r"\s*\((?:trinh bay lai|dieu chinh lai)\)\s*\Z"),
+    re.compile(r"\s*\(thuyet minh[^()]*\)\s*\Z"),
+    # Explanatory clauses such as "(ngoại trừ GTCG ...)", "(bao gồm cả KBNN)" or
+    # "(Chi đầu tư mua công ty con, ...)" qualify the printed line without
+    # changing its identity; they are kept as annotations. A clause that opens
+    # with an income/expense word ("(chi phí khác)") changes meaning and stays.
+    re.compile(
+        r"\s*\(\s*(?!(?:chi phi|thu nhap|lai|lo|hoan nhap)\b)(?:[^()\s]+\s+){3,}[^()\s]+\s*\)\s*\Z"
+    ),
     # Printed per-row units such as "(VND/cổ phiếu)"; kept as unit evidence by callers.
     re.compile(r"\s*\((?:[^()]*\b(?:vnd|dong|trieu|eps)\b[^()]*)\)\s*\Z"),
 )
 _ABBREVIATIONS = (
     (r"\bnhnnvn\b", "ngan hang nha nuoc"),
-    (r"\bngan hang nha nuoc viet nam\b", "ngan hang nha nuoc"),
     (r"\bqui\b", "quy"),
     (r"\btc\b", "tai chinh"),
+    (r"\bcty\b", "cong ty"),
     (r"\btndn\b", "thu nhap doanh nghiep"),
     (r"\btctd\b", "to chuc tin dung"),
     (r"\btctc\b", "to chuc tai chinh"),
     (r"\bnhnn\b", "ngan hang nha nuoc"),
+    (r"\bngan hang nha nuoc viet nam\b", "ngan hang nha nuoc"),
+    (r"\bphai chiu rui ro\b", "chiu rui ro"),
+    (r"\bcho vay ma\b", "cho vay"),
     (r"\bkbnn\b", "kho bac nha nuoc"),
     (r"\btscd\b", "tai san co dinh"),
     (r"\bbdsdt\b", "bat dong san dau tu"),
@@ -65,7 +76,7 @@ _ABBREVIATIONS = (
 # Direction words printed in front of movement lines carry the printed sign
 # convention, not a different identity ("(Tăng)/giảm X" == "Tăng X" == "X").
 _DIRECTION_PREFIX = re.compile(
-    r"\A(?:(?:tang|giam)\s*(?:/\s*)?(?:\(?\s*(?:tang|giam)\s*\)?)?\s+)"
+    r"\A(?:(?:tang|giam)\s*(?:/\s*)?(?:\(?\s*(?:tang|giam)\s*\)?)?\s+|thay doi\s+)"
 )
 _GAIN_LOSS_PREFIX = re.compile(r"\A(?:lai|lo)(?:\s*/?\s*\(?\s*(?:lai|lo)\s*\)?)?\s+thuan\b")
 _INCOME_EXPENSE_PAIR = re.compile(
@@ -134,6 +145,7 @@ def label_key_v1(label: str | None) -> LabelKey:
     text = _DIRECTION_PREFIX.sub("", text)
     # "Lưu chuyển tiền thuần từ/(sử dụng vào) ..." and "... sử dụng vào ..." are one line.
     text = re.sub(r"\b(?:tu\s+)?su dung vao(?:\s+tu)?\b", "tu", text)
+    text = re.sub(r"\btien thuan cho hoat dong\b", "tien thuan tu hoat dong", text)
     text = _SPACE.sub(" ", text).strip()
     return LabelKey(text, folded, enumerator, tuple(removed))
 

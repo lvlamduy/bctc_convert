@@ -171,9 +171,18 @@ def classify_table_v1(source: SourceTable, catalog: PrimaryCatalog) -> dict[str,
 
     keys = _row_keys(source.table)
     hits = {}
+    # Only keys that identify an item in exactly one statement discriminate
+    # (e.g. "vốn điều lệ" names a balance-sheet line and a cash-flow line).
+    owners = {
+        key: {statement for statement, sc in catalog.statements.items()
+              if any(hit.kind == "ITEM" for hit in sc.lookup(key))}
+        for key in set(keys)
+    }
     for statement, statement_catalog in catalog.statements.items():
         targets = set()
         for key in keys:
+            if owners[key] != {statement}:
+                continue
             for hit in statement_catalog.lookup(key):
                 if hit.kind == "ITEM":
                     targets.add(hit.target)
@@ -260,6 +269,7 @@ class LogicalRow:
     parent_row: int | None = None
     parent_basis: str | None = None
     parent_conflict: dict[str, Any] | None = None
+    alt_parent_row: int | None = None
 
     @property
     def has_numeric(self) -> bool:
@@ -485,10 +495,19 @@ def _opening_candidates(rows: list[LogicalRow], catalog: PrimaryCatalog, stateme
     return found
 
 
+MIN_HITS_TO_START_INSTANCE = 5
+
+
 def assemble_document_instances_v1(
-    tables: list[SourceTable], catalog: PrimaryCatalog
+    tables: list[SourceTable], catalog: PrimaryCatalog, *, notes_start_page: int | None = None
 ) -> tuple[list[StatementInstance], list[SourceTable]]:
-    """Group classified tables into statement instances in document order."""
+    """Group classified tables into statement instances in document order.
+
+    A statement-like table printed after the notes section has started is a
+    note (commitment schedules, restated comparatives), not the statement. A
+    table with a weak fingerprint may only continue an instance of the same
+    statement on the same or the previous page; it never starts one.
+    """
 
     tables = sorted(tables, key=SourceTable.order_key)
     instances: list[StatementInstance] = []
@@ -499,6 +518,18 @@ def assemble_document_instances_v1(
     counts: Counter[str] = Counter()
     for source in tables:
         decision = source.classification["decision"]
+        if decision in catalog.statements and notes_start_page is not None and source.physical_page > notes_start_page:
+            source.classification = {**source.classification, "decision": "NOT_PRIMARY",
+                                     "reason": "STATEMENT_LIKE_TABLE_AFTER_NOTES_START",
+                                     "statement_candidate": decision, "notes_start_page": notes_start_page}
+            decision = "NOT_PRIMARY"
+        if decision in catalog.statements and source.classification["fingerprint_hits"][decision] < MIN_HITS_TO_START_INSTANCE:
+            open_instance = current.get(decision)
+            if open_instance is None or source.physical_page - open_instance.tables[-1].physical_page > 1:
+                source.classification = {**source.classification, "decision": "NOT_PRIMARY",
+                                         "reason": "WEAK_FINGERPRINT_WITHOUT_ADJACENT_INSTANCE",
+                                         "statement_candidate": decision}
+                decision = "NOT_PRIMARY"
         if decision not in catalog.statements:
             others.append(source)
             continue
@@ -854,6 +885,7 @@ def assign_parents_v1(instance: StatementInstance) -> None:
             row.parent_row, row.parent_basis = enum_parent, "PRINTED_NUMBERING"
             if path_parent is not None and path_parent != enum_parent:
                 row.parent_conflict = {"gemini_path_parent": path_parent, "numbering_parent": enum_parent}
+                row.alt_parent_row = path_parent
         elif path_parent is not None:
             row.parent_row, row.parent_basis = path_parent, "GEMINI_HIERARCHY_PATH"
         else:

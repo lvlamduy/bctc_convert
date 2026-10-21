@@ -41,7 +41,7 @@ from bctc_ai.primary_statements.source_v1 import (
     selected_section_titles_v1,
     selected_table_label_census_v1,
 )
-from bctc_ai.primary_statements.text_v1 import label_key_v1
+from bctc_ai.primary_statements.text_v1 import fold_vietnamese, label_key_v1
 from bctc_ai.primary_statements.validation_v1 import load_equation_config_v1, validate_instance_v1
 
 PIPELINE_VERSION = "PRIMARY_STATEMENT_PIPELINE_V1"
@@ -59,6 +59,7 @@ class DocumentRun:
     presentation_receipts: list[dict[str, Any]]
     statement_status: dict[str, Any] = field(default_factory=dict)
     validations: dict[str, list[Any]] = field(default_factory=dict)
+    notes_start_page: int | None = None
 
 
 def candidate_pages_v1(
@@ -105,11 +106,25 @@ def candidate_pages_v1(
                 "CATALOG_FINGERPRINT" if best >= PREFILTER_MIN_HITS else
                 "NO_TABLES" if not page["tables"] else "NO_PRIMARY_SIGNAL"
             )
-    by_version_titles: dict[str, list[str]] = defaultdict(list)
+    by_version_titles: dict[str, list[tuple[str, str]]] = defaultdict(list)
     for row in titles:
         if row["title_exact"]:
-            by_version_titles[row["page_json_version_id"]].append(row["title_exact"])
+            by_version_titles[row["page_json_version_id"]].append((row["title_exact"], row["content_kind"]))
     return census, by_version_titles
+
+
+def notes_start_page_v1(document, titles, first_primary_page: int | None) -> int | None:
+    """First page after the statements whose note section carries a "Thuyết minh" title."""
+
+    if first_primary_page is None:
+        return None
+    for page in document.pages:
+        if page.physical_page <= first_primary_page:
+            continue
+        for title, kind in titles.get(page.page_json_version_id, []):
+            if kind == "FINANCIAL_NOTE" and "thuyet minh" in fold_vietnamese(title):
+                return page.physical_page
+    return None
 
 
 def run_corpus_v1(
@@ -156,8 +171,10 @@ def run_document_v1(document, census, titles, loaded, catalog, rules_path, equat
                 for value, column in zip(row.get("values_exact") or [], source.table.get("columns") or [], strict=False):
                     if column.get("value_kind") == "MONEY":
                         document_roles = document_roles.merge(evidence_roles_v1(value))
-    instances, others = assemble_document_instances_v1(tables, catalog)
-    document_titles = [title for page in document.pages for title in titles.get(page.page_json_version_id, [])]
+    statement_pages = [source.physical_page for source in tables if source.classification["decision"] in catalog.statements]
+    notes_start = notes_start_page_v1(document, titles, min(statement_pages) if statement_pages else None)
+    instances, others = assemble_document_instances_v1(tables, catalog, notes_start_page=notes_start)
+    document_titles = [title for page in document.pages for title, _ in titles.get(page.page_json_version_id, [])]
     page_sections = {
         page.page_json_version_id: _page_sections(loaded[page.page_json_version_id]["page_json"])
         for page in document.pages if page.page_json_version_id in loaded
@@ -179,6 +196,7 @@ def run_document_v1(document, census, titles, loaded, catalog, rules_path, equat
         dispositions[instance.key] = map_instance_rows_v1(instance, catalog)
     receipts = resolve_duplicate_presentations_v1(instances, dispositions)
     run = DocumentRun(document, page_census, tables, instances, dispositions, others, receipts)
+    run.notes_start_page = notes_start
     for instance in instances:
         run.validations[instance.key] = validate_instance_v1(instance, dispositions[instance.key], catalog, equations)
     run.statement_status = _statement_status(run)

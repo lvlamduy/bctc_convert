@@ -50,10 +50,24 @@ class ItemSpec:
     requires_top_level: bool
     requires_section: str | None
     requires_values: bool
+    forbids_ancestor: tuple[str, ...] = ()
+    forbids_preceded_by: tuple[str, ...] = ()
 
     @property
     def constrained(self) -> bool:
-        return bool(self.requires_parent or self.requires_top_level or self.requires_section or self.requires_values)
+        return bool(self.requires_parent or self.requires_top_level or self.requires_section or self.requires_values
+                    or self.forbids_ancestor or self.forbids_preceded_by)
+
+
+@dataclass(frozen=True)
+class SourceOnlySpec:
+    reason: str
+    requires_parent: tuple[str, ...] = ()
+    requires_preceded_by: tuple[str, ...] = ()
+
+    @property
+    def constrained(self) -> bool:
+        return bool(self.requires_parent or self.requires_preceded_by)
 
 
 @dataclass(frozen=True)
@@ -61,6 +75,7 @@ class AliasHit:
     kind: str  # ITEM | PSEUDO_HEADING | SOURCE_ONLY | STRUCTURAL
     target: str  # ReportNormId as text, pseudo key, or reason
     alias_text: str
+    source_only: SourceOnlySpec | None = None
 
 
 @dataclass
@@ -142,7 +157,9 @@ def load_primary_catalog_v1(project_root: Path) -> PrimaryCatalog:
             schema_item = by_key[(statement, rnid)]
             entry = raw_items.get(rnid, {})
             parents = tuple(str(value) for value in entry.get("requires_parent", ()) or ())
-            for parent in parents:
+            forbidden = tuple(str(value) for value in entry.get("forbids_ancestor", ()) or ())
+            not_after = tuple(str(value) for value in entry.get("forbids_preceded_by", ()) or ())
+            for parent in parents + forbidden + not_after:
                 _require(parent in pseudo or (parent.isdigit() and int(parent) in set(ordered)),
                          f"{statement}/{rnid} requires an unknown parent {parent}")
             items[rnid] = ItemSpec(
@@ -158,6 +175,8 @@ def load_primary_catalog_v1(project_root: Path) -> PrimaryCatalog:
                 requires_top_level=bool(entry.get("requires_top_level", False)),
                 requires_section=entry.get("requires_section"),
                 requires_values=bool(entry.get("requires_values", False)),
+                forbids_ancestor=forbidden,
+                forbids_preceded_by=not_after,
             )
         index: dict[str, list[AliasHit]] = defaultdict(list)
 
@@ -176,8 +195,13 @@ def load_primary_catalog_v1(project_root: Path) -> PrimaryCatalog:
             for text in value.get("aliases", []):
                 add(text, AliasHit("PSEUDO_HEADING", key, text))
         for entry in spec.get("source_only", []) or []:
+            only = SourceOnlySpec(
+                entry["reason"],
+                tuple(str(value) for value in entry.get("requires_parent", ()) or ()),
+                tuple(str(value) for value in entry.get("requires_preceded_by", ()) or ()),
+            )
             for text in entry["aliases"]:
-                add(text, AliasHit("SOURCE_ONLY", entry["reason"], text))
+                add(text, AliasHit("SOURCE_ONLY", entry["reason"], text, only))
         for entry in spec.get("structural", []) or []:
             for text in entry["aliases"]:
                 add(text, AliasHit("STRUCTURAL", entry["reason"], text))
@@ -185,9 +209,12 @@ def load_primary_catalog_v1(project_root: Path) -> PrimaryCatalog:
             kinds = {hit.kind for hit in hits}
             if len(hits) == 1:
                 continue
-            _require(kinds == {"ITEM"} or (kinds <= {"ITEM", "PSEUDO_HEADING"} and all(
-                hit.kind == "PSEUDO_HEADING" or items[int(hit.target)].constrained for hit in hits
-            )), f"{statement} alias key {key!r} mixes dispositions {sorted(kinds)}")
+            _require(kinds == {"ITEM"} or (kinds <= {"ITEM", "PSEUDO_HEADING", "SOURCE_ONLY"} and all(
+                hit.kind == "PSEUDO_HEADING"
+                or (hit.kind == "SOURCE_ONLY" and hit.source_only.constrained)
+                or (hit.kind == "ITEM" and items[int(hit.target)].constrained)
+                for hit in hits
+            )), f"{statement} alias key {key!r} mixes dispositions {sorted(kinds)} without constraints")
             item_hits = [hit for hit in hits if hit.kind == "ITEM"]
             by_branch: dict[str | None, list[ItemSpec]] = defaultdict(list)
             for hit in item_hits:
@@ -215,10 +242,14 @@ def load_primary_catalog_v1(project_root: Path) -> PrimaryCatalog:
                     "branch": item.branch, "scope": list(item.scope), "parent": item.schema_parent_id,
                     "requires_parent": list(item.requires_parent), "top": item.requires_top_level,
                     "requires_section": item.requires_section, "requires_values": item.requires_values,
+                    "forbids_ancestor": list(item.forbids_ancestor),
+                    "forbids_preceded_by": list(item.forbids_preceded_by),
                 }
                 for item in catalog.items.values()
             ],
-            "index": {key: [[hit.kind, hit.target] for hit in hits] for key, hits in sorted(catalog.index.items())},
+            "index": {key: [[hit.kind, hit.target, None if hit.source_only is None else
+                             [list(hit.source_only.requires_parent), list(hit.source_only.requires_preceded_by)]]
+                            for hit in hits] for key, hits in sorted(catalog.index.items())},
         }
         for statement, catalog in statements.items()
     }
