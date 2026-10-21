@@ -29,6 +29,7 @@ from bctc_ai.primary_statements.numbers_v1 import (
 from bctc_ai.primary_statements.periods_v1 import (
     duration_lane_period_v1,
     instant_lane_period_v1,
+    printed_dates_v1,
     statement_period_context_v1,
 )
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese, label_key_v1
@@ -592,6 +593,7 @@ def resolve_instance_lanes_v1(
     catalog: PrimaryCatalog,
     document_roles: SeparatorRoles,
     other_page_sections: list[dict[str, Any]] | None = None,
+    document_context_texts: list[str] | None = None,
 ) -> None:
     """Separator roles, cell parsing, lane headers, units and periods of one instance.
 
@@ -661,6 +663,9 @@ def resolve_instance_lanes_v1(
                 word in folded for words in _TITLE_HINTS.values() for word in words
             ):
                 context_texts.append(text)
+    for text in document_context_texts or []:
+        if text not in context_texts:
+            context_texts.append(text)
     context = statement_period_context_v1(context_texts)
     instance.period_context = {
         "reporting_date": context.reporting_date, "months": context.months, "quarter": context.quarter,
@@ -678,22 +683,41 @@ def resolve_instance_lanes_v1(
             prose_units += [("PAGE_SECTION_TEXT", u) for u in units_in_prose_v1(text, source_kind="PAGE_SECTION_TEXT")]
         for text in section["table_units"]:
             prose_units += [("PAGE_TABLE_UNIT_FIELD", u) for u in units_in_prose_v1(text, source_kind="PAGE_TABLE_UNIT_FIELD")]
+    def read_period(text):
+        if statement_catalog.period_basis == "INSTANT":
+            return instant_lane_period_v1(text, context)
+        return duration_lane_period_v1(text, context)
+
+    def header_text(source, columns, lane_index):
+        column = source.table["columns"][columns[lane_index] - 1]
+        return "\n".join(nfc(part) for part in column.get("header_path_exact") or [] if part) or None
+
+    # A table whose own lane headers name the same period twice cannot say
+    # which lane is which: its cells are held and its headers do not vote.
+    ambiguous_tables = set()
+    for source, columns in zip(instance.tables, instance.lane_columns, strict=True):
+        if len(columns) != lane_count:
+            continue
+        keys = [read_period(text).key for text in (header_text(source, columns, i) for i in range(lane_count)) if text]
+        keys = [key for key in keys if key]
+        if len(keys) != len(set(keys)):
+            ambiguous_tables.add(source.order_key())
+    if ambiguous_tables and len(ambiguous_tables) == len({source.order_key() for source in instance.tables}):
+        ambiguous_tables = set()
     instance.lanes = []
     for lane_index in range(lane_count):
         headers = []
         for source, columns in zip(instance.tables, instance.lane_columns, strict=True):
             column = source.table["columns"][columns[lane_index] - 1]
             parts = [nfc(part) for part in column.get("header_path_exact") or [] if part]
-            headers.append({"table": source.locator, "column_ordinal": columns[lane_index], "header_path_exact": parts})
-        texts = ["\n".join(item["header_path_exact"]) for item in headers if item["header_path_exact"]]
+            headers.append({"table": source.locator, "column_ordinal": columns[lane_index], "header_path_exact": parts,
+                            "period_ambiguous_table": source.order_key() in ambiguous_tables})
+        texts = ["\n".join(item["header_path_exact"]) for item in headers
+                 if item["header_path_exact"] and not item["period_ambiguous_table"]]
         lane = Lane(lane_index, headers, texts[0] if texts else None)
         descriptors = []
         for text in dict.fromkeys(texts):
-            if statement_catalog.period_basis == "INSTANT":
-                descriptor = instant_lane_period_v1(text, context)
-            else:
-                descriptor = duration_lane_period_v1(text, context)
-            descriptors.append(descriptor)
+            descriptors.append(read_period(text))
         keys = {d.key for d in descriptors}
         if not descriptors:
             lane.period = {"basis": "UNRESOLVED", "key": None, "resolution": "UNRESOLVED", "reason": "NO_PRINTED_LANE_HEADER"}
@@ -729,12 +753,64 @@ def resolve_instance_lanes_v1(
             lane.reasons.append("UNIT_UNRESOLVED")
         lane.status = "RESOLVED" if not lane.reasons else "UNRESOLVED"
         instance.lanes.append(lane)
+    for row in instance.rows:
+        key = (row.locator["physical_page"], row.locator["section_ordinal"], row.locator["table_ordinal"])
+        if key in ambiguous_tables:
+            for cell in row.cells:
+                if cell.state in {"VALUE", "PRINTED_ZERO", "DASH"}:
+                    cell.state, cell.value = "PERIOD_AMBIGUOUS", None
+                    cell.reason = "SOURCE_TABLE_LANE_HEADERS_NAME_ONE_PERIOD_TWICE"
     keys = [lane.period.get("key") for lane in instance.lanes if lane.period and lane.period.get("key")]
     duplicates = [key for key, count in Counter(keys).items() if count > 1]
     for lane in instance.lanes:
         if lane.period and lane.period.get("key") in duplicates:
             lane.status = "UNRESOLVED"
             lane.reasons.append("DUPLICATE_PERIOD_LANE")
+
+
+def rebind_document_period_context_v1(
+    instances: list[StatementInstance],
+    catalog: PrimaryCatalog,
+    document_roles: SeparatorRoles,
+    page_sections_of,
+) -> None:
+    """Bind a statement whose own pages print no reporting year to the report's date.
+
+    Applies only when the statement's own printed context has no date, year,
+    range or conflict, and every other statement of the document that prints
+    a reporting date prints the same single date. Lanes are re-read with those
+    printed statement titles as context; the result is kept only if it
+    resolves more lanes, without conflict, and every quarter in the lane keys
+    is the calendar quarter of that date. The instance records the donors.
+    """
+
+    donors = [i for i in instances if i.period_context.get("reporting_date") and not i.period_context.get("conflict")]
+    dates = {i.period_context["reporting_date"] for i in donors}
+    if len(dates) != 1:
+        return
+    date = next(iter(dates))
+    quarter = (int(date[5:7]) + 2) // 3
+    for instance in instances:
+        context = instance.period_context
+        if any(context.get(key) for key in ("reporting_date", "year", "conflict", "range_start")):
+            continue
+        unresolved = sum("PERIOD_UNRESOLVED" in lane.reasons for lane in instance.lanes)
+        donor_texts = [text for donor in donors if donor.statement != instance.statement
+                       for text in donor.period_context["evidence"] if date in printed_dates_v1(text)]
+        if not unresolved or not donor_texts:
+            continue
+        before = (instance.lanes, instance.period_context, list(instance.reasons))
+        resolve_instance_lanes_v1(instance, catalog, document_roles, page_sections_of(instance), list(dict.fromkeys(donor_texts)))
+        keys = [(lane.period or {}).get("key") or "" for lane in instance.lanes]
+        quarters = {int(m.group(1)) for key in keys for m in re.finditer(r"(?:QUARTER:|YTD:Q)(\d)", key)}
+        if (instance.period_context.get("conflict") or quarters - {quarter}
+                or sum("PERIOD_UNRESOLVED" in lane.reasons for lane in instance.lanes) >= unresolved):
+            instance.lanes, instance.period_context, instance.reasons = before
+            continue
+        instance.period_context["document_context"] = {
+            "basis": "DOCUMENT_PRIMARY_STATEMENT_REPORTING_DATE", "reporting_date": date,
+            "donor_instances": sorted({d.key for d in donors if d.statement != instance.statement}),
+        }
 
 
 _FORM_CODE = re.compile(r"\bb0[1-5]a?\s*/\s*tctd(?P<hn>\s*[-–]\s*hn)?\b")

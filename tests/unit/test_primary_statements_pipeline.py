@@ -61,16 +61,17 @@ def section(tables, *, statement="BALANCE_SHEET", kind="PRIMARY_STATEMENT", titl
 
 def run_doc(catalog, equations, pages):
     selected = []
-    census, loaded = {}, {}
+    census, loaded, titles = {}, {}, {}
     for number, sections in enumerate(pages, 1):
         vid = "gfpstorev1:json:" + f"{number:064x}"
         selected.append(SelectedPage(number, vid, f"page-{number}", "PRIMARY_FINANCIAL_STATEMENT", "0" * 64))
         census[vid] = {"candidate": True, "primary_metadata": True, "max_hits": {}, "tables": 1,
                        "census_reason": "PRIMARY_METADATA"}
         loaded[vid] = {"page_json": {"status": "PRIMARY_FINANCIAL_STATEMENT", "sections": sections}}
+        titles[vid] = [(s["title_exact"], s["content_kind"]) for s in sections if s.get("title_exact")]
     document = SelectedDocument(1, "synthetic.pdf", "a" * 64, 10, len(pages), "gjfpdocv1:" + "b" * 64,
                                 "gfdmv1:manifest:" + "c" * 64, "gjfcdmsv1:selection:" + "d" * 64, tuple(selected))
-    return run_document_v1(document, census, {}, loaded, catalog, ROOT / "config/mapping/lctt-v2.yaml", equations)
+    return run_document_v1(document, census, titles, loaded, catalog, ROOT / "config/mapping/lctt-v2.yaml", equations)
 
 
 def result_of(run, catalog):
@@ -367,3 +368,77 @@ def test_catalog_change_changes_pinned_identity(tmp_path, monkeypatch, catalog):
     monkeypatch.setattr(catalog_v1, "CATALOG_RELATIVE_PATH", str(path))
     changed = load_primary_catalog_v1(ROOT)
     assert changed.catalog_sha256 != catalog.catalog_sha256
+
+
+def test_document_scope_propagates_from_proven_statement_and_absence_scan(catalog, equations):
+    plain = "BÁO CÁO TÌNH HÌNH TÀI CHÍNH\nTại ngày 30 tháng 6 năm 2025"
+    kq_title = "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT\nCho kỳ sáu tháng kết thúc ngày 30 tháng 6 năm 2025"
+    kq_headers = [["Kỳ sáu tháng kết thúc ngày 30/6/2025", "Triệu VND"]]
+    kq_rows = [row("Thu nhập lãi và các khoản thu nhập tương tự", ["10"]),
+               row("Chi phí lãi và các chi phí tương tự", ["(4)"]),
+               row("Thu nhập lãi thuần", ["6"]),
+               row("Thu nhập từ hoạt động dịch vụ", ["2"]),
+               row("Chi phí hoạt động dịch vụ", ["(1)"]),
+               row("Lãi thuần từ hoạt động dịch vụ", ["1"])]
+    pages = [[section([table(balance_sheet_rows(), BS_HEADERS, title=plain)], title=plain)],
+             [section([table(kq_rows, kq_headers, title=kq_title)], statement="INCOME_STATEMENT", title=kq_title)]]
+    result = result_of(run_doc(catalog, equations, pages), catalog)
+    bs = next(i for i in result["instances"] if i["statement"] == "CDKT")
+    assert bs["scope"] == "CONSOLIDATED" and bs["scope_basis"]["basis"] == "DOCUMENT_PRIMARY_STATEMENT_SCOPE"
+
+    report_title = "BÁO CÁO TÀI CHÍNH GIỮA NIÊN ĐỘ"
+    pages = [[section([table(balance_sheet_rows(), BS_HEADERS, title=plain)], title=plain)],
+             [section([], kind="FINANCIAL_NOTE", title=report_title)]]
+    result = result_of(run_doc(catalog, equations, pages), catalog)
+    bs = result["instances"][0]
+    assert bs["scope"] == "SEPARATE"
+    assert bs["scope_basis"]["basis"] == "NO_CONSOLIDATION_MARKER_AFTER_FULL_DOCUMENT_TITLE_SCAN"
+
+
+def _quarter_income_page(quarter_word):
+    title = "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT GIỮA NIÊN ĐỘ"
+    headers = [[quarter_word, "Năm nay\nTriệu đồng"], [quarter_word, "Năm trước\nTriệu đồng"]]
+    rows = [row("Thu nhập lãi và các khoản thu nhập tương tự", ["10", "9"]),
+            row("Chi phí lãi và các chi phí tương tự", ["(4)", "(3)"]),
+            row("Thu nhập lãi thuần", ["6", "6"]),
+            row("Thu nhập từ hoạt động dịch vụ", ["2", "2"]),
+            row("Chi phí hoạt động dịch vụ", ["(1)", "(1)"]),
+            row("Lãi thuần từ hoạt động dịch vụ", ["1", "1"])]
+    return [section([table(rows, headers, title=title)], statement="INCOME_STATEMENT", title=title)]
+
+
+def test_statement_without_printed_year_binds_to_report_date_only_when_quarter_agrees(catalog, equations):
+    title = "BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT\nTại ngày 30 tháng 9 năm 2025"
+    bs = bs_page(balance_sheet_rows(), title=title, headers=[["30/09/2025", "Triệu VND"], ["31/12/2024", "Triệu VND"]])
+    result = result_of(run_doc(catalog, equations, [bs, _quarter_income_page("Quý III")]), catalog)
+    income = next(i for i in result["instances"] if i["statement"] == "KQKD")
+    assert [lane["period"]["key"] for lane in income["lanes"]] == [
+        "DURATION:QUARTER:3:2025", "DURATION:QUARTER:3:PRIOR_YEAR_OF(2025)"]
+    assert income["period_context"]["document_context"]["basis"] == "DOCUMENT_PRIMARY_STATEMENT_REPORTING_DATE"
+
+    result = result_of(run_doc(catalog, equations, [bs, _quarter_income_page("Quý II")]), catalog)
+    income = next(i for i in result["instances"] if i["statement"] == "KQKD")
+    assert all(lane["period"]["key"] is None for lane in income["lanes"])
+    assert "document_context" not in income["period_context"]
+
+
+def test_continuation_table_naming_one_period_twice_holds_only_its_cells(catalog, equations):
+    headers = [["Số dư cuối quý"], ["Số dư đầu năm"]]
+    title = "BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT\nQUÝ III/2025"
+    first = table(balance_sheet_rows(), headers, title=title, unit="Đơn vị: triệu đồng")
+    liabilities = [row("Các khoản nợ Chính phủ và NHNN", ["5", "4"]),
+                   row("Tiền gửi và vay các TCTD khác", ["40", "30"]),
+                   row("Tiền gửi của khách hàng", ["700", "600"]),
+                   row("Phát hành giấy tờ có giá", ["30", "20"]),
+                   row("Các khoản nợ khác", ["10", "9"]),
+                   row("Vốn chủ sở hữu", ["265", "267"]),
+                   row("Vốn điều lệ", ["200", "200"])]
+    second = table(liabilities, [["Số dư cuối quý"], ["Số dư cuối quý"]], title=None)
+    pages = [[section([first], title=title)], [section([second], title=None)]]
+    result = result_of(run_doc(catalog, equations, pages), catalog)
+    [instance] = result["instances"]
+    assert [lane["period"]["key"] for lane in instance["lanes"]] == [
+        "INSTANT:END_OF_QUARTER(Q3:2025)", "INSTANT:OPENING_OF_FISCAL_YEAR(Q3:2025)"]
+    assert cells_by(result, 4310, "INSTANT:END_OF_QUARTER(Q3:2025)")[0]["acceptance"] == "ACCEPTED"
+    deposits = [c for c in result["cells"] if c["label_exact"] == "Tiền gửi của khách hàng"]
+    assert deposits and all(c["acceptance"] == "HOLD" and c["value"] is None and c["raw"] for c in deposits)

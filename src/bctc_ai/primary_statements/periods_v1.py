@@ -150,7 +150,8 @@ def statement_period_context_v1(texts: list[str]) -> StatementPeriodContext:
     for text in texts:
         if not text:
             continue
-        folded = fold_vietnamese(text)
+        # A transcribed literal "\n" is a line break, not letters of the next word.
+        folded = fold_vietnamese(text.replace("\\n", "\n"))
         used = False
         spans = []
         for match in _FISCAL_YEAR_END.finditer(folded):
@@ -352,7 +353,7 @@ def duration_lane_period_v1(header: str, context: StatementPeriodContext) -> Per
             through = _ROMAN.get(quarter_match.group("q")) or int(quarter_match.group("q"))
         elif re.search(r"\bquy nay\b|\bcuoi quy\b", folded):
             through = context.quarter
-            if through is None:
+            if through is None and not context.reporting_date:
                 return _unresolved("YTD_THROUGH_THIS_QUARTER_WITHOUT_PRINTED_QUARTER", evidence + context.evidence)
         elif context.quarter is not None and not context.conflict:
             through = context.quarter
@@ -361,10 +362,14 @@ def duration_lane_period_v1(header: str, context: StatementPeriodContext) -> Per
                 f"FIRST_{context.first_months_of_fiscal_year}M_OF_FY" if context.first_months_of_fiscal_year else None
             )
         )
+        if through_text is None and context.reporting_date and not context.conflict:
+            # "Lũy kế từ đầu năm (đến cuối quý này)" under a printed period end:
+            # cumulative to that printed day-month of the lane's printed year.
+            through_text = f"TO_{context.reporting_date[5:]}"
         if through_text is None:
             return _unresolved("YTD_WITHOUT_PRINTED_END", evidence + context.evidence)
         return PeriodDescriptor(
-            DURATION, role, f"DURATION:YTD:{through_text}:{year_ref}", "CONTEXT_BOUND" if through and not quarter_match else year_resolution,
+            DURATION, role, f"DURATION:YTD:{through_text}:{year_ref}", year_resolution if quarter_match else "CONTEXT_BOUND",
             (("grain", "YTD"), ("through", through_text), ("year", year_ref)), evidence + context.evidence,
         )
     if re.search(r"\bquy nay\b|\bquy truoc\b", folded):

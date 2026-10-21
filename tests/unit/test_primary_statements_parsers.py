@@ -170,3 +170,17 @@ def test_signing_date_and_conflicting_reporting_dates():
     conflict = statement_period_context_v1(["Tại ngày 30 tháng 6 năm 2025", "Tại ngày 31 tháng 12 năm 2025"])
     assert conflict.conflict == "MULTIPLE_PRINTED_REPORTING_DATES"
     assert _period("Số cuối kỳ", ["Tại ngày 30 tháng 6 năm 2025", "Tại ngày 31 tháng 12 năm 2025"], "I").basis == "UNRESOLVED"
+
+
+def test_ytd_through_this_quarter_binds_to_printed_period_end():
+    context = ["Cho kỳ kế toán từ ngày 01/01/2025 đến ngày 30/09/2025"]
+    descriptor = _period("Lũy kế từ đầu năm đến cuối quý này\nNăm nay", context)
+    assert descriptor.basis != "UNRESOLVED"
+    assert "TO_09-30" in descriptor.key or ":Q3:" in descriptor.key
+    assert descriptor.resolution == "CONTEXT_BOUND"
+    assert _period("Lũy kế từ đầu năm đến cuối quý này\nNăm nay", []).basis == "UNRESOLVED"
+
+
+def test_transcribed_literal_line_break_does_not_glue_words():
+    context = statement_period_context_v1(["BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT\nQuý II năm 2026"])
+    assert context.quarter == 2 and context.year == 2026

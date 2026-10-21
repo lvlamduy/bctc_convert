@@ -22,6 +22,7 @@ from bctc_ai.primary_statements.assembly_v1 import (
     classify_table_v1,
     instance_page_sections,
     iter_source_tables,
+    rebind_document_period_context_v1,
     resolve_cash_flow_branch_v1,
     resolve_document_scope_v1,
     resolve_instance_lanes_v1,
@@ -196,6 +197,9 @@ def run_document_v1(document, census, titles, loaded, catalog, rules_path, equat
     for instance in instances:
         resolve_cash_flow_branch_v1(instance, rules_path, catalog)
         resolve_instance_lanes_v1(instance, catalog, document_roles, instance_page_sections(instance, page_sections))
+    rebind_document_period_context_v1(instances, catalog, document_roles,
+                                      lambda instance: instance_page_sections(instance, page_sections))
+    for instance in instances:
         assign_parents_v1(instance)
         dispositions[instance.key] = map_instance_rows_v1(instance, catalog)
     receipts = resolve_duplicate_presentations_v1(instances, dispositions)
