@@ -1056,3 +1056,279 @@ def test_owned_relative_year_route_does_not_invent_or_borrow_missing_period_auth
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
     assert records == original
+
+
+def _document_annual_relative_note_records():
+    records = _owned_relative_year_period_records()
+    note_table = records[0]["page_json"]["sections"][0]["tables"][0]
+    for column, label in zip(note_table["columns"], ("Năm nay", "Năm trước"), strict=True):
+        column["header_path_exact"] = [label]
+    cash_flow = _primary_page([_row("Lưu chuyển tiền thuần từ hoạt động kinh doanh", "7", "8")])
+    section = cash_flow["sections"][0]
+    section["statement_type"] = "CASH_FLOW"
+    section["title_exact"] = (
+        "Báo cáo lưu chuyển tiền tệ riêng\nCho năm tài chính kết thúc ngày 31 tháng 12 năm 2026"
+    )
+    section["tables"][0]["columns"] = [
+        {"value_kind": "MONEY", "header_path_exact": [label]}
+        for label in ("Năm nay", "Năm trước")
+    ]
+    records.append(_primary_record(
+        cash_flow, page_json_version_id="gfpstorev1:json:" + "e" * 64,
+        physical_page=3, selected_page_ordinal=3,
+    ))
+    return records
+
+
+def _append_document_annual_cash_flow_continuation(records):
+    continuation = deepcopy(records[2])
+    continuation.update(page_json_version_id="gfpstorev1:json:" + "f" * 64,
+                        physical_page=4, selected_page_ordinal=4)
+    records.append(continuation)
+    return continuation
+
+
+@pytest.mark.parametrize("presentation", [
+    "matching", "compatible_cash_flow_continuation", "restated_comparative", "header_units",
+    "owned_annual_narrative", "company_prefixed_caption",
+])
+def test_document_annual_period_requires_two_distinct_typed_owned_statement_sources(presentation):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _document_statement_period_inventory,
+    )
+
+    records = _document_annual_relative_note_records()
+    if presentation == "compatible_cash_flow_continuation":
+        _append_document_annual_cash_flow_continuation(records)
+    elif presentation == "restated_comparative":
+        for record in records:
+            record["page_json"]["sections"][0]["tables"][0]["columns"][1]["header_path_exact"][0] += " (Trình bày lại)"
+    elif presentation == "header_units":
+        for record in records:
+            for column in record["page_json"]["sections"][0]["tables"][0]["columns"]:
+                column["header_path_exact"].append("Triệu đồng")
+    elif presentation == "owned_annual_narrative":
+        section = records[2]["page_json"]["sections"][0]
+        section["title_exact"] = "Báo cáo lưu chuyển tiền tệ riêng"
+        section["narratives_exact"].append("Cho năm tài chính kết thúc ngày 31 tháng 12 năm 2026")
+    elif presentation == "company_prefixed_caption":
+        for record in records[1:]:
+            section = record["page_json"]["sections"][0]
+            section["title_exact"] = "Ngân hàng thương mại cổ phần Ví dụ\n" + section["title_exact"]
+    original = deepcopy(records)
+    inventory = _document_statement_period_inventory(records, compiled_specs=_adapter_compiled())
+    annual = inventory["document_annual_period_receipt"]
+    assert type(annual) is dict and type(annual.get("receipt_id")) is str
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is True, proof["reasons"]
+    assert proof["status"] == "PASS_AUTHENTICATED_DOCUMENT_ANNUAL_PERIOD"
+    assert any(item.get("inherited_document_annual_period_receipt") for item in proof["period_resolution_evidence"])
+    assert proof["source_period_keys_modified"] is False
+    assert proof["start_dates_inferred"] is False
+    assert proof["amounts_used_as_authority"] is False
+    assert proof["source_selectors"][0]["raw_lane_axis"]["source_lane_keys"] == [
+        ["SEMANTIC_ALIAS", "CURRENT_PERIOD"], ["SEMANTIC_ALIAS", "COMPARATIVE_PERIOD"],
+    ]
+    candidate = _candidate(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    roles = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["source_text"] for cell in roles["CURRENT_TAX_PARENT"]["values"]] == ["20", "16"]
+    assert [cell["source_text"] for cell in roles["FAMILY_ROOT_TOTAL"]["values"]] == ["(22)", "(17)"]
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing_cash_flow", "same_statement_type_only", "fake_cash_flow_caption", "conflicting_cash_flow_year",
+    "conflict_plus_matching_continuation", "unknown_scope", "entity_override", "missing_date_continuation",
+    "note_quarter_iv", "note_three_month_title", "note_six_month_title", "note_nine_month_title",
+    "note_ytd_header", "note_six_month_narrative", "note_ytd_narrative", "note_six_month_row_ancestor",
+    "note_relative_period_labels", "unknown_note_affirmative_range", "wrong_note_annual_year", "filename_only",
+    "other_document_cash_flow", "note_duplicate_year_label", "note_unknown_comparative_annotation",
+    "note_twelve_months_wrong_endpoint",
+])
+def test_document_annual_period_cannot_override_missing_conflicting_or_local_nonannual_source(mutation):
+    records = _document_annual_relative_note_records()
+    note_section = records[0]["page_json"]["sections"][0]
+    note_table = note_section["tables"][0]
+    cash_flow_section = records[2]["page_json"]["sections"][0]
+    if mutation == "missing_cash_flow":
+        records.pop()
+    elif mutation == "same_statement_type_only":
+        cash_flow_section["statement_type"] = "INCOME_STATEMENT"
+        cash_flow_section["title_exact"] = cash_flow_section["title_exact"].replace("lưu chuyển tiền tệ", "kết quả hoạt động")
+    elif mutation == "fake_cash_flow_caption":
+        cash_flow_section["title_exact"] = (
+            "Bản thống kê nội bộ riêng\nCho năm tài chính kết thúc ngày 31 tháng 12 năm 2026"
+        )
+    elif mutation in {"conflicting_cash_flow_year", "conflict_plus_matching_continuation"}:
+        if mutation == "conflict_plus_matching_continuation":
+            _append_document_annual_cash_flow_continuation(records)
+        cash_flow_section["title_exact"] = cash_flow_section["title_exact"].replace("2026", "2023")
+    elif mutation == "unknown_scope":
+        for record in records:
+            section = record["page_json"]["sections"][0]
+            section["title_exact"] = section["title_exact"].replace(" riêng", "")
+    elif mutation == "entity_override":
+        cash_flow_section["title_exact"] += "\nNgân hàng mẹ"
+    elif mutation == "missing_date_continuation":
+        continuation = _append_document_annual_cash_flow_continuation(records)
+        continuation["page_json"]["sections"][0]["title_exact"] = "Báo cáo lưu chuyển tiền tệ riêng"
+    elif mutation == "note_quarter_iv":
+        note_section["title_exact"] += " quý IV"
+    elif mutation in {"note_three_month_title", "note_six_month_title", "note_nine_month_title"}:
+        months, day = {"note_three_month_title": (3, 31), "note_six_month_title": (6, 30), "note_nine_month_title": (9, 30)}[mutation]
+        note_section["title_exact"] += (
+            "\nCho kỳ " + str(months) + " tháng kết thúc ngày " + str(day) + " tháng " + str(months) + " năm 2026"
+        )
+    elif mutation == "note_ytd_header":
+        for column in note_table["columns"]:
+            column["header_path_exact"].insert(0, "Lũy kế từ đầu năm")
+    elif mutation == "note_six_month_narrative":
+        note_section["narratives_exact"].append("Cho kỳ 6 tháng kết thúc ngày 30 tháng 6 năm 2026")
+    elif mutation == "note_ytd_narrative":
+        note_section["narratives_exact"].append("Cho kỳ lũy kế từ đầu năm đến ngày 30 tháng 9 năm 2026")
+    elif mutation == "note_six_month_row_ancestor":
+        for row in note_table["rows"]:
+            row["hierarchy_path_exact"].insert(0, "Kỳ 6 tháng kết thúc ngày 30 tháng 6 năm 2026")
+    elif mutation == "note_relative_period_labels":
+        for column, label in zip(note_table["columns"], ("Kỳ này", "Kỳ trước"), strict=True):
+            column["header_path_exact"] = [label]
+    elif mutation == "unknown_note_affirmative_range":
+        note_section["title_exact"] += "\nCho kỳ từ ngày 1 tháng 1 năm 2026 đến ngày 31 tháng 12 năm 2026"
+    elif mutation == "wrong_note_annual_year":
+        note_section["title_exact"] += "\nCho năm tài chính 2025"
+    elif mutation == "filename_only":
+        for record in records:
+            section = record["page_json"]["sections"][0]
+            section["title_exact"] = section["title_exact"].split("\nCho năm", 1)[0]
+            record["source_logical_name"] = "BCTC_rieng_nam_2026_31_12_2026.pdf"
+    elif mutation == "other_document_cash_flow":
+        records[2]["document_id"] = "another-source-document"
+    elif mutation == "note_duplicate_year_label":
+        note_table["columns"][1]["header_path_exact"] = ["Năm nay"]
+    elif mutation == "note_unknown_comparative_annotation":
+        note_table["columns"][1]["header_path_exact"] = ["Năm trước (công ty con)"]
+    else:
+        note_section["title_exact"] += "\nCho kỳ 12 tháng kết thúc ngày 30 tháng 6 năm 2026"
+    original = deepcopy(records)
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is False
+    assert proof["status"] == "ALGORITHM_HOLD"
+    assert proof["start_dates_inferred"] is False
+    assert proof["source_period_keys_modified"] is False
+    if mutation in {"note_duplicate_year_label", "note_unknown_comparative_annotation"}:
+        compiled = _adapter_compiled()
+        base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=records, compiled_specs=compiled)
+        cluster = recover_gemini_json_income_tax_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
+        assert cluster["status"] == UNRESOLVED
+        assert cluster["component_regions"] == []
+        assert cluster["reasons"] == (["SUPPLEMENTAL_ROOT_LANE_AXIS_NOT_COMPLETE"] if mutation == "note_duplicate_year_label"
+                                       else ["SUPPLEMENTAL_ROOT_UNIT_AXIS_NOT_COMPLETE"])
+    elif mutation != "other_document_cash_flow":
+        # Mixed document identity is rejected at the direct correspondence
+        # boundary above; it is not a valid whole-document evaluator input.
+        candidate = _candidate(records)
+        assert candidate["status"] == UNRESOLVED
+        assert candidate["mappings"] == []
+    assert records == original
+
+
+def test_document_annual_period_inventory_self_resealing_does_not_authenticate_altered_source_date():
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _document_statement_period_inventory,
+        _source_period_correspondence_receipt,
+    )
+
+    records = _document_annual_relative_note_records()
+    compiled = _adapter_compiled()
+    forged = deepcopy(_document_statement_period_inventory(records, compiled_specs=compiled))
+    annual = forged["document_annual_period_receipt"]
+    annual["amounts_used_as_authority"] = True
+    prefix = annual["receipt_id"].rsplit(":", 1)[0] + ":"
+    annual["receipt_id"] = prefix + canonical_json_sha256_v1({key: value for key, value in annual.items() if key != "receipt_id"})
+    prefix = forged["receipt_id"].rsplit(":", 1)[0] + ":"
+    forged["receipt_id"] = prefix + canonical_json_sha256_v1({key: value for key, value in forged.items() if key != "receipt_id"})
+    changed = deepcopy(records)
+    changed[2]["page_json"]["sections"][0]["title_exact"] = (
+        "Báo cáo lưu chuyển tiền tệ riêng\nCho năm tài chính kết thúc ngày 31 tháng 12 năm 2023"
+    )
+    original = deepcopy(changed)
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="drifted"):
+        _source_period_correspondence_receipt(
+            left_locator=_contextual_period_locator(changed[0]), right_locator=_contextual_period_locator(changed[1]),
+            left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+            page_records=changed, compiled_specs=compiled, document_period_inventory=forged,
+        )
+    assert changed == original
+
+
+@pytest.mark.parametrize("caption", ["6 tháng 2026", "For the six months ended 30 June 2026", "trong năm 2025"])
+def test_document_annual_inheritance_veto_keeps_local_duration_followed_by_year(caption):
+    records = _document_annual_relative_note_records()
+    records[0]["page_json"]["sections"][0]["title_exact"] += " " + caption
+    original = deepcopy(records)
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is False
+    assert _candidate(records)["status"] == UNRESOLVED
+    assert records == original
+
+
+@pytest.mark.parametrize("ancestor", ["Ngân hàng mẹ", "Trong quý IV"])
+def test_document_annual_inheritance_preserves_true_ancestor_only_paths(ancestor):
+    records = _document_annual_relative_note_records()
+    records[0]["page_json"]["sections"][0]["tables"][0]["rows"][0]["hierarchy_path_exact"] = [ancestor]
+    original = deepcopy(records)
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is False
+    inheritance = proof["period_resolution_evidence"][0]["inherited_document_annual_period_receipt"]
+    assert inheritance["complete"] is False
+    assert any(item["source_exact"] == ancestor for item in inheritance["local_period_surface_census"])
+    assert records == original
+
+
+@pytest.mark.parametrize("label,path_leaf", [
+    ("- Lợi nhuận được chia từ công ty con", "Lợi nhuận được chia từ công ty con"),
+    ("- Lợi nhuận của công ty con", "Lợi nhuận của công ty con"),
+])
+def test_document_annual_inheritance_does_not_turn_a_bulleted_component_leaf_into_entity_ancestry(label, path_leaf):
+    records = _document_annual_relative_note_records()
+    row = _row(label, "1", "2")
+    row["hierarchy_path_exact"] = ["Điều chỉnh các khoản:", path_leaf]
+    records[0]["page_json"]["sections"][0]["tables"][0]["rows"].append(row)
+    original = deepcopy(records)
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is True, proof["reasons"]
+    inheritance = proof["period_resolution_evidence"][0]["inherited_document_annual_period_receipt"]
+    assert inheritance["scope_receipt"]["local_entity_qualifiers"] == []
+    assert not any(item["source_exact"] == path_leaf for item in inheritance["local_period_surface_census"])
+    assert records == original
+
+
+@pytest.mark.parametrize("caption", [
+    "tháng 9 năm 2026", "từ 01/01/2026 đến 30/06/2026", "từ 2026-01-01 đến 2026-06-30",
+    "For the year ended 31 December 2025", "Q.IV năm 2026", "quí 3 năm 2026",
+    "06 tháng 2026", "tháng 09 năm 2026",
+])
+def test_document_annual_inheritance_does_not_override_other_explicit_local_period_spellings(caption):
+    records = _document_annual_relative_note_records()
+    records[0]["page_json"]["sections"][0]["title_exact"] += " " + caption
+    original = deepcopy(records)
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is False
+    assert _candidate(records)["status"] == UNRESOLVED
+    assert records == original
+
+
+@pytest.mark.parametrize("prose", [
+    "Thuế TNDN được tạm nộp hàng quý theo quy định.",
+    "Người lập báo cáo ký ngày 15 tháng 2 năm 2027.",
+    "Số liệu thuế của năm 2023 được trình bày lại trong phần thông tin so sánh.",
+])
+def test_document_annual_inheritance_retains_policy_history_and_signature_prose_without_relabeling_period(prose):
+    records = _document_annual_relative_note_records()
+    records[0]["page_json"]["sections"][0]["narratives_exact"].append(prose)
+    original = deepcopy(records)
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is True, proof["reasons"]
+    assert _candidate(records)["status"] == READY
+    assert records == original

@@ -3826,3 +3826,197 @@ def test_original_note_retains_rollforward_control_without_exporting_movement_an
             compiled_specs=compiled, query_receipt=forged,
         )
     assert records == original
+
+
+def _original_rate_business_transfer_checkpoint_records(variant="business_item"):
+    records, locator = _original_basis_fixture("RATE")
+    section = records[0]["page_json"]["sections"][0]
+    section["title_exact"] += " riêng"
+    increase, decrease = "Điều chỉnh tăng", "Điều chỉnh giảm"
+    rows = [
+        _row("Lợi nhuận kế toán trước thuế", "100", "80"),
+        _row("Thuế tính ở thuế suất 20%", "20", "16"),
+        _row(increase, "5", "4", kind="GROUP"),
+        {**_row("Chi phí không được khấu trừ", "5", "4"),
+         "hierarchy_path_exact": [increase, "Chi phí không được khấu trừ"]},
+        _row(decrease, "(2)", "(1)", kind="GROUP"),
+        {**_row("Thu nhập từ chuyển nhượng BĐS", "(2)", "(1)"),
+         "hierarchy_path_exact": [decrease, "Thu nhập từ chuyển nhượng BĐS"]},
+        _row("Chi phí thuế TNDN từ hoạt động kinh doanh", "23", "19"),
+        _row("Thu nhập từ chuyển nhượng bất động sản", "10", "8"),
+        _row("Chi phí thuế TNDN từ chuyển nhượng bất động sản", "2", "1"),
+        _row("Thuế TNDN nộp bổ sung từ các năm trước", "1", "1"),
+        _row("Chi phí thuế TNDN hiện hành", "26", "21", kind="TOTAL"),
+    ]
+    if variant in {"business_subtotal", "both_subtotals"}:
+        rows[6]["row_kind"] = "SUBTOTAL"
+    if variant in {"transfer_tax_subtotal", "both_subtotals"}:
+        rows[8]["row_kind"] = "SUBTOTAL"
+    if variant == "additional_decrease_child":
+        label = "Chuyển lỗ từ công ty con"
+        rows.insert(6, {**_row(label, "(1)", "(1)"), "hierarchy_path_exact": [decrease, label]})
+        rows[4]["values_exact"] = ["(3)", "(2)"]
+        rows[7]["values_exact"] = ["22", "18"]
+        rows[-1]["values_exact"] = ["25", "20"]
+    elif variant == "dashes":
+        for ordinal in (2, 3, 4, 5, 8, 9):
+            rows[ordinal]["values_exact"] = ["-", "-"]
+        rows[6]["values_exact"] = ["20", "16"]
+        rows[-1]["values_exact"] = ["20", "16"]
+    elif variant == "no_prior":
+        rows.pop(9)
+        rows[-1]["values_exact"] = ["25", "20"]
+    elif variant == "transfer_tax_not_inferred_from_rate":
+        rows[8]["values_exact"] = ["3", "2"]
+        rows[-1]["values_exact"] = ["27", "22"]
+    section["tables"][0]["rows"] = rows
+    return records, locator
+
+
+def _original_rate_business_transfer_checkpoint_control(records, locator):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _original_rate_business_transfer_forward_control,
+    )
+
+    compiled = _adapter_compiled()
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=compiled,
+    )
+    original = deepcopy(receipt)
+    control = _original_rate_business_transfer_forward_control(receipt, compiled_specs=compiled)
+    assert receipt == original
+    return receipt, control
+
+
+@pytest.mark.parametrize("variant", [
+    "business_item", "business_subtotal", "transfer_tax_subtotal", "both_subtotals",
+    "additional_decrease_child", "dashes", "no_prior", "transfer_tax_not_inferred_from_rate",
+])
+def test_original_rate_business_transfer_checkpoint_preserves_complete_forward_source_axis(variant):
+    records, locator = _original_rate_business_transfer_checkpoint_records(variant)
+    original = deepcopy(records)
+    receipt, control = _original_rate_business_transfer_checkpoint_control(records, locator)
+    assert control["status"] == "PASS", control.get("reasons")
+    rows = records[0]["page_json"]["sections"][0]["tables"][0]["rows"]
+    business = next(index for index, row in enumerate(rows, 1) if row["label_exact"] == "Chi phí thuế TNDN từ hoạt động kinh doanh")
+    transfer = next(index for index, row in enumerate(rows, 1) if row["label_exact"] == "Chi phí thuế TNDN từ chuyển nhượng bất động sản")
+    assert any(item["original_row_ordinal"] == business and item["proof_kind"] == "EXACT_FORWARD_RESULT"
+               for item in control["completion_proofs"])
+    assert any(item["original_row_ordinal"] == transfer
+               and item["proof_kind"] == "OBSERVED_NESTED_TRANSFER_TAX_COMPONENT_IN_EXACT_CURRENT_FORWARD_CLOSURE"
+               for item in control["completion_proofs"])
+    assert receipt["original_section_exact"]["tables"][0] == records[0]["page_json"]["sections"][0]["tables"][0]
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing_increase_group", "missing_increase_child", "missing_decrease_group", "missing_decrease_child",
+    "missing_business", "missing_transfer_income", "missing_transfer_tax", "missing_current", "unknown_tail",
+    "duplicate_business", "duplicate_prior", "blank_child", "blank_business", "blank_transfer_tax", "blank_current",
+    "foreign_child_ancestor", "foreign_current_ancestor", "group_sum_mismatch", "business_mismatch", "current_mismatch",
+    "bad_decrease_sign", "bad_increase_sign", "unsupported_business_kind", "unsupported_transfer_tax_kind", "interleaved_unknown",
+    "group_ancestry_not_self", "rate_blank", "transfer_income_non_numeric",
+])
+def test_original_rate_business_transfer_checkpoint_never_completes_incomplete_or_conflicting_source(mutation):
+    records, locator = _original_rate_business_transfer_checkpoint_records()
+    rows = records[0]["page_json"]["sections"][0]["tables"][0]["rows"]
+    missing = {"missing_increase_group": 2, "missing_increase_child": 3, "missing_decrease_group": 4,
+               "missing_decrease_child": 5, "missing_business": 6, "missing_transfer_income": 7,
+               "missing_transfer_tax": 8, "missing_current": 10}
+    blanks = {"blank_child": 3, "blank_business": 6, "blank_transfer_tax": 8, "blank_current": 10, "rate_blank": 1}
+    if mutation in missing:
+        rows.pop(missing[mutation])
+    elif mutation in blanks:
+        rows[blanks[mutation]]["values_exact"][0] = None
+    elif mutation == "unknown_tail":
+        rows.append(_row("Khoản chưa xác định", "1", "1"))
+    elif mutation == "duplicate_business":
+        rows.insert(7, deepcopy(rows[6]))
+    elif mutation == "duplicate_prior":
+        rows.insert(10, deepcopy(rows[9]))
+    elif mutation == "foreign_child_ancestor":
+        rows[3]["hierarchy_path_exact"].insert(0, "Ngân hàng mẹ")
+    elif mutation == "foreign_current_ancestor":
+        rows[-1]["hierarchy_path_exact"].insert(0, "Công ty con")
+    elif mutation == "group_sum_mismatch":
+        rows[2]["values_exact"][0] = "6"
+    elif mutation == "business_mismatch":
+        rows[6]["values_exact"][0] = "24"
+        rows[-1]["values_exact"][0] = "27"
+    elif mutation == "current_mismatch":
+        rows[-1]["values_exact"][0] = "25"
+    elif mutation == "bad_decrease_sign":
+        rows[4]["values_exact"] = ["2", "1"]
+        rows[5]["values_exact"] = ["2", "1"]
+        rows[6]["values_exact"] = ["27", "21"]
+        rows[-1]["values_exact"] = ["30", "23"]
+    elif mutation == "bad_increase_sign":
+        rows[2]["values_exact"] = ["(5)", "(4)"]
+        rows[3]["values_exact"] = ["(5)", "(4)"]
+        rows[6]["values_exact"] = ["13", "11"]
+        rows[-1]["values_exact"] = ["16", "13"]
+    elif mutation == "unsupported_business_kind":
+        rows[6]["row_kind"] = "GROUP"
+    elif mutation == "unsupported_transfer_tax_kind":
+        rows[8]["row_kind"] = "TOTAL"
+    elif mutation == "interleaved_unknown":
+        rows.insert(7, _row("Khoản chưa xác định", "1", "1"))
+    elif mutation == "group_ancestry_not_self":
+        rows[2]["hierarchy_path_exact"].insert(0, "Nhóm chưa xác định")
+    else:
+        rows[7]["values_exact"][0] = "?"
+    original = deepcopy(records)
+    _, control = _original_rate_business_transfer_checkpoint_control(records, locator)
+    assert control["status"] == "ALGORITHM_HOLD", control
+    assert control.get("completion_proofs", []) == []
+    assert records == original
+
+
+@pytest.mark.parametrize("basis", ["RATE", "INCOME"])
+def test_original_rate_business_transfer_checkpoint_does_not_claim_other_original_presentations(basis):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _original_rate_business_transfer_forward_control,
+    )
+
+    records, locator = _original_basis_fixture(basis)
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis=basis, compiled_specs=compiled,
+    )
+    receipt_before = deepcopy(receipt)
+    control = _original_rate_business_transfer_forward_control(receipt, compiled_specs=compiled)
+    assert control["status"] == "NOT_APPLICABLE"
+    assert control["completion_proofs"] == []
+    assert receipt == receipt_before
+    assert records == original
+
+
+def test_original_rate_business_transfer_checkpoint_public_replay_rejects_fully_resealed_forward_proof_tamper():
+    records, _ = _original_rate_business_transfer_checkpoint_records("business_subtotal")
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    cluster, receipt, candidate = _evaluate_original_note_production(records, compiled=compiled)
+    assert candidate["status"] == READY, candidate["reasons"]
+    controls = receipt["adapter_receipt"]["original_rate_forward_control_receipts"]
+    assert len(controls) == 1 and controls[0]["status"] == "PASS"
+    forged = deepcopy(receipt)
+    adapter = forged["adapter_receipt"]
+    control = adapter["original_rate_forward_control_receipts"][0]
+    control["completion_proofs"][0]["original_row_ordinal"] = 1
+    control["control_id"] = "gjitfav1:original-rate-forward:" + canonical_json_sha256_v1({
+        key: value for key, value in control.items() if key != "control_id"
+    })
+    adapter["receipt_id"] = "gjitfav1:original-query:" + canonical_json_sha256_v1({
+        key: value for key, value in adapter.items() if key != "receipt_id"
+    })
+    forged["query_receipt_id"] = "gjitfav1:query-receipt:" + canonical_json_sha256_v1({
+        key: value for key, value in forged.items() if key != "query_receipt_id"
+    })
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="original-note adapter source query replay drifted"):
+        evaluate_gemini_json_income_tax_family_cluster_v1(
+            regions=cluster["component_regions"], page_json_by_version={item["page_json_version_id"]: item["page_json"] for item in records},
+            selected_page_axis=[{key: value for key, value in item.items() if key != "page_json"} for item in records],
+            compiled_specs=compiled, query_receipt=forged,
+        )
+    assert records == original

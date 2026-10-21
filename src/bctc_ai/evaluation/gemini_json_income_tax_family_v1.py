@@ -3417,6 +3417,169 @@ def _temporary_difference_rollforward_control(
     return {**material, "control_id": "gjitfav1:temporary-difference-rollforward:" + canonical_json_sha256_v1(material)}
 
 
+def _original_rate_business_transfer_forward_control(
+    receipt: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Prove the printed business/transfer tax chain, never solve a missing cell.
+
+    This is additive evidence: the standalone private basis receipt, including
+    its original coverage holds, remains unchanged.  An ITEM business result
+    requires the same forward proof as a SUBTOTAL business result.
+    """
+    section = receipt["original_section_exact"]
+    table = section["tables"][int(receipt["locator"]["table_id"][1:]) - 1]
+    ordinals = receipt["identity_view_receipt"]["money_column_ordinals"]
+    rows = _supplemental_source_rows(table, money_column_ordinals=ordinals,
+                                     role_alias_axis=_supplemental_role_alias_axis(compiled_specs))
+    business_label = "chi phi thue tndn tu hoat dong kinh doanh"
+    transfer_income = r"thu nhap tu (?:hoat dong )?chuyen nhuong bat dong san"
+    transfer_tax = r"chi phi thue tndn tu (?:hoat dong )?chuyen nhuong bat dong san"
+    recognized = receipt["basis"] == "RATE" and any(
+        item["normalized_label"] == business_label
+        or re.fullmatch(transfer_income, item["normalized_label"])
+        or re.fullmatch(transfer_tax, item["normalized_label"])
+        for item in rows
+    )
+    material = {
+        "format_version": "ORIGINAL_RATE_BUSINESS_TRANSFER_FORWARD_CONTROL_V1",
+        "original_basis_receipt_id": receipt["receipt_id"],
+        "locator": canonical_clone_v1(receipt["locator"]),
+        "original_page_json_sha256": receipt["original_page_json_sha256"],
+        "original_section_json_sha256": receipt["original_section_json_sha256"],
+        "original_table_json_sha256": receipt["original_table_json_sha256"],
+        "private_semantic_spec_sha256": receipt["private_semantic_spec_sha256"],
+        "adapter_spec_sha256": compiled_specs["income_tax_adapter_spec_sha256"],
+        "original_lane_axis": canonical_clone_v1(receipt["original_lane_axis"]),
+        "original_unit_axis": canonical_clone_v1(receipt["original_unit_axis"]),
+        "original_report_scope_receipt": canonical_clone_v1(receipt["original_report_scope_receipt"]),
+        "source_table_exact": canonical_clone_v1(table), "source_row_axis": rows,
+        "source_selection": {}, "forward_equations": [], "private_group_equation_proofs": [],
+        "completion_proofs": [], "reasons": [],
+        "status": "NOT_APPLICABLE" if not recognized else "ALGORITHM_HOLD",
+        "source_values_changed": False, "transfer_income_used_as_tax_operand": False,
+        "rule": "PRINTED_SOURCE_FRONTIER_BEFORE_FORWARD_SUM_NO_SIGN_SEARCH_RATE_INFERENCE_OR_BACKSOLVE",
+    }
+
+    def finish(reason: str | None = None) -> dict[str, Any]:
+        if reason is not None:
+            material["reasons"].append(reason)
+        return {**material, "control_id": "gjitfav1:original-rate-forward:" + canonical_json_sha256_v1(material)}
+
+    if not recognized:
+        return finish()
+    frontier = receipt["basis_frontier"]
+    scope, lane, unit = (receipt[key] for key in (
+        "original_report_scope_receipt", "original_lane_axis", "original_unit_axis"))
+    if (not frontier["source_boundary_supported"] or not lane.get("complete") or len(ordinals) != 2
+            or not same_typed_json_v1(lane.get("money_column_ordinals"), ordinals)
+            or not unit.get("complete") or unit.get("canonical_unit") not in {"VND", "MILLION_VND"}
+            or scope.get("conflict") or scope.get("local_entity_qualifiers")
+            or scope.get("report_scope") not in {"CONSOLIDATED", "SEPARATE"}
+            or type(receipt.get("private_candidate_proof")) is not dict
+            or receipt["private_candidate_proof"].get("status") != READY
+            or canonical_json_sha256_v1(table) != receipt["original_table_json_sha256"]
+            or canonical_json_sha256_v1(section) != receipt["original_section_json_sha256"]
+            or receipt["original_narrative_reset_axis"]):
+        return finish("ORIGINAL_RATE_FORWARD_SOURCE_AXES_OR_PRIVATE_PROOF_INCOMPLETE")
+    def path_matches(row: Mapping[str, Any], labels: Sequence[str]) -> bool:
+        return (type(row["hierarchy_path_exact"]) is list
+                and [_normalized(value) for value in row["hierarchy_path_exact"]] == [_normalized(value) for value in labels])
+
+    business = [row for row in rows if row["normalized_label"] == business_label]
+    increases = [row for row in rows if row["normalized_label"] == "dieu chinh tang"]
+    decreases = [row for row in rows if row["normalized_label"] == "dieu chinh giam"]
+    transfers = [row for row in rows if re.fullmatch(transfer_income, row["normalized_label"])
+                 and path_matches(row, [row["label_exact"]])]
+    taxes = [row for row in rows if re.fullmatch(transfer_tax, row["normalized_label"])]
+    priors = [row for row in rows if row["normalized_label"] in {
+        "thue tndn nop bo sung tu cac nam truoc", "nop thue bo sung tu cac nam truoc"}]
+    if (any(len(axis) != 1 for axis in (business, increases, decreases, transfers, taxes))
+            or len(priors) > 1 or frontier["profit_before_tax_source_ordinals"] != [1]
+            or frontier["monetary_rate_source_ordinals"] != [2]
+            or frontier["current_tax_parent_source_ordinals"] != [len(rows)]):
+        return finish("ORIGINAL_RATE_FORWARD_NONUNIQUE_OR_UNSUPPORTED_SOURCE_FRONTIER")
+    business, increase, decrease, transfer, tax = (axis[0] for axis in (business, increases, decreases, transfers, taxes))
+    profit, rate, current = rows[0], rows[1], rows[-1]
+    prior = priors[0] if priors else None
+    increase_children = rows[increase["row_ordinal"]:decrease["row_ordinal"] - 1]
+    decrease_children = rows[decrease["row_ordinal"]:business["row_ordinal"] - 1]
+    expected_tail = [business, transfer, tax, *priors, current]
+    if (increase["row_ordinal"] != 3 or not increase_children or not decrease_children
+            or [row["row_ordinal"] for row in expected_tail] != list(range(business["row_ordinal"], len(rows) + 1))
+            or business["row_kind"] not in {"ITEM", "SUBTOTAL"}
+            or transfer["row_kind"] != "ITEM" or tax["row_kind"] not in {"ITEM", "SUBTOTAL"}
+            or current["row_kind"] != "TOTAL" or (prior is not None and prior["row_kind"] != "ITEM")
+            or profit["row_kind"] not in {"ITEM", "TOTAL"} or rate["row_kind"] != "ITEM"):
+        return finish("ORIGINAL_RATE_FORWARD_UNKNOWN_INTERLEAVED_OR_UNSUPPORTED_SOURCE_ROW")
+
+    if (any(not path_matches(row, [row["label_exact"]]) for row in [profit, rate, increase, decrease, *expected_tail])
+            or any(group["row_kind"] != "GROUP" for group in (increase, decrease))
+            or any(child["row_kind"] != "ITEM" or not path_matches(child, [group["label_exact"], child["label_exact"]])
+                   for group, children in ((increase, increase_children), (decrease, decrease_children)) for child in children)
+            or [row["normalized_label"] for row in increase_children] != ["chi phi khong duoc khau tru"]
+            or len({row["normalized_label"] for row in decrease_children}) != len(decrease_children)
+            or not {row["normalized_label"] for row in decrease_children} <= {
+                "thu nhap tu chuyen nhuong bds", "thu nhap tu chuyen nhuong bat dong san", "chuyen lo tu cong ty con"}
+            or sum(row["normalized_label"].startswith("thu nhap tu chuyen nhuong ") for row in decrease_children) != 1):
+        return finish("ORIGINAL_RATE_FORWARD_GROUP_MEMBERSHIP_OR_SOURCE_POPULATION_UNPROVEN")
+    # The complete source grammar is fixed above before any arithmetic.  All
+    # original cells (including the nonadditive transfer-income observation)
+    # must be observed.  A visible dash is typed DASH_ZERO, never a blank.
+    if any(not row["values_usable"] or not _all_observed(row["parsed_values"]) for row in rows):
+        return finish("ORIGINAL_RATE_FORWARD_UNOBSERVED_OR_INVALID_SOURCE_CELL")
+    if (any(value < 0 for row in [increase, *increase_children] for value in row["parsed_values"])
+            or any(value > 0 for row in [decrease, *decrease_children] for value in row["parsed_values"])):
+        return finish("ORIGINAL_RATE_FORWARD_PRINTED_ADJUSTMENT_DIRECTION_UNSUPPORTED")
+    source_rows = []
+    for row in rows:
+        source_rows.append({"locator": canonical_clone_v1(receipt["locator"]),
+                            "money_column_ordinals": list(ordinals),
+                            "source_row_exact": canonical_clone_v1(table["rows"][row["row_ordinal"] - 1]),
+                            "row_ordinal": row["row_ordinal"],
+                            "source_cells": [_source_money(value) for value in row["source_values_exact"]]})
+    material["source_selection"] = {
+        "source_rows": source_rows, "profit_row_ordinal": 1, "rate_row_ordinal": 2,
+        "increase_group_row_ordinal": increase["row_ordinal"],
+        "decrease_group_row_ordinal": decrease["row_ordinal"],
+        "business_result_row_ordinal": business["row_ordinal"],
+        "transfer_income_nonadditive_row_ordinal": transfer["row_ordinal"],
+        "transfer_tax_observation_row_ordinal": tax["row_ordinal"],
+        "prior_adjustment_row_ordinal": prior["row_ordinal"] if prior else None,
+        "current_result_row_ordinal": current["row_ordinal"],
+    }
+    private_equations = receipt["private_candidate_proof"]["closure_receipt"].get("equations", [])
+    for group, children in ((increase, increase_children), (decrease, decrease_children)):
+        coverage = receipt["source_coverage_receipt"]["source_rows"][group["row_ordinal"] - 1]
+        proofs = [equation for equation in private_equations
+                  if equation.get("status") == "EXACT" and equation.get("equation_id") in coverage["private_value_proof_ids"]
+                  and [ref.get("row_ordinal") for ref in equation.get("result_source_refs", [])] == [group["row_ordinal"]]
+                  and sorted(ref.get("row_ordinal") for refs in equation.get("component_source_refs", []) for ref in refs)
+                  == sorted(child["row_ordinal"] for child in children)]
+        if len(proofs) != 1:
+            return finish("ORIGINAL_RATE_FORWARD_INDEPENDENT_PRIVATE_GROUP_PROOF_ABSENT")
+        material["private_group_equation_proofs"].append(canonical_clone_v1(proofs[0]))
+    equations = [("INCREASE_GROUP", increase_children, increase), ("DECREASE_GROUP", decrease_children, decrease),
+                 ("BUSINESS_TAX_FORWARD", [rate, increase, decrease], business),
+                 ("CURRENT_TAX_FORWARD", [business, tax, *priors], current)]
+    for kind, components, result in equations:
+        material["forward_equations"].append({
+            "equation_kind": kind, "component_row_ordinals": [row["row_ordinal"] for row in components],
+            "result_row_ordinal": result["row_ordinal"], "component_coefficients": [row["parsed_values"] for row in components],
+            "result_coefficients": result["parsed_values"],
+            "residuals": [result["parsed_values"][lane] - sum(row["parsed_values"][lane] for row in components) for lane in range(2)],
+            "status": "EXACT_ALL_OBSERVED_LANES" if _exact_sum(components, result) else "NONZERO_RESIDUAL",
+        })
+    if any(equation["status"] != "EXACT_ALL_OBSERVED_LANES" for equation in material["forward_equations"]):
+        return finish("ORIGINAL_RATE_FORWARD_PRINTED_ACCOUNTING_EQUATION_MISMATCH")
+    material["status"] = "PASS"
+    material["completion_proofs"] = [
+        {"original_row_ordinal": business["row_ordinal"], "proof_kind": "EXACT_FORWARD_RESULT"},
+        {"original_row_ordinal": tax["row_ordinal"],
+         "proof_kind": "OBSERVED_NESTED_TRANSFER_TAX_COMPONENT_IN_EXACT_CURRENT_FORWARD_CLOSURE"},
+    ]
+    return finish()
+
+
 def _build_original_note_adapter_bundle(
     page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
     source_context: Mapping[str, Any], repair_receipts: Sequence[Mapping[str, Any]],
@@ -3484,8 +3647,15 @@ def _build_original_note_adapter_bundle(
     parts = []
     authenticated_rate_axis = set()
     coverage_completions = []
+    forward_controls = [_original_rate_business_transfer_forward_control(receipt, compiled_specs=compiled_specs)
+                        for receipt in basis_receipts if receipt["basis"] == "RATE"]
+    forward_controls = [control for control in forward_controls if control["status"] != "NOT_APPLICABLE"]
     for receipt in basis_receipts:
         completed = []
+        controls = [control for control in forward_controls if control["original_basis_receipt_id"] == receipt["receipt_id"]]
+        if any(control["status"] != "PASS" for control in controls):
+            issues.append("ORIGINAL_NOTE_RATE_BUSINESS_TRANSFER_FORWARD_CONTROL_INCOMPLETE")
+            continue
         if (receipt["status"] != "PASS_PRIVATE_ORIGINAL_BASIS_EVIDENCE_NOT_FAMILY_ACCEPTANCE"
                 and type(receipt.get("private_candidate_proof")) is dict
                 and receipt["private_candidate_proof"].get("status") == READY
@@ -3497,6 +3667,15 @@ def _build_original_note_adapter_bundle(
             for reason in receipt["reasons"]:
                 ordinal = int(reason.rsplit(":", 1)[1])
                 own = receipt["basis_frontier"]
+                forward_proofs = [(control, proof) for control in controls for proof in control["completion_proofs"]
+                                  if proof["original_row_ordinal"] == ordinal]
+                if len(forward_proofs) == 1:
+                    control, proof = forward_proofs[0]
+                    completed.append({"receipt_id": receipt["receipt_id"], "original_row_ordinal": ordinal,
+                                      "source_row_exact": receipt["source_coverage_receipt"]["source_rows"][ordinal - 1]["source_row_exact"],
+                                      "independent_forward_control_id": control["control_id"], "proof_kind": proof["proof_kind"],
+                                      "rule": "EXACT_ORIGINAL_ROW_HAS_INDEPENDENT_OBSERVED_FORWARD_ACCOUNTING_CONTROL"})
+                    continue
                 if own["start_row_ordinal"] <= ordinal <= own["terminal_row_ordinal"]:
                     break
                 row = receipt["source_coverage_receipt"]["source_rows"][ordinal - 1]
@@ -3600,6 +3779,7 @@ def _build_original_note_adapter_bundle(
         "original_shared_query_receipt": build_gemini_json_multitable_hierarchical_region_query_receipt_v1(carrier["component_regions"]),
         "basis_table_receipts": basis_receipts, "supplemental_projection_receipts": supplemental,
         "independent_basis_coverage_completion_receipts": coverage_completions,
+        "original_rate_forward_control_receipts": forward_controls,
         "primary_projection_receipt": primary["descriptor"] if primary is not None else None,
         "primary_selection_reasons": primary_reasons,
         "source_population_coverage": coverage, "independent_population_receipt": population_proof,
@@ -4923,7 +5103,8 @@ def _owned_current_period_constraints_match(section: Mapping[str, Any], table: M
     return True
 
 
-def _owned_relative_year_duration_evidence(section: Mapping[str, Any], table: Mapping[str, Any], lane: Mapping[str, Any]) -> dict[str, Any] | None:
+def _relative_year_column_paths(table: Mapping[str, Any], lane: Mapping[str, Any]) -> list[list[str]] | None:
+    """Literal label syntax only; this supplies no reporting-period authority."""
     if not lane.get("complete") or lane.get("source_lane_keys") != [["SEMANTIC_ALIAS", "CURRENT_PERIOD"], ["SEMANTIC_ALIAS", "COMPARATIVE_PERIOD"]]:
         return None
     ordinals = lane.get("money_column_ordinals") or []
@@ -4933,6 +5114,14 @@ def _owned_relative_year_duration_evidence(section: Mapping[str, Any], table: Ma
     for header, token in zip(headers, ("nay", "truoc"), strict=True):
         if re.fullmatch(r"nam " + token + r"(?: trinh bay lai)?(?: (?:trieu dong|trieu vnd|vnd|dong))?(?: trinh bay lai)?", _normalized(header)) is None:
             return None
+    return [canonical_clone_v1(table["columns"][ordinal - 1]["header_path_exact"]) for ordinal in ordinals]
+
+
+def _owned_relative_year_duration_evidence(section: Mapping[str, Any], table: Mapping[str, Any], lane: Mapping[str, Any]) -> dict[str, Any] | None:
+    paths = _relative_year_column_paths(table, lane)
+    if paths is None:
+        return None
+    ordinals = lane["money_column_ordinals"]
     constraints = _owned_current_period_constraints(section, table)
     if not constraints or any(not item["supported"] for item in constraints):
         return None
@@ -4952,7 +5141,7 @@ def _owned_relative_year_duration_evidence(section: Mapping[str, Any], table: Ma
         return None
     current = resolutions[0]
     periods = [current, [current[0], current[1] - 1, *current[2:]]]
-    material = {"money_column_ordinals": list(ordinals), "header_paths_exact": [canonical_clone_v1(table["columns"][ordinal - 1]["header_path_exact"]) for ordinal in ordinals],
+    material = {"money_column_ordinals": list(ordinals), "header_paths_exact": paths,
                 "owned_current_period_constraints": constraints, "resolved_source_duration_semantics": periods,
                 "comparative_year_origin": "DERIVED_RELATIVE_YEAR_SEMANTICS_NOT_PRINTED_ABSOLUTE_YEAR",
                 "rule": "EXACT_ORDERED_NAM_NAY_NAM_TRUOC_WITH_INDEPENDENT_OWNED_CURRENT_DURATION_NO_GENERIC_PERIOD_ALIAS_INFERENCE"}
@@ -5031,6 +5220,126 @@ def _printed_ytd_sibling_period_evidence(section: Mapping[str, Any], table: Mapp
     return {**material, "receipt_id": "gjitfav1:printed-ytd-siblings:" + canonical_json_sha256_v1(material)}
 
 
+def _document_annual_period_receipt(sources: Sequence[Mapping[str, Any]], document_scope: Mapping[str, Any]) -> dict[str, Any]:
+    """Independent owned annual anchors; continuations cannot vote away gaps."""
+    scope_sources = {canonical_json_sha256_v1(source["locator"]): source for source in document_scope["sources"]}
+    anchors, reasons = [], []
+    if (not document_scope["document_identity_unique"] or document_scope["report_scope"] is None
+            or document_scope["entity_override_present"] or document_scope["ambiguous_scope_caption_present"]):
+        reasons.append("DOCUMENT_ANNUAL_REPORT_POPULATION_NOT_PROVEN")
+    for source in sorted(sources, key=lambda item: (item["locator"]["selected_page_ordinal"],
+                                                  int(item["locator"]["section_id"][1:]), int(item["locator"]["table_id"][1:]))):
+        caption_source = scope_sources.get(canonical_json_sha256_v1(source["locator"]))
+        eligible = caption_source["eligible_captions_exact"] if caption_source is not None else []
+        relative = source["owned_relative_year_duration_evidence"]
+        periods = relative["resolved_source_duration_semantics"] if relative is not None else None
+        scope = source["scope_receipt"]
+        failures = []
+        if not eligible:
+            failures.append("STATEMENT_TYPE_NOT_AUTHENTICATED_BY_OWNED_CAPTION")
+        if (scope["conflict"] or scope["local_entity_qualifiers"] or scope["report_scope"] is None
+                or scope["report_scope"] != document_scope["report_scope"]):
+            failures.append("ANNUAL_ANCHOR_REPORT_POPULATION_NOT_PROVEN")
+        if (periods is None or any(period[0] != "ANNUAL_YEAR" for period in periods)
+                or periods[0][1] != periods[1][1] + 1):
+            failures.append("ANNUAL_ANCHOR_INDEPENDENT_OWNED_YEAR_DURATION_NOT_PROVEN")
+        anchors.append({"locator": canonical_clone_v1(source["locator"]), "statement_type": source["statement_type"],
+                        "eligible_captions_exact": canonical_clone_v1(eligible), "captions_exact": canonical_clone_v1(source["captions_exact"]),
+                        "original_page_json_sha256": source["original_page_json_sha256"],
+                        "original_table_json_sha256": source["original_table_json_sha256"],
+                        "source_inventory_entry_sha256": canonical_json_sha256_v1(source),
+                        "owned_relative_year_duration_evidence": canonical_clone_v1(relative),
+                        "scope_receipt": canonical_clone_v1(scope), "complete": not failures, "reasons": failures})
+        reasons.extend(failures)
+    if {source["statement_type"] for source in sources} != {"INCOME_STATEMENT", "CASH_FLOW"}:
+        reasons.append("INDEPENDENT_INCOME_AND_CASH_FLOW_ANNUAL_ANCHORS_REQUIRED")
+    complete_periods = [item["owned_relative_year_duration_evidence"]["resolved_source_duration_semantics"]
+                        for item in anchors if item["complete"]]
+    if not complete_periods or any(not same_typed_json_v1(periods, complete_periods[0]) for periods in complete_periods[1:]):
+        reasons.append("DOCUMENT_ANNUAL_SOURCE_PERIOD_CONSENSUS_NOT_PROVEN")
+    material = {"complete": not reasons, "status": "ALGORITHM_HOLD" if reasons else "PASS_INDEPENDENT_OWNED_DOCUMENT_ANNUAL_PERIOD",
+                "origin": "INDEPENDENT_OWNED_INCOME_AND_CASH_FLOW_ANNUAL_CONSENSUS",
+                "resolved_source_duration_semantics": canonical_clone_v1(complete_periods[0]) if not reasons else None,
+                "anchor_source_receipts": anchors, "document_report_scope_receipt_id": document_scope["receipt_id"],
+                "all_typed_period_sources_included": True, "continuations_used_as_votes": False,
+                "reasons": sorted(set(reasons)), "rule": "EVERY_CAPTION_AUTHENTICATED_INCOME_AND_CASH_FLOW_SOURCE_OWNS_THE_SAME_ANNUAL_YEAR_PAIR_AND_REPORT_SCOPE"}
+    return {**material, "receipt_id": "gjitfav1:document-annual-period:" + canonical_json_sha256_v1(material)}
+
+
+def _note_annual_period_inheritance_receipt(
+    section: Mapping[str, Any], table: Mapping[str, Any], lane: Mapping[str, Any], *,
+    locator: Mapping[str, Any], document_period_inventory: Mapping[str, Any], compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Source-visible NOTE veto census, never an authority from matching values."""
+    document = document_period_inventory["document_annual_period_receipt"]
+    reasons = []
+    if not document["complete"]:
+        reasons.append("AUTHENTICATED_DOCUMENT_ANNUAL_PERIOD_ABSENT")
+    paths = _relative_year_column_paths(table, lane)
+    if paths is None:
+        reasons.append("NOTE_LITERAL_ORDERED_RELATIVE_YEAR_LABELS_REQUIRED")
+    owner = section.get("content_kind") == "FINANCIAL_NOTE" and _supplemental_owner_matches(section, table, compiled_specs=compiled_specs)
+    if not owner:
+        reasons.append("NOTE_EXPLICIT_TAX_OWNER_NOT_PROVEN_FOR_ANNUAL_INHERITANCE")
+    surfaces = [{"kind": "SECTION_TITLE", "ordinal": 1, "source_exact": section.get("title_exact")},
+                {"kind": "TABLE_TITLE", "ordinal": 1, "source_exact": table.get("title_exact")}]
+    for ordinal in lane.get("money_column_ordinals") or []:
+        surfaces.extend({"kind": "MONEY_HEADER", "column_ordinal": ordinal, "ordinal": index, "source_exact": value}
+                        for index, value in enumerate(table["columns"][ordinal - 1]["header_path_exact"], 1))
+    if len(section.get("tables") or []) == 1:
+        surfaces.extend({"kind": "OWNED_NARRATIVE", "ordinal": index, "source_exact": value}
+                        for index, value in enumerate(section.get("narratives_exact") or [], 1))
+    ancestors = [row.get("hierarchy_path_exact", [])[:-1]
+                 if row.get("hierarchy_path_exact") and _without_leading_ordinal(_normalized(row["hierarchy_path_exact"][-1])) == _without_leading_ordinal(_normalized(row.get("label_exact")))
+                 else row.get("hierarchy_path_exact", []) for row in table["rows"]]
+    for ordinal, values in enumerate(ancestors, 1):
+        surfaces.extend({"kind": "SOURCE_ROW_ANCESTOR", "row_ordinal": ordinal, "ordinal": index, "source_exact": value}
+                        for index, value in enumerate(values, 1))
+    months = r"(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi|muoi mot|muoi hai) thang\b(?! \d)"
+    periods = document["resolved_source_duration_semantics"]
+    constraints = _owned_current_period_constraints(section, table)
+    for surface in surfaces:
+        normalized = _normalized(surface["source_exact"])
+        without_calendar_dates = re.sub(r"\b(?:ngay )?\d{1,2} thang (?:0?[1-9]|1[0-2])(?: nam)? \d{4}\b", "", normalized)
+        nonannual = (re.search(r"\b(?:(?:quy|qui) (?:i|ii|iii|iv|1|2|3|4|nay|truoc)|trong quy|quarter|q ?(?:i|ii|iii|iv|1|2|3|4)|giua nien do|interim)\b", normalized) is not None
+                     or "luy ke" in normalized or "year to date" in normalized or "cumulative" in normalized
+                     or re.search(r"\b" + months, normalized) is not None
+                     or re.search(r"\b(?:0?[1-9]|1[0-2]) thang (?=\d{4}\b)", normalized) is not None
+                     or re.search(r"\bthang (?:0?[1-9]|1[0-2])(?: nam)? \d{4}\b", without_calendar_dates) is not None
+                     or re.search(r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) months?\b", normalized) is not None
+                     or re.search(r"\btu ngay\b.*\bden\b", normalized) is not None
+                     or re.search(r"\btu(?: ngay)? \d{1,2}(?: thang)? \d{1,2}(?: nam)? \d{4}\b.*\bden(?: ngay)? \d{1,2}(?: thang)? \d{1,2}(?: nam)? \d{4}\b", normalized) is not None
+                     or re.search(r"\btu(?: ngay)? \d{4} \d{1,2} \d{1,2}\b.*\bden(?: ngay)? \d{4} \d{1,2} \d{1,2}\b", normalized) is not None
+                     or re.search(r"\bfor (?:the )?(?:year|period|quarter)(?: ended| ending| \d{4})\b", normalized) is not None)
+        local_years = re.findall(r"\b(?:cho |trong )?nam(?: tai chinh)? (\d{4})\b", normalized) if surface["kind"] != "OWNED_NARRATIVE" else []
+        conflicting_year = bool(periods and any(int(year) != periods[0][1] for year in local_years))
+        veto = nonannual or conflicting_year
+        surface["non_annual_or_ambiguous_period_present"] = nonannual
+        surface["conflicting_local_year_present"] = conflicting_year
+        surface["disposition"] = "LOCAL_PERIOD_CONTEXT_VETO" if veto else "RETAINED_SOURCE_SURFACE_NOT_PERIOD_AUTHORITY"
+        if veto:
+            reasons.append("NOTE_LOCAL_NON_ANNUAL_OR_CONFLICTING_PERIOD_CONTEXT")
+    if constraints and (periods is None or not _owned_current_period_constraints_match(section, table, lane, periods)):
+        reasons.append("NOTE_OWNED_CURRENT_PERIOD_ASSERTION_NOT_COMPATIBLE_WITH_DOCUMENT_ANNUAL_PERIOD")
+    scope = _note_report_scope_receipt(section, table, source_paths=[*(paths or []), *ancestors],
+                                      document_scope=document_period_inventory["document_report_scope_receipt"])
+    if (scope["conflict"] or scope["local_entity_qualifiers"] or scope["report_scope"] is None
+            or scope["report_scope"] != document_period_inventory["document_report_scope_receipt"]["report_scope"]):
+        reasons.append("NOTE_DOCUMENT_ANNUAL_REPORT_POPULATION_NOT_PROVEN")
+    material = {"complete": not reasons, "status": "ALGORITHM_HOLD" if reasons else "PASS_AUTHENTICATED_DOCUMENT_ANNUAL_PERIOD",
+                "origin": "INHERITED_AUTHENTICATED_DOCUMENT_ANNUAL_PERIOD", "locator": canonical_clone_v1(locator),
+                "original_section_json_sha256": canonical_json_sha256_v1(section), "original_table_json_sha256": canonical_json_sha256_v1(table),
+                "money_column_ordinals": canonical_clone_v1(lane.get("money_column_ordinals")), "header_paths_exact": paths,
+                "explicit_tax_owner_caption_matches": owner, "local_period_surface_census": surfaces,
+                "owned_current_period_constraints": constraints, "scope_receipt": scope,
+                "document_annual_period_receipt": canonical_clone_v1(document),
+                "resolved_source_duration_semantics": canonical_clone_v1(periods) if not reasons else None,
+                "comparative_year_origin": "DERIVED_RELATIVE_YEAR_SEMANTICS_NOT_PRINTED_ABSOLUTE_YEAR",
+                "amounts_used_as_authority": False, "source_period_keys_modified": False, "start_dates_inferred": False,
+                "reasons": sorted(set(reasons)), "rule": "EXPLICIT_TAX_NOTE_RELATIVE_YEAR_LABELS_WITH_COMPLETE_INDEPENDENT_DOCUMENT_ANNUAL_PERIOD_AND_EXHAUSTIVE_LOCAL_VETO_CENSUS"}
+    return {**material, "receipt_id": "gjitfav1:note-inherited-annual-period:" + canonical_json_sha256_v1(material)}
+
+
 def _document_statement_period_inventory(page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any]) -> dict[str, Any]:
     scope = _document_report_scope_receipt(page_records)
     sources, page_axis = [], []
@@ -5064,6 +5373,7 @@ def _document_statement_period_inventory(page_records: Sequence[Mapping[str, Any
     material = {"selected_page_axis": sorted(page_axis, key=lambda item: item["selected_page_ordinal"]),
                 "sources": sorted(sources, key=lambda item: (item["locator"]["selected_page_ordinal"], int(item["locator"]["section_id"][1:]), int(item["locator"]["table_id"][1:]))),
                 "document_report_scope_receipt": scope,
+                "document_annual_period_receipt": _document_annual_period_receipt(sources, scope),
                 "rule": "ALL_ORIGINAL_TYPED_INCOME_AND_CASH_FLOW_PERIOD_SOURCES_NO_FILENAME_OR_AMOUNT_AUTHORITY"}
     return {**material, "receipt_id": "gjitfav1:document-statement-periods:" + canonical_json_sha256_v1(material)}
 
@@ -5110,9 +5420,16 @@ def _source_period_correspondence_receipt(
             absolute = _absolute_source_duration_semantics(item["section"], item["table"], item["raw_lane_axis"])
             ytd = _printed_ytd_sibling_period_evidence(item["section"], item["table"], item["raw_lane_axis"])
             relative = _owned_relative_year_duration_evidence(item["section"], item["table"], item["raw_lane_axis"])
+            inheritance = None
             anchors = []
             uses_cf_authority = False
             resolved = absolute if absolute is not None else ytd["intrinsic_absolute_periods"] if ytd is not None else None
+            if resolved is None and item["section"].get("content_kind") == "FINANCIAL_NOTE" and _relative_year_column_paths(item["table"], item["raw_lane_axis"]) is not None:
+                inheritance = _note_annual_period_inheritance_receipt(
+                    item["section"], item["table"], item["raw_lane_axis"], locator=item["locator"],
+                    document_period_inventory=fresh, compiled_specs=compiled_specs,
+                )
+                resolved = inheritance["resolved_source_duration_semantics"]
             if ytd is not None:
                 scope = item["scope_receipt"]
                 compatible_scope_anchors = [source for source in fresh["sources"] if source["statement_type"] == "CASH_FLOW"
@@ -5140,17 +5457,19 @@ def _source_period_correspondence_receipt(
                 reasons.append("SOURCE_PERIOD_OWNED_CURRENT_CAPTION_CONFLICT")
             resolutions.append({"resolved_source_duration_semantics": resolved, "ytd_sibling_evidence": ytd,
                                 "owned_relative_year_duration_evidence": relative,
+                                "inherited_document_annual_period_receipt": inheritance,
                                 "owned_current_period_constraints": _owned_current_period_constraints(item["section"], item["table"]),
                                 "cash_flow_used_as_period_authority": uses_cf_authority,
                                 "cash_flow_anchor_sources": anchors, "intrinsic_absolute_source_semantics": absolute})
         if any(item["resolved_source_duration_semantics"] is None for item in resolutions) or not same_typed_json_v1(
                 resolutions[0]["resolved_source_duration_semantics"], resolutions[1]["resolved_source_duration_semantics"]):
             reasons.append("SOURCE_PERIOD_CONTEXTUAL_CORRESPONDENCE_NOT_PROVEN")
-        if any(resolution["cash_flow_used_as_period_authority"] for resolution in resolutions):
+        if any(resolution["cash_flow_used_as_period_authority"] or resolution["inherited_document_annual_period_receipt"] is not None for resolution in resolutions):
             scopes = [item["scope_receipt"] for item in selectors]
             if any(item["conflict"] or item["report_scope"] is None or item["local_entity_qualifiers"] for item in scopes) or scopes[0]["report_scope"] != scopes[1]["report_scope"]:
                 reasons.append("SOURCE_PERIOD_CONTEXTUAL_REPORT_POPULATION_NOT_PROVEN")
     material = {"complete": not reasons, "status": "ALGORITHM_HOLD" if reasons else "PASS_LITERAL_SOURCE_DURATION" if literal else
+                "PASS_AUTHENTICATED_DOCUMENT_ANNUAL_PERIOD" if any(item["inherited_document_annual_period_receipt"] is not None for item in resolutions) else
                 "PASS_AUTHENTICATED_OWNED_RELATIVE_YEAR_DURATION" if any(item["owned_relative_year_duration_evidence"] is not None for item in resolutions) else
                 "PASS_AUTHENTICATED_SOURCE_YTD_CORRESPONDENCE",
                 "source_selectors": [{key: canonical_clone_v1(value) for key, value in item.items() if key not in {"section", "table"}} for item in selectors],
