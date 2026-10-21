@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from collections.abc import Mapping, Sequence
 from datetime import date, timedelta
 from pathlib import Path
@@ -5009,6 +5010,94 @@ def _annual_source_context_ambiguous(section: Mapping[str, Any], table: Mapping[
                or re.search(r"\bquy (?:i|ii|iii|iv|1|2|3|4)\b", _normalized(value)) for value in surfaces)
 
 
+def _owned_same_day_period_constraint(
+    section: Mapping[str, Any], *, source_kind: str, source_exact: Any,
+) -> dict[str, Any] | None:
+    """Bind 'same day' only to the date in one complete printed NOTE caption.
+
+    No search across titles/narratives, company dates or other source tables.
+    A recognized but malformed assertion is a veto, not a fallback shortcut.
+    """
+    # Historical/signing prose keeps the existing start-anchored narrative
+    # semantics below; this caption-only route cannot make it a veto.
+    if source_kind == "OWNED_NARRATIVE":
+        return None
+    normalized = _normalized(source_exact)
+    if not re.search(r"\bket thuc cung ngay\b", normalized):
+        return None
+    constraint = {"source_kind": source_kind, "source_exact": source_exact, "supported": False}
+    if source_kind not in {"SECTION_TITLE", "TABLE_TITLE"} or section.get("content_kind") != "FINANCIAL_NOTE":
+        return constraint
+    source_lines = re.split(r"\r\n|\r|\n|\\n", source_exact)
+    lines = [line for line in source_lines if line.strip()]
+    printed = source_exact.replace("\\n", "\n")
+    def reviewed_character(character: str) -> bool:
+        if character.isspace() or character in ".,():;/-":
+            return True
+        folded = unicodedata.normalize("NFD", character).replace("\u0111", "d").replace("\u0110", "D")
+        return all((part.isascii() and part.isalnum()) or part in "\u0300\u0301\u0302\u0303\u0306\u0309\u031b\u0323" for part in folded)
+
+    depth = 0
+    for character in printed:
+        if character == "(":
+            depth += 1
+            if depth > 1:
+                return constraint
+        elif character == ")":
+            depth -= 1
+            if depth < 0:
+                return constraint
+    if (depth or any(not reviewed_character(character) for character in printed)
+            or any(not _normalized(line) for line in lines)
+            or any(_normalized(value) != "tiep theo" for value in re.findall(r"\(([^()]*)\)", printed))):
+        # Normalization cannot erase an unreviewed footnote/qualifier marker,
+        # either on the report clause or on the allowed trailing headings.
+        return constraint
+    caption_lines = list(lines)
+    furniture = []
+    # Only the reviewed pair of fiscal-obligation/tax headings can follow the
+    # complete report caption.  The printed outline numbers are structural,
+    # not a bank/document/note-number routing key.
+    if len(lines) >= 3:
+        parent = re.fullmatch(r"(?P<ordinal>\d+)\.?\s+(?P<title>.+)", lines[-2].strip())
+        child = re.fullmatch(r"(?P<ordinal>\d+\.\d+)\.?\s+(?P<title>.+)", lines[-1].strip())
+        if (parent is not None and child is not None and child["ordinal"].split(".")[0] == parent["ordinal"]
+                and re.fullmatch(r"tinh hinh thuc hien nghia vu voi ngan sach nha nuoc(?: tiep theo)?", _normalized(parent["title"]))
+                and re.fullmatch(r"thue thu nhap doanh nghiep(?: tiep theo)?", _normalized(child["title"]))):
+            furniture = [{"source_exact": lines[-2], "outline_ordinal_exact": parent["ordinal"]},
+                         {"source_exact": lines[-1], "outline_ordinal_exact": child["ordinal"]}]
+            caption_lines = lines[:-2]
+    months_pattern = r"\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi|muoi mot|muoi hai"
+    pattern = (
+        r"thuyet minh bao cao tai chinh (?P<scope>rieng|hop nhat)(?P<interim> giua nien do)?(?: tiep theo)? "
+        r"(?P<clause>vao ngay (?P<day>\d{1,2}) thang (?P<month>\d{1,2}) nam (?P<year>\d{4}) va cho "
+        r"(?:(?P<annual>nam tai chinh)|ky ke toan (?P<months>" + months_pattern + r") thang) ket thuc cung ngay)"
+    )
+    matched = re.fullmatch(pattern, _normalized(" ".join(caption_lines)))
+    if matched is None:
+        return constraint
+    annual = matched["annual"] is not None
+    if annual == (matched["interim"] is not None):
+        return constraint
+    try:
+        end = date(int(matched["year"]), int(matched["month"]), int(matched["day"]))
+    except ValueError:
+        return constraint
+    months_by_word = {"mot": 1, "hai": 2, "ba": 3, "bon": 4, "nam": 5, "sau": 6,
+                      "bay": 7, "tam": 8, "chin": 9, "muoi": 10, "muoi mot": 11, "muoi hai": 12}
+    months = 12 if annual else int(matched["months"]) if matched["months"].isdigit() else months_by_word[matched["months"]]
+    return {**constraint, "supported": 1 <= months <= 12, "printed_end_date": end.isoformat(),
+            "printed_months": months, "annual_assertion": annual,
+            "same_day_reference_evidence": {
+                "binding_origin": "SAME_COMPLETE_SOURCE_CAPTION_EXPLICIT_DATE_ANTECEDENT",
+                "source_lines_exact": source_lines, "caption_lines_exact": caption_lines,
+                "date_reference_clause_normalized": matched["clause"],
+                "antecedent_end_date": end.isoformat(), "printed_report_scope": matched["scope"],
+                "recognized_trailing_furniture": furniture,
+                "rule": "WHOLE_REVIEWED_NOTE_CAPTION_ONE_PRINTED_DATE_NO_DISCARDED_REMAINDER_OR_CROSS_SURFACE_BORROWING",
+            }}
+
+
 def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping[str, Any]) -> list[dict[str, Any]]:
     surfaces = [("SECTION_TITLE", section.get("title_exact")), ("TABLE_TITLE", table.get("title_exact"))]
     if len(section.get("tables") or []) == 1:
@@ -5019,6 +5108,10 @@ def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping
     ending = r"(?P<day>\d{1,2}) (?:thang )?(?P<month>\d{1,2}) (?:nam )?(?P<year>\d{4})(?: tiep theo)?"
     output = []
     for kind, raw in surfaces:
+        same_day = _owned_same_day_period_constraint(section, source_kind=kind, source_exact=raw)
+        if same_day is not None:
+            output.append(same_day)
+            continue
         surface = _normalized(raw)
         # A company/report prefix in an owned caption is not permission to
         # discard its affirmative reporting-period clause.  Narratives stay
@@ -5026,22 +5119,46 @@ def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping
         if kind in {"SECTION_TITLE", "TABLE_TITLE"}:
             marker = re.search(r"\bcho (?:ky|giai doan|nam|quy)\b", surface)
             if marker is not None:
+                earlier = surface[:marker.start()]
+                affirmative_prefix = (
+                    r"\b(?:nam(?: tai chinh)? ket thuc|"
+                    r"(?:ky(?: hoat dong| ke toan)?|giai doan) (?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi(?: mot| hai)?) thang ket thuc|"
+                    r"quy (?:i|ii|iii|iv|1|2|3|4) nam \d{4}|"
+                    r"tu ngay \d{1,2} (?:thang )?\d{1,2} (?:nam )?\d{4} (?:den|toi)|"
+                    r"from \d{1,2} \d{1,2} \d{4} (?:to|through))\b"
+                )
+                bare_annual_caption = re.search(
+                    r"\b(?:bao cao (?:ket qua hoat dong|luu chuyen tien te)|thuyet minh bao cao tai chinh)\b.+\bnam(?: tai chinh)? \d{4}\s*$",
+                    earlier,
+                ) or re.fullmatch(r"nam(?: tai chinh)? \d{4}\s*", earlier.strip())
+                if re.search(affirmative_prefix, earlier) or bare_annual_caption:
+                    output.append({"source_kind": kind, "source_exact": raw, "supported": False,
+                                   "unsupported_affirmative_prefix_normalized": earlier})
+                    continue
                 surface = surface[marker.start():]
         # Finite report furniture is retained raw in the receipt.  Do not
         # discard arbitrary text following a reporting-period assertion.
         surface = re.sub(r" (?:theo )?phuong phap (?:truc|gian) tiep(?: tiep theo)?$", "", surface)
+        furniture_evidence = {}
+        if re.search(r" b04a tctd hn$", surface):
+            literal_form = re.search(r"(?:^|\s|\\n)(?P<form>B04a/TCTD-HN)\s*$", raw, re.IGNORECASE)
+            if literal_form is None:
+                output.append({"source_kind": kind, "source_exact": raw, "supported": False})
+                continue
+            furniture_evidence["recognized_terminal_report_furniture_exact"] = literal_form["form"]
+            surface = re.sub(r" b04a tctd hn$", "", surface)
         surface = re.sub(r" b03 tctd$", "", surface)
         annual_year = re.fullmatch(prefix + r"cho nam(?: tai chinh)? (\d{4})(?: tiep theo)?", surface)
         quarter_year = re.fullmatch(prefix + r"cho quy (i|ii|iii|iv|1|2|3|4) nam (\d{4})(?: tiep theo)?", surface)
         if annual_year is not None:
-            output.append({"source_kind": kind, "source_exact": raw, "supported": True, "printed_annual_year": int(annual_year[1])})
+            output.append({"source_kind": kind, "source_exact": raw, "supported": True, "printed_annual_year": int(annual_year[1]), **furniture_evidence})
             continue
         if quarter_year is not None:
             quarter = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "1": 1, "2": 2, "3": 3, "4": 4}[quarter_year[1]]
             output.append({"source_kind": kind, "source_exact": raw, "supported": True,
-                           "printed_reporting_quarter": quarter, "printed_year": int(quarter_year[2])})
+                           "printed_reporting_quarter": quarter, "printed_year": int(quarter_year[2]), **furniture_evidence})
             continue
-        duration = re.fullmatch(prefix + r"cho (?:ky(?: hoat dong)?|giai doan) (?P<months>\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi|muoi mot|muoi hai) thang ket thuc(?: vao)? ngay " + ending, surface)
+        duration = re.fullmatch(prefix + r"cho (?:ky(?: hoat dong| ke toan)?|giai doan) (?P<months>\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi|muoi mot|muoi hai) thang ket thuc(?: vao)? ngay " + ending, surface)
         annual = re.fullmatch(prefix + r"(?:cho )?nam(?: tai chinh)? ket thuc(?: vao)? ngay " + ending, surface)
         match = duration or annual
         if match is None:
@@ -5055,7 +5172,8 @@ def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping
             continue
         months = 12 if annual is not None else int(duration["months"]) if duration["months"].isdigit() else months_by_word[duration["months"]]
         output.append({"source_kind": kind, "source_exact": raw, "supported": 1 <= months <= 12,
-                       "printed_end_date": end.isoformat(), "printed_months": months, "annual_assertion": annual is not None})
+                       "printed_end_date": end.isoformat(), "printed_months": months, "annual_assertion": annual is not None,
+                       **furniture_evidence})
     return output
 
 

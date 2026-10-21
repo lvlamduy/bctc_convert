@@ -1332,3 +1332,426 @@ def test_document_annual_inheritance_retains_policy_history_and_signature_prose_
     assert proof["complete"] is True, proof["reasons"]
     assert _candidate(records)["status"] == READY
     assert records == original
+
+
+def _same_day_owned_note_period_records(*, interim=False, written_months=False, table_owned=False, literal_newline=False):
+    records = _contextual_period_records(quarter="II") if interim else _owned_relative_year_period_records()
+    section = records[0]["page_json"]["sections"][0]
+    table = section["tables"][0]
+    scaffold = "THUYẾT MINH BÁO CÁO TÀI CHÍNH RIÊNG"
+    if interim:
+        scaffold += " GIỮA NIÊN ĐỘ"
+    duration = ("kỳ kế toán " + ("sáu" if written_months else "6") + " tháng") if interim else "năm tài chính"
+    endpoint = "30 tháng 6" if interim else "31 tháng 12"
+    separator = "\\n" if literal_newline else "\n"
+    caption = scaffold + separator + "vào ngày " + endpoint + " năm 2026 và cho " + duration + " kết thúc cùng ngày"
+    if table_owned:
+        section["title_exact"] = "Chi phí thuế thu nhập doanh nghiệp riêng"
+        table["title_exact"] = caption
+    else:
+        section["title_exact"] = caption
+        table["title_exact"] = "Chi phí thuế thu nhập doanh nghiệp"
+    return records
+
+
+def _same_day_owned_note_period_proof(records, *, interim=False):
+    return _contextual_period_proof(records) if interim else _owned_relative_year_period_proof(records)
+
+
+@pytest.mark.parametrize("interim,written_months,table_owned,literal_newline", [
+    (False, False, False, False), (False, False, False, True), (False, False, True, False),
+    (True, False, False, False), (True, False, False, True), (True, True, False, False),
+    (True, True, True, False), (True, True, True, True),
+])
+def test_same_day_owned_note_clause_binds_its_single_printed_date_without_changing_source(
+    interim, written_months, table_owned, literal_newline,
+):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _owned_current_period_constraints,
+        _owned_current_period_constraints_match,
+    )
+
+    records = _same_day_owned_note_period_records(
+        interim=interim, written_months=written_months, table_owned=table_owned, literal_newline=literal_newline,
+    )
+    original = deepcopy(records)
+    section = records[0]["page_json"]["sections"][0]
+    table = section["tables"][0]
+    raw = table["title_exact"] if table_owned else section["title_exact"]
+    constraints = _owned_current_period_constraints(section, table)
+    owned = [item for item in constraints if item["source_exact"] == raw]
+    assert len(owned) == 1
+    assert owned[0]["supported"] is True
+    assert owned[0]["printed_end_date"] == ("2026-06-30" if interim else "2026-12-31")
+    assert owned[0]["printed_months"] == (6 if interim else 12)
+    periods = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]] if interim else [
+        ["ANNUAL_YEAR", 2026], ["ANNUAL_YEAR", 2025],
+    ]
+    assert _owned_current_period_constraints_match(section, table, {}, periods)
+    proof = _same_day_owned_note_period_proof(records, interim=interim)
+    assert proof["complete"] is True, proof["reasons"]
+    assert proof["start_dates_inferred"] is False
+    assert proof["source_period_keys_modified"] is False
+    assert proof["amounts_used_as_authority"] is False
+    candidate = _candidate(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    assert records == original
+
+
+@pytest.mark.parametrize("months", ["6", "sáu"])
+@pytest.mark.parametrize("source_kind", ["SECTION_TITLE", "OWNED_NARRATIVE"])
+def test_owned_ke_toan_duration_is_a_printed_six_month_assertion(months, source_kind):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _owned_current_period_constraints,
+    )
+
+    records = _contextual_period_records(quarter="II")
+    section = records[0]["page_json"]["sections"][0]
+    raw = "Cho kỳ kế toán " + months + " tháng kết thúc ngày 30 tháng 6 năm 2026"
+    if source_kind == "SECTION_TITLE":
+        section["title_exact"] += "\n" + raw
+    else:
+        section["narratives_exact"].append(raw)
+    original = deepcopy(records)
+    constraints = _owned_current_period_constraints(section, section["tables"][0])
+    assert any(item["supported"] and item.get("printed_months") == 6
+               and item.get("printed_end_date") == "2026-06-30" for item in constraints)
+    proof = _contextual_period_proof(records)
+    assert proof["complete"] is True, proof["reasons"]
+    assert _candidate(records)["status"] == READY
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing_preceding_date", "same_date_twice", "different_dates", "date_on_other_surface_only",
+    "wrong_header_year", "wrong_header_endpoint", "annual_june", "six_months_march",
+    "extra_assertion_before", "prose_before", "prose_after", "wrong_scaffold", "cross_scope_conflict",
+    "unknown_form_code", "valid_form_code_plus_prose", "valid_form_code_plus_date",
+])
+def test_same_day_owned_note_clause_cannot_borrow_or_discard_ambiguous_source_context(mutation):
+    interim = mutation in {"wrong_header_endpoint", "six_months_march"}
+    records = _same_day_owned_note_period_records(interim=interim)
+    section = records[0]["page_json"]["sections"][0]
+    table = section["tables"][0]
+    raw = section["title_exact"]
+    if mutation in {"missing_preceding_date", "date_on_other_surface_only"}:
+        section["title_exact"] = raw.replace("vào ngày 31 tháng 12 năm 2026 và ", "")
+        if mutation == "date_on_other_surface_only":
+            section["narratives_exact"].append("Vào ngày 31 tháng 12 năm 2026")
+    elif mutation == "same_date_twice":
+        section["title_exact"] = raw.replace(" và cho ", " và vào ngày 31 tháng 12 năm 2026 và cho ")
+    elif mutation == "different_dates":
+        section["title_exact"] = raw.replace(" và cho ", " và vào ngày 30 tháng 6 năm 2026 và cho ")
+    elif mutation == "wrong_header_year":
+        for column, year in zip(table["columns"], ("2025", "2024"), strict=True):
+            column["header_path_exact"] = ["Năm " + year, "Triệu đồng"]
+    elif mutation == "wrong_header_endpoint":
+        for column in table["columns"]:
+            column["header_path_exact"] = [value.replace("6 tháng", "9 tháng").replace("30/6/", "30/9/")
+                                           for value in column["header_path_exact"]]
+    elif mutation == "annual_june":
+        section["title_exact"] = raw.replace("31 tháng 12", "30 tháng 6")
+    elif mutation == "six_months_march":
+        section["title_exact"] = raw.replace("30 tháng 6", "31 tháng 3")
+    elif mutation == "extra_assertion_before":
+        section["title_exact"] = "Cho năm tài chính 2025\n" + raw
+    elif mutation == "prose_before":
+        section["title_exact"] = "Số liệu chỉ dùng tham khảo\n" + raw
+    elif mutation == "prose_after":
+        section["title_exact"] = raw + "\nSố liệu chỉ dùng tham khảo"
+    elif mutation == "wrong_scaffold":
+        section["title_exact"] = raw.replace("THUYẾT MINH BÁO CÁO TÀI CHÍNH", "BẢN THỐNG KÊ NỘI BỘ")
+    elif mutation == "cross_scope_conflict":
+        section["title_exact"] = raw.replace("RIÊNG", "HỢP NHẤT")
+    elif mutation == "unknown_form_code":
+        section["title_exact"] = raw + "\nB99/TCTD-HN"
+    elif mutation == "valid_form_code_plus_prose":
+        section["title_exact"] = raw + "\nB04a/TCTD-HN\nSố liệu chỉ dùng tham khảo"
+    else:
+        section["title_exact"] = raw + "\nB04a/TCTD-HN\nVào ngày 30 tháng 6 năm 2026"
+    original = deepcopy(records)
+    proof = _same_day_owned_note_period_proof(records, interim=interim)
+    if mutation == "cross_scope_conflict":
+        # Equal printed periods are not proof that report populations match.
+        assert proof["complete"] is True
+        assert [item["scope_receipt"]["report_scope"] for item in proof["source_selectors"]] == [
+            "CONSOLIDATED", "SEPARATE",
+        ]
+    else:
+        assert proof["complete"] is False
+        assert proof["status"] == "ALGORITHM_HOLD"
+    assert proof["source_period_keys_modified"] is False
+    assert proof["start_dates_inferred"] is False
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert records == original
+
+
+@pytest.mark.parametrize("literal_newline", [False, True])
+def test_document_annual_cash_flow_accepts_only_the_exact_terminal_b04a_hn_furniture(literal_newline):
+    records = _document_annual_relative_note_records()
+    for record in records:
+        section = record["page_json"]["sections"][0]
+        section["title_exact"] = section["title_exact"].replace("riêng", "hợp nhất")
+    separator = "\\n" if literal_newline else "\n"
+    records[2]["page_json"]["sections"][0]["title_exact"] += separator + "B04a/TCTD-HN"
+    original = deepcopy(records)
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is True, proof["reasons"]
+    assert _candidate(records)["status"] == READY
+    assert records == original
+
+
+@pytest.mark.parametrize("suffix", [
+    "B04b/TCTD-HN", "B99/TCTD-HN", "B04a/TCTD-HN đã điều chỉnh",
+    "B04a/TCTD-HN\nCho năm tài chính 2025", "B04a/TCTD-HN\nVào ngày 30 tháng 6 năm 2026",
+    "B04a/TCTD-HN (**)",
+])
+def test_document_annual_cash_flow_form_code_does_not_discard_unknown_furniture_or_assertions(suffix):
+    records = _document_annual_relative_note_records()
+    records[2]["page_json"]["sections"][0]["title_exact"] += "\n" + suffix
+    original = deepcopy(records)
+    assert _owned_relative_year_period_proof(records)["complete"] is False
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert records == original
+
+
+def test_same_day_owned_note_period_inventory_cannot_be_fully_resealed_as_new_date_authority():
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _document_statement_period_inventory,
+        _source_period_correspondence_receipt,
+    )
+
+    records = _same_day_owned_note_period_records()
+    compiled = _adapter_compiled()
+    forged = deepcopy(_document_statement_period_inventory(records, compiled_specs=compiled))
+    forged["sources"][0]["owned_current_period_constraints"][0]["printed_end_date"] = "2025-12-31"
+
+    def reseal_nested(value):
+        if isinstance(value, list):
+            for child in value:
+                reseal_nested(child)
+        elif isinstance(value, dict):
+            for child in value.values():
+                reseal_nested(child)
+            if isinstance(value.get("receipt_id"), str):
+                prefix = value["receipt_id"].rsplit(":", 1)[0] + ":"
+                value["receipt_id"] = prefix + canonical_json_sha256_v1(
+                    {key: item for key, item in value.items() if key != "receipt_id"}
+                )
+
+    reseal_nested(forged)
+    original = deepcopy(records)
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="drifted"):
+        _source_period_correspondence_receipt(
+            left_locator=_contextual_period_locator(records[0]), right_locator=_contextual_period_locator(records[1]),
+            left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+            page_records=records, compiled_specs=compiled, document_period_inventory=forged,
+        )
+    assert records == original
+
+
+def test_public_query_rebuild_rejects_changed_same_day_note_date_without_touching_raw_source():
+    records = _same_day_owned_note_period_records()
+    compiled = _adapter_compiled()
+    cluster, receipt = _query(records, compiled)
+    changed = deepcopy(records)
+    section = changed[0]["page_json"]["sections"][0]
+    section["title_exact"] = section["title_exact"].replace("2026", "2025")
+    original = deepcopy(changed)
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="drifted"):
+        _evaluate_query(changed, compiled, cluster, receipt)
+    assert changed == original
+
+
+@pytest.mark.parametrize("discarded_assertion", [
+    "NĂM KẾT THÚC NGÀY 31/12/2025",
+    "KỲ KẾ TOÁN SÁU THÁNG KẾT THÚC NGÀY 30/6/2025",
+    "NĂM 2025",
+])
+def test_owned_period_first_cho_slice_cannot_erase_an_earlier_affirmative_reporting_assertion(discarded_assertion):
+    records = _owned_relative_year_period_records()
+    section = records[1]["page_json"]["sections"][0]
+    section["title_exact"] = (
+        "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG " + discarded_assertion
+        + " CHO NĂM KẾT THÚC NGÀY 31/12/2026"
+    )
+    original = deepcopy(records)
+    proof = _owned_relative_year_period_proof(records)
+    assert proof["complete"] is False
+    assert proof["status"] == "ALGORITHM_HOLD"
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert records == original
+
+
+def test_same_day_owned_note_does_not_promote_historical_same_day_narrative_to_period_authority():
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _owned_current_period_constraints,
+    )
+
+    records = _same_day_owned_note_period_records()
+    section = records[0]["page_json"]["sections"][0]
+    historical = "Thông tin so sánh lịch sử: năm tài chính 2024 kết thúc cùng ngày"
+    section["narratives_exact"].append(historical)
+    original = deepcopy(records)
+    constraints = _owned_current_period_constraints(section, section["tables"][0])
+    assert all(item["source_exact"] != historical for item in constraints)
+    proof = _same_day_owned_note_period_proof(records)
+    assert proof["complete"] is True, proof["reasons"]
+    assert _candidate(records)["status"] == READY
+    assert records == original
+
+
+@pytest.mark.parametrize("marker", [" (*)", "\n(**)", " †", " ‡", " ()", "\n---"])
+def test_same_day_owned_note_raw_marker_cannot_disappear_during_normalization(marker):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _owned_current_period_constraints,
+    )
+
+    records = _same_day_owned_note_period_records()
+    section = records[0]["page_json"]["sections"][0]
+    section["title_exact"] += marker
+    original = deepcopy(records)
+    constraints = _owned_current_period_constraints(section, section["tables"][0])
+    assert any(item["source_exact"] == section["title_exact"] and not item["supported"] for item in constraints)
+    assert _same_day_owned_note_period_proof(records)["complete"] is False
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert records == original
+
+
+def _same_day_owned_note_outline_records(*, parent="31", child="31.2", literal_newline=False):
+    records = _same_day_owned_note_period_records(literal_newline=literal_newline)
+    section = records[0]["page_json"]["sections"][0]
+    separator = "\\n" if literal_newline else "\n"
+    headings = [
+        parent + ". TÌNH HÌNH THỰC HIỆN NGHĨA VỤ VỚI NGÂN SÁCH NHÀ NƯỚC",
+        child + ". THUẾ THU NHẬP DOANH NGHIỆP",
+    ]
+    section["title_exact"] += separator + separator.join(headings)
+    return records, headings
+
+
+@pytest.mark.parametrize("parent,child", [("31", "31.2"), ("7", "7.11")])
+@pytest.mark.parametrize("literal_newline", [False, True])
+def test_same_day_owned_note_outline_headings_are_source_linked_not_hardcoded_note_numbers(parent, child, literal_newline):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _owned_current_period_constraints,
+    )
+
+    records, headings = _same_day_owned_note_outline_records(parent=parent, child=child, literal_newline=literal_newline)
+    original = deepcopy(records)
+    section = records[0]["page_json"]["sections"][0]
+    constraints = _owned_current_period_constraints(section, section["tables"][0])
+    same_day = [item for item in constraints if item.get("same_day_reference_evidence")]
+    assert len(same_day) == 1
+    assert same_day[0]["supported"] is True
+    evidence = same_day[0]["same_day_reference_evidence"]
+    assert evidence["source_lines_exact"][-2:] == headings
+    assert evidence["recognized_trailing_furniture"] == [
+        {"source_exact": headings[0], "outline_ordinal_exact": parent},
+        {"source_exact": headings[1], "outline_ordinal_exact": child},
+    ]
+    assert _same_day_owned_note_period_proof(records)["complete"] is True
+    candidate = _candidate(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    assert records == original
+
+
+@pytest.mark.parametrize("heading_ordinal", [0, 1])
+@pytest.mark.parametrize("marker", [" (*)", " (**)", " †", " ‡", " ()"])
+def test_same_day_owned_note_outline_heading_marker_is_not_ignored(heading_ordinal, marker):
+    records, headings = _same_day_owned_note_outline_records()
+    section = records[0]["page_json"]["sections"][0]
+    section["title_exact"] = section["title_exact"].replace(headings[heading_ordinal], headings[heading_ordinal] + marker)
+    original = deepcopy(records)
+    assert _same_day_owned_note_period_proof(records)["complete"] is False
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", ["outline_parent_mismatch", "unknown_parent_heading", "unknown_child_heading", "additional_date"])
+def test_same_day_owned_note_outline_furniture_cannot_hide_mismatched_or_extra_source_text(mutation):
+    records, headings = _same_day_owned_note_outline_records()
+    section = records[0]["page_json"]["sections"][0]
+    if mutation == "outline_parent_mismatch":
+        section["title_exact"] = section["title_exact"].replace("31.2.", "32.2.")
+    elif mutation == "unknown_parent_heading":
+        section["title_exact"] = section["title_exact"].replace(headings[0], "31. THÔNG TIN HOẠT ĐỘNG KHÁC")
+    elif mutation == "unknown_child_heading":
+        section["title_exact"] = section["title_exact"].replace(headings[1], "31.2. THUẾ GIÁ TRỊ GIA TĂNG")
+    else:
+        section["title_exact"] += "\nVào ngày 30 tháng 6 năm 2026"
+    original = deepcopy(records)
+    assert _same_day_owned_note_period_proof(records)["complete"] is False
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", [
+    "inline_superscript_one", "inline_superscript_two", "inline_superscript_three", "superscript_on_heading",
+    "unmatched_open_parenthesis", "unmatched_close_parenthesis", "nested_parentheses", "unreviewed_parenthetical",
+])
+def test_same_day_owned_note_raw_unicode_markers_and_parentheses_cannot_be_normalized_away(mutation):
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _owned_current_period_constraints,
+    )
+
+    records, headings = _same_day_owned_note_outline_records()
+    section = records[0]["page_json"]["sections"][0]
+    if mutation.startswith("inline_superscript_"):
+        marker = {"inline_superscript_one": "¹", "inline_superscript_two": "²", "inline_superscript_three": "³"}[mutation]
+        section["title_exact"] = section["title_exact"].replace("cùng ngày", "cùng ngày" + marker)
+    elif mutation == "superscript_on_heading":
+        section["title_exact"] = section["title_exact"].replace(headings[1], headings[1] + "¹")
+    else:
+        marker = {
+            "unmatched_open_parenthesis": " (",
+            "unmatched_close_parenthesis": " )",
+            "nested_parentheses": " (Tiếp theo (Tiếp theo))",
+            "unreviewed_parenthetical": " (đã điều chỉnh)",
+        }[mutation]
+        section["title_exact"] = section["title_exact"].replace("RIÊNG", "RIÊNG" + marker)
+    original = deepcopy(records)
+    constraints = _owned_current_period_constraints(section, section["tables"][0])
+    assert any(item["source_exact"] == section["title_exact"] and not item["supported"] for item in constraints)
+    assert _same_day_owned_note_period_proof(records)["complete"] is False
+    candidate = _candidate(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert records == original
+
+
+@pytest.mark.parametrize("decomposed", [False, True])
+def test_same_day_owned_note_retains_indentation_empty_lines_and_vietnamese_source_characters(decomposed):
+    import unicodedata
+
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _owned_current_period_constraints,
+    )
+
+    records, _ = _same_day_owned_note_outline_records()
+    section = records[0]["page_json"]["sections"][0]
+    section["title_exact"] = "\n" + "\n\n".join("  " + line + "  " for line in section["title_exact"].splitlines()) + "\n"
+    if decomposed:
+        section["title_exact"] = unicodedata.normalize("NFD", section["title_exact"])
+    raw = section["title_exact"]
+    original = deepcopy(records)
+    constraints = _owned_current_period_constraints(section, section["tables"][0])
+    owned = next(item for item in constraints if item.get("same_day_reference_evidence"))
+    assert owned["supported"] is True
+    assert owned["source_exact"] == raw
+    assert owned["same_day_reference_evidence"]["source_lines_exact"] == raw.split("\n")
+    assert _same_day_owned_note_period_proof(records)["complete"] is True
+    assert _candidate(records)["status"] == READY
+    assert records == original
