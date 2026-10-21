@@ -99,7 +99,7 @@ stale-cache path; every run re-authenticates its inputs.
 Local (WSL): `/home/bctc/primary-runs/full271-20261021T163936Z/`,
 `/home/bctc/primary-runs/common204-20261021T164639Z/`,
 `/home/bctc/primary-receipts/` (preflight, pytest junit, PDF audit,
-cross-corpus comparison). S3 keys and VersionIds: see
+cross-corpus comparison). S3 keys and VersionIds (uploaded, exact-version verified): see
 `ARTIFACTS_2026-10-21.md` in this folder.
 
 ## 7. Not accepted / next steps

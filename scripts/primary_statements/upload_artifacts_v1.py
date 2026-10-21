@@ -55,6 +55,9 @@ def main() -> int:
     account = boto3.client("sts", region_name=REGION).get_caller_identity()["Account"]
     base = PREFIX + args.run_id + "/"
     files = sorted(path for path in args.run_dir.rglob("*") if path.is_file())
+    if not files:
+        # rglob over a \\wsl.localhost UNC path yields nothing; stage on a local drive.
+        raise RuntimeError("no files found under --run-dir: " + str(args.run_dir))
     entries = []
     for path in files:
         relative = path.relative_to(args.run_dir).as_posix()
