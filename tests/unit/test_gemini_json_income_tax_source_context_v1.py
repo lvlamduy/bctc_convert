@@ -8,8 +8,8 @@ from test_gemini_json_income_tax_family_v1 import (
     _adapter_compiled,
     _adapter_compiled_with_fixture_row_repair,
     _canonical_rows,
-    _collapsed_current_tax_row,
     _evaluate_supplemental_records,
+    _honest_income_recognition_repair_records,
     _json,
     _page,
     _primary_page,
@@ -160,31 +160,21 @@ def test_actual_nonempty_repair_receipt_order_cannot_be_resealed(mutation: str) 
         _json("tm-income-tax-topology-v1.json"), _json("tm-income-tax-evaluation-v1.json"),
         _json("tm-income-tax-schema-binding-v1.json"), source_repair_spec=spec,
     )
-    page = _page([
-        _row("Lợi nhuận kế toán trước thuế TNDN", "100", "80"),
-        _row("Thu nhập chịu thuế", "100", "80", kind="SUBTOTAL"),
-        _row("Thu nhập không chịu thuế", "-", "-"),
-        _row("Chi phí không được khấu trừ", "1", "2"),
-        _row("Chi phí thuế TNDN tính trên thu nhập chịu thuế kỳ hiện hành", "20", "15", kind="SUBTOTAL"),
-        _collapsed_current_tax_row(),
-        _row("Thu nhập thuế TNDN - hoãn lại", None, "-"),
-        _row("Chi phí thuế TNDN", "20", "15", kind="TOTAL"),
-    ], owner="29 THUẾ TNDN")
-    records = [_record(page)]
+    records = _honest_income_recognition_repair_records(deferred_current=None)
+    original = deepcopy(records)
     base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=records, compiled_specs=compiled)
     cluster = recover_gemini_json_income_tax_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
     assert cluster["status"] == READY
     query = build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster)
-    assert query["adapter_receipt"] is None
     ids = query["source_context_receipt"]["repair_receipt_ids"]
     assert len(ids) == 2 and ids[0] != ids[1]
     candidate = _evaluate(compiled, cluster, query, records)
     assert candidate["status"] == READY
-    assert not any(item["role"] == "FAMILY_ROOT_TOTAL" for item in candidate["mappings"])
-    control_checks = candidate["closure_receipt"]["income_tax_source_control_receipt"]["supplemental_root_lane_receipts"]
-    assert {lane["status"] for item in control_checks for lane in item["lanes"]} == {
-        "NO_FINAL_ROOT_MAPPING_CONTROL_RETAINED_NOT_EXPORTED"
-    }
+    inventory = query["source_context_receipt"]["tax_population_inventory"][0]
+    assert inventory["source_table_rows_exact"][4]["row_kind"] == "GROUP"
+    assert inventory["source_table_rows_exact"][5]["values_exact"] == ["20", "15"]
+    assert inventory["source_table_rows_exact"][6]["values_exact"] == ["-", "-"]
+    assert inventory["recognition_expense_frontier"]["status"] == "PASS"
     tampered = deepcopy(query)
     tampered["source_context_receipt"]["repair_receipt_ids"] = (
         list(reversed(ids)) if mutation == "reverse" else ids[:1] if mutation == "truncate" else [ids[0], ids[0]]
@@ -192,6 +182,7 @@ def test_actual_nonempty_repair_receipt_order_cannot_be_resealed(mutation: str) 
     _reseal(tampered)
     with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="source context query replay drifted"):
         _evaluate(compiled, cluster, tampered, records)
+    assert records == original
 
 
 @pytest.mark.parametrize("root", [("12", "9"), ("99", "99"), ("(12)", "9")])

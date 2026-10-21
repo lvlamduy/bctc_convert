@@ -84,6 +84,38 @@ def _repaired_current_tax_row() -> dict[str, Any]:
     }
 
 
+def _honest_income_recognition_repair_page(*, deferred_current: str | None = "-") -> dict[str, Any]:
+    """An actual INCOME stage and blank recognition GROUP preserve repair r6."""
+    group = _repaired_current_tax_row()["hierarchy_path_exact"][0]
+    deferred = "Thu nhập thuế TNDN - hoãn lại"
+    return _page([
+        _row("Lợi nhuận kế toán trước thuế TNDN", "100", "80"),
+        _row("Điều chỉnh khác", "(10)", "(8)"),
+        _row("Chi phí không được khấu trừ", "5", "3"),
+        _row("Thu nhập chịu thuế", "95", "75", kind="SUBTOTAL"),
+        _row(group, None, None, kind="GROUP"),
+        _collapsed_current_tax_row(),
+        {**_row(deferred, deferred_current, "-"), "hierarchy_path_exact": [group, deferred]},
+        _row("Chi phí thuế TNDN", "20", "15", kind="TOTAL"),
+    ], owner="Chi phí thuế thu nhập doanh nghiệp riêng")
+
+
+def _honest_income_recognition_repair_records(*, deferred_current: str | None = "-") -> list[dict[str, Any]]:
+    page = _honest_income_recognition_repair_page(deferred_current=deferred_current)
+    before = {**_row("Tổng lợi nhuận trước thuế", "100", "80"), "values_exact": ["30", "40", "100", "80"]}
+    after = {**_row("Lợi nhuận sau thuế", "80", "65"), "values_exact": ["25", "35", "80", "65"]}
+    primary = _primary_page([
+        before,
+        *_primary_tax_rows(current=("(20)", "(15)"), deferred=("-", "-"), root=("(20)", "(15)")),
+        after,
+    ])
+    primary["sections"][0]["title_exact"] = "Báo cáo kết quả hoạt động riêng"
+    records = [_record(page), _primary_record(primary, page_json_version_id="gfpstorev1:json:" + "d" * 64,
+                                             physical_page=2, selected_page_ordinal=2)]
+    _printed_annual_primary(records)
+    return records
+
+
 def _adapter_compiled_with_fixture_row_repair() -> dict[str, Any]:
     repair = {
         "after_exact": _repaired_current_tax_row(),
@@ -747,6 +779,11 @@ def test_family_adapter_compiles_private_primary_source_policies_fail_closed() -
 
 
 def test_source_repair_recoalesces_private_note_before_candidate_replay() -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _apply_source_repairs,
+        _recognition_expense_source_frontier,
+    )
+
     compiled = _adapter_compiled_with_fixture_row_repair()
     page = _page(
         [
@@ -789,28 +826,63 @@ def test_source_repair_recoalesces_private_note_before_candidate_replay() -> Non
     cluster = recover_gemini_json_income_tax_query_cluster_v1(
         page_records=[record], base_cluster=base, compiled_specs=compiled
     )
-    assert cluster["status"] == READY
+    # Repair authentication cannot invent the GROUP that is present only in
+    # the repaired row's ancestry. Keep this historical source as a negative.
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["component_regions"] == []
+    assert cluster["reasons"]
     assert cluster["cluster_id"] != base["cluster_id"]
+    repaired_records, repairs = _apply_source_repairs([record], compiled_specs=compiled)
+    assert repaired_records[0]["page_json"] == repaired
+    assert repaired_records[0]["page_json"]["sections"][0]["tables"][0]["rows"][5] == _repaired_current_tax_row()
+    assert len(repairs) == 1
+    repair = repairs[0]
+    assert repair["before_page_json_sha256"] == canonical_json_sha256_v1(page)
+    assert repair["after_page_json_sha256"] == canonical_json_sha256_v1(repaired)
+    assert repair["receipt_id"] == "gjitfav1:repair-receipt:" + canonical_json_sha256_v1(
+        {key: value for key, value in repair.items() if key != "receipt_id"}
+    )
+    section = repaired_records[0]["page_json"]["sections"][0]
+    frontier = _recognition_expense_source_frontier(section, section["tables"][0], compiled_specs=compiled)
+    assert frontier["status"] == "ALGORITHM_HOLD"
+    assert frontier["reasons"]
+    assert record == original
+
+
+def test_source_row_repair_recoalesces_honest_income_and_actual_recognition_group() -> None:
+    compiled = _adapter_compiled_with_fixture_row_repair()
+    records = _honest_income_recognition_repair_records()
+    original = deepcopy(records)
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=records, compiled_specs=compiled,
+    )
+    assert base["status"] == READY
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(
+        page_records=records, base_cluster=base, compiled_specs=compiled,
+    )
+    assert cluster["status"] == READY, cluster["reasons"]
+    assert cluster["cluster_id"] != base["cluster_id"]
+    query = build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster)
+    source_context = query["source_context_receipt"]
+    assert len(source_context["repair_receipt_ids"]) == 1
+    inventory = source_context["tax_population_inventory"][0]
+    assert inventory["source_table_rows_exact"][4]["row_kind"] == "GROUP"
+    assert inventory["source_table_rows_exact"][4]["values_exact"] == [None, None]
+    assert inventory["source_table_rows_exact"][5] == _repaired_current_tax_row()
+    assert inventory["recognition_expense_frontier"]["status"] == "PASS"
+    assert inventory["recognition_rate_effect_control"]["status"] == "NOT_APPLICABLE"
     candidate = evaluate_gemini_json_income_tax_family_cluster_v1(
         regions=cluster["component_regions"],
-        page_json_by_version={VERSION_ID: page},
-        selected_page_axis=[{key: value for key, value in record.items() if key != "page_json"}],
+        page_json_by_version={item["page_json_version_id"]: item["page_json"] for item in records},
+        selected_page_axis=[{key: value for key, value in item.items() if key != "page_json"} for item in records],
         compiled_specs=compiled,
-        query_receipt=build_gemini_json_income_tax_region_query_receipt_v1(
-            cluster["component_regions"], cluster=cluster
-        ),
+        query_receipt=query,
     )
-    # Re-coalescing and authenticated repair still succeed. This original
-    # fixture also contains tax-effect rows, which cannot populate income-
-    # basis fields merely because the generic arithmetic engine accepted them.
-    assert candidate["status"] == UNRESOLVED
-    assert candidate["reasons"] == ["INCOME_TAX_RATE_RECONCILIATION_MEASUREMENT_BASIS_AMBIGUITY"]
-    assert candidate["mappings"] == []
-    source_context = candidate["closure_receipt"]["income_tax_unresolved_evidence_receipt"]["evidence"]["source_context_receipt"]
-    repaired_row = source_context["tax_population_inventory"][0]["source_table_rows_exact"][5]
-    assert repaired_row == _repaired_current_tax_row()
-    assert len(source_context["repair_receipt_ids"]) == 1
-    assert record == original
+    assert candidate["status"] == READY, candidate["reasons"]
+    current = next(mapping for mapping in candidate["mappings"] if mapping["role"] == "CURRENT_TAX_PARENT")
+    assert [cell["source_text"] for cell in current["values"]] == ["20", "15"]
+    assert current["source_refs"][0]["row_ordinal"] == 6
+    assert records == original
 
 
 def test_primary_income_statement_projects_only_final_duration_lanes_and_restores_source() -> None:

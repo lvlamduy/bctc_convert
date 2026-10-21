@@ -8,8 +8,6 @@ from test_gemini_json_income_tax_family_v1 import (
     SOURCE_SHA256,
     VERSION_ID,
     _adapter_compiled,
-    _adapter_compiled_with_fixture_row_repair,
-    _collapsed_current_tax_row,
     _evaluate_supplemental_records,
     _page,
     _record,
@@ -334,14 +332,16 @@ def test_supplemental_root_column_order_is_bound_by_explicit_source_periods() ->
     "Thuế TNDN theo thuế suất quy định (20%)",
 ])
 def test_authenticated_root_without_final_root_mapping_is_retained_not_exported_or_compared(tax_calculation_label: str) -> None:
-    compiled = _adapter_compiled_with_fixture_row_repair()
+    compiled = _adapter_compiled()
     record = _record(_page([
         _row("Lợi nhuận kế toán trước thuế TNDN", "100", "80"),
         _row("Thu nhập chịu thuế", "100", "80", kind="SUBTOTAL"),
         _row("Thu nhập không chịu thuế", "-", "-"),
         _row("Chi phí không được khấu trừ", "1", "2"),
         _row(tax_calculation_label, "20", "15", kind="SUBTOTAL"),
-        _collapsed_current_tax_row(),
+        # This source owns its current-tax row directly.  Do not claim an
+        # unprinted recognition GROUP merely to exercise root retention.
+        _row("Chi phí thuế TNDN hiện hành", "20", "15"),
         _row("Thu nhập thuế TNDN - hoãn lại", "-", "-"),
         _root_row("20", "15"),
     ], owner="29 THUẾ TNDN"))

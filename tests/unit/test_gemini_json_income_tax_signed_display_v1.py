@@ -413,7 +413,26 @@ def test_note_qualifiers_cannot_be_discarded_as_unobserved_tax_owner_aliases(sco
     records = _records()
     for row in records[0]["page_json"]["sections"][0]["tables"][0]["rows"]:
         row["hierarchy_path_exact"] = [scope, row["label_exact"]]
-    assert _candidate(records)["status"] == UNRESOLVED
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=records, compiled_specs=compiled,
+    )
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(
+        page_records=records, base_cluster=base, compiled_specs=compiled,
+    )
+    if cluster["status"] == UNRESOLVED:
+        assert cluster["reasons"]
+        assert cluster["component_regions"] == []
+    else:
+        assert cluster["status"] == READY
+        receipt = build_gemini_json_income_tax_region_query_receipt_v1(
+            cluster["component_regions"], cluster=cluster,
+        )
+        candidate = _evaluate_query(records, compiled, cluster, receipt)
+        assert candidate["status"] == UNRESOLVED
+        assert candidate["mappings"] == []
+    assert records == original
 
 
 def test_resealed_population_receipt_does_not_replace_original_source_ancestry():

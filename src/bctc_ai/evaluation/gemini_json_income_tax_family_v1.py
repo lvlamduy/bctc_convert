@@ -1578,6 +1578,10 @@ def _supplemental_root_controls(
                 if not root_ordinals:
                     continue
                 root_surface_count += len(root_ordinals)
+                recognition = _recognition_expense_source_frontier(section, table, compiled_specs=compiled_specs)
+                if recognition["status"] == "ALGORITHM_HOLD":
+                    issues.append("SUPPLEMENTAL_RECOGNITION_SOURCE_FRONTIER_INCOMPLETE")
+                    continue
                 lane_axis = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
                 money_ordinals = lane_axis.get("money_column_ordinals")
                 if (
@@ -1645,6 +1649,7 @@ def _supplemental_root_controls(
                         "primary_unit_corroboration_receipt": unit_receipt,
                         "root_source_row": root_row,
                         "source_table_row_axis": canonical_clone_v1(source_rows),
+                        "recognition_expense_frontier_receipt": (recognition if recognition["status"] == "PASS" else None),
                         "unit_evidence": canonical_clone_v1(unit_evidence),
                         "rule": "EXACT_SOURCE_VISIBLE_SUPPLEMENTAL_ROOT_IS_CONTROL_ONLY",
                     }
@@ -1745,6 +1750,11 @@ def _supplemental_presentations(
                     ]
                 else:
                     source_rows = all_source_rows
+                recognition = _recognition_expense_source_frontier(section, table, compiled_specs=compiled_specs)
+                if recognition["status"] == "ALGORITHM_HOLD":
+                    if issues is not None:
+                        issues.append("SUPPLEMENTAL_RECOGNITION_SOURCE_FRONTIER_INCOMPLETE")
+                    continue
                 # A generic note may already have claimed the row.  That is
                 # never authority to bypass a contradictory source boundary.
                 if consumed_source_rows and not any(
@@ -1763,6 +1773,31 @@ def _supplemental_presentations(
                 table_has_certified_equation = False
                 table_equation_receipts: list[dict[str, Any]] = []
                 certified_adjustment_ordinals: set[int] = set()
+
+                if recognition["status"] == "PASS":
+                    current = _projected_source_row(recognition["current_source_row"],
+                                                    role="CURRENT_TAX_PARENT", projected_row_kind="ITEM")
+                    deferred = _projected_source_row(recognition["deferred_source_row"],
+                                                     role="DEFERRED_TAX_NET", projected_row_kind="ITEM")
+                    root = _projected_source_row(recognition["parent_source_row"],
+                                                 role="FAMILY_ROOT_TOTAL", projected_row_kind="TOTAL")
+                    equation = _supplemental_equation_receipt(
+                        component_rows=[current, deferred], parent_row=root,
+                        equation_kind="OBSERVED_CURRENT_PLUS_OBSERVED_ZERO_DEFERRED_INCOME_EQUALS_PRINTED_ROOT_CONTROL_ONLY",
+                    )
+                    descriptor = _finalize_supplemental_descriptor(
+                        record=record, page=page, section_ordinal=section_ordinal, table_ordinal=table_ordinal,
+                        table=table, money_column_ordinals=money_ordinals, canonical_unit=canonical_unit,
+                        unit_evidence=unit_evidence, unit_receipt=unit_receipt, source_rows=all_source_rows,
+                        rows=[current, deferred], presentation_kind="RECOGNITION_GROUP_OBSERVED_CURRENT_AND_ZERO_DEFERRED",
+                        equation_receipts=[equation], compiled_specs=compiled_specs, source_population_receipt=recognition,
+                    )
+                    if descriptor is None:
+                        if issues is not None:
+                            issues.append("SUPPLEMENTAL_RECOGNITION_PRIVATE_PROJECTION_INCOMPLETE")
+                    else:
+                        descriptors.append(descriptor)
+                        claimed.update(item["row_ordinal"] for item in (recognition["group_source_row"], current, deferred))
 
                 deferred_frontier = _deferred_net_source_frontier(source_rows)
                 if deferred_frontier is not None:
@@ -3038,6 +3073,286 @@ def _current_year_source_frontier(
     return {**material, "receipt_id": "gjitfav1:year-frontier:" + canonical_json_sha256_v1(material)}
 
 
+def _recognition_printed_text(value: Any) -> str | None:
+    """Fold Vietnamese letters, but never erase punctuation or annotations."""
+    if type(value) is not str:
+        return None
+    folded = unicodedata.normalize("NFD", value.replace("đ", "d").replace("Đ", "D"))
+    if any(unicodedata.combining(char) and char not in "\u0300\u0301\u0302\u0303\u0306\u0309\u031b\u0323"
+           for char in folded):
+        return None
+    folded = "".join(char for char in folded if not unicodedata.combining(char))
+    if not folded.isascii():
+        return None
+    return " ".join(folded.lower().split())
+
+
+def _recognition_expense_source_frontier(
+    section: Mapping[str, Any], table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Authenticate a *printed* recognition population, not document acceptance.
+
+    A recognized but malformed surface is a hold, never an absent frontier.
+    Deferred income may share the expense-zero representation only when every
+    selected cell is independently observed zero.  No residual supplies a cell.
+    """
+    raw_rows = table.get("rows") or []
+    surfaces = [ordinal for ordinal, row in enumerate(raw_rows, 1)
+                if type(row) is dict and re.search(
+                    r"chi phi thue (?:tndn|thu nhap doanh nghiep) ghi nhan trong bao cao ket qua hoat dong",
+                    _normalized(row.get("label_exact")),
+                )]
+    ancestry_surfaces = [ordinal for ordinal, row in enumerate(raw_rows, 1)
+                         if type(row) is dict and any(re.search(
+                             r"chi phi thue (?:tndn|thu nhap doanh nghiep) ghi nhan trong bao cao ket qua hoat dong",
+                             _normalized(value),
+                         ) for value in row.get("hierarchy_path_exact") or [])]
+    lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+    unit = _unit_axis(table, compiled_specs=compiled_specs)
+    material: dict[str, Any] = {
+        "format_version": "INCOME_TAX_PRINTED_RECOGNITION_FRONTIER_V1",
+        "original_section_json_sha256": canonical_json_sha256_v1(section),
+        "original_table_json_sha256": canonical_json_sha256_v1(table),
+        "recognition_surface_ordinals": surfaces,
+        "recognition_ancestry_surface_ordinals": ancestry_surfaces,
+        "lane_axis": lane, "unit_axis": unit,
+        "semantic_spec_sha256": _semantic_spec_sha256(compiled_specs),
+        "source_values_changed": False, "ownership_inferred_from_values": False,
+        "rule": "ACTUAL_BLANK_GROUP_EXACT_CURRENT_AND_OBSERVED_ZERO_DEFERRED_INCOME_FIRST_STANDALONE_ROOT",
+    }
+    reasons: list[str] = []
+
+    def finish(status: str) -> dict[str, Any]:
+        result = {**material, "status": status, "reasons": sorted(set(reasons))}
+        return {**result, "receipt_id": "gjitfav1:recognition-frontier:" + canonical_json_sha256_v1(result)}
+
+    if not surfaces and not ancestry_surfaces:
+        return finish("NOT_APPLICABLE")
+    if (len(surfaces) != 1 or section.get("content_kind") != "FINANCIAL_NOTE"
+            or not _supplemental_owner_matches(section, table, compiled_specs=compiled_specs)):
+        reasons.append("RECOGNITION_GROUP_OR_POSITIVE_NOTE_OWNER_NOT_UNIQUE")
+        return finish("ALGORITHM_HOLD")
+    money = lane.get("money_column_ordinals")
+    if not lane.get("complete") or type(money) is not list or len(money) != 2:
+        reasons.append("RECOGNITION_MONEY_LANE_AXIS_INCOMPLETE")
+    if not unit.get("complete") or unit.get("canonical_unit") not in {"MILLION_VND", "VND"}:
+        reasons.append("RECOGNITION_EXPLICIT_LOCAL_UNIT_AXIS_INCOMPLETE")
+    if reasons:
+        return finish("ALGORITHM_HOLD")
+    rows = _supplemental_source_rows(table, money_column_ordinals=money,
+                                    role_alias_axis=_supplemental_role_alias_axis(compiled_specs))
+    material["source_table_row_axis"] = rows
+    start = surfaces[0]
+    if start + 3 > len(rows):
+        reasons.append("RECOGNITION_CONTIGUOUS_FOUR_ROW_AXIS_ABSENT")
+        return finish("ALGORITHM_HOLD")
+    group, current, deferred, root = rows[start - 1:start + 3]
+    material.update({"group_source_row": group, "current_source_row": current,
+                     "deferred_source_row": deferred, "parent_source_row": root,
+                     "component_source_rows": [current, deferred],
+                     "printed_scope_source_paths_exact": [item["hierarchy_path_exact"]
+                                                            for item in (group, current, deferred, root)]})
+    group_text = _recognition_printed_text(group["label_exact"])
+    match = re.fullmatch(
+        r"chi phi thue (?:tndn|thu nhap doanh nghiep) ghi nhan trong bao cao ket qua hoat dong "
+        r"(?P<scope>rieng|hop nhat)(?: giua nien do)?\s*:?", group_text or "",
+    )
+    if (match is None or group["row_kind"] != "GROUP"
+            or group["hierarchy_path_exact"] != [group["label_exact"]]
+            or any(value is not None for value in group["source_values_exact"])):
+        reasons.append("RECOGNITION_ACTUAL_BLANK_SELF_OWNED_GROUP_UNPROVEN")
+    for item, pattern in ((current, r"chi phi thue tndn\s*-\s*hien hanh"),
+                          (deferred, r"thu nhap thue tndn\s*-\s*hoan lai")):
+        if (item["row_kind"] != "ITEM"
+                or re.fullmatch(pattern, _recognition_printed_text(item["label_exact"]) or "") is None
+                or item["hierarchy_path_exact"] != [group["label_exact"], item["label_exact"]]):
+            reasons.append("RECOGNITION_EXACT_ORDERED_DIRECT_CHILDREN_UNPROVEN")
+    descendants = [item["row_ordinal"] for item in rows if type(item["hierarchy_path_exact"]) is list
+                   and group["label_exact"] in item["hierarchy_path_exact"][:-1]]
+    if descendants != [current["row_ordinal"], deferred["row_ordinal"]]:
+        reasons.append("RECOGNITION_COMPLETE_GROUP_DESCENDANT_AXIS_UNPROVEN")
+    # A later convenient root, a duplicate role, or a differently annotated
+    # surface cannot disappear through the shared punctuation normalizer.
+    for label in ("chi phi thue tndn hien hanh", "thu nhap thue tndn hoan lai"):
+        if sum(item["normalized_label"] == label for item in rows) != 1:
+            reasons.append("RECOGNITION_CHILD_SURFACE_AXIS_NOT_UNIQUE")
+    roots = [item for item in rows if item["normalized_label"] in _ROOT_LABELS]
+    root_text = _recognition_printed_text(root["label_exact"])
+    if (len(roots) != 1 or root["row_kind"] != "TOTAL" or root["row_ordinal"] != len(rows)
+            or root["hierarchy_path_exact"] != [root["label_exact"]]
+            or root_text not in {"chi phi thue tndn", "chi phi thue tndn (*)"}):
+        reasons.append("RECOGNITION_FIRST_STANDALONE_EXACT_ROOT_UNPROVEN")
+    annotation = None
+    if root_text == "chi phi thue tndn (*)":
+        expected = ("(*) chi phi thue tndn cho ky ke toan duoc uoc tinh dua vao thu nhap chiu thue "
+                    "va co the co nhung dieu chinh tuy thuoc vao su kiem tra cua co quan thue.")
+        marked = [(ordinal, raw) for ordinal, raw in enumerate(section.get("narratives_exact") or [], 1)
+                  if type(raw) is str and "(*)" in raw]
+        owned = section.get("tables") or []
+        if (len(owned) != 1 or not same_typed_json_v1(owned[0], table) or len(marked) != 1
+                or _recognition_printed_text(marked[0][1]) != expected):
+            reasons.append("RECOGNITION_ROOT_ANNOTATION_OWNED_ESTIMATION_CONTEXT_UNPROVEN")
+        else:
+            ordinal, raw = marked[0]
+            annotation = {"marker_exact": "(*)", "root_label_exact": root["label_exact"],
+                          "narrative_ordinal": ordinal, "narrative_exact": raw,
+                          "narrative_sha256": canonical_json_sha256_v1(raw),
+                          "scope_unit_period_or_amount_authority": False,
+                          "rule": "SOLE_OWNED_EXACT_ESTIMATION_CONTEXT_NOT_GENERIC_FOOTNOTE_REMOVAL"}
+    material["root_annotation_receipt"] = annotation
+    if any(not item["values_usable"] or not _all_observed(item["parsed_values"])
+           for item in (current, deferred, root)):
+        reasons.append("RECOGNITION_OPERAND_OR_RESULT_NOT_FULLY_OBSERVED")
+    if deferred["parsed_values"] != [0, 0] or not deferred["values_usable"]:
+        reasons.append("RECOGNITION_DEFERRED_INCOME_NOT_OBSERVED_ZERO_IN_EVERY_LANE")
+    scopes = _printed_population_qualifiers([
+        section.get("title_exact"), table.get("title_exact"),
+        *[value for column in table.get("columns") or [] for value in column.get("header_path_exact") or []],
+        *[item["source_exact"] for item in _owned_statement_scope_narratives(section)],
+        *[value for item in (group, current, deferred, root)
+          for value in (item["hierarchy_path_exact"] or [])],
+    ])
+    expected_scope = None if match is None else {"rieng": "SEPARATE", "hop nhat": "CONSOLIDATED"}[match["scope"]]
+    material.update({"printed_report_scope": expected_scope, "local_population_qualifiers": scopes})
+    if expected_scope is None or scopes != [expected_scope]:
+        reasons.append("RECOGNITION_EXPLICIT_LOCAL_POPULATION_SCOPE_CONFLICT")
+    negatives = {*compiled_specs.get("query_policy", {}).get("hard_negative_aliases", []),
+                 *compiled_specs.get("query_policy", {}).get("reset_aliases", [])}
+    if any(_supplemental_negative_surface(item, negatives) for item in rows[:root["row_ordinal"]]):
+        reasons.append("RECOGNITION_SOURCE_POPULATION_AFTER_NEGATIVE_OR_RESET")
+    equations = []
+    if all(item["values_usable"] and _all_observed(item["parsed_values"]) for item in (current, deferred, root)):
+        equations = [{"lane_ordinal": ordinal, "observed_current": c, "observed_deferred_income_zero": d,
+                      "observed_root": r, "residual": r - c - d}
+                     for ordinal, (c, d, r) in enumerate(zip(current["parsed_values"], deferred["parsed_values"],
+                                                            root["parsed_values"], strict=True))]
+        if any(item["residual"] for item in equations):
+            reasons.append("RECOGNITION_OBSERVED_FORWARD_CLOSURE_NOT_EXACT")
+    material["lane_equations"] = equations
+    return finish("ALGORITHM_HOLD" if reasons else "PASS")
+
+
+def _recognition_rate_effect_forward_control(
+    section: Mapping[str, Any], table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Retain a finite printed tax-effect reconciliation, never income amounts."""
+    recognition = _recognition_expense_source_frontier(section, table, compiled_specs=compiled_specs)
+    material: dict[str, Any] = {
+        "format_version": "INCOME_TAX_RECOGNITION_RATE_EFFECT_FORWARD_CONTROL_V1",
+        "original_section_json_sha256": canonical_json_sha256_v1(section),
+        "original_table_json_sha256": canonical_json_sha256_v1(table),
+        "semantic_spec_sha256": _semantic_spec_sha256(compiled_specs),
+        "recognition_frontier_receipt_id": recognition["receipt_id"],
+        "recognition_frontier_status": recognition["status"],
+        "lane_axis": canonical_clone_v1(recognition["lane_axis"]),
+        "unit_axis": canonical_clone_v1(recognition["unit_axis"]),
+        "source_table_rows_exact": canonical_clone_v1(table.get("rows") or []),
+        "source_rows": canonical_clone_v1(recognition.get("source_table_row_axis") or []),
+        "profit_source_row": None, "rate_source_row": None,
+        "adjustment_group_source_row": None, "adjustment_source_rows": [],
+        "calculation_source_row": None, "lane_equations": [],
+        "measurement_basis": "TAX_EFFECT_NOT_TAXABLE_INCOME_ADJUSTMENT",
+        "schema_mapping_authority": False, "source_values_changed": False,
+        "ownership_inferred_from_values": False, "profit_times_rate_used": False,
+        "rule": "PRINTED_RATE_PLUS_ALL_EXACT_GROUP_SIGNED_EFFECTS_EQUALS_CALCULATION_THEN_OBSERVED_CURRENT",
+    }
+    reasons: list[str] = []
+
+    def finish(status: str) -> dict[str, Any]:
+        result = {**material, "status": status, "reasons": sorted(set(reasons))}
+        return {**result, "control_id": "gjitfav1:recognition-rate-effect:" + canonical_json_sha256_v1(result)}
+
+    if recognition["status"] == "NOT_APPLICABLE":
+        return finish("NOT_APPLICABLE")
+    first_recognition = min(recognition["recognition_surface_ordinals"] or recognition["recognition_ancestry_surface_ordinals"])
+    literal_roles = _original_basis_label_roles(table, compiled_specs)
+    raw_rows = table.get("rows") or []
+    prefix_evidence = [ordinal for ordinal, row in enumerate(raw_rows[:first_recognition - 1], 1)
+                       if set(literal_roles[ordinal - 1]) & {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"}
+                       or _normalized(row.get("label_exact")) == "dieu chinh"]
+    material["rate_prefix_evidence_ordinals"] = prefix_evidence
+    if not prefix_evidence:
+        # A pure recognition population is independently meaningful; absence
+        # of a RATE reconciliation does not make its recognition proof fail.
+        return finish("NOT_APPLICABLE")
+    if recognition["status"] != "PASS":
+        reasons.append("RECOGNITION_RATE_REQUIRES_COMPLETE_AUTHENTICATED_RECOGNITION_FRONTIER")
+        return finish("ALGORITHM_HOLD")
+    rows = recognition["source_table_row_axis"]
+    group_ordinal = recognition["group_source_row"]["row_ordinal"]
+    # Every row belongs to this finite source layout.  A later convenient
+    # result, extra population or unknown trailing row cannot disappear.
+    if group_ordinal < 7 or recognition["parent_source_row"]["row_ordinal"] != len(rows):
+        reasons.append("RECOGNITION_RATE_COMPLETE_ORDERED_TABLE_FRONTIER_UNPROVEN")
+        return finish("ALGORITHM_HOLD")
+    profit, rate, group = rows[:3]
+    calculation = rows[group_ordinal - 2]
+    adjustments = rows[3:group_ordinal - 2]
+    material.update({"profit_source_row": canonical_clone_v1(profit),
+                     "rate_source_row": canonical_clone_v1(rate),
+                     "adjustment_group_source_row": canonical_clone_v1(group),
+                     "adjustment_source_rows": canonical_clone_v1(adjustments),
+                     "calculation_source_row": canonical_clone_v1(calculation)})
+    for item, text in ((profit, "loi nhuan ke toan truoc thue tndn"),
+                       (rate, "thue tinh o thue suat 20%")):
+        if (item["row_kind"] != "ITEM" or _recognition_printed_text(item["label_exact"]) != text
+                or item["hierarchy_path_exact"] != [item["label_exact"]]):
+            reasons.append("RECOGNITION_RATE_EXACT_PROFIT_OR_MONETARY_RATE_SOURCE_UNPROVEN")
+    if (group["row_kind"] != "GROUP" or _recognition_printed_text(group["label_exact"]) != "dieu chinh:"
+            or group["hierarchy_path_exact"] != [group["label_exact"]]
+            or any(value is not None for value in group["source_values_exact"])):
+        reasons.append("RECOGNITION_RATE_ACTUAL_BLANK_ADJUSTMENT_GROUP_UNPROVEN")
+    labels = {
+        "thu nhap khong chiu thue": 1,
+        "chi phi khong duoc khau tru": 2,
+        "dieu chinh so thue phai nop nam truoc": 3,
+        "dieu chinh loi nhuan do hop nhat": 4,
+        "khac": 5,
+    }
+    adjustment_labels = [_recognition_printed_text(item["label_exact"]) for item in adjustments]
+    ranks = [labels.get(label, 0) for label in adjustment_labels]
+    if (not adjustments or adjustment_labels[:2] != ["thu nhap khong chiu thue", "chi phi khong duoc khau tru"]
+            or any(rank == 0 for rank in ranks) or len(set(adjustment_labels)) != len(adjustment_labels)
+            or ranks != sorted(ranks)
+            or any(item["row_kind"] != "ITEM"
+                   or item["hierarchy_path_exact"] != [group["label_exact"], item["label_exact"]]
+                   for item in adjustments)):
+        reasons.append("RECOGNITION_RATE_FINITE_UNIQUE_ORDERED_SIGNED_DESCENDANTS_UNPROVEN")
+    calculation_text = "chi phi thue tndn tinh tren thu nhap chiu thue ky hien hanh"
+    if (calculation["row_kind"] not in {"SUBTOTAL", "TOTAL"}
+            or _recognition_printed_text(calculation["label_exact"]) != calculation_text
+            or calculation["hierarchy_path_exact"] != [calculation["label_exact"]]
+            or sum(_recognition_printed_text(item["label_exact"]) == calculation_text for item in rows) != 1):
+        reasons.append("RECOGNITION_RATE_FIRST_EXACT_STANDALONE_CALCULATION_UNPROVEN")
+    operands = [profit, rate, *adjustments, calculation]
+    if any(not item["values_usable"] or not _all_observed(item["parsed_values"]) for item in operands):
+        reasons.append("RECOGNITION_RATE_OPERAND_OR_CALCULATION_NOT_FULLY_OBSERVED")
+    if reasons:
+        return finish("ALGORITHM_HOLD")
+    current = recognition["current_source_row"]
+    equations = []
+    for ordinal in range(2):
+        components = [{"row_ordinal": item["row_ordinal"],
+                       "source_text_exact": item["source_values_exact"][ordinal],
+                       "coefficient": item["parsed_values"][ordinal]}
+                      for item in [rate, *adjustments]]
+        total = sum(item["coefficient"] for item in components)
+        observed = calculation["parsed_values"][ordinal]
+        observed_current = current["parsed_values"][ordinal]
+        equations.append({"lane_ordinal": ordinal, "component_source_cells": components,
+                          "component_sum": total, "calculation_row_ordinal": calculation["row_ordinal"],
+                          "calculation_source_text_exact": calculation["source_values_exact"][ordinal],
+                          "observed_calculation": observed, "residual": observed - total,
+                          "current_row_ordinal": current["row_ordinal"],
+                          "current_source_text_exact": current["source_values_exact"][ordinal],
+                          "observed_recognition_current": observed_current,
+                          "calculation_current_residual": observed - observed_current})
+    material["lane_equations"] = equations
+    if any(item["residual"] or item["calculation_current_residual"] for item in equations):
+        reasons.append("RECOGNITION_RATE_SIGNED_FORWARD_OR_PRINTED_CURRENT_CORRESPONDENCE_NOT_EXACT")
+    return finish("ALGORITHM_HOLD" if reasons else "PASS")
+
+
 def _tax_population_inventory(
     page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
@@ -3055,10 +3370,14 @@ def _tax_population_inventory(
                 source_rows = _supplemental_source_rows(
                     table, money_column_ordinals=money_ordinals, role_alias_axis=aliases,
                 )
+                recognition = _recognition_expense_source_frontier(section, table, compiled_specs=compiled_specs)
                 if not (_supplemental_owner_matches(section, table, compiled_specs=compiled_specs)
+                        or recognition["status"] != "NOT_APPLICABLE"
                         or any(item["matched_role"] in {
                             "CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY", "CURRENT_TAX_PARENT",
-                        } or item["normalized_label"] == "chi phi thue hien hanh" for item in source_rows)):
+                        } or item["normalized_label"] == "chi phi thue hien hanh"
+                               or "ghi nhan trong bao cao ket qua hoat dong" in item["normalized_label"]
+                               for item in source_rows)):
                     continue
                 years = [item["row_ordinal"] for item in source_rows
                          if item["normalized_label"] in {"nam hien hanh", "ky hien hanh"}]
@@ -3093,6 +3412,8 @@ def _tax_population_inventory(
                     "current_year_surface_ordinals": years,
                     "explicit_rate_surface_ordinals": rates,
                     "current_year_frontier": _current_year_source_frontier(source_rows, compiled_specs=compiled_specs),
+                    "recognition_expense_frontier": recognition,
+                    "recognition_rate_effect_control": _recognition_rate_effect_forward_control(section, table, compiled_specs=compiled_specs),
                     "rate_frontiers": rate_frontiers,
                     "rule": "ORIGINAL_TAX_POPULATION_BEFORE_GENERIC_CONSUMED_ROW_SUPPRESSION",
                 }
@@ -3145,13 +3466,28 @@ def _original_note_population_ancestry(
     table: Mapping[str, Any], section: Mapping[str, Any], *, row_ordinal: int,
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any] | None:
-    """Strip a real YEAR/PERIOD group only through its original frontier proof."""
+    """Remove structural ancestry only through a fresh original frontier proof."""
     # The ownership helper requires original numeric operands too.
     lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
     rows = _supplemental_source_rows(table, money_column_ordinals=lane.get("money_column_ordinals") or [],
                                     role_alias_axis=_supplemental_role_alias_axis(compiled_specs))
     frontier = _current_year_source_frontier(rows, compiled_specs=compiled_specs)
     deferred_frontier = _deferred_net_source_frontier(rows)
+    recognition = _recognition_expense_source_frontier(section, table, compiled_specs=compiled_specs)
+    if recognition["status"] == "ALGORITHM_HOLD":
+        return None
+    if recognition["status"] == "PASS" and row_ordinal in {
+        recognition["current_source_row"]["row_ordinal"], recognition["deferred_source_row"]["row_ordinal"],
+        recognition["parent_source_row"]["row_ordinal"],
+    }:
+        material = {
+            "rule": "AUTHENTICATED_PRINTED_RECOGNITION_GROUP_NOT_ENTITY_ANCESTRY_SCOPE_RETAINED",
+            "common_population_ancestry_exact": [], "source_rows": [rows[row_ordinal - 1]],
+            "printed_scope_source_paths_exact": recognition["printed_scope_source_paths_exact"],
+            "recognition_expense_frontier_receipt": recognition,
+            "original_table_json_sha256": canonical_json_sha256_v1(table),
+        }
+        return {**material, "receipt_id": "gjitfav1:note-population:" + canonical_json_sha256_v1(material)}
     if deferred_frontier is not None and deferred_frontier["net_source_row"]["row_ordinal"] == row_ordinal:
         material = {"rule": "AUTHENTICATED_ORIGINAL_DEFERRED_NET_GROUP_FRONTIER_NOT_ENTITY_ANCESTRY",
                     "common_population_ancestry_exact": [], "source_rows": [deferred_frontier["net_source_row"]],
@@ -3843,6 +4179,9 @@ def _evaluate_original_note_adapter(
         "rule": "INDEPENDENT_SOURCE_NOTE_POPULATIONS_UNION_NO_CROSS_POPULATION_ADDITION",
     }
     note["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1({key: value for key, value in note.items() if key != "candidate_id"})
+    note = _recognition_rate_source_only_projection(note, source_context=source_context)
+    if note.get("status") != READY:
+        return note
     primary = bundle["primary"]
     if primary is not None:
         primary_candidate = _evaluate_selected_primary(primary, repaired_pages={item["page_json_version_id"]: item["page_json"] for item in page_records},
@@ -5676,7 +6015,8 @@ def _note_primary_signed_display_proof(
             ):
                 return None
             note_scope_receipt = _note_report_scope_receipt(
-                section, table, source_paths=[population["common_population_ancestry_exact"]],
+                section, table, source_paths=[population["common_population_ancestry_exact"],
+                                             *population.get("printed_scope_source_paths_exact", [])],
                 document_scope=document_scope,
             )
             note_scope_surfaces = note_scope_receipt["source_surfaces_exact"]
@@ -5818,6 +6158,104 @@ def _tax_effect_basis_conflicts(
                     "rule": "RATE_RECONCILIATION_TAX_EFFECT_MUST_NOT_EXPORT_INCOME_BASIS_SCHEMA_TARGET",
                 })
     return conflicts
+
+
+def _recognition_rate_source_only_projection(
+    candidate: Mapping[str, Any], *, source_context: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Retain exact RATE effects as controls, never export them as income.
+
+    This is an additive source-semantic projection, not an edit to the frozen
+    evaluator, the original candidate proof, or a private basis receipt.
+    """
+    if candidate.get("status") != READY:
+        return canonical_clone_v1(candidate)
+    inventories = [item for item in source_context["tax_population_inventory"]
+                   if item.get("recognition_rate_effect_control", {}).get("status") == "PASS"]
+    if not inventories:
+        return canonical_clone_v1(candidate)
+    suppressed, retained = [], []
+    for mapping in candidate["mappings"]:
+        refs = mapping.get("source_refs") or []
+        matches = []
+        if mapping.get("role") in {"NON_TAXABLE_AGGREGATE", "NON_DEDUCTIBLE_EXPENSE"}:
+            for inventory in inventories:
+                control = inventory["recognition_rate_effect_control"]
+                for source in control["adjustment_source_rows"]:
+                    for ref in refs:
+                        if (type(ref.get("locator")) is dict
+                                and all(same_typed_json_v1(ref["locator"].get(key), value)
+                                        for key, value in inventory["locator"].items())
+                                and ref.get("row_ordinal") == source["row_ordinal"]):
+                            matches.append((inventory, source, ref))
+        if not matches:
+            retained.append(canonical_clone_v1(mapping))
+            continue
+        direct_observation = (mapping.get("state") == "SOURCE_OBSERVED_ROLE_ROW"
+                              or _mapping_is_direct_source_observation(mapping))
+        if len(refs) != 1 or len(matches) != 1 or not direct_observation:
+            return _unresolved_from_candidate(candidate, reason="RECOGNITION_RATE_SOURCE_ONLY_MAPPING_IDENTITY_AMBIGUOUS",
+                                              evidence={"mapping": mapping, "source_context_receipt": source_context})
+        inventory, source, ref = matches[0]
+        def touches_source(value: Any) -> bool:
+            if type(value) is list:
+                return any(touches_source(item) for item in value)
+            if type(value) is not dict:
+                return False
+            if (value.get("row_ordinal") == ref["row_ordinal"] and type(value.get("locator")) is dict
+                    and all(same_typed_json_v1(value["locator"].get(key), item)
+                            for key, item in inventory["locator"].items())):
+                return True
+            return any(touches_source(item) for item in value.values())
+
+        values = mapping.get("values")
+        if (mapping.get("unit") != inventory["unit_axis"].get("canonical_unit")
+                or not same_typed_json_v1(ref.get("money_column_ordinals"), inventory["lane_axis"]["money_column_ordinals"])
+                or any(not same_typed_json_v1(ref.get(key), source[key])
+                       for key in ("row_kind", "label_exact", "hierarchy_path_exact"))
+                or type(values) is not list or len(values) != 2
+                or any(type(value) is not dict or value.get("source_text") != raw
+                       or not same_typed_json_v1(value.get("coefficient"), coefficient)
+                       or value.get("state") != _source_money(raw).get("state")
+                       for value, raw, coefficient in zip(values, source["source_values_exact"], source["parsed_values"], strict=True))):
+            return _unresolved_from_candidate(candidate, reason="RECOGNITION_RATE_SOURCE_ONLY_OBSERVATION_DRIFT",
+                                              evidence={"mapping": mapping, "source_context_receipt": source_context})
+        # Do not detach a value-level income equation from its operands and
+        # then pretend that equation still certifies an income mapping.
+        if any(mapping["role"] in equation.get("component_roles", [])
+               or mapping["role"] == equation.get("result_role")
+               or touches_source(equation)
+               for equation in candidate.get("closure_receipt", {}).get("equations", [])):
+            return _unresolved_from_candidate(candidate, reason="RECOGNITION_RATE_INCOME_EQUATION_REQUIRES_SEPARATE_PROOF",
+                                              evidence={"mapping": mapping, "source_context_receipt": source_context})
+        if (touches_source(candidate.get("closure_receipt", {}).get("derived_role_receipts", []))
+                or any(other is not mapping and not _mapping_is_direct_source_observation(other)
+                       and touches_source(other.get("source_refs") or []) for other in candidate["mappings"])):
+            return _unresolved_from_candidate(candidate, reason="RECOGNITION_RATE_DERIVED_INCOME_REQUIRES_SEPARATE_PROOF",
+                                              evidence={"mapping": mapping, "source_context_receipt": source_context})
+        suppressed.append({"mapping": canonical_clone_v1(mapping),
+                           "population_inventory_id": inventory["receipt_id"],
+                           "independent_forward_control_id": inventory["recognition_rate_effect_control"]["control_id"],
+                           "source_row_exact": canonical_clone_v1(source),
+                           "measurement_basis": "TAX_EFFECT_NOT_TAXABLE_INCOME_ADJUSTMENT",
+                           "schema_exported": False})
+    if not suppressed:
+        return canonical_clone_v1(candidate)
+    material = {
+        "original_candidate_id": candidate["candidate_id"],
+        "source_context_receipt_id": source_context["receipt_id"],
+        "suppressed_income_basis_mappings": suppressed,
+        "independent_source_controls": [canonical_clone_v1(item) for item in inventories],
+        "source_values_changed": False,
+        "rule": "ONLY_COMPLETE_EXACT_AUTHENTICATED_RATE_EFFECT_SOURCE_IDENTITIES_RETAINED_NOT_INCOME_SCHEMA",
+    }
+    output = canonical_clone_v1(candidate)
+    output["mappings"] = retained
+    output["closure_receipt"]["recognition_rate_source_only_receipt"] = {
+        **material, "receipt_id": "gjitfav1:recognition-rate-source-only:" + canonical_json_sha256_v1(material),
+    }
+    output["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1({key: value for key, value in output.items() if key != "candidate_id"})
+    return output
 
 
 def _merge_note_and_primary_candidates(
@@ -6114,6 +6552,15 @@ def _seal_income_tax_source_controls(
 ) -> dict[str, Any]:
     if candidate.get("status") != READY:
         return canonical_clone_v1(candidate)
+    invalid_recognition = [item for item in source_context["tax_population_inventory"]
+                           if item.get("recognition_expense_frontier", {}).get("status") == "ALGORITHM_HOLD"
+                           or item.get("recognition_rate_effect_control", {}).get("status") == "ALGORITHM_HOLD"]
+    if invalid_recognition:
+        return _unresolved_from_candidate(
+            candidate, reason="INCOME_TAX_PRINTED_RECOGNITION_POPULATION_INCOMPLETE",
+            evidence={"source_context_receipt": canonical_clone_v1(source_context),
+                      "invalid_recognition_populations": invalid_recognition},
+        )
     invalid_primary_periods = [source for source in source_context["document_statement_period_inventory"]["sources"]
                                if source["statement_type"] == "INCOME_STATEMENT" and source["tax_expense_source_rows"]
                                and not source["lane_axis"].get("complete")]
@@ -6140,6 +6587,7 @@ def _seal_income_tax_source_controls(
     cross_source_mapping_period_receipts = []
     primary = candidate.get("closure_receipt", {}).get("income_tax_adapter_receipt", {}).get("primary_projection_receipt")
     if type(primary) is not dict and any(item["current_year_frontier"] is not None
+                                       or item.get("recognition_expense_frontier", {}).get("status") == "PASS"
                                        for item in source_context["tax_population_inventory"]):
         return _unresolved_from_candidate(
             candidate, reason="CURRENT_TAX_EXPENSE_SOURCE_POPULATION_WITHOUT_AUTHENTICATED_COUNTERPART",
@@ -6191,10 +6639,13 @@ def _seal_income_tax_source_controls(
                                     if _without_leading_ordinal(_normalized(value)) not in _ROOT_LABELS]
         # Validation-only PERIOD has no mapping.  Authenticate the source
         # population itself, including its parent and adjustment rows.
-        for inventory in source_context["tax_population_inventory"]:
-            boundary = inventory["current_year_frontier"]
-            if boundary is None:
-                continue
+        expense_boundaries = [(inventory, inventory["current_year_frontier"], "YEAR_OR_PERIOD")
+                              for inventory in source_context["tax_population_inventory"]
+                              if inventory["current_year_frontier"] is not None]
+        expense_boundaries.extend((inventory, inventory["recognition_expense_frontier"], "PRINTED_RECOGNITION")
+                                  for inventory in source_context["tax_population_inventory"]
+                                  if inventory.get("recognition_expense_frontier", {}).get("status") == "PASS")
+        for inventory, boundary, boundary_kind in expense_boundaries:
             locator = inventory["locator"]
             note_section, note_table = _source_table(pages[locator["page_json_version_id"]],
                                                    section_id=locator["section_id"], table_id=locator["table_id"])
@@ -6210,13 +6661,14 @@ def _seal_income_tax_source_controls(
             period_material = {
                 "source_locator": canonical_clone_v1(locator),
                 "source_population_receipt_id": boundary["receipt_id"],
+                "source_population_kind": boundary_kind,
                 "note_lane_axis": canonical_clone_v1(note_lane),
                 "primary_lane_axis": canonical_clone_v1(primary_lane),
                 "primary_locator": canonical_clone_v1(primary["locator"]),
                 "note_printed_duration_lengths": note_duration_lengths,
                 "primary_printed_duration_lengths": primary_duration_lengths,
                 "source_period_correspondence_receipt": period_proof,
-                "rule": "EXACT_SOURCE_PERIOD_KEYS_AND_PRINTED_DURATION_LENGTHS_FOR_ALL_YEAR_OR_PERIOD_POPULATIONS",
+                "rule": "EXACT_SOURCE_PERIOD_KEYS_AND_PRINTED_DURATION_LENGTHS_FOR_ALL_EXPENSE_POPULATIONS",
             }
             expense_population_period_receipts.append(period_material)
             if (not same_typed_json_v1(primary_lane.get("money_column_ordinals"), primary["money_column_ordinals"])
@@ -6238,7 +6690,8 @@ def _seal_income_tax_source_controls(
                 "primary_scope": primary_scope,
                 "primary_ancestries_exact": canonical_clone_v1(primary_ancestries),
                 "unknown_primary_ancestry_exact": canonical_clone_v1(unknown_primary_ancestry),
-                "rule": "PRINTED_YEAR_OR_PERIOD_EXPENSE_POPULATION_MUST_MATCH_PRIMARY_NOT_JUST_TOTAL_AMOUNT",
+                "source_population_kind": boundary_kind,
+                "rule": "PRINTED_EXPENSE_POPULATION_MUST_MATCH_PRIMARY_NOT_JUST_TOTAL_AMOUNT",
             }
             expense_population_scope_receipts.append(material)
             if scope_receipt["conflict"] or note_scope != primary_scope or unknown_primary_ancestry:
@@ -6643,6 +7096,9 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
                     "source_context_receipt": canonical_clone_v1(expected_context),
                 },
             )
+    note_candidate = _recognition_rate_source_only_projection(note_candidate, source_context=expected_context)
+    if note_candidate.get("status") != READY:
+        return note_candidate
     return _seal_income_tax_source_controls(
         _merge_note_and_primary_candidates(
             note_candidate,
