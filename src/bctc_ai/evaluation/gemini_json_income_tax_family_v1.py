@@ -5654,6 +5654,79 @@ def _owned_absolute_flow_header_constraint(section: Mapping[str, Any], table: Ma
             "source_header_pair_evidence": evidence}
 
 
+def _owned_flow_date_range_caption_constraint(
+    section: Mapping[str, Any], *, source_kind: str, source_exact: Any,
+) -> dict[str, Any] | None:
+    """Read a complete printed interim range, never join separate surfaces.
+
+    Recognition is deliberately broader than permission: a malformed range is
+    an assertion to retain and veto, not missing context for header fallback.
+    This supplies current duration only, not comparative year, unit or scope.
+    """
+    if source_kind not in {"SECTION_TITLE", "TABLE_TITLE"} or type(source_exact) is not str:
+        return None
+    layout = source_exact.replace("\\n", "\n")
+    relevant = _normalized(layout)
+    if not re.search(r"\b(?:tu ngay|den ngay|from)\b", relevant):
+        return None
+    printed = _recognition_printed_text(layout)
+    title = {"INCOME_STATEMENT": "ket qua hoat dong", "CASH_FLOW": "luu chuyen tien te"}.get(section.get("statement_type"))
+    pattern = (
+        r"bao cao " + (title or "UNSUPPORTED") + r"(?: (?P<scope>rieng|hop nhat))? giua nien do"
+        r"(?: (?P<before>\(tiep theo\)))? cho giai doan "
+        r"tu ngay (?P<sd>[0-9]{1,2})/(?P<sm>[0-9]{1,2})/(?P<sy>[0-9]{4}) "
+        r"den ngay (?P<ed>[0-9]{1,2})/(?P<em>[0-9]{1,2})/(?P<ey>[0-9]{4})"
+        r"(?: (?P<after>\(tiep theo\)))?"
+        r"(?: \(phuong phap (?P<method>truc tiep|gian tiep)\))?"
+    )
+    match = re.fullmatch(pattern, printed) if printed is not None else None
+    reasons = []
+    if section.get("content_kind") != "PRIMARY_STATEMENT" or title is None:
+        reasons.append("RANGE_NOT_OWNED_BY_TYPED_PRIMARY_FLOW_CAPTION")
+    if match is None:
+        reasons.append("WHOLE_FINITE_PRINTED_FLOW_RANGE_NOT_RECOGNIZED")
+    evidence = {
+        "format_version": "F39_WHOLE_OWNED_FLOW_DATE_RANGE_CAPTION_V1",
+        "source_kind": source_kind, "source_exact": source_exact,
+        "source_sha256": sha256(source_exact.encode("utf-8")).hexdigest(),
+        "source_lines_exact": source_exact.split("\n"),
+        "content_kind": section.get("content_kind"), "statement_type": section.get("statement_type"),
+        "amounts_used_as_authority": False, "source_period_keys_modified": False,
+        "start_dates_inferred": False, "comparative_year_permission_granted": False,
+        "unit_permission_granted": False, "report_scope_permission_granted": False,
+        "sibling_or_other_surface_used": False,
+    }
+    dates = {}
+    if match is not None:
+        # Vietnamese accent folding must not erase annotations attached to a
+        # date digit. Both raw tokens must already be literal ASCII dates.
+        raw_dates = re.findall(r"(?<!\S)([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})(?=\s|$)", layout)
+        if raw_dates != [(match["sd"], match["sm"], match["sy"]), (match["ed"], match["em"], match["ey"])]:
+            reasons.append("RAW_PRINTED_DATE_TOKENS_NOT_LITERAL_ASCII_DATES")
+        if match["before"] and match["after"]:
+            reasons.append("DUPLICATE_PRINTED_CONTINUATION_ASSERTION")
+        if match["method"] and section.get("statement_type") != "CASH_FLOW":
+            reasons.append("PRINTED_METHOD_NOT_OWNED_BY_CASH_FLOW")
+        try:
+            start = date(int(match["sy"]), int(match["sm"]), int(match["sd"]))
+            end = date(int(match["ey"]), int(match["em"]), int(match["ed"]))
+        except ValueError:
+            reasons.append("INVALID_PRINTED_RANGE_CALENDAR_DATE")
+        else:
+            dates = {"printed_start_date": start.isoformat(), "printed_end_date": end.isoformat(),
+                     "printed_months": end.month, "annual_assertion": False}
+            if (start.year != end.year or (start.month, start.day) != (1, 1)
+                    or end.month not in {3, 6, 9} or end.day != {3: 31, 6: 30, 9: 30}.get(end.month)):
+                reasons.append("PRINTED_RANGE_NOT_COMPLETE_CALENDAR_INTERIM_YTD")
+        evidence.update(printed_scope_furniture=match["scope"], printed_method_furniture=match["method"],
+                        continuation_furniture_present=bool(match["before"] or match["after"]))
+    material = {**evidence, **dates, "supported": not reasons, "reasons": sorted(set(reasons)),
+                "rule": "WHOLE_TYPED_INTERIM_CAPTION_EXPLICIT_SAME_YEAR_JANUARY_FIRST_TO_QUARTER_END_NO_OTHER_SURFACE_AUTHORITY"}
+    receipt = {**material, "receipt_id": "gjitfav1:owned-flow-date-range-caption:" + canonical_json_sha256_v1(material)}
+    return {"source_kind": source_kind, "source_exact": source_exact, "supported": not reasons,
+            **dates, "source_date_range_evidence": receipt}
+
+
 def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping[str, Any]) -> list[dict[str, Any]]:
     surfaces = [("SECTION_TITLE", section.get("title_exact")), ("TABLE_TITLE", table.get("title_exact"))]
     if len(section.get("tables") or []) == 1:
@@ -5664,6 +5737,10 @@ def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping
     ending = r"(?P<day>\d{1,2}) (?:thang )?(?P<month>\d{1,2}) (?:nam )?(?P<year>\d{4})(?: tiep theo)?"
     output = []
     for kind, raw in surfaces:
+        date_range = _owned_flow_date_range_caption_constraint(section, source_kind=kind, source_exact=raw)
+        if date_range is not None:
+            output.append(date_range)
+            continue
         same_day = _owned_same_day_period_constraint(section, source_kind=kind, source_exact=raw)
         if same_day is not None:
             output.append(same_day)
@@ -5788,6 +5865,8 @@ def _owned_current_period_constraints_match(section: Mapping[str, Any], table: M
             return False
     for item in constraints:
         if not item["supported"]:
+            return False
+        if "printed_start_date" in item and item["printed_start_date"] != date(ending_parts[0], 1, 1).isoformat():
             return False
         if "printed_annual_year" in item:
             if months != 12 or ending_parts != (item["printed_annual_year"], 12, 31):
@@ -6450,6 +6529,19 @@ def _comparative_flow_local_surface_census(
         raw = surface["source_exact"]
         normalized = _normalized(raw)
         printed = _recognition_printed_text(raw)
+        range_constraint = _owned_flow_date_range_caption_constraint(section, source_kind=surface["kind"], source_exact=raw)
+        range_caption = bool(
+            range_constraint is not None and range_constraint["supported"] and end is not None
+            and range_constraint["printed_start_date"] == date(year, 1, 1).isoformat()
+            and range_constraint["printed_end_date"] == end.isoformat()
+            and range_constraint["printed_months"] == months
+        )
+        surface["finite_owned_date_range_flow_caption"] = range_caption
+        if range_caption:
+            # Normalize serialized line breaks only after the same whole raw
+            # caption has passed the finite source-owned range parser.
+            printed = _recognition_printed_text(raw.replace("\\n", "\n"))
+            surface["owned_date_range_caption_evidence"] = canonical_clone_v1(range_constraint["source_date_range_evidence"])
         header_pair_interim_caption = False
         if (header_constraint is not None and surface["kind"] in {"SECTION_TITLE", "TABLE_TITLE"}
                 and months in {3, 6, 9} and header_constraint["printed_months"] == months
@@ -6497,7 +6589,7 @@ def _comparative_flow_local_surface_census(
             if any(not (character.isalnum() or character.isspace() or character in ".,:/()-") for character in printed):
                 failures.append("UNREVIEWED_LOCAL_PERIOD_ANNOTATION")
             allowed_parentheticals = {"tiep theo", "trinh bay lai"}
-            if header_pair_interim_caption and section["statement_type"] == "CASH_FLOW":
+            if (header_pair_interim_caption or range_caption) and section["statement_type"] == "CASH_FLOW":
                 allowed_parentheticals.update({"phuong phap truc tiep", "phuong phap gian tiep"})
             if any(value not in allowed_parentheticals for value in re.findall(r"\(([^()]*)\)", printed)):
                 failures.append("UNREVIEWED_LOCAL_PERIOD_PARENTHETICAL")
@@ -6575,10 +6667,14 @@ def _comparative_flow_local_surface_census(
         unconsumed = re.sub(r"\b(?:tai|vao) ngay\b", " ", unconsumed)
         if range_asserted and end is not None and dates == [date(year, 1, 1), end]:
             unconsumed = re.sub(r"\b(?:tu ngay|tu|den ngay|den|toi)\b", " ", unconsumed)
+        if range_caption:
+            # The whole finite caption proof owns exactly this furniture;
+            # arbitrary ranges/narratives/ancestors receive no such waiver.
+            unconsumed = re.sub(r"\bcho giai doan\b", " ", unconsumed, count=1)
         # Interim furniture belongs only to a whole finite, typed FLOW report
         # caption with its own matching current-duration clause. Never erase
         # bare 'niên độ' assertions on NOTE rows or unrelated narratives.
-        interim_caption = header_pair_interim_caption
+        interim_caption = header_pair_interim_caption or range_caption
         if (surface["kind"] in {"SECTION_TITLE", "TABLE_TITLE"} and printed is not None
                 and section.get("content_kind") == "PRIMARY_STATEMENT" and months in {3, 6, 9}):
             title = {"INCOME_STATEMENT": "ket qua hoat dong", "CASH_FLOW": "luu chuyen tien te"}.get(section.get("statement_type"))

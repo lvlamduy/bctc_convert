@@ -1623,3 +1623,260 @@ def test_multi_table_section_does_not_make_its_explicit_caption_assertion_absent
         assert selected["complete"] is False
         assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
     assert records == before
+
+
+def _whole_flow_range_caption(*, statement="INCOME_STATEMENT", scope="riêng", months=6, year=2025):
+    title = {"INCOME_STATEMENT": "kết quả hoạt động", "CASH_FLOW": "lưu chuyển tiền tệ"}[statement]
+    population = " " + scope if scope else ""
+    day = {3: 31, 6: 30, 9: 30, 12: 31}[months]
+    return (
+        f"Báo cáo {title}{population} giữa niên độ cho giai đoạn\n"
+        f"từ ngày 01/1/{year} đến ngày {day}/{months}/{year}"
+    )
+
+
+def _whole_flow_range_records(*, source_kind="SECTION_TITLE", scope="riêng"):
+    # Literal relative axes make the printed range necessary: no dated header
+    # pair can accidentally supply the current duration being tested here.
+    records = _comparative_flow_records(scope=scope, current_year=2025, prior_year=2024)
+    for index, statement in ((1, "INCOME_STATEMENT"), (2, "CASH_FLOW")):
+        section, table = _absolute_header_section_table(records, index)
+        section["narratives_exact"] = []
+        title = "kết quả hoạt động" if index == 1 else "lưu chuyển tiền tệ"
+        section["title_exact"] = f"Báo cáo {title} {scope}"
+        table["title_exact"] = None
+        owner = section if source_kind == "SECTION_TITLE" else table
+        owner["title_exact"] = _whole_flow_range_caption(statement=statement, scope=scope)
+    return records
+
+
+@pytest.mark.parametrize("statement", ["INCOME_STATEMENT", "CASH_FLOW"])
+@pytest.mark.parametrize("source_kind", ["SECTION_TITLE", "TABLE_TITLE"])
+@pytest.mark.parametrize("months", [3, 6, 9])
+def test_whole_primary_range_retains_both_explicit_dates_without_other_permissions(statement, source_kind, months):
+    section = {"content_kind": "PRIMARY_STATEMENT", "statement_type": statement}
+    raw = _whole_flow_range_caption(statement=statement, months=months)
+    before = deepcopy(section)
+    constraint = family._owned_flow_date_range_caption_constraint(section, source_kind=source_kind, source_exact=raw)
+    assert constraint is not None and constraint["supported"] is True
+    assert constraint["source_kind"] == source_kind and constraint["source_exact"] == raw
+    assert constraint["printed_start_date"] == "2025-01-01"
+    assert constraint["printed_end_date"] == f"2025-{months:02d}-" + ("31" if months == 3 else "30")
+    assert constraint["printed_months"] == months and constraint["annual_assertion"] is False
+    evidence = constraint["source_date_range_evidence"]
+    assert evidence["format_version"] == "F39_WHOLE_OWNED_FLOW_DATE_RANGE_CAPTION_V1"
+    assert evidence["source_sha256"] == sha256(raw.encode("utf-8")).hexdigest()
+    assert evidence["source_lines_exact"] == raw.split("\n")
+    assert evidence["printed_start_date"] == constraint["printed_start_date"]
+    assert evidence["printed_end_date"] == constraint["printed_end_date"]
+    assert evidence["printed_months"] == months and evidence["reasons"] == []
+    for flag in (
+        "unit_permission_granted", "report_scope_permission_granted", "comparative_year_permission_granted",
+        "amounts_used_as_authority", "source_period_keys_modified", "start_dates_inferred", "sibling_or_other_surface_used",
+    ):
+        assert evidence[flag] is False
+    material = {key: value for key, value in evidence.items() if key != "receipt_id"}
+    assert evidence["receipt_id"] == "gjitfav1:owned-flow-date-range-caption:" + canonical_json_sha256_v1(material)
+    assert section == before
+
+
+@pytest.mark.parametrize("presentation", [
+    "unqualified_scope", "consolidated", "nfd", "serialized_newline", "whitespace", "continuation_before",
+    "continuation_after", "cf_direct", "cf_indirect", "zero_padded", "tab_cues", "newline_cues",
+])
+def test_whole_primary_range_admits_only_reviewed_printed_layout_variants(presentation):
+    statement = "CASH_FLOW" if presentation.startswith("cf_") else "INCOME_STATEMENT"
+    raw = _whole_flow_range_caption(statement=statement)
+    if presentation == "unqualified_scope":
+        raw = raw.replace(" riêng", "")
+    elif presentation == "consolidated":
+        raw = raw.replace(" riêng", " hợp nhất")
+    elif presentation == "nfd":
+        raw = unicodedata.normalize("NFD", raw)
+    elif presentation == "serialized_newline":
+        raw = raw.replace("\n", "\\n")
+    elif presentation == "whitespace":
+        raw = " \t" + raw.replace(" cho ", "\r\ncho ") + "\n "
+    elif presentation in {"tab_cues", "newline_cues"}:
+        separator = "\t" if presentation == "tab_cues" else "\n"
+        raw = raw.replace("từ ngày", "từ" + separator + "ngày").replace("đến ngày", "đến" + separator + "ngày")
+    elif presentation == "continuation_before":
+        raw = raw.replace("giữa niên độ", "giữa niên độ (tiếp theo)")
+    elif presentation == "continuation_after":
+        raw += "\n(tiếp theo)"
+    elif presentation.startswith("cf_"):
+        raw += "\n(Phương pháp " + ("trực tiếp" if presentation == "cf_direct" else "gián tiếp") + ")"
+    else:
+        raw = raw.replace("01/1/", "01/01/").replace("30/6/", "30/06/")
+    section = {"content_kind": "PRIMARY_STATEMENT", "statement_type": statement}
+    constraint = family._owned_flow_date_range_caption_constraint(section, source_kind="SECTION_TITLE", source_exact=raw)
+    assert constraint is not None and constraint["supported"] is True
+    assert constraint["source_exact"] == raw and constraint["printed_start_date"] == "2025-01-01"
+    assert constraint["printed_end_date"] == "2025-06-30"
+    evidence = constraint["source_date_range_evidence"]
+    assert evidence["source_lines_exact"] == raw.split("\n")
+    assert evidence["source_sha256"] == sha256(raw.encode("utf-8")).hexdigest()
+    assert evidence["report_scope_permission_granted"] is False
+
+
+@pytest.mark.parametrize("mutation", [
+    "non_january_start", "second_day_start", "different_years", "reverse_years", "invalid_start", "invalid_end",
+    "non_quarter_end", "non_last_day", "annual_interim", "missing_start", "missing_end", "missing_year",
+    "wrong_separator", "company_prefix", "extra_sentence", "footnote", "overlay", "superscript",
+    "date_digit_accent", "end_date_digit_acute", "end_date_digit_grave", "end_date_digit_horn",
+    "duplicate_continuation", "income_method", "negation",
+])
+def test_whole_primary_range_keeps_malformed_or_unsupported_assertions_as_vetoes(mutation):
+    raw = _whole_flow_range_caption()
+    replacements = {
+        "non_january_start": ("01/1/2025", "01/4/2025"),
+        "second_day_start": ("01/1/2025", "02/1/2025"),
+        "different_years": ("01/1/2025", "01/1/2024"),
+        "reverse_years": ("01/1/2025", "01/1/2026"),
+        "invalid_start": ("01/1/2025", "32/1/2025"),
+        "invalid_end": ("30/6/2025", "31/6/2025"),
+        "non_quarter_end": ("30/6/2025", "31/5/2025"),
+        "non_last_day": ("30/6/2025", "29/6/2025"),
+        "annual_interim": ("30/6/2025", "31/12/2025"),
+        "missing_start": ("01/1/2025", ""),
+        "missing_end": ("30/6/2025", ""),
+        "missing_year": ("30/6/2025", "30/6"),
+        "wrong_separator": ("30/6/2025", "30.6.2025"),
+        "date_digit_accent": ("01/1/2025", "0\u03011/1/2025"),
+        "end_date_digit_acute": ("30/6/2025", "3\u03010/6/2025"),
+        "end_date_digit_grave": ("30/6/2025", "30/6\u0300/2025"),
+        "end_date_digit_horn": ("30/6/2025", "30/6/202\u031b5"),
+        "negation": ("cho giai đoạn", "không cho giai đoạn"),
+    }
+    if mutation in replacements:
+        raw = raw.replace(*replacements[mutation])
+    elif mutation == "company_prefix":
+        raw = "Ngân hàng A\n" + raw
+    elif mutation == "extra_sentence":
+        raw += ". Áp dụng cho kỳ khác."
+    elif mutation == "footnote":
+        raw += " (*)"
+    elif mutation == "overlay":
+        raw += "\u0338"
+    elif mutation == "superscript":
+        raw += "¹"
+    elif mutation == "duplicate_continuation":
+        raw = raw.replace("giữa niên độ", "giữa niên độ (tiếp theo)") + " (tiếp theo)"
+    else:
+        raw += " (Phương pháp trực tiếp)"
+    section = {"content_kind": "PRIMARY_STATEMENT", "statement_type": "INCOME_STATEMENT"}
+    constraint = family._owned_flow_date_range_caption_constraint(section, source_kind="SECTION_TITLE", source_exact=raw)
+    assert constraint is not None and constraint["supported"] is False
+    evidence = constraint["source_date_range_evidence"]
+    assert evidence["reasons"] and evidence["source_exact"] == raw
+    assert evidence["source_sha256"] == sha256(raw.encode("utf-8")).hexdigest()
+
+
+@pytest.mark.parametrize("content_kind,statement_type", [
+    ("FINANCIAL_NOTE", "NOT_APPLICABLE"), ("FINANCIAL_NARRATIVE", "NOT_APPLICABLE"),
+    ("PRIMARY_STATEMENT", "BALANCE_SHEET"), ("PRIMARY_STATEMENT", "NOT_APPLICABLE"),
+    ("FINANCIAL_NOTE", "INCOME_STATEMENT"),
+])
+def test_whole_primary_range_does_not_grant_duration_to_another_source_kind(content_kind, statement_type):
+    section = {"content_kind": content_kind, "statement_type": statement_type}
+    raw = _whole_flow_range_caption()
+    constraint = family._owned_flow_date_range_caption_constraint(section, source_kind="TABLE_TITLE", source_exact=raw)
+    assert constraint is not None and constraint["supported"] is False
+    assert "RANGE_NOT_OWNED_BY_TYPED_PRIMARY_FLOW_CAPTION" in constraint["source_date_range_evidence"]["reasons"]
+
+
+@pytest.mark.parametrize("source_kind,raw", [
+    ("SECTION_TITLE", "Báo cáo kết quả hoạt động riêng giữa niên độ"),
+    ("OWNED_NARRATIVE", "Từ ngày 01/1/2025 đến ngày 30/6/2025"),
+])
+def test_whole_primary_range_leaves_irrelevant_or_unowned_surfaces_without_authority(source_kind, raw):
+    section = {"content_kind": "PRIMARY_STATEMENT", "statement_type": "INCOME_STATEMENT"}
+    assert family._owned_flow_date_range_caption_constraint(section, source_kind=source_kind, source_exact=raw) is None
+
+
+@pytest.mark.parametrize("source_kind", ["SECTION_TITLE", "TABLE_TITLE"])
+@pytest.mark.parametrize("scope", ["riêng", "hợp nhất"])
+def test_whole_primary_ranges_supply_relative_note_policy_without_absolute_header_fallback(source_kind, scope):
+    records = _whole_flow_range_records(source_kind=source_kind, scope=scope)
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    policy = inventory["document_comparative_flow_policy_receipt"]
+    assert policy["complete"] is True and policy["reasons"] == []
+    for index, source in enumerate(inventory["sources"], 1):
+        section, table = _absolute_header_section_table(records, index)
+        assert family._owned_absolute_flow_header_constraint(section, table) is None
+        constraints = source["owned_current_period_constraints"]
+        assert len(constraints) == 1 and constraints[0]["source_kind"] == source_kind
+        assert constraints[0]["supported"] is True and constraints[0]["printed_start_date"] == "2025-01-01"
+        assert source["lane_axis"]["source_lane_keys"] == [
+            ["SEMANTIC_ALIAS", "CURRENT_PERIOD"], ["SEMANTIC_ALIAS", "COMPARATIVE_PERIOD"],
+        ]
+    proof = _period_proof(records, inventory=inventory)
+    assert proof["complete"] is True and proof["status"] == "PASS_AUTHENTICATED_PRINTED_COMPARATIVE_FLOW_POLICY"
+    assert proof["start_dates_inferred"] is False and proof["source_period_keys_modified"] is False
+    assert _public_candidate(records)["status"] == READY
+    assert records == before
+
+
+@pytest.mark.parametrize("mutation", ["competing_title", "wrong_current_year", "missing_policy", "partial_split"])
+def test_whole_primary_range_does_not_waive_other_period_or_comparative_authority(mutation):
+    records = _whole_flow_range_records()
+    section, table = _absolute_header_section_table(records)
+    if mutation == "competing_title":
+        table["title_exact"] = _whole_flow_range_caption(months=9)
+    elif mutation == "wrong_current_year":
+        section["title_exact"] = _whole_flow_range_caption(year=2026)
+    elif mutation == "missing_policy":
+        _policy_section(records)["narratives_exact"] = []
+    else:
+        section["title_exact"], table["title_exact"] = section["title_exact"].split(" đến ngày ")
+        table["title_exact"] = "đến ngày " + table["title_exact"]
+    before = deepcopy(records)
+    proof = _period_proof(records)
+    assert proof["complete"] is False and proof["status"] == "ALGORITHM_HOLD"
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("ownership", ["section", "each_table", "table1_only", "narrative_only"])
+def test_whole_primary_range_multiple_tables_keep_source_local_ownership(ownership):
+    records = _whole_flow_range_records(source_kind="TABLE_TITLE" if ownership != "section" else "SECTION_TITLE")
+    section, table = _absolute_header_section_table(records, 2)
+    section["tables"].append(deepcopy(table))
+    if ownership == "table1_only":
+        section["tables"][1]["title_exact"] = None
+    elif ownership == "narrative_only":
+        section["narratives_exact"] = [table["title_exact"]]
+        for source_table in section["tables"]:
+            source_table["title_exact"] = None
+    before = deepcopy(records)
+    inventory = family._document_statement_period_inventory(records, compiled_specs=_adapter_compiled())
+    policy = inventory["document_comparative_flow_policy_receipt"]
+    assert len(policy["anchor_source_receipts"]) == 3
+    assert policy["complete"] is (ownership in {"section", "each_table"})
+    if ownership in {"section", "each_table"}:
+        assert all(anchor["complete"] for anchor in policy["anchor_source_receipts"])
+    else:
+        sibling = [source for source in inventory["sources"] if source["locator"]["table_id"] == "t2"]
+        assert len(sibling) == 1 and sibling[0]["owned_current_period_constraints"] == []
+        assert _period_proof(records, inventory=inventory)["complete"] is False
+    assert records == before
+
+
+@pytest.mark.parametrize("field,value", [("printed_start_date", "2025-02-01"), ("printed_end_date", "2025-09-30")])
+def test_whole_primary_range_self_resealed_query_cannot_replace_original_caption(field, value):
+    records = _whole_flow_range_records()
+    before = deepcopy(records)
+    compiled, cluster, query = _public_query(records)
+    assert cluster["status"] == READY and query is not None
+    forged = deepcopy(query)
+    inventory = forged["source_context_receipt"]["document_statement_period_inventory"]
+    constraint = inventory["sources"][0]["owned_current_period_constraints"][0]
+    constraint[field] = value
+    constraint["source_date_range_evidence"][field] = value
+    _reseal_receipts(forged)
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error):
+        _evaluate_query(records, compiled, cluster, forged)
+    assert records == before
