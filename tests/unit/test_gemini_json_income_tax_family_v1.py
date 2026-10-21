@@ -9,10 +9,12 @@ import pytest
 
 from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
     GeminiJsonIncomeTaxFamilyV1Error,
+    build_gemini_json_income_tax_original_basis_receipt_v1,
     build_gemini_json_income_tax_region_query_receipt_v1,
     compile_gemini_json_income_tax_family_specs_v1,
     evaluate_gemini_json_income_tax_family_cluster_v1,
     recover_gemini_json_income_tax_query_cluster_v1,
+    validate_gemini_json_income_tax_original_basis_receipt_v1,
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
@@ -2161,7 +2163,8 @@ def _scope_statement_record(statement_type, caption, token, *, table_caption=Non
 
 def test_note_inherits_only_unique_two_statement_type_report_scope_with_exact_source_inventory() -> None:
     from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
-        _document_report_scope_receipt, _note_report_scope_receipt,
+        _document_report_scope_receipt,
+        _note_report_scope_receipt,
     )
     records = [
         _scope_statement_record("INCOME_STATEMENT", "Báo cáo kết quả hoạt động riêng", "d"),
@@ -2255,7 +2258,9 @@ def test_equal_endpoints_do_not_prove_an_unknown_or_unsupported_duration(phrase)
 
 
 def test_printed_duration_cannot_contradict_its_own_explicit_source_date_range() -> None:
-    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _source_duration_correspondence_complete
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _source_duration_correspondence_complete,
+    )
     records = _period_population_records()
     table = records[0]["page_json"]["sections"][0]["tables"][0]
     lane = {"complete": True, "money_column_ordinals": [1, 2],
@@ -2322,7 +2327,10 @@ def test_bare_year_correspondence_cannot_ignore_an_owned_caption_period_contradi
 
 
 def test_validation_only_period_cannot_skip_counterpart_when_primary_receipt_is_absent() -> None:
-    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _seal_income_tax_source_controls, _source_context_receipt
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _seal_income_tax_source_controls,
+        _source_context_receipt,
+    )
     records = _period_population_records()
     compiled = _adapter_compiled()
     _, candidate = _evaluate_supplemental_records(records, compiled=compiled)
@@ -2337,7 +2345,9 @@ def test_validation_only_period_cannot_skip_counterpart_when_primary_receipt_is_
 
 def test_statement_narrative_cannot_authorize_a_different_table_or_override_local_entity() -> None:
     from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
-        _document_report_scope_receipt, _note_report_scope_receipt, _owned_statement_scope_narratives,
+        _document_report_scope_receipt,
+        _note_report_scope_receipt,
+        _owned_statement_scope_narratives,
     )
     records = _period_population_records()
     section = records[0]["page_json"]["sections"][0]
@@ -2907,3 +2917,431 @@ def test_supplemental_query_receipt_rejects_source_value_tamper() -> None:
                 cluster["component_regions"], cluster=cluster
             ),
         )
+
+
+def _original_basis_fixture(basis: str = "RATE") -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if basis == "RATE":
+        rows = [
+            _row("Lợi nhuận kế toán trước thuế", "100", "80"),
+            _row("Thuế tính ở thuế suất 20%", "20", "16"),
+            _row("Chi phí không được khấu trừ", "5", "4"),
+            _row("Thuế TNDN nộp bổ sung từ các năm trước", "2", "1"),
+            _row("Chi phí thuế thu nhập doanh nghiệp hiện hành", "27", "21", kind="TOTAL"),
+        ]
+    else:
+        rows = [
+            _row("Lợi nhuận kế toán trước thuế", "100", "80"),
+            _row("Điều chỉnh khác", "(10)", "(8)"),
+            _row("Chi phí không được khấu trừ", "5", "3"),
+            _row("Thu nhập chịu thuế", "95", "75", kind="SUBTOTAL"),
+        ]
+    records = [_record(_page(rows))]
+    locator = {key: value for key, value in records[0].items() if key != "page_json"}
+    return records, {**locator, "section_id": "s1", "table_id": "t1"}
+
+
+@pytest.mark.parametrize("basis,bindings", [
+    ("RATE", {"PROFIT_BEFORE_TAX": 5728, "CURRENT_TAX_PARENT": 5723, "PRIOR_PERIOD_TAX_ADJUSTMENT": 5733}),
+    ("INCOME", {"PROFIT_BEFORE_TAX": 5728, "NON_TAXABLE_AGGREGATE": 5729,
+                "NON_DEDUCTIBLE_EXPENSE": 5730, "TAXABLE_INCOME": 5731}),
+])
+def test_original_basis_private_specs_preserve_accounting_policy(basis: str, bindings: dict[str, int]) -> None:
+    compiled = _adapter_compiled()
+    specs = compiled[f"income_tax_original_{basis.lower()}_specs"]
+    assert specs["bindings"] == bindings
+    assert specs["schema"]["root_mapping_policy"] == "STRUCTURAL_CONTEXT_ONLY"
+    assert specs["evaluation"]["ordered_role_scopes"] == compiled["evaluation"]["ordered_role_scopes"]
+    assert specs["evaluation"]["ordered_role_scope_projections"] == (
+        [] if basis == "RATE" else compiled["evaluation"]["ordered_role_scope_projections"]
+    )
+    excluded = {child["role"] for child in specs["topology"]["children"]} - bindings.keys()
+    assert set(specs["evaluation"]["validation_only_roles"]) == excluded
+    mutable_keys = {"validation_only_roles", "ordered_role_scope_projections"}
+    assert {key: value for key, value in specs["evaluation"].items() if key not in mutable_keys} == {
+        key: value for key, value in compiled["evaluation"].items() if key not in mutable_keys
+    }
+    assert specs["query_policy"] == compiled["query_policy"]
+    assert _json("tm-income-tax-schema-binding-v1.json")["role_bindings"] != specs["schema"]["role_bindings"]
+
+
+@pytest.mark.parametrize("basis", ["RATE", "INCOME"])
+def test_original_basis_receipt_cold_rebuild_and_no_input_mutation(basis: str) -> None:
+    records, locator = _original_basis_fixture(basis)
+    compiled = _adapter_compiled()
+    before = deepcopy((records, compiled))
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis=basis, compiled_specs=compiled,
+    )
+    assert receipt["private_candidate_proof"]["status"] == READY
+    assert receipt["status"] == "PASS_PRIVATE_ORIGINAL_BASIS_EVIDENCE_NOT_FAMILY_ACCEPTANCE", receipt["reasons"]
+    assert receipt["production_adapter_integrated"] is False
+    assert receipt["family_terminal_claimed"] is False
+    assert len(receipt["source_coverage_receipt"]["source_rows"]) == len(records[0]["page_json"]["sections"][0]["tables"][0]["rows"])
+    assert validate_gemini_json_income_tax_original_basis_receipt_v1(
+        receipt, page_records=records, compiled_specs=compiled,
+    ) == receipt
+    assert (records, compiled) == before
+    if basis == "RATE":
+        assert {mapping["report_norm_id"] for mapping in receipt["private_candidate_proof"]["mappings"]} == {5728, 5723, 5733}
+    else:
+        assert {mapping["report_norm_id"] for mapping in receipt["private_candidate_proof"]["mappings"]} == {5728, 5729, 5730, 5731}
+
+
+def test_original_basis_private_aliases_never_change_base_or_supplemental_roles() -> None:
+    compiled = _adapter_compiled()
+    extra = {"chi phi thue thu nhap doanh nghiep hien hanh", "thue tndn nop bo sung tu cac nam truoc",
+             "nop thue bo sung tu cac nam truoc"}
+    for specs in (compiled, compiled["income_tax_supplemental_specs"], compiled["income_tax_original_income_specs"]):
+        aliases = {alias for child in specs["topology"]["children"] for matcher in child["matchers"] for alias in matcher["aliases"]}
+        assert not aliases & extra
+    aliases = {alias for child in compiled["income_tax_original_rate_specs"]["topology"]["children"]
+               for matcher in child["matchers"] for alias in matcher["aliases"]}
+    assert extra <= aliases
+
+
+@pytest.mark.parametrize("basis", ["RATE", "INCOME"])
+def test_original_basis_identity_view_keeps_original_multitable_ownership(basis: str) -> None:
+    records, locator = _original_basis_fixture(basis)
+    section = records[0]["page_json"]["sections"][0]
+    table = deepcopy(section["tables"][0])
+    section["tables"].insert(0, _table([_row("Dữ liệu không thuộc bảng thuế", "1", "2")]))
+    section["narratives_exact"] = ["(a) Ghi nhận trong báo cáo kết quả hoạt động hợp nhất"]
+    records[0]["page_json"]["sections"].insert(0, {
+        **deepcopy(section), "content_kind": "OTHER", "tables": [], "title_exact": None,
+    })
+    locator.update(section_id="s2", table_id="t2")
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis=basis, compiled_specs=_adapter_compiled(),
+    )
+    assert receipt["original_section_exact"] == section
+    assert receipt["original_report_scope_receipt"]["owned_statement_scope_narratives"] == []
+    assert receipt["original_report_scope_receipt"]["report_scope"] is None
+    view = receipt["identity_view_receipt"]
+    assert view["original_locator"]["section_id"] == "s2"
+    assert view["original_locator"]["table_id"] == "t2"
+    assert view["private_locator"]["section_id"] == "s1"
+    assert view["private_locator"]["table_id"] == "t1"
+    assert [item["row_exact"] for item in view["source_rows"]] == table["rows"]
+    assert view["source_columns_exact"] == table["columns"]
+    assert receipt["original_table_json_sha256"] == canonical_json_sha256_v1(table)
+
+
+@pytest.mark.parametrize("path,value", [
+    (("private_semantic_spec_sha256",), "0" * 64),
+    (("original_section_json_sha256",), "0" * 64),
+    (("identity_view_receipt", "private_page_json_sha256"), "0" * 64),
+    (("identity_view_receipt", "money_column_ordinals"), [2, 1]),
+    (("identity_view_receipt", "source_rows", 0, "original_row_ordinal"), 2),
+    (("source_coverage_receipt", "source_rows", 0, "source_values_exact"), ["999", "80"]),
+    (("source_coverage_receipt", "source_rows", 0, "dispositions"), ["EXCLUDED"]),
+    (("private_candidate_proof", "mappings", 0, "values", 0, "coefficient"), 999),
+    (("production_adapter_integrated",), True),
+    (("family_terminal_claimed",), True),
+    (("basis_frontier", "terminal_row_ordinal"), 1),
+    (("original_report_scope_receipt", "report_scope"), "CONSOLIDATED"),
+])
+def test_original_basis_receipt_rejects_self_resealed_metadata_and_proof(path: tuple[Any, ...], value: Any) -> None:
+    records, locator = _original_basis_fixture()
+    compiled = _adapter_compiled()
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=compiled,
+    )
+    forged = deepcopy(receipt)
+    parent = forged
+    for key in path[:-1]:
+        parent = parent[key]
+    parent[path[-1]] = value
+    forged["receipt_id"] = "gjitfav1:original-basis:" + canonical_json_sha256_v1(
+        {key: item for key, item in forged.items() if key != "receipt_id"}
+    )
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="source replay drifted"):
+        validate_gemini_json_income_tax_original_basis_receipt_v1(forged, page_records=records, compiled_specs=compiled)
+
+
+@pytest.mark.parametrize("field,value", [("values_exact", ["101", "80"]), ("row_kind", "GROUP"),
+                                         ("hierarchy_path_exact", ["Bảng khác"]), ("label_exact", "Lợi nhuận khác")])
+def test_original_basis_receipt_rejects_original_row_tamper(field: str, value: Any) -> None:
+    records, locator = _original_basis_fixture()
+    compiled = _adapter_compiled()
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=compiled,
+    )
+    changed = deepcopy(records)
+    changed[0]["page_json"]["sections"][0]["tables"][0]["rows"][0][field] = value
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error):
+        validate_gemini_json_income_tax_original_basis_receipt_v1(receipt, page_records=changed, compiled_specs=compiled)
+
+
+def test_original_basis_receipt_rejects_private_policy_tamper() -> None:
+    records, locator = _original_basis_fixture()
+    compiled = _adapter_compiled()
+    compiled["income_tax_original_rate_specs"]["evaluation"]["minimum_declared_detail_role_count"] = 1
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="private semantic specs drifted"):
+        build_gemini_json_income_tax_original_basis_receipt_v1(page_records=records, locator=locator, basis="RATE", compiled_specs=compiled)
+
+
+def test_original_basis_numeric_subtotal_cannot_disappear_from_coverage() -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _original_basis_source_coverage
+
+    records, locator = _original_basis_fixture()
+    compiled = _adapter_compiled()
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=compiled,
+    )
+    table = deepcopy(records[0]["page_json"]["sections"][0]["tables"][0])
+    table["rows"].append(_row("Chi phí thuế TNDN từ hoạt động kinh doanh", "315.013", "230.164", kind="SUBTOTAL"))
+    coverage = _original_basis_source_coverage(
+        table, candidate=receipt["private_candidate_proof"], private_locator=receipt["identity_view_receipt"]["private_locator"],
+        money_ordinals=[1, 2], basis="RATE", frontier=receipt["basis_frontier"],
+    )
+    assert coverage["status"] == "ALGORITHM_HOLD"
+    assert "ORIGINAL_BASIS_UNPROVEN_NUMERIC_TOTAL:6" in coverage["reasons"]
+    assert coverage["source_rows"][-1]["source_values_exact"] == ["315.013", "230.164"]
+    assert coverage["source_rows"][-1]["dispositions"] == ["UNPROVEN_NUMERIC_TOTAL_SOURCE_CONTROL"]
+
+
+@pytest.mark.parametrize("source", [None, "-", "—", ""])
+def test_original_basis_mapping_cannot_promote_blank_or_marker_to_numeric_zero(source: str | None) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _original_basis_source_coverage
+
+    records, locator = _original_basis_fixture()
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    table = deepcopy(records[0]["page_json"]["sections"][0]["tables"][0])
+    table["rows"][0]["values_exact"][0] = source
+    candidate = deepcopy(receipt["private_candidate_proof"])
+    profit = next(item for item in candidate["mappings"] if item["role"] == "PROFIT_BEFORE_TAX")
+    profit["values"][0] = {"coefficient": 0, "source_text": source, "state": "RAW_SIGNED_INTEGER"}
+    coverage = _original_basis_source_coverage(
+        table, candidate=candidate, private_locator=receipt["identity_view_receipt"]["private_locator"],
+        money_ordinals=[1, 2], basis="RATE", frontier=receipt["basis_frontier"],
+    )
+    assert coverage["status"] == "ALGORITHM_HOLD"
+    assert ("ORIGINAL_BASIS_MAPPING_BLANK_NUMERIC_INFERENCE" if source is None
+            else "ORIGINAL_BASIS_MAPPING_NON_NUMERIC_SOURCE_MARKER") in coverage["reasons"]
+
+
+def test_original_basis_printed_numeric_zero_is_not_a_blank() -> None:
+    records, locator = _original_basis_fixture()
+    table = records[0]["page_json"]["sections"][0]["tables"][0]
+    table["rows"][0]["values_exact"] = ["0", "0"]
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    assert receipt["status"] == "PASS_PRIVATE_ORIGINAL_BASIS_EVIDENCE_NOT_FAMILY_ACCEPTANCE"
+    profit = next(item for item in receipt["private_candidate_proof"]["mappings"] if item["role"] == "PROFIT_BEFORE_TAX")
+    assert [value["coefficient"] for value in profit["values"]] == [0, 0]
+    assert receipt["source_coverage_receipt"]["source_rows"][0]["source_cell_kinds"] == ["PRINTED_NUMERIC_SOURCE_CELL"] * 2
+
+
+@pytest.mark.parametrize("anchor_count", [0, 2])
+def test_original_rate_frontier_cannot_fall_back_to_profit_with_missing_or_duplicate_anchor(anchor_count: int) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _original_basis_frontier
+
+    records, _ = _original_basis_fixture()
+    table = records[0]["page_json"]["sections"][0]["tables"][0]
+    if anchor_count == 0:
+        table["rows"].pop(1)
+    else:
+        table["rows"].insert(2, _row("Chi phí thuế TNDN theo thuế suất", "20", "16"))
+    frontier = _original_basis_frontier(table, basis="RATE", specs=_adapter_compiled()["income_tax_original_rate_specs"])
+    assert len(frontier["monetary_rate_source_ordinals"]) == anchor_count
+    assert frontier["source_boundary_supported"] is False
+    assert frontier["start_row_ordinal"] is None
+
+
+@pytest.mark.parametrize("source_only", [False, True])
+def test_original_numeric_total_needs_value_proof_even_when_retained_source_only(source_only: bool) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _original_basis_source_coverage
+
+    records, locator = _original_basis_fixture()
+    table = records[0]["page_json"]["sections"][0]["tables"][0]
+    subtotal = _row("Tổng chưa được chứng minh", "9", "7", kind="SUBTOTAL")
+    table["rows"].append(subtotal)
+    ref = {"locator": locator, "row_ordinal": 6, "money_column_ordinals": [1, 2],
+           "row_id": "r6", **{key: subtotal[key] for key in ("label_exact", "hierarchy_path_exact", "row_kind")}}
+    candidate = {"mappings": [], "closure_receipt": {
+        "source_only_unmapped_rows": [{"source_ref": ref}] if source_only else [],
+    }}
+    coverage = _original_basis_source_coverage(table, candidate=candidate, private_locator=locator, money_ordinals=[1, 2],
+                                              basis="RATE", frontier={"source_boundary_supported": False})
+    assert "ORIGINAL_BASIS_UNPROVEN_NUMERIC_TOTAL:6" in coverage["reasons"]
+    assert "UNPROVEN_NUMERIC_TOTAL_SOURCE_CONTROL" in coverage["source_rows"][-1]["dispositions"]
+
+
+@pytest.mark.parametrize("equation_status", ["MISMATCH", "INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL", None])
+def test_original_incomplete_equation_cannot_prove_numeric_total(equation_status: str | None) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _original_basis_source_coverage
+
+    records, locator = _original_basis_fixture()
+    table = records[0]["page_json"]["sections"][0]["tables"][0]
+    row = table["rows"][-1]
+    ref = {"locator": locator, "row_ordinal": 5, "money_column_ordinals": [1, 2],
+           "row_id": "r5", **{key: row[key] for key in ("label_exact", "hierarchy_path_exact", "row_kind")}}
+    coverage = _original_basis_source_coverage(
+        table, candidate={"mappings": [], "closure_receipt": {"equations": [
+            {"equation_id": "test", "status": equation_status, "result_source_refs": [ref], "component_source_refs": []},
+        ]}}, private_locator=locator, money_ordinals=[1, 2], basis="RATE", frontier={"source_boundary_supported": False},
+    )
+    assert "ORIGINAL_BASIS_EQUATION_NOT_COMPLETE_EXACT_PROOF" in coverage["reasons"]
+    assert "ORIGINAL_BASIS_UNPROVEN_NUMERIC_TOTAL:5" in coverage["reasons"]
+
+
+@pytest.mark.parametrize("field,value", [("coefficient", True), ("coefficient", 999), ("source_text", "999")])
+def test_original_all_role_guard_rejects_printed_number_drift(field: str, value: Any) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _original_basis_source_coverage
+
+    records, locator = _original_basis_fixture()
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    candidate = deepcopy(receipt["private_candidate_proof"])
+    profit = next(item for item in candidate["mappings"] if item["role"] == "PROFIT_BEFORE_TAX")
+    profit["values"][0][field] = value
+    coverage = _original_basis_source_coverage(
+        records[0]["page_json"]["sections"][0]["tables"][0], candidate=candidate, private_locator=locator,
+        money_ordinals=[1, 2], basis="RATE", frontier=receipt["basis_frontier"],
+    )
+    assert "ORIGINAL_BASIS_MAPPING_PRINTED_NUMBER_DRIFT" in coverage["reasons"]
+
+
+@pytest.mark.parametrize("surface", ["Tài sản thuế thu nhập hoãn lại", "Thuế và các khoản phải nộp Nhà nước"])
+def test_original_basis_view_cannot_drop_original_narrative_reset(surface: str) -> None:
+    records, locator = _original_basis_fixture()
+    records[0]["page_json"]["sections"][0]["narratives_exact"] = [surface]
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    assert receipt["status"] == "ALGORITHM_HOLD"
+    assert "ORIGINAL_BASIS_ORIGINAL_NARRATIVE_RESET_BOUNDARY" in receipt["reasons"]
+
+
+@pytest.mark.parametrize("label", ["Năm hiện hành", "Kỳ hiện hành"])
+def test_original_rate_numeric_closure_cannot_authenticate_unowned_year_or_period(label: str) -> None:
+    records, locator = _original_basis_fixture()
+    table = records[0]["page_json"]["sections"][0]["tables"][0]
+    table["rows"][2] = _row(label, "5", "4")
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    assert receipt["status"] == "ALGORITHM_HOLD"
+    assert "ORIGINAL_BASIS_YEAR_OR_PERIOD_INSIDE_RATE_REQUIRES_INDEPENDENT_POPULATION_PROOF" in receipt["reasons"]
+
+
+@pytest.mark.parametrize("field,value", [("region", {"section_id": "s9"}), ("role", "PROFIT_BEFORE_TAX"),
+                                         ("rule", "UNKNOWN"), ("hit", False)])
+def test_original_metric_retention_binds_exact_private_table_and_declared_role(field: str, value: Any) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import _original_basis_source_coverage
+
+    records, locator = _original_basis_fixture()
+    row = _row("Thuế suất thuế TNDN", "20%", "20%")
+    table = _table([row])
+    metric = {"row_ordinal": 1, "role": "TAX_RATE_SOURCE_ONLY", "row": row,
+              "rule": "DECLARED_VALIDATION_ONLY_NON_MONEY_METRIC_ROW"}
+    table_receipt = {"region": locator, "classification": {"role_hits": [
+        {"role": "TAX_RATE_SOURCE_ONLY", "row_ordinal": 1, "row_kind": "ITEM", "source_order": 1},
+    ]}, "non_money_metric_source_rows": [metric]}
+    if field == "hit":
+        table_receipt["classification"]["role_hits"] = []
+    elif field == "region":
+        table_receipt["region"] = value
+    else:
+        metric[field] = value
+    coverage = _original_basis_source_coverage(
+        table, candidate={"mappings": [], "closure_receipt": {"table_receipts": [table_receipt]}},
+        private_locator=locator, money_ordinals=[1, 2], basis="RATE", frontier={"source_boundary_supported": False},
+        metric_role_axes={"non_money_metric_source_rows": ["TAX_RATE_SOURCE_ONLY"]},
+    )
+    assert "ORIGINAL_BASIS_NON_MONEY_ROW_AXIS_DRIFT" in coverage["reasons"]
+
+
+def test_original_validation_operand_entity_path_cannot_disappear_from_receipt() -> None:
+    records, locator = _original_basis_fixture()
+    row = records[0]["page_json"]["sections"][0]["tables"][0]["rows"][2]
+    row["hierarchy_path_exact"] = ["Công ty con", row["label_exact"]]
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    axis = receipt["original_participant_population_axis"][2]
+    assert axis["source_paths_exact"] == row["hierarchy_path_exact"]
+    assert axis["printed_population_qualifiers"] == ["SUBSIDIARY_ENTITY"]
+    assert receipt["status"] == "ALGORITHM_HOLD"
+    assert "ORIGINAL_BASIS_VALIDATION_OPERAND_ENTITY_SCOPE_REQUIRES_COMPONENT_PROOF" in receipt["reasons"]
+
+
+def test_original_raw_spec_cache_must_recompile_to_authoritative_base_specs() -> None:
+    records, locator = _original_basis_fixture()
+    compiled = _adapter_compiled()
+    compiled["income_tax_original_basis_source_specs"]["evaluation"]["minimum_declared_detail_role_count"] = 1
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="raw/base semantic specs drifted"):
+        build_gemini_json_income_tax_original_basis_receipt_v1(page_records=records, locator=locator, basis="RATE", compiled_specs=compiled)
+
+
+@pytest.mark.parametrize("source", ["-", "—", " - "])
+def test_original_basis_accepts_declared_visible_accounting_dash_not_blank(source: str) -> None:
+    records, locator = _original_basis_fixture()
+    table = records[0]["page_json"]["sections"][0]["tables"][0]
+    table["rows"][0]["values_exact"][0] = source
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    assert receipt["status"] == "PASS_PRIVATE_ORIGINAL_BASIS_EVIDENCE_NOT_FAMILY_ACCEPTANCE", receipt["reasons"]
+    profit = next(item for item in receipt["private_candidate_proof"]["mappings"] if item["role"] == "PROFIT_BEFORE_TAX")
+    assert profit["values"][0] == {"coefficient": 0, "source_text": source, "state": "DASH_ZERO"}
+    assert receipt["source_coverage_receipt"]["source_rows"][0]["source_cell_kinds"][0] == "PRINTED_ACCOUNTING_DASH_ZERO"
+
+
+def test_original_basis_neutral_continuation_caption_uses_original_owner_fence() -> None:
+    records, locator = _original_basis_fixture()
+    page = records[0]["page_json"]
+    table_section = page["sections"][0]
+    table_section["title_exact"] = "Thuyết minh báo cáo tài chính riêng giữa niên độ (tiếp theo)"
+    table_section["narratives_exact"] = ["21.1 Thuế thu nhập doanh nghiệp (tiếp theo)"]
+    owner_record = deepcopy(records[0])
+    owner_record["page_json_version_id"] = "gfpstorev1:json:" + "e" * 64
+    owner_record["physical_page"] = 1
+    owner_record["selected_page_ordinal"] = 1
+    owner_record["page_json"] = _page([], owner="21.1 Thuế thu nhập doanh nghiệp", tables=[])
+    records[0]["physical_page"] = locator["physical_page"] = 2
+    records[0]["selected_page_ordinal"] = locator["selected_page_ordinal"] = 2
+    records.insert(0, owner_record)
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    assert receipt["original_owner_fenced_cluster"]["status"] == READY
+    assert len(receipt["original_owned_region_axis"]) == 1
+    assert "ORIGINAL_BASIS_TABLE_NOT_IN_UNMODIFIED_OWNER_FENCED_QUERY" not in receipt["reasons"]
+    assert receipt["original_section_exact"] == table_section
+
+
+def test_original_basis_rejects_tax_rows_under_payable_title_even_with_original_role_anchor() -> None:
+    records, locator = _original_basis_fixture()
+    records[0]["page_json"]["sections"][0]["title_exact"] = "Thuế và các khoản phải nộp Nhà nước"
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    assert receipt["status"] == "ALGORITHM_HOLD"
+    assert "ORIGINAL_BASIS_LOCAL_HARD_NEGATIVE_TITLE" in receipt["reasons"]
+
+
+@pytest.mark.parametrize("caption,ancestor,expected_hold", [
+    ("Hợp nhất", "Riêng", True), ("Riêng", "Hợp nhất", True),
+    ("Hợp nhất", "Hợp nhất", False), ("Riêng", "Riêng", False),
+])
+def test_original_validation_operand_report_scope_is_checked_not_only_schema_mappings(
+    caption: str, ancestor: str, expected_hold: bool,
+) -> None:
+    records, locator = _original_basis_fixture()
+    section = records[0]["page_json"]["sections"][0]
+    section["title_exact"] = OWNER + " " + caption
+    row = section["tables"][0]["rows"][2]
+    row["hierarchy_path_exact"] = [ancestor, row["label_exact"]]
+    receipt = build_gemini_json_income_tax_original_basis_receipt_v1(
+        page_records=records, locator=locator, basis="RATE", compiled_specs=_adapter_compiled(),
+    )
+    assert receipt["original_participant_population_axis"][2]["ancestor_population_qualifiers"]
+    reason = "ORIGINAL_BASIS_PARTICIPANT_REPORT_SCOPE_REQUIRES_POPULATION_PROOF"
+    assert (reason in receipt["reasons"]) is expected_hold
+    if expected_hold:
+        assert receipt["status"] == "ALGORITHM_HOLD"
