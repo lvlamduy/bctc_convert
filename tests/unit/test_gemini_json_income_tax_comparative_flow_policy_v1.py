@@ -1880,3 +1880,756 @@ def test_whole_primary_range_self_resealed_query_cannot_replace_original_caption
     with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error):
         _evaluate_query(records, compiled, cluster, forged)
     assert records == before
+
+
+
+def _four_money_ytd_records(*, layout="seven", marker=False, ytd_tail=False):
+    from test_gemini_json_income_tax_signed_display_v1 import _contextual_period_records
+
+    records = _contextual_period_records(quarter="II", absolute_primary=True, include_cash_flow=False)
+    section = records[1]["page_json"]["sections"][0]
+    table = section["tables"][0]
+    section["title_exact"] = _whole_flow_range_caption(year=2026)
+    section["narratives_exact"] = []
+    table["title_exact"] = None
+    text_headers = ["STT", "Chỉ tiêu", "Thuyết\\nminh"] if layout == "seven" else ["STT", "Thuyết minh"]
+    money = []
+    for index in range(4):
+        stem = "Quý II" if index < 2 else "Lũy kế từ đầu năm"
+        if ytd_tail and index >= 2:
+            stem += " đến cuối quý này"
+        year = ("Năm " if marker else "") + ("2026" if index % 2 == 0 else "2025")
+        # Match both authentic source shapes, not one synthetic normalized axis.
+        path = [stem, year + "\\nTriệu VND"] if layout == "seven" else [stem, year, "Triệu VND"]
+        money.append({"value_kind": "MONEY", "header_path_exact": path})
+    table["columns"] = [{"value_kind": "TEXT", "header_path_exact": [label]} for label in text_headers] + money
+    for row in table["rows"]:
+        row["values_exact"] = [None] * len(text_headers) + row["values_exact"]
+        assert len(row["values_exact"]) == len(table["columns"])
+    return records
+
+
+def _four_money_ytd_probe(records):
+    section = records[1]["page_json"]["sections"][0]
+    table = section["tables"][0]
+    lane = family._multitable_lane_axis(section, table, compiled_specs=_adapter_compiled())
+    return section, table, lane, family._printed_ytd_sibling_period_evidence(section, table, lane)
+
+
+def _four_money_ytd_columns(table):
+    return [column for column in table["columns"] if column["value_kind"] == "MONEY"]
+
+
+@pytest.mark.parametrize("layout", ["seven", "six"])
+@pytest.mark.parametrize("marker", [False, True, "mixed"])
+@pytest.mark.parametrize("ytd_tail", [False, True])
+def test_four_money_ytd_exact_numeric_headers_preserve_old_stem_and_actual_source_shapes(layout, marker, ytd_tail):
+    records = _four_money_ytd_records(layout=layout, marker=marker is True, ytd_tail=ytd_tail)
+    if marker == "mixed":
+        columns = _four_money_ytd_columns(records[1]["page_json"]["sections"][0]["tables"][0])
+        for index in (0, 3):
+            columns[index]["header_path_exact"][1] = "Năm " + columns[index]["header_path_exact"][1]
+    before = deepcopy(records)
+    _section, table, lane, evidence = _four_money_ytd_probe(records)
+    money = [4, 5, 6, 7] if layout == "seven" else [3, 4, 5, 6]
+    assert lane["complete"] is True and lane["money_column_ordinals"] == money[2:]
+    assert lane["excluded_parallel_duration_money_column_ordinals"] == money[:2]
+    assert evidence is not None
+    assert evidence["quarter"] == 2 and evidence["money_column_ordinals"] == money
+    assert evidence["printed_absolute_year_tokens"] == ["2026", "2025"]
+    assert evidence["relative_year_tokens"] is None
+    assert evidence["intrinsic_absolute_periods"] == [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    assert evidence["original_table_json_sha256"] == canonical_json_sha256_v1(table)
+    assert records == before
+
+
+@pytest.mark.parametrize("layout", ["seven", "six"])
+def test_four_money_ytd_old_literal_material_and_receipt_identity_remain_unchanged(layout):
+    records = _four_money_ytd_records(layout=layout, marker=True, ytd_tail=True)
+    _section, table, _lane, evidence = _four_money_ytd_probe(records)
+    money = [4, 5, 6, 7] if layout == "seven" else [3, 4, 5, 6]
+    expected = {
+        "quarter": 2, "relative_year_tokens": None, "printed_absolute_year_tokens": ["2026", "2025"],
+        "intrinsic_absolute_periods": [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]],
+        "money_column_ordinals": money,
+        "quarter_columns_exact": [deepcopy(table["columns"][index - 1]) for index in money[:2]],
+        "cumulative_columns_exact": [deepcopy(table["columns"][index - 1]) for index in money[2:]],
+        "original_table_json_sha256": canonical_json_sha256_v1(table),
+        "rule": "EXACT_FOUR_MONEY_PARALLEL_QUARTER_YTD_SOURCE_AXIS_MATCHED_YEAR_SUFFIXES_NO_AMOUNT_INFERENCE",
+    }
+    assert evidence == expected | {"receipt_id": "gjitfav1:printed-ytd-siblings:" + canonical_json_sha256_v1(expected)}
+
+
+@pytest.mark.parametrize("quarter,number", [("I", 1), ("II", 2), ("III", 3), ("IV", 4), ("1", 1), ("2", 2), ("3", 3), ("4", 4)])
+def test_four_money_ytd_explicit_quarter_and_nonadjacent_years_are_not_inferred(quarter, number):
+    records = _four_money_ytd_records(layout="six")
+    section = records[1]["page_json"]["sections"][0]
+    section["title_exact"] = "Báo cáo kết quả hoạt động riêng"
+    for column in _four_money_ytd_columns(section["tables"][0]):
+        path = column["header_path_exact"]
+        path[:] = [value.replace("Quý II", "Quý " + quarter).replace("2025", "2021") for value in path]
+    _section, _table, _lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None and evidence["quarter"] == number
+    expected = [["ANNUAL_YEAR", 2026], ["ANNUAL_YEAR", 2021]] if number == 4 else [
+        ["SOURCE_YTD_QUARTER", 2026, number], ["SOURCE_YTD_QUARTER", 2021, number],
+    ]
+    assert evidence["intrinsic_absolute_periods"] == expected
+
+
+@pytest.mark.parametrize("units", [
+    ("", "", "", ""), ("Triệu VND", "", "Triệu VND", ""),
+    ("Triệu đồng", "Triệu VND", "VND", "đồng"),
+    ("VND", "VND", "", ""), ("", "", "đồng", "Triệu đồng"),
+])
+def test_four_money_ytd_known_currency_furniture_is_independent_not_unit_authority(units):
+    records = _four_money_ytd_records(layout="six")
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for column, unit in zip(_four_money_ytd_columns(table), units, strict=True):
+        column["header_path_exact"] = column["header_path_exact"][:2] + ([unit] if unit else [])
+    before = deepcopy(records)
+    _section, _table, _lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None
+    assert evidence["intrinsic_absolute_periods"] == [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    assert not any("unit" in key or "scope" in key for key in evidence)
+    assert records == before
+
+
+@pytest.mark.parametrize("presentation", ["nfd", "uppercase", "whitespace", "actual_newline", "split_year_unit"])
+def test_four_money_ytd_preserves_raw_layout_in_source_bound_receipt(presentation):
+    records = _four_money_ytd_records()
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for column in _four_money_ytd_columns(table):
+        path = column["header_path_exact"]
+        if presentation == "nfd":
+            path[:] = [unicodedata.normalize("NFD", value) for value in path]
+        elif presentation == "uppercase":
+            path[:] = [value.replace("\\n", "\n").upper() for value in path]
+        elif presentation == "whitespace":
+            path[:] = [" \t" + value.replace(" ", "\t") + "\r\n" for value in path]
+        elif presentation == "actual_newline":
+            path[:] = [value.replace("\\n", "\n") for value in path]
+        else:
+            path[:] = [path[0], *path[1].split("\\n")]
+    before = deepcopy(records)
+    _section, _table, _lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None
+    assert evidence["quarter_columns_exact"] + evidence["cumulative_columns_exact"] == _four_money_ytd_columns(table)
+    assert records == before
+
+
+@pytest.mark.parametrize("layout", ["seven", "six"])
+@pytest.mark.parametrize("ytd_tail", [False, True])
+def test_four_money_ytd_relative_tokens_keep_literal_nam_and_no_absolute_year_permission(layout, ytd_tail):
+    records = _four_money_ytd_records(layout=layout, marker=True, ytd_tail=ytd_tail)
+    for column in _four_money_ytd_columns(records[1]["page_json"]["sections"][0]["tables"][0]):
+        column["header_path_exact"] = [
+            value.replace("2026", "nay").replace("2025", "trước") for value in column["header_path_exact"]
+        ]
+    before = deepcopy(records)
+    _section, _table, _lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None and evidence["relative_year_tokens"] == ["nay", "truoc"]
+    assert evidence["printed_absolute_year_tokens"] is None and evidence["intrinsic_absolute_periods"] is None
+    assert records == before
+
+
+@pytest.mark.parametrize("mutation", [
+    "year_acute", "year_grave", "year_horn", "year_overlay", "year_circle", "year_superscript",
+    "year_fullwidth", "year_arabic", "quarter_roman_acute", "quarter_roman_i_acute", "quarter_roman_i_grave",
+    "quarter_roman_i_horn", "quarter_unicode_roman", "quarter_numeric_acute",
+    "quarter_superscript", "quarter_unknown_suffix", "period_suffix", "footnote_suffix", "currency_unknown",
+    "year_missing", "year_short", "year_zero", "year_duplicate", "year_reversed", "year_pair_mismatch",
+    "quarter_pair_mismatch", "relative_bare", "relative_one_missing_nam", "mixed_relative", "relative_reversed",
+    "extra_year", "wrong_ytd_stem",
+])
+def test_four_money_ytd_rejects_unprinted_or_annotated_periods_without_mutation(mutation):
+    records = _four_money_ytd_records(layout="six")
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    columns = _four_money_ytd_columns(table)
+    replacements = {
+        "year_acute": "2026\u0301", "year_grave": "202\u03006", "year_horn": "202\u031b6",
+        "year_overlay": "2026\u0338", "year_circle": "2026\u20dd", "year_superscript": "202⁶",
+        "year_fullwidth": "２０２６", "year_arabic": "٢٠٢٦", "year_missing": "", "year_short": "026", "year_zero": "0000",
+    }
+    if mutation in replacements:
+        columns[0]["header_path_exact"][1] = replacements[mutation]
+    elif mutation.startswith("quarter_"):
+        columns[0]["header_path_exact"][0] = {
+            "quarter_roman_acute": "Quý II\u0301", "quarter_numeric_acute": "Quý 2\u0301",
+            "quarter_roman_i_acute": "Quý I\u0301", "quarter_roman_i_grave": "Quý I\u0300",
+            "quarter_roman_i_horn": "Quý I\u031b", "quarter_unicode_roman": "Quý Ⅱ",
+            "quarter_superscript": "Quý ²", "quarter_unknown_suffix": "Quý II (*)",
+            "quarter_pair_mismatch": "Quý III",
+        }[mutation]
+        if mutation.startswith("quarter_roman_i_") or mutation == "quarter_unicode_roman":
+            columns[1]["header_path_exact"][0] = columns[0]["header_path_exact"][0]
+    elif mutation in {"period_suffix", "footnote_suffix", "extra_year"}:
+        columns[2]["header_path_exact"].append({
+            "period_suffix": ".", "footnote_suffix": "(*)", "extra_year": "2023",
+        }[mutation])
+    elif mutation == "currency_unknown":
+        columns[3]["header_path_exact"][-1] = "USD"
+    elif mutation == "year_duplicate":
+        columns[1]["header_path_exact"][1] = "2026"
+    elif mutation == "year_reversed":
+        for column in columns:
+            column["header_path_exact"][1] = "2025" if column["header_path_exact"][1] == "2026" else "2026"
+    elif mutation == "year_pair_mismatch":
+        columns[3]["header_path_exact"][1] = "2024"
+    elif mutation.startswith("relative_"):
+        for index, column in enumerate(columns):
+            prefix = "" if mutation == "relative_bare" else "Năm "
+            token = ("trước" if index % 2 == 0 else "nay") if mutation == "relative_reversed" else ("nay" if index % 2 == 0 else "trước")
+            column["header_path_exact"][1] = prefix + token
+        if mutation == "relative_one_missing_nam":
+            columns[3]["header_path_exact"][1] = "trước"
+    elif mutation == "mixed_relative":
+        columns[2]["header_path_exact"][1] = "Năm nay"
+        columns[3]["header_path_exact"][1] = "Năm trước"
+    else:
+        columns[2]["header_path_exact"][0] = "Lũy kế từ đầu kỳ"
+    before = deepcopy(records)
+    assert _four_money_ytd_probe(records)[3] is None
+    assert records == before
+
+
+@pytest.mark.parametrize("invalid", [None, [], (), ["Quý II", None], ["Quý II", 2026], ["Quý II", ""], ["Quý II", " "], ("Quý II", "2026")])
+def test_four_money_ytd_malformed_raw_header_paths_are_not_coerced_or_padded(invalid):
+    records = _four_money_ytd_records(layout="six")
+    section = records[1]["page_json"]["sections"][0]
+    table = section["tables"][0]
+    lane = family._multitable_lane_axis(section, table, compiled_specs=_adapter_compiled())
+    _four_money_ytd_columns(table)[0]["header_path_exact"] = deepcopy(invalid)
+    before = deepcopy(table)
+    assert family._printed_ytd_sibling_period_evidence(section, table, lane) is None
+    assert table == before
+
+
+@pytest.mark.parametrize("layout", ["seven", "six"])
+def test_four_money_ytd_numeric_years_get_only_fresh_selected_header_census_permission(layout):
+    records = _four_money_ytd_records(layout=layout)
+    before = deepcopy(records)
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None
+    periods = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    surfaces, _ancestors, reasons = family._comparative_flow_local_surface_census(section, table, lane, periods)
+    assert reasons == []
+    headers = [item for item in surfaces if item["kind"] == "MONEY_HEADER"]
+    assert headers and {item["column_ordinal"] for item in headers} == set(lane["money_column_ordinals"])
+    assert all(item["reasons"] == [] for item in headers)
+    for item in headers:
+        bound = item["owned_ytd_sibling_header_evidence"]
+        ordinal, token = item["column_ordinal"], item["ordinal"]
+        selected = lane["money_column_ordinals"].index(ordinal)
+        path = table["columns"][ordinal - 1]["header_path_exact"]
+        assert bound["printed_ytd_sibling_receipt_id"] == evidence["receipt_id"]
+        assert bound["column_ordinal"] == ordinal and bound["header_path_ordinal"] == token
+        assert bound["source_path_exact"] == path and bound["source_exact"] == item["source_exact"] == path[token - 1]
+        assert bound["source_sha256"] == sha256(item["source_exact"].encode("utf-8")).hexdigest()
+        assert bound["independently_resolved_source_period"] == periods[selected]
+        assert bound["printed_absolute_year"] == periods[selected][1]
+        assert item["year_consumed_from_owned_header"] is (token == 2)
+    assert family._absolute_source_duration_semantics(section, table, lane) == periods
+    assert records == before
+
+
+@pytest.mark.parametrize("surface", ["section_title", "table_title", "narrative", "ancestor", "group", "wrong_expected_year"])
+def test_four_money_ytd_header_permission_cannot_erase_unowned_or_conflicting_year_assertions(surface):
+    records = _four_money_ytd_records(layout="six")
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None
+    periods = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    if surface == "section_title":
+        section["title_exact"] += " 2023"
+    elif surface == "table_title":
+        table["title_exact"] = "Năm 2023"
+    elif surface == "narrative":
+        section["narratives_exact"] = ["Cho kỳ hoạt động 6 tháng kết thúc ngày 30 tháng 6 năm 2023"]
+    elif surface == "ancestor":
+        table["rows"][0]["hierarchy_path_exact"] = ["Năm 2023", table["rows"][0]["label_exact"]]
+    elif surface == "group":
+        row = deepcopy(table["rows"][0])
+        row.update(row_kind="GROUP", label_exact="Năm 2023", hierarchy_path_exact=["Năm 2023"],
+                   values_exact=[None] * len(table["columns"]))
+        table["rows"].insert(0, row)
+    else:
+        periods[0][1] = 2027
+    before = deepcopy(records)
+    _surfaces, _ancestors, reasons = family._comparative_flow_local_surface_census(section, table, lane, periods)
+    assert reasons
+    assert records == before
+
+
+@pytest.mark.parametrize("layout", ["seven", "six"])
+def test_four_money_ytd_public_numeric_window_uses_literal_note_without_cash_flow_or_policy(layout):
+    records = _four_money_ytd_records(layout=layout)
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    section, table, lane, _evidence = _four_money_ytd_probe(records)
+    assert len(records) == 2
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    proof = family._source_period_correspondence_receipt(
+        left_locator=_contextual_period_locator(records[0]), right_locator=_contextual_period_locator(records[1]),
+        left_money_column_ordinals=[1, 2], right_money_column_ordinals=lane["money_column_ordinals"],
+        page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+    )
+    assert proof["complete"] is True, proof["reasons"]
+    assert proof["amounts_used_as_authority"] is False and proof["source_period_keys_modified"] is False
+    assert family._absolute_source_duration_semantics(section, table, lane) == [
+        ["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2],
+    ]
+    assert all(item.get("cash_flow_used_as_period_authority") is False for item in proof["period_resolution_evidence"])
+    candidate = _public_candidate(records)
+    assert candidate["status"] == READY and candidate["mappings"], candidate["reasons"]
+    assert records == before
+
+
+@pytest.mark.parametrize("mutation", ["receipt_year", "source_year"])
+def test_four_money_ytd_resealed_query_inventory_cannot_supply_missing_original_header_authority(mutation):
+    records = _four_money_ytd_records(layout="six")
+    compiled, cluster, query = _public_query(records)
+    assert cluster["status"] == READY and query is not None
+    forged = deepcopy(query)
+    if mutation == "receipt_year":
+        source = forged["source_context_receipt"]["document_statement_period_inventory"]["sources"][0]
+        source["ytd_sibling_evidence"]["intrinsic_absolute_periods"][0][1] = 2023
+        _reseal_receipts(forged)
+    else:
+        table = records[1]["page_json"]["sections"][0]["tables"][0]
+        _four_money_ytd_columns(table)[2]["header_path_exact"][1] = "2023"
+    before = deepcopy(records)
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error):
+        _evaluate_query(records, compiled, cluster, forged)
+    assert records == before
+
+
+
+@pytest.mark.parametrize("layout", ["seven", "six"])
+def test_four_money_ytd_zero_comparative_year_in_both_pairs_is_not_calendar_authority(layout):
+    records = _four_money_ytd_records(layout=layout)
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for index in (1, 3):
+        column = _four_money_ytd_columns(table)[index]
+        column["header_path_exact"] = [value.replace("2025", "0000") for value in column["header_path_exact"]]
+    before = deepcopy(records)
+    assert _four_money_ytd_probe(records)[3] is None
+    assert records == before
+
+
+def test_four_money_ytd_period_permission_does_not_waive_public_mixed_scale_unit_gate():
+    records = _four_money_ytd_records(layout="six")
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for index, column in enumerate(_four_money_ytd_columns(table)):
+        column["header_path_exact"][-1] = "VND" if index % 2 == 0 else "Triệu VND"
+    before = deepcopy(records)
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None
+    expected = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    assert family._absolute_source_duration_semantics(section, table, lane) == expected
+    compiled = _adapter_compiled()
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    proof = family._source_period_correspondence_receipt(
+        left_locator=_contextual_period_locator(records[0]), right_locator=_contextual_period_locator(records[1]),
+        left_money_column_ordinals=[1, 2], right_money_column_ordinals=lane["money_column_ordinals"],
+        page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+    )
+    assert proof["complete"] is True, proof["reasons"]
+    assert proof["amounts_used_as_authority"] is False
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("missing", ["all", "one_quarter", "one_ytd"])
+def test_four_money_ytd_relative_missing_nam_cannot_borrow_complete_current_range_caption(missing):
+    records = _four_money_ytd_records(layout="six", marker=True)
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for index, column in enumerate(_four_money_ytd_columns(table)):
+        token = "nay" if index % 2 == 0 else "trước"
+        omit = missing == "all" or (missing == "one_quarter" and index == 1) or (missing == "one_ytd" and index == 3)
+        column["header_path_exact"][1] = ("" if omit else "Năm ") + token
+    before = deepcopy(records)
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is None
+    constraint = family._owned_flow_date_range_caption_constraint(
+        section, source_kind="SECTION_TITLE", source_exact=section["title_exact"],
+    )
+    assert constraint is not None and constraint["supported"] is True
+    assert family._absolute_source_duration_semantics(section, table, lane) is None
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("split", ["word_components", "stem_tail", "serialized_components"])
+def test_four_money_ytd_census_binds_split_stem_tail_year_and_currency_without_global_stripping(split):
+    records = _four_money_ytd_records(layout="six", ytd_tail=True)
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    columns = _four_money_ytd_columns(table)
+    for index in (2, 3):
+        year = str(2026 if index == 2 else 2025)
+        if split == "word_components":
+            path = ["Lũy kế", "từ đầu năm", "đến cuối", "quý này", year, "Triệu", "VND"]
+        elif split == "stem_tail":
+            path = ["Lũy kế từ đầu năm", "đến cuối quý này", year, "Triệu VND"]
+        else:
+            path = ["Lũy kế\\ntừ đầu năm", "đến cuối\\nquý này", year + "\\nTriệu", "VND"]
+        columns[index]["header_path_exact"] = path
+    before = deepcopy(records)
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None
+    periods = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    surfaces, _ancestors, reasons = family._comparative_flow_local_surface_census(section, table, lane, periods)
+    assert reasons == []
+    for surface in (item for item in surfaces if item["kind"] == "MONEY_HEADER"):
+        ordinal, token = surface["column_ordinal"], surface["ordinal"]
+        source_path = table["columns"][ordinal - 1]["header_path_exact"]
+        selected = lane["money_column_ordinals"].index(ordinal)
+        binding = surface["owned_ytd_sibling_header_evidence"]
+        assert binding["printed_ytd_sibling_receipt_id"] == evidence["receipt_id"]
+        assert binding["source_path_exact"] == source_path
+        assert binding["column_ordinal"] == ordinal and binding["header_path_ordinal"] == token
+        assert binding["source_exact"] == surface["source_exact"] == source_path[token - 1]
+        assert binding["source_sha256"] == sha256(surface["source_exact"].encode("utf-8")).hexdigest()
+        assert binding["independently_resolved_source_period"] == periods[selected]
+        has_year = bool(re.search(r"(?<!\S)[0-9]{4}(?!\S)", surface["source_exact"].replace("\\n", "\n")))
+        assert surface["year_consumed_from_owned_header"] is has_year
+    assert records == before
+
+
+@pytest.mark.parametrize("mismatch", ["prior_year", "current_quarter", "prior_quarter", "annual_type"])
+def test_four_money_ytd_census_requires_the_complete_expected_window_not_just_one_matching_year(mismatch):
+    records = _four_money_ytd_records(layout="six")
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None
+    periods = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    affected = 1 if mismatch in {"prior_year", "prior_quarter"} else 0
+    if mismatch == "prior_year":
+        periods[1][1] = 2024
+    elif mismatch == "current_quarter":
+        periods[0][2] = 3
+    elif mismatch == "prior_quarter":
+        periods[1][2] = 3
+    else:
+        periods = [["ANNUAL_YEAR", 2026], ["ANNUAL_YEAR", 2025]]
+    before = deepcopy(records)
+    surfaces, _ancestors, reasons = family._comparative_flow_local_surface_census(section, table, lane, periods)
+    assert reasons
+    affected_headers = [item for item in surfaces if item["kind"] == "MONEY_HEADER"
+                        and item["column_ordinal"] == lane["money_column_ordinals"][affected]]
+    assert affected_headers
+    assert all("owned_ytd_sibling_header_evidence" not in item for item in affected_headers)
+    assert records == before
+
+
+
+@pytest.mark.parametrize("pair", ["duplicate", "reversed"])
+def test_four_money_ytd_relative_census_cannot_bind_duplicate_or_reversed_expected_years(pair):
+    records = _four_money_ytd_records(layout="six", marker=True)
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for index, column in enumerate(_four_money_ytd_columns(table)):
+        column["header_path_exact"][1] = "Năm " + ("nay" if index % 2 == 0 else "trước")
+    before = deepcopy(records)
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None and evidence["intrinsic_absolute_periods"] is None
+    valid = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    valid_surfaces, _ancestors, valid_reasons = family._comparative_flow_local_surface_census(section, table, lane, valid)
+    assert valid_reasons == []
+    valid_headers = [item for item in valid_surfaces if item["kind"] == "MONEY_HEADER"]
+    assert valid_headers and all("owned_ytd_sibling_header_evidence" in item for item in valid_headers)
+    assert all(item["owned_ytd_sibling_header_evidence"]["printed_absolute_year"] is None for item in valid_headers)
+    assert all(item["year_consumed_from_owned_header"] is False for item in valid_headers)
+    invalid = deepcopy(valid)
+    if pair == "duplicate":
+        invalid[1][1] = invalid[0][1]
+    else:
+        invalid.reverse()
+    surfaces, _ancestors, _reasons = family._comparative_flow_local_surface_census(section, table, lane, invalid)
+    assert all("owned_ytd_sibling_header_evidence" not in item for item in surfaces)
+    assert records == before
+
+
+
+@pytest.mark.parametrize("conflict", ["quarter_only", "ytd_only", "table_vs_headers", "same_surface"])
+def test_four_money_ytd_invalid_primary_units_are_authenticated_before_note_only_fallback(conflict):
+    records = _four_money_ytd_records(layout="six")
+    section = records[1]["page_json"]["sections"][0]
+    table = section["tables"][0]
+    columns = _four_money_ytd_columns(table)
+    if conflict == "quarter_only":
+        for index in (0, 1):
+            columns[index]["header_path_exact"][-1] = "VND"
+    elif conflict == "ytd_only":
+        for index in (2, 3):
+            columns[index]["header_path_exact"][-1] = "VND"
+    elif conflict == "table_vs_headers":
+        for column in columns:
+            column["header_path_exact"][-1] = "VND"
+    else:
+        columns[2]["header_path_exact"][-1] = "Triệu VND / Đồng"
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    actual_unit = family._unit_axis(table, compiled_specs=compiled)
+    assert actual_unit["complete"] is False
+    expected_conflict = ("MULTIPLE_CONFLICTING_DECLARED_MONEY_UNITS_ON_ONE_SURFACE"
+                         if conflict == "same_surface" else "CONFLICTING_EXPLICIT_MONEY_UNITS")
+    assert expected_conflict in actual_unit["reasons"]
+    invalid = family._primary_invalid_source_role_rows(records, compiled_specs=compiled)
+    assert invalid
+    for row in invalid:
+        assert "INVALID_PRIMARY_SOURCE_MONEY_UNIT_CONFLICT" in row["reasons"]
+        assert row["source_unit_axis"] == actual_unit
+        assert row["locator"] == _contextual_period_locator(records[1])
+        assert row["table_json_sha256"] == canonical_json_sha256_v1(table)
+    selected, reasons = family._select_primary_presentation(records, compiled_specs=compiled)
+    assert selected is None and "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT" in reasons
+    conflict_receipt = family._primary_selection_conflict_receipt(
+        records, reasons=reasons, repair_receipts=[], compiled_specs=compiled,
+    )
+    assert conflict_receipt["invalid_source_rows"] == invalid
+    material = {key: value for key, value in conflict_receipt.items() if key != "receipt_id"}
+    assert conflict_receipt["receipt_id"] == "gjitfav1:primary-conflict:" + canonical_json_sha256_v1(material)
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT" in candidate["reasons"]
+    assert records == before
+
+
+@pytest.mark.parametrize("unit", ["Triệu VND", "VND"])
+def test_four_money_ytd_uniform_explicit_primary_and_note_units_remain_publicly_usable(unit):
+    records = _four_money_ytd_records(layout="six")
+    for record in records:
+        for section in record["page_json"]["sections"]:
+            for table in section["tables"]:
+                table["unit_exact"] = unit
+                for column in table["columns"]:
+                    if column["value_kind"] == "MONEY":
+                        column["header_path_exact"] = [
+                            value.replace("Triệu VND", unit).replace("Triệu đồng", unit)
+                            for value in column["header_path_exact"]
+                        ]
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    actual_unit = family._unit_axis(table, compiled_specs=compiled)
+    assert actual_unit["complete"] is True and actual_unit["reasons"] == []
+    assert actual_unit["canonical_unit"] == ("VND" if unit == "VND" else "MILLION_VND")
+    assert family._primary_invalid_source_role_rows(records, compiled_specs=compiled) == []
+    candidate = _public_candidate(records)
+    assert candidate["status"] == READY and candidate["mappings"], candidate["reasons"]
+    assert records == before
+
+
+def test_original_note_adapter_retains_existing_invalid_primary_unit_evidence_instead_of_optional_primary():
+    from test_gemini_json_income_tax_family_v1 import (
+        _evaluate_original_note_production,
+        _original_note_production_records,
+    )
+
+    records = _original_note_production_records()
+    table = records[-1]["page_json"]["sections"][0]["tables"][0]
+    assert len(table["columns"]) == 2 and all(column["value_kind"] == "MONEY" for column in table["columns"])
+    table["columns"][0]["header_path_exact"].append("VND")
+    table["columns"][1]["header_path_exact"].append("Triệu VND")
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    actual_unit = family._unit_axis(table, compiled_specs=compiled)
+    assert actual_unit["complete"] is False
+    assert actual_unit["reasons"] == ["MULTIPLE_CONFLICTING_DECLARED_MONEY_UNITS_ON_ONE_SURFACE"]
+    cluster, query, candidate = _evaluate_original_note_production(records, compiled=compiled)
+    assert cluster["status"] == READY  # Authenticated query carrier, not accepted semantics.
+    adapter = query["adapter_receipt"]
+    assert adapter["adapter_format_version"] == "GEMINI_JSON_INCOME_TAX_ORIGINAL_NOTE_ADAPTER_V1"
+    assert adapter["primary_projection_receipt"] is None
+    assert "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT" in adapter["primary_selection_reasons"]
+    conflict = adapter["primary_selection_conflict_receipt"]
+    invalid = family._primary_invalid_source_role_rows(records, compiled_specs=compiled)
+    assert conflict["invalid_source_rows"] == invalid and invalid
+    assert all(item["source_unit_axis"] == actual_unit
+               and item["table_json_sha256"] == canonical_json_sha256_v1(table)
+               and item["locator"] == _contextual_period_locator(records[-1]) for item in invalid)
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    assert "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT" in candidate["reasons"]
+    assert candidate["closure_receipt"]["original_note_adapter_receipt"]["primary_selection_conflict_receipt"] == conflict
+    assert records == before
+
+
+
+def test_explicit_primary_unit_conflict_with_incomplete_lane_retains_all_raw_source_evidence():
+    records = _four_money_ytd_records(layout="six")
+    section = records[1]["page_json"]["sections"][0]
+    table = section["tables"][0]
+    for index, column in enumerate(_four_money_ytd_columns(table)):
+        column["header_path_exact"] = ["Chưa xác định kỳ", "VND" if index % 2 == 0 else "Triệu VND"]
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    lane = family._multitable_lane_axis(section, table, compiled_specs=compiled)
+    assert lane["complete"] is False
+    unit = family._unit_axis(table, compiled_specs=compiled)
+    assert unit["complete"] is False and "CONFLICTING_EXPLICIT_MONEY_UNITS" in unit["reasons"]
+    invalid = family._primary_invalid_source_role_rows(records, compiled_specs=compiled)
+    assert invalid
+    expected_columns = [{"column_ordinal": ordinal, "source_column_exact": column}
+                        for ordinal, column in enumerate(table["columns"], 1) if column["value_kind"] == "MONEY"]
+    for item in invalid:
+        assert "INVALID_PRIMARY_SOURCE_MONEY_UNIT_CONFLICT" in item["reasons"]
+        assert item["source_unit_axis"] == unit and item["source_lane_axis"] == lane
+        assert item["source_row_exact"] == table["rows"][item["row_ordinal"] - 1]
+        assert item["source_money_columns_exact"] == expected_columns
+        assert item["source_values_exact"] == []
+        assert item["locator"] == _contextual_period_locator(records[1])
+        assert item["table_json_sha256"] == canonical_json_sha256_v1(table)
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT" in candidate["reasons"]
+    assert records == before
+
+
+def test_original_note_resealed_primary_unit_conflict_receipt_cannot_change_original_unit_evidence():
+    from test_gemini_json_income_tax_family_v1 import (
+        _evaluate_original_note_production,
+        _original_note_production_records,
+    )
+
+    records = _original_note_production_records()
+    table = records[-1]["page_json"]["sections"][0]["tables"][0]
+    table["columns"][0]["header_path_exact"].append("VND")
+    table["columns"][1]["header_path_exact"].append("Triệu VND")
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    cluster, query, candidate = _evaluate_original_note_production(records, compiled=compiled)
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    forged = deepcopy(query)
+    conflict = forged["adapter_receipt"]["primary_selection_conflict_receipt"]
+    assert conflict["invalid_source_rows"]
+    conflict["invalid_source_rows"][0]["source_unit_axis"]["complete"] = True
+    conflict["invalid_source_rows"][0]["source_unit_axis"]["reasons"] = []
+    _reseal_receipts(forged)
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error):
+        _evaluate_query(records, compiled, cluster, forged)
+    assert records == before
+
+
+
+def _assert_four_ytd_whitespace_census_bound(records, *, relative):
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is not None
+    periods = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    surfaces, _ancestors, reasons = family._comparative_flow_local_surface_census(section, table, lane, periods)
+    assert reasons == []
+    headers = [item for item in surfaces if item["kind"] == "MONEY_HEADER"]
+    assert headers
+    for surface in headers:
+        ordinal, token = surface["column_ordinal"], surface["ordinal"]
+        selected = lane["money_column_ordinals"].index(ordinal)
+        path = table["columns"][ordinal - 1]["header_path_exact"]
+        binding = surface["owned_ytd_sibling_header_evidence"]
+        assert binding["printed_ytd_sibling_receipt_id"] == evidence["receipt_id"]
+        assert binding["column_ordinal"] == ordinal and binding["header_path_ordinal"] == token
+        assert binding["source_path_exact"] == path
+        assert binding["source_exact"] == surface["source_exact"] == path[token - 1]
+        assert binding["source_sha256"] == sha256(surface["source_exact"].encode("utf-8")).hexdigest()
+        assert binding["independently_resolved_source_period"] == periods[selected]
+        assert binding["printed_absolute_year"] == (None if relative else periods[selected][1])
+        has_numeric_year = bool(re.search(r"(?<!\S)[0-9]{4}(?!\S)", surface["source_exact"].replace("\\n", "\n")))
+        assert surface["year_consumed_from_owned_header"] is (not relative and has_numeric_year)
+    return table, evidence
+
+
+@pytest.mark.parametrize("space,layout", [
+    ("\u00a0", "seven"), ("\u202f", "six"), ("\u2003", "seven"),
+    ("\u2002", "six"), ("\u2009", "seven"), ("\u2028", "six"),
+], ids=["nbsp_serialized", "narrow_nbsp_split", "em_space_serialized", "en_space_split", "thin_space_serialized", "line_separator_split"])
+@pytest.mark.parametrize("marker", [False, True], ids=["bare_numeric", "literal_nam_numeric"])
+def test_four_money_ytd_printed_unicode_whitespace_keeps_numeric_source_and_legacy_material(space, layout, marker):
+    records = _four_money_ytd_records(layout=layout, marker=marker, ytd_tail=True)
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for column in _four_money_ytd_columns(table):
+        column["header_path_exact"] = [value.replace(" ", space) for value in column["header_path_exact"]]
+    before = deepcopy(records)
+    table, evidence = _assert_four_ytd_whitespace_census_bound(records, relative=False)
+    money = [4, 5, 6, 7] if layout == "seven" else [3, 4, 5, 6]
+    # Exact legacy receipt material, including ORIGINAL Unicode whitespace,
+    # remains unchanged. Layout recognition grants no unit/scope/value power.
+    expected = {
+        "quarter": 2, "relative_year_tokens": None, "printed_absolute_year_tokens": ["2026", "2025"],
+        "intrinsic_absolute_periods": [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]],
+        "money_column_ordinals": money,
+        "quarter_columns_exact": [deepcopy(table["columns"][index - 1]) for index in money[:2]],
+        "cumulative_columns_exact": [deepcopy(table["columns"][index - 1]) for index in money[2:]],
+        "original_table_json_sha256": canonical_json_sha256_v1(table),
+        "rule": "EXACT_FOUR_MONEY_PARALLEL_QUARTER_YTD_SOURCE_AXIS_MATCHED_YEAR_SUFFIXES_NO_AMOUNT_INFERENCE",
+    }
+    assert evidence == expected | {"receipt_id": "gjitfav1:printed-ytd-siblings:" + canonical_json_sha256_v1(expected)}
+    assert records == before
+
+
+@pytest.mark.parametrize("space,layout", [
+    ("\u00a0", "seven"), ("\u202f", "six"), ("\u2003", "seven"),
+    ("\u2002", "six"), ("\u2009", "seven"), ("\u2028", "six"),
+], ids=["nbsp_serialized", "narrow_nbsp_split", "em_space_serialized", "en_space_split", "thin_space_serialized", "line_separator_split"])
+def test_four_money_ytd_unicode_whitespace_cannot_invent_absolute_years_for_literal_relative_headers(space, layout):
+    records = _four_money_ytd_records(layout=layout, marker=True, ytd_tail=True)
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    for index, column in enumerate(_four_money_ytd_columns(table)):
+        path = [value.replace("2026", "nay").replace("2025", "trước") for value in column["header_path_exact"]]
+        if layout == "six" and index >= 2:
+            path = ["Lũy kế", "từ đầu năm", "đến cuối", "quý này", path[1], path[2]]
+        column["header_path_exact"] = [value.replace(" ", space) for value in path]
+    before = deepcopy(records)
+    _table, evidence = _assert_four_ytd_whitespace_census_bound(records, relative=True)
+    assert evidence["relative_year_tokens"] == ["nay", "truoc"]
+    assert evidence["printed_absolute_year_tokens"] is None and evidence["intrinsic_absolute_periods"] is None
+    assert records == before
+
+
+@pytest.mark.parametrize("annotation", [
+    "zero_width_space", "word_joiner", "bom", "roman_acute", "year_grave", "year_horn",
+    "split_ascii_year", "split_roman_quarter",
+])
+def test_four_money_ytd_whitespace_compatibility_never_erases_annotations_or_joins_period_digits(annotation):
+    records = _four_money_ytd_records(layout="six")
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    columns = _four_money_ytd_columns(table)
+    for column in columns:
+        column["header_path_exact"] = [value.replace(" ", "\u00a0") for value in column["header_path_exact"]]
+    unknown = {"zero_width_space": "\u200b", "word_joiner": "\u2060", "bom": "\ufeff"}
+    if annotation in unknown:
+        columns[0]["header_path_exact"][0] += unknown[annotation]
+    elif annotation == "roman_acute":
+        for index in (0, 1):
+            columns[index]["header_path_exact"][0] = "Quý\u00a0II\u0301"
+    elif annotation in {"year_grave", "year_horn"}:
+        mark = "\u0300" if annotation == "year_grave" else "\u031b"
+        for index in (0, 2):
+            columns[index]["header_path_exact"][1] = "2026" + mark
+    elif annotation == "split_ascii_year":
+        for index in (0, 2):
+            columns[index]["header_path_exact"][1] = "20\u00a026"
+    else:
+        for index in (0, 1):
+            columns[index]["header_path_exact"][0] = "Quý\u00a0I\u00a0I"
+    before = deepcopy(records)
+    section, table, lane, evidence = _four_money_ytd_probe(records)
+    assert evidence is None
+    periods = [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    surfaces, _ancestors, _reasons = family._comparative_flow_local_surface_census(section, table, lane, periods)
+    assert all("owned_ytd_sibling_header_evidence" not in item for item in surfaces)
+    assert records == before
+
+
+
+@pytest.mark.parametrize("relative", [False, True], ids=["numeric", "literal_relative"])
+def test_four_money_ytd_complete_ascii_tail_is_header_furniture_not_a_second_date_range(relative):
+    records = _four_money_ytd_records(layout="six", marker=relative, ytd_tail=True)
+    table = records[1]["page_json"]["sections"][0]["tables"][0]
+    if relative:
+        for column in _four_money_ytd_columns(table):
+            column["header_path_exact"] = [
+                value.replace("2026", "nay").replace("2025", "trước") for value in column["header_path_exact"]
+            ]
+    before = deepcopy(records)
+    _table, evidence = _assert_four_ytd_whitespace_census_bound(records, relative=relative)
+    assert evidence["quarter"] == 2
+    expected = None if relative else [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
+    assert evidence["intrinsic_absolute_periods"] == expected
+    assert records == before

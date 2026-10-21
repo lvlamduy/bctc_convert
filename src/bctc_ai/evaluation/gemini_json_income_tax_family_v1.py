@@ -828,11 +828,13 @@ def _primary_invalid_source_role_rows(
                     continue
                 lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
                 money_ordinals = lane.get("money_column_ordinals")
-                if (
-                    not lane.get("complete")
-                    or type(money_ordinals) is not list
-                    or len(money_ordinals) != 2
-                ):
+                lane_usable = bool(lane.get("complete") and type(money_ordinals) is list and len(money_ordinals) == 2)
+                unit = _unit_axis(table, compiled_specs=compiled_specs)
+                explicit_unit_conflict = bool(set(unit.get("reasons") or []) & {
+                    "CONFLICTING_EXPLICIT_MONEY_UNITS",
+                    "MULTIPLE_CONFLICTING_DECLARED_MONEY_UNITS_ON_ONE_SURFACE",
+                })
+                if not lane_usable and not explicit_unit_conflict:
                     continue
                 for row_ordinal, row in enumerate(table.get("rows") or [], start=1):
                     if type(row) is not dict:
@@ -845,9 +847,12 @@ def _primary_invalid_source_role_rows(
                         values[ordinal - 1]
                         if type(values) is list and ordinal <= len(values)
                         else None
-                        for ordinal in money_ordinals
+                        for ordinal in (money_ordinals if lane_usable else [])
                     ]
-                    reasons = []
+                    # An observed PRIMARY tax row with conflicting explicit
+                    # units is invalid source evidence, not an absent optional
+                    # presentation that a valid NOTE is allowed to hide.
+                    reasons = ["INVALID_PRIMARY_SOURCE_MONEY_UNIT_CONFLICT"] if explicit_unit_conflict else []
                     for value in selected:
                         try:
                             parsed = _source_money(value)
@@ -868,6 +873,13 @@ def _primary_invalid_source_role_rows(
                                 "row_ordinal": row_ordinal,
                                 "source_values_exact": canonical_clone_v1(selected),
                                 "table_json_sha256": canonical_json_sha256_v1(table),
+                                **({"source_unit_axis": canonical_clone_v1(unit),
+                                    "source_lane_axis": canonical_clone_v1(lane),
+                                    "source_row_exact": canonical_clone_v1(row),
+                                    "source_money_columns_exact": [
+                                        {"column_ordinal": ordinal, "source_column_exact": canonical_clone_v1(column)}
+                                        for ordinal, column in enumerate(table["columns"], 1) if column["value_kind"] == "MONEY"
+                                    ]} if explicit_unit_conflict else {}),
                             }
                         )
     return invalid
@@ -2563,8 +2575,14 @@ def _select_primary_presentation(
 ) -> tuple[dict[str, Any] | None, list[str]]:
     if _primary_duplicate_source_role_rows(page_records):
         return None, ["DUPLICATE_PRIMARY_INCOME_TAX_SOURCE_ROLE"]
-    if _primary_invalid_source_role_rows(page_records, compiled_specs=compiled_specs):
-        return None, ["INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_CELL"]
+    invalid = _primary_invalid_source_role_rows(page_records, compiled_specs=compiled_specs)
+    if invalid:
+        reasons = []
+        if any("INVALID_PRIMARY_SOURCE_MONEY_UNIT_CONFLICT" in item["reasons"] for item in invalid):
+            reasons.append("INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT")
+        if any(reason != "INVALID_PRIMARY_SOURCE_MONEY_UNIT_CONFLICT" for item in invalid for reason in item["reasons"]):
+            reasons.append("INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_CELL")
+        return None, reasons
     if _primary_equation_mismatch_axis(page_records, compiled_specs=compiled_specs):
         return None, ["MISMATCHED_PRIMARY_INCOME_TAX_SOURCE_EQUATION"]
     presentations = _primary_presentations(page_records, compiled_specs=compiled_specs)
@@ -4282,6 +4300,10 @@ def _build_original_note_adapter_bundle(
         "source_population_coverage": coverage, "independent_population_receipt": population_proof,
         "reasons": sorted(set(issues)),
     }
+    if "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT" in primary_reasons:
+        material["primary_selection_conflict_receipt"] = _primary_selection_conflict_receipt(
+            page_records, reasons=primary_reasons, repair_receipts=repair_receipts, compiled_specs=compiled_specs,
+        )
     adapter = {**material, "receipt_id": "gjitfav1:original-query:" + canonical_json_sha256_v1(material)}
     return {"carrier": carrier, "adapter": adapter, "parts": parts, "primary": primary,
             "status": READY if not issues else UNRESOLVED, "reasons": sorted(set(issues))}
@@ -5971,14 +5993,37 @@ def _printed_ytd_sibling_period_evidence(section: Mapping[str, Any], table: Mapp
         return None
     quarter_numbers = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "1": 1, "2": 2, "3": 3, "4": 4}
     suffix = r"(?: (?:trieu dong|trieu vnd|vnd|dong))?"
-    headers = [_normalized(" ".join(table["columns"][ordinal - 1]["header_path_exact"])) for ordinal in money]
-    quarters = [re.fullmatch(r"quy (i|ii|iii|iv|1|2|3|4) nam (nay|truoc|\d{4})" + suffix, header) for header in headers[:2]]
-    cumulative = [re.fullmatch(r"luy ke tu dau nam(?: den cuoi quy nay)? nam (nay|truoc|\d{4})" + suffix, header) for header in headers[2:]]
-    if any(match is None for match in [*quarters, *cumulative]):
+    paths = [table["columns"][ordinal - 1].get("header_path_exact") for ordinal in money]
+    if any(type(path) is not list or not path or any(type(part) is not str or not part.strip() for part in path)
+           for path in paths):
         return None
-    quarter = quarter_numbers[quarters[0][1]]
-    tokens = [match[2] for match in quarters]
-    if quarter_numbers[quarters[1][1]] != quarter or tokens != [match[1] for match in cumulative]:
+    # Recognize only complete printed headers. Vietnamese letter folding must
+    # not erase punctuation, digit annotations or marks on Roman quarter codes.
+    layouts = [" ".join(path).replace("\\n", "\n") for path in paths]
+    # Whitespace is layout only. Preserve the original layouts below so this
+    # view cannot join split digits/codes or erase annotations on raw tokens.
+    headers = [_recognition_printed_text(" ".join(layout.split())) for layout in layouts]
+    year_suffix = r"(?:nam (?P<relative>nay|truoc)|(?:nam )?(?P<absolute>[0-9]{4}))"
+    quarters = [re.fullmatch(r"quy (?P<quarter>i|ii|iii|iv|1|2|3|4) " + year_suffix + suffix, header or "")
+                for header in headers[:2]]
+    cumulative = [re.fullmatch(r"luy ke tu dau nam(?: den cuoi quy nay)? " + year_suffix + suffix, header or "")
+                  for header in headers[2:]]
+    matches = [*quarters, *cumulative]
+    if any(match is None for match in matches):
+        return None
+    for index, (layout, match) in enumerate(zip(layouts, matches, strict=True)):
+        if index < 2:
+            raw_quarter = layout.split()[1]
+            if not raw_quarter.isascii() or raw_quarter.lower() != match["quarter"]:
+                return None
+        if match["absolute"] is not None:
+            raw_years = re.findall(r"(?<!\S)[0-9]{4}(?!\S)", layout)
+            if raw_years != [match["absolute"]] or not 1 <= int(match["absolute"]) <= 9999:
+                return None
+    quarter = quarter_numbers[quarters[0]["quarter"]]
+    tokens = [match["relative"] or match["absolute"] for match in quarters]
+    if (quarter_numbers[quarters[1]["quarter"]] != quarter
+            or tokens != [match["relative"] or match["absolute"] for match in cumulative]):
         return None
     relative = tokens == ["nay", "truoc"]
     if not relative and not (all(token.isdigit() for token in tokens) and int(tokens[0]) > int(tokens[1])):
@@ -6520,6 +6565,18 @@ def _comparative_flow_local_surface_census(
     header_pair = header_constraint["source_header_pair_evidence"] if header_constraint is not None else None
     if header_pair is not None and not same_typed_json_v1(header_pair["money_column_ordinals"], lane.get("money_column_ordinals")):
         header_constraint, header_pair = None, None
+    ytd_siblings = _printed_ytd_sibling_period_evidence(section, table, lane)
+    if ytd_siblings is not None:
+        quarter = ytd_siblings["quarter"]
+        absolute = ytd_siblings["intrinsic_absolute_periods"]
+        if (type(periods) is not list or len(periods) != 2
+                or any(type(period) is not list or len(period) not in {2, 3}
+                       or type(period[1]) is not int or not 1 <= period[1] <= 9999 for period in periods)
+                or periods[0][1] <= periods[1][1]
+                or any(not same_typed_json_v1(period, ["ANNUAL_YEAR", period[1]] if quarter == 4
+                                             else ["SOURCE_YTD_QUARTER", period[1], quarter]) for period in periods)
+                or (absolute is not None and not same_typed_json_v1(absolute, periods))):
+            ytd_siblings = None
     for surface in surfaces:
         selected = (lane.get("money_column_ordinals") or []).index(surface["column_ordinal"]) if surface["kind"] == "MONEY_HEADER" else 0
         expected = periods[selected] if periods else None
@@ -6529,6 +6586,32 @@ def _comparative_flow_local_surface_census(
         raw = surface["source_exact"]
         normalized = _normalized(raw)
         printed = _recognition_printed_text(raw)
+        owned_ytd_header = False
+        if ytd_siblings is not None and surface["kind"] == "MONEY_HEADER" and expected is not None:
+            quarter = ytd_siblings["quarter"]
+            expected_shape = ["ANNUAL_YEAR", year] if quarter == 4 else ["SOURCE_YTD_QUARTER", year, quarter]
+            absolute = ytd_siblings["intrinsic_absolute_periods"]
+            column = ytd_siblings["cumulative_columns_exact"][selected]
+            path = column["header_path_exact"]
+            owned_ytd_header = bool(
+                same_typed_json_v1(expected, expected_shape)
+                and (absolute is None or same_typed_json_v1(absolute[selected], expected))
+                and ytd_siblings["money_column_ordinals"][selected + 2] == surface["column_ordinal"]
+                and path[surface["ordinal"] - 1] == raw
+            )
+            if owned_ytd_header:
+                printed = _recognition_printed_text(" ".join(raw.replace("\\n", "\n").split()))
+                surface["owned_ytd_sibling_header_evidence"] = {
+                    "printed_ytd_sibling_receipt_id": ytd_siblings["receipt_id"],
+                    "column_ordinal": surface["column_ordinal"], "header_path_ordinal": surface["ordinal"],
+                    "source_path_exact": canonical_clone_v1(path), "source_exact": raw,
+                    "source_sha256": sha256(raw.encode("utf-8")).hexdigest(),
+                    "independently_resolved_source_period": canonical_clone_v1(expected),
+                    "printed_absolute_year": None if absolute is None else absolute[selected][1],
+                }
+                surface["year_consumed_from_owned_header"] = bool(
+                    absolute is not None and re.search(r"(?<!\S)[0-9]{4}(?!\S)", raw.replace("\\n", "\n"))
+                )
         range_constraint = _owned_flow_date_range_caption_constraint(section, source_kind=surface["kind"], source_exact=raw)
         range_caption = bool(
             range_constraint is not None and range_constraint["supported"] and end is not None
@@ -6596,7 +6679,12 @@ def _comparative_flow_local_surface_census(
             without_parentheticals = re.sub(r"\((?:" + "|".join(sorted(allowed_parentheticals)) + r")\)", "", printed)
             if "(" in without_parentheticals or ")" in without_parentheticals:
                 failures.append("UNBALANCED_OR_UNREVIEWED_LOCAL_PERIOD_PARENTHETICAL")
-        remainder = printed or ""
+        # Every component of this exact selected header is owned by the fresh
+        # whole-four-header finite grammar and matches an independently supplied
+        # period. This consumes only its known YTD/year/currency furniture, even
+        # when split across path components; never a caption, row or narrative.
+        # Relative labels supply no absolute year, scope, unit or amount authority.
+        remainder = "" if owned_ytd_header else printed or ""
         # Whole printed dates are removed before looking for month counts;
         # '30 tháng 6 năm ...' must not become a 30-month duration.
         date_pattern = r"\b(?:ngay )?(\d{1,2}) (?:thang )?(\d{1,2}) nam (\d{4})\b|\b(\d{1,2})/(\d{1,2})/(\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b"
@@ -6629,7 +6717,8 @@ def _comparative_flow_local_surface_census(
             except ValueError:
                 failures.append("INVALID_LOCAL_PRINTED_DATE")
         remainder = re.sub(date_pattern, " ", remainder)
-        range_asserted = bool(re.search(r"\btu(?: ngay)?\b.+\b(?:den|toi)\b|\bfrom\b.+\b(?:to|through)\b", printed or ""))
+        range_asserted = not owned_ytd_header and bool(re.search(
+            r"\btu(?: ngay)?\b.+\b(?:den|toi)\b|\bfrom\b.+\b(?:to|through)\b", printed or ""))
         if range_asserted:
             if end is None or dates != [date(year, 1, 1), end]:
                 failures.append("LOCAL_PRINTED_DATE_RANGE_NOT_COMPATIBLE")
