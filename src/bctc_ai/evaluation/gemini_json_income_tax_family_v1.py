@@ -5598,6 +5598,62 @@ def _owned_same_day_period_constraint(
             }}
 
 
+def _owned_absolute_flow_header_constraint(section: Mapping[str, Any], table: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Read both complete printed duration headers, without borrowing a caption.
+
+    This finite source-owned route supplies no unit, scope or value permission.
+    In particular, an endpoint alone, a quarter/YTD axis or a partly recognized
+    header is not a complete duration assertion.
+    """
+    if (section.get("content_kind") != "PRIMARY_STATEMENT"
+            or section.get("statement_type") not in {"INCOME_STATEMENT", "CASH_FLOW"}):
+        return None
+    columns = table.get("columns") or []
+    money = [ordinal for ordinal, column in enumerate(columns, 1) if column.get("value_kind") == "MONEY"]
+    if len(money) != 2 or any(column.get("value_kind") not in {"TEXT", "MONEY"} for column in columns):
+        return None
+    pattern = (r"ky (?P<months>3|6|9|12) thang ket thuc ngay "
+               r"(?P<day>\d{1,2})\.(?P<month>\d{1,2})\.(?P<year>\d{4})"
+               r"(?: (?P<unit>trieu dong|trieu vnd|vnd|dong))?")
+    headers = []
+    for ordinal in money:
+        path = columns[ordinal - 1].get("header_path_exact")
+        if type(path) is not list or not path or any(type(value) is not str or not value.strip() for value in path):
+            return None
+        raw = " ".join(path)
+        printed = _recognition_printed_text(raw)
+        match = re.fullmatch(pattern, printed) if printed is not None else None
+        if match is None:
+            return None
+        try:
+            end = date(int(match["year"]), int(match["month"]), int(match["day"]))
+            months = int(match["months"])
+            if end.month != months or (end + timedelta(days=1)).day != 1:
+                return None
+        except (ValueError, OverflowError):
+            return None
+        headers.append({"column_ordinal": ordinal, "source_path_exact": canonical_clone_v1(path),
+                        "source_exact": raw, "source_sha256": sha256(raw.encode("utf-8")).hexdigest(),
+                        "printed_months": months, "printed_end_date": end.isoformat(),
+                        "parsed_unit_furniture": match["unit"]})
+    current, comparative = headers
+    if (current["printed_months"] != comparative["printed_months"]
+            or current["printed_end_date"] <= comparative["printed_end_date"]):
+        return None
+    material = {"format_version": "F39_EXACT_DATED_DURATION_MONEY_HEADER_PAIR_V1",
+                "statement_type": section["statement_type"], "money_column_ordinals": money,
+                "header_paths_exact": [item["source_path_exact"] for item in headers], "headers": headers,
+                "comparative_end_date": comparative["printed_end_date"],
+                "comparative_year_origin": "EXPLICIT_PRINTED_HEADER", "amounts_used_as_authority": False,
+                "source_period_keys_modified": False,
+                "rule": "TWO_WHOLE_DOTTED_DATED_DURATION_HEADERS_SAME_YTD_LENGTH_EXPLICIT_ORDERED_YEARS_NO_CAPTION_BORROWING"}
+    evidence = {**material, "receipt_id": "gjitfav1:owned-absolute-flow-header-pair:" + canonical_json_sha256_v1(material)}
+    return {"source_kind": "OWNED_PRIMARY_FLOW_HEADER_PAIR", "source_exact": current["source_exact"],
+            "supported": True, "printed_months": current["printed_months"],
+            "printed_end_date": current["printed_end_date"], "annual_assertion": current["printed_months"] == 12,
+            "source_header_pair_evidence": evidence}
+
+
 def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping[str, Any]) -> list[dict[str, Any]]:
     surfaces = [("SECTION_TITLE", section.get("title_exact")), ("TABLE_TITLE", table.get("title_exact"))]
     if len(section.get("tables") or []) == 1:
@@ -5648,6 +5704,17 @@ def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping
             furniture_evidence["recognized_terminal_report_furniture_exact"] = literal_form["form"]
             surface = re.sub(r" b04a tctd hn$", "", surface)
         surface = re.sub(r" b03 tctd$", "", surface)
+        # A bare typed annual caption is an affirmative assertion, not absent
+        # context that an interim header pair may replace. Preserve malformed
+        # or annotated versions as vetoes rather than normalizing them away.
+        bare_annual_prefix = r"bao cao (?:ket qua hoat dong|luu chuyen tien te)(?: rieng| hop nhat)? nam(?: tai chinh)? "
+        if (kind in {"SECTION_TITLE", "TABLE_TITLE"} and section.get("content_kind") == "PRIMARY_STATEMENT"
+                and re.match(bare_annual_prefix + r"\d{4}\b", surface)):
+            printed = _recognition_printed_text(raw)
+            bare_annual = re.fullmatch(bare_annual_prefix + r"(?P<year>\d{4})(?: \(tiep theo\))?", printed) if printed is not None else None
+            output.append({"source_kind": kind, "source_exact": raw, "supported": bare_annual is not None,
+                           **({"printed_annual_year": int(bare_annual["year"])} if bare_annual is not None else {})})
+            continue
         annual_year = re.fullmatch(prefix + r"cho nam(?: tai chinh)? (\d{4})(?: tiep theo)?", surface)
         quarter_year = re.fullmatch(prefix + r"cho quy (i|ii|iii|iv|1|2|3|4) nam (\d{4})(?: tiep theo)?", surface)
         if annual_year is not None:
@@ -5662,7 +5729,14 @@ def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping
         annual = re.fullmatch(prefix + r"(?:cho )?nam(?: tai chinh)? ket thuc(?: vao)? ngay " + ending, surface)
         match = duration or annual
         if match is None:
-            if re.fullmatch(prefix + r"(?:cho (?:ky|giai doan|nam|quy)\b.+|nam(?: tai chinh)? ket thuc\b.*)", surface):
+            caption_assertion = kind in {"SECTION_TITLE", "TABLE_TITLE"} and re.search(
+                r"\b(?:quy (?:i|ii|iii|iv|1|2|3|4) nam \d{4}|"
+                r"(?:ky(?: hoat dong| ke toan)?|giai doan) (?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi(?: mot| hai)?) thang ket thuc|"
+                r"tu ngay\b.+\b(?:den|toi)\b|from\b.+\b(?:to|through)\b|"
+                r"for (?:the )?(?:period|year|quarter)\b|(?:reporting|accounting) period (?:ended|ending)\b|"
+                r"(?:fiscal|financial) year (?:ended|ending)\b)", surface,
+            )
+            if caption_assertion or re.fullmatch(prefix + r"(?:cho (?:ky|giai doan|nam|quy)\b.+|nam(?: tai chinh)? ket thuc\b.*)", surface):
                 output.append({"source_kind": kind, "source_exact": raw, "supported": False})
             continue
         try:
@@ -5674,6 +5748,12 @@ def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping
         output.append({"source_kind": kind, "source_exact": raw, "supported": 1 <= months <= 12,
                        "printed_end_date": end.isoformat(), "printed_months": months, "annual_assertion": annual is not None,
                        **furniture_evidence})
+    # A header pair may fill an absent caption assertion, never replace an
+    # unsupported or conflicting assertion already present in the source.
+    if not output:
+        header_constraint = _owned_absolute_flow_header_constraint(section, table)
+        if header_constraint is not None:
+            output.append(header_constraint)
     return output
 
 
@@ -5872,6 +5952,10 @@ def _parse_printed_comparative_flow_policy(source_exact: Any) -> dict[str, Any]:
          + r" giua nien do, bao cao luu chuyen tien te(?P=scope) giua nien do va cac thuyet minh lien quan "
          + r"la so lieu cua bao cao tai chinh(?P=scope) giua nien do cho ky (?P<months>chin) thang ket thuc ngay "
          + r"(?P<day>\d{1,2}) thang (?P<month>\d{1,2}) nam (?P<year>\d{4}) da duoc soat xet\."),
+        ("TREN_RELATED_NOTES_WRITTEN_SIX_MONTHS", r"so lieu so sanh tren bao cao ket qua hoat dong" + scope
+         + r" giua nien do, bao cao luu chuyen tien te(?P=scope) giua nien do va cac thuyet minh lien quan "
+         + r"la so lieu cua bao cao tai chinh(?P=scope) giua nien do cho ky (?P<months>sau) thang ket thuc ngay "
+         + r"(?P<day>\d{1,2}) thang (?P<month>\d{1,2}) nam (?P<year>\d{4}) da duoc soat xet\."),
         ("TREN_ANNUAL_ALL_STATEMENTS_RELATED_NOTES", r"so lieu so sanh tren bao cao tinh hinh tai chinh" + scope
          + r", bao cao ket qua hoat dong(?P=scope), bao cao luu chuyen tien te(?P=scope) va cac thuyet minh lien quan "
          + r"la so lieu cua bao cao tai chinh(?P=scope) cho nam tai chinh ket thuc ngay "
@@ -5901,7 +5985,9 @@ def _parse_printed_comparative_flow_policy(source_exact: Any) -> dict[str, Any]:
                             months = 12
                         else:
                             printed_months = match["months"]
-                            months = 9 if printed_months == "chin" else int(printed_months)
+                            written_months = {"sau": 6, "chin": 9}
+                            months = (written_months[printed_months] if printed_months in written_months
+                                      else int(printed_months))
                         if not 1 <= months <= 12:
                             raise ValueError("unsupported printed month count")
                     except ValueError:
@@ -5959,12 +6045,37 @@ def _document_comparative_flow_policy_receipt(
                 parsed = _parse_printed_comparative_flow_policy(narrative)
                 if parsed["status"] == "NOT_APPLICABLE":
                     continue
-                owner = (page.get("status") == "FINANCIAL_NOTE_CONTENT"
-                         and section.get("content_kind") == "FINANCIAL_NOTE"
-                         and section.get("statement_type") == "NOT_APPLICABLE")
+                note_owner = (page.get("status") == "FINANCIAL_NOTE_CONTENT"
+                              and section.get("content_kind") == "FINANCIAL_NOTE"
+                              and section.get("statement_type") == "NOT_APPLICABLE")
+                # A comparability paragraph owns its exact original SECTION,
+                # not sibling tables/narratives or a borrowed page heading.
+                title = _recognition_printed_text(section.get("title_exact"))
+                title_match = re.fullmatch(
+                    r"trinh bay ve kha nang so sanh thong tin tren bao cao tai chinh "
+                    r"(?P<scope>rieng|hop nhat) giua nien do", title or "",
+                )
+                title_scope = ({"rieng": "SEPARATE", "hop nhat": "CONSOLIDATED"}[title_match["scope"]]
+                               if title_match is not None else None)
                 qualifiers = _printed_population_qualifiers([section.get("title_exact"), narrative])
                 local_scopes = sorted(set(qualifiers) & {"SEPARATE", "CONSOLIDATED"})
                 entities = sorted(set(qualifiers) & {"PARENT_ENTITY", "SUBSIDIARY_ENTITY"})
+                ambiguous_scope = _ambiguous_report_scope_surface([section.get("title_exact"), narrative])
+                parsed_scope = parsed["comparative_period"]["report_scope"] if parsed["complete"] else None
+                caption_scope_coherent = (title_scope is not None and parsed_scope == title_scope
+                                          and local_scopes == [title_scope] and not entities
+                                          and not ambiguous_scope)
+                narrative_context = (
+                    page.get("status") == "FINANCIAL_NOTE_CONTENT"
+                    and section.get("content_kind") == "FINANCIAL_NARRATIVE"
+                    and section.get("statement_type") == "NOT_APPLICABLE"
+                    and type(section.get("tables")) is list and not section["tables"]
+                    and type(section.get("narratives_exact")) is list
+                    and len(section["narratives_exact"]) == 1 and narrative_ordinal == 1
+                    and title_match is not None
+                )
+                narrative_owner = narrative_context and parsed["complete"] and caption_scope_coherent
+                owner = note_owner or narrative_owner
                 policy_reasons = list(parsed["reasons"])
                 if not owner:
                     policy_reasons.append("PRINTED_FLOW_POLICY_NOT_OWNED_BY_ORIGINAL_FINANCIAL_NOTE_SECTION")
@@ -5981,6 +6092,16 @@ def _document_comparative_flow_policy_receipt(
                                  "original_section_json_sha256": canonical_json_sha256_v1(section),
                                  "original_narrative_sha256": canonical_json_sha256_v1(narrative),
                                  "source_exact": narrative, "parser_receipt": parsed, "owned": owner,
+                                 **({"financial_narrative_ownership": {
+                                     "rule": "EXACT_TYPED_COMPARABILITY_SECTION_FULL_PARAGRAPH_SCOPE_COHERENCE",
+                                     "context_complete": narrative_context,
+                                     "complete": narrative_owner,
+                                     "title_exact": section.get("title_exact"),
+                                     "title_scope": title_scope, "parsed_flow_scope": parsed_scope,
+                                     "caption_scope_coherent": caption_scope_coherent,
+                                     "section_narrative_count": len(section.get("narratives_exact") or []),
+                                     "sibling_section_context_used": False,
+                                 }} if section.get("content_kind") == "FINANCIAL_NARRATIVE" else {}),
                                  "local_qualifiers": qualifiers, "reasons": sorted(set(policy_reasons))})
                 period_reasons.extend(policy_reasons)
     page_axis.sort(key=lambda item: item["selected_page_ordinal"])
@@ -6316,6 +6437,10 @@ def _comparative_flow_local_surface_census(
     month_pattern = r"\b(\d+|muoi mot|muoi hai|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi) thang\b"
     quarter_numbers = {"i": 1, "ii": 2, "iii": 3, "iv": 4, "1": 1, "2": 2, "3": 3, "4": 4}
     reasons = []
+    header_constraint = _owned_absolute_flow_header_constraint(section, table)
+    header_pair = header_constraint["source_header_pair_evidence"] if header_constraint is not None else None
+    if header_pair is not None and not same_typed_json_v1(header_pair["money_column_ordinals"], lane.get("money_column_ordinals")):
+        header_constraint, header_pair = None, None
     for surface in surfaces:
         selected = (lane.get("money_column_ordinals") or []).index(surface["column_ordinal"]) if surface["kind"] == "MONEY_HEADER" else 0
         expected = periods[selected] if periods else None
@@ -6325,6 +6450,24 @@ def _comparative_flow_local_surface_census(
         raw = surface["source_exact"]
         normalized = _normalized(raw)
         printed = _recognition_printed_text(raw)
+        header_pair_interim_caption = False
+        if (header_constraint is not None and surface["kind"] in {"SECTION_TITLE", "TABLE_TITLE"}
+                and months in {3, 6, 9} and header_constraint["printed_months"] == months
+                and header_constraint["printed_end_date"] == end.isoformat()):
+            # Serialized line breaks are finite caption furniture, not a
+            # general-purpose removal of unknown characters or assertions.
+            caption_printed = _recognition_printed_text(raw.replace("\\n", "\n")) if type(raw) is str else None
+            title = {"INCOME_STATEMENT": "ket qua hoat dong", "CASH_FLOW": "luu chuyen tien te"}[section["statement_type"]]
+            method = r"(?: \(phuong phap (?:truc|gian) tiep\))?" if section["statement_type"] == "CASH_FLOW" else ""
+            bare_caption = r"bao cao " + title + r"(?: rieng| hop nhat)? giua nien do(?: \(tiep theo\))?" + method
+            header_pair_interim_caption = bool(caption_printed is not None and re.fullmatch(bare_caption, caption_printed))
+            if header_pair_interim_caption:
+                printed = caption_printed
+                surface["owned_header_pair_caption_evidence"] = {
+                    "header_pair_receipt_id": header_pair["receipt_id"], "source_exact": raw,
+                    "printed_months": months, "printed_end_date": end.isoformat(),
+                    "rule": "WHOLE_TYPED_INTERIM_CAPTION_WITH_SAME_TABLE_COMPLETE_DATED_DURATION_HEADER_PAIR",
+                }
         failures, dates = [], []
         temporal = bool(re.search(r"\b(?:quy|qui|quarter|months?|ended|ending|thang|ngay|nien do|tai khoa|ban nien|nua (?:dau|cuoi) nam|\d{4})\b", normalized)
                         or re.search(r"\b(?:cho|trong) (?:nam|ky|giai doan)\b", normalized)
@@ -6353,22 +6496,43 @@ def _comparative_flow_local_surface_census(
         if temporal and printed is not None:
             if any(not (character.isalnum() or character.isspace() or character in ".,:/()-") for character in printed):
                 failures.append("UNREVIEWED_LOCAL_PERIOD_ANNOTATION")
-            if any(value not in {"tiep theo", "trinh bay lai"} for value in re.findall(r"\(([^()]*)\)", printed)):
+            allowed_parentheticals = {"tiep theo", "trinh bay lai"}
+            if header_pair_interim_caption and section["statement_type"] == "CASH_FLOW":
+                allowed_parentheticals.update({"phuong phap truc tiep", "phuong phap gian tiep"})
+            if any(value not in allowed_parentheticals for value in re.findall(r"\(([^()]*)\)", printed)):
                 failures.append("UNREVIEWED_LOCAL_PERIOD_PARENTHETICAL")
-            if "(" in re.sub(r"\((?:tiep theo|trinh bay lai)\)", "", printed) or ")" in re.sub(r"\((?:tiep theo|trinh bay lai)\)", "", printed):
+            without_parentheticals = re.sub(r"\((?:" + "|".join(sorted(allowed_parentheticals)) + r")\)", "", printed)
+            if "(" in without_parentheticals or ")" in without_parentheticals:
                 failures.append("UNBALANCED_OR_UNREVIEWED_LOCAL_PERIOD_PARENTHETICAL")
         remainder = printed or ""
         # Whole printed dates are removed before looking for month counts;
         # '30 tháng 6 năm ...' must not become a 30-month duration.
         date_pattern = r"\b(?:ngay )?(\d{1,2}) (?:thang )?(\d{1,2}) nam (\d{4})\b|\b(\d{1,2})/(\d{1,2})/(\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b"
+        if header_pair is not None and surface["kind"] == "MONEY_HEADER":
+            header = header_pair["headers"][selected]
+            if (header["column_ordinal"] == surface["column_ordinal"]
+                    and header["source_path_exact"][surface["ordinal"] - 1] == raw):
+                # Dotted dates are recognized only inside the exact whole
+                # header already parsed above, never on arbitrary source rows.
+                dotted = r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b"
+                date_pattern += "|" + dotted
+                if re.search(dotted, remainder):
+                    surface["owned_header_pair_date_evidence"] = {
+                        "header_pair_receipt_id": header_pair["receipt_id"],
+                        "column_ordinal": header["column_ordinal"], "header_path_ordinal": surface["ordinal"],
+                        "source_path_exact": canonical_clone_v1(header["source_path_exact"]),
+                        "printed_end_date": header["printed_end_date"],
+                    }
         for matched in re.finditer(date_pattern, remainder):
             try:
                 if matched[1] is not None:
                     observed = date(int(matched[3]), int(matched[2]), int(matched[1]))
                 elif matched[4] is not None:
                     observed = date(int(matched[6]), int(matched[5]), int(matched[4]))
-                else:
+                elif matched[7] is not None:
                     observed = date(int(matched[7]), int(matched[8]), int(matched[9]))
+                else:
+                    observed = date(int(matched[12]), int(matched[11]), int(matched[10]))
                 dates.append(observed)
             except ValueError:
                 failures.append("INVALID_LOCAL_PRINTED_DATE")
@@ -6414,7 +6578,7 @@ def _comparative_flow_local_surface_census(
         # Interim furniture belongs only to a whole finite, typed FLOW report
         # caption with its own matching current-duration clause. Never erase
         # bare 'niên độ' assertions on NOTE rows or unrelated narratives.
-        interim_caption = False
+        interim_caption = header_pair_interim_caption
         if (surface["kind"] in {"SECTION_TITLE", "TABLE_TITLE"} and printed is not None
                 and section.get("content_kind") == "PRIMARY_STATEMENT" and months in {3, 6, 9}):
             title = {"INCOME_STATEMENT": "ket qua hoat dong", "CASH_FLOW": "luu chuyen tien te"}.get(section.get("statement_type"))
@@ -6425,7 +6589,7 @@ def _comparative_flow_local_surface_census(
                              + r"cho ky hoat dong " + counts + r" thang ket thuc(?: vao)? ngay " + printed_date
                              + r"(?: \(tiep theo\))?\.?")
             owned_constraints = _owned_current_period_constraints(section, table)
-            interim_caption = bool(title and re.fullmatch(whole_caption, printed) and any(
+            interim_caption = interim_caption or bool(title and re.fullmatch(whole_caption, printed) and any(
                 item["source_kind"] == surface["kind"] and item["source_exact"] == raw and item["supported"]
                 and item.get("printed_months") == months and item.get("printed_end_date") == end.isoformat()
                 for item in owned_constraints

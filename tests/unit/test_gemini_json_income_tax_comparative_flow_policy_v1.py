@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from copy import deepcopy
+from hashlib import sha256
 
 import pytest
 from test_gemini_json_income_tax_family_v1 import _adapter_compiled, _page, _record
@@ -827,6 +828,12 @@ def test_actual_annual_and_written_nine_month_policy_scaffolds(kind, expected_sh
     if months == 9:
         assert receipt["clause_receipts"][0]["applies_to"] == ["BALANCE_SHEET"]
         assert receipt["clause_receipts"][0]["used_as_flow_period_authority"] is False
+        assert receipt["clause_receipts"][1]["scaffold"] == "TREN_RELATED_NOTES_WRITTEN_NINE_MONTHS"
+        # Exact parser receipt retained in the authenticated pre-SIX a272 panel.
+        assert receipt["receipt_id"] == (
+            "gjitfav1:printed-comparative-flow-policy:"
+            "18b56a76af1936da6378b41defeedcb4c7026869041b56a819679807c5a95bda"
+        )
 
 
 @pytest.mark.parametrize("kind", ["annual_separate", "nine_month_consolidated", "annual_consolidated"])
@@ -876,7 +883,7 @@ def test_unowned_affirmative_comparability_policy_is_veto_only_not_permission_to
                else _independent_existing_flow_records(route=route, policy_year=2025))
     section = _policy_section(records)
     section["content_kind"] = "FINANCIAL_NARRATIVE"
-    section["title_exact"] = "Trình bày về khả năng so sánh thông tin trên báo cáo tài chính riêng giữa niên độ"
+    section["title_exact"] = "Thông tin khác về số liệu so sánh"
     if policy_kind == "contradictory":
         section["narratives_exact"] = [_printed_flow_policy(year=2023)]
     elif policy_kind == "unsupported":
@@ -944,3 +951,675 @@ def test_interim_caption_furniture_cannot_hide_unowned_or_contrary_period_assert
     assert candidate["status"] == UNRESOLVED
     assert candidate.get("mappings", []) == []
     assert records == original
+
+
+def _audited_written_six_policy(*, scope="riêng", prior_year=2024):
+    # Original paragraph authenticated by the 857184... source-audit receipt.
+    # Only the exact base is an actual-source fixture; transformed populations
+    # and years below are explicit synthetic challengers, not source repairs.
+    raw = (_annual_or_nine_month_policy("nine_month_consolidated")
+           .replace("hợp nhất", "riêng")
+           .replace("kỳ chín tháng", "kỳ sáu tháng")
+           .replace("30 tháng 9", "30 tháng 6"))
+    assert canonical_json_sha256_v1(raw) == "7c9cfd9bfd3796f5582502a055bbd5df7dd36c1e06a2a491312e558fd671ffdd"
+    return raw.replace("riêng", scope).replace("2024", str(prior_year))
+
+
+def _genuine_narrative_policy_records(*, scope="riêng", prior_year=2024):
+    records = _comparative_flow_records(scope=scope, current_year=2025, prior_year=prior_year)
+    policy = _policy_section(records)
+    policy["content_kind"] = "FINANCIAL_NARRATIVE"
+    policy["title_exact"] = (
+        "Trình bày về khả năng so sánh thông tin trên báo cáo tài chính " + scope + " giữa niên độ"
+    )
+    policy["tables"] = []
+    policy["narratives_exact"] = [_audited_written_six_policy(scope=scope, prior_year=prior_year)]
+    return records
+
+
+def _unrelated_policy_sibling():
+    return {
+        "content_kind": "FINANCIAL_NOTE", "statement_type": "NOT_APPLICABLE",
+        "title_exact": "Đặc điểm hoạt động của Ngân hàng",
+        "narratives_exact": [
+            "Tại ngày 30 tháng 6 năm 2025, Ngân hàng có 1 công ty con.",
+            "Giấy phép được cấp ngày 25 tháng 3 năm 1994.",
+        ],
+        "tables": [{
+            "columns": [{"header_path_exact": ["Thông tin"], "value_kind": "TEXT"}],
+            "continuation": "NONE", "rows": [{
+                "label_exact": "Công ty A", "hierarchy_path_exact": ["Công ty A"],
+                "row_kind": "ITEM", "values_exact": ["Đơn vị đầu tư"],
+            }], "title_exact": "Danh sách đơn vị", "unit_exact": None,
+        }],
+    }
+
+
+@pytest.mark.parametrize("presentation", ["exact", "unicode_nfd", "newline"])
+def test_audited_written_six_policy_preserves_exact_stock_and_flow_clauses(presentation):
+    raw = _audited_written_six_policy()
+    if presentation == "unicode_nfd":
+        raw = unicodedata.normalize("NFD", raw)
+    elif presentation == "newline":
+        raw = raw.replace(". Số liệu", ".\nSố liệu")
+    original = deepcopy(raw)
+    receipt = family._parse_printed_comparative_flow_policy(raw)
+    assert receipt["complete"] is True, receipt["reasons"]
+    assert receipt["source_exact"] == raw == original
+    assert receipt["comparative_period"] == {
+        "printed_months": 6, "printed_end_date": "2024-06-30", "report_scope": "SEPARATE",
+    }
+    stock, flow = receipt["clause_receipts"]
+    assert stock["kind"] == "RETAINED_NON_FLOW_SENTENCE"
+    assert stock["printed_snapshot_date"] == "2024-12-31"
+    assert stock["used_as_flow_period_authority"] is False
+    assert flow["scaffold"] == "TREN_RELATED_NOTES_WRITTEN_SIX_MONTHS"
+    for clause in (stock, flow):
+        assert raw[clause["start"]:clause["end"]] == clause["source_exact"]
+        assert canonical_json_sha256_v1(clause["source_exact"]) == clause["source_sha256"]
+
+
+@pytest.mark.parametrize("scope,sibling_table,prior_year", [
+    ("riêng", False, 2024), ("riêng", True, 2024),
+    ("hợp nhất", False, 2024), ("hợp nhất", True, 2024), ("riêng", False, 2022),
+])
+def test_genuine_narrative_policy_owns_only_its_section_not_sibling_context(scope, sibling_table, prior_year):
+    records = _genuine_narrative_policy_records(scope=scope, prior_year=prior_year)
+    policy = _policy_section(records)
+    if sibling_table:
+        records[-1]["page_json"]["sections"].insert(0, _unrelated_policy_sibling())
+    original = deepcopy(records)
+    inventory = family._document_statement_period_inventory(records, compiled_specs=_adapter_compiled())
+    document = inventory["document_comparative_flow_policy_receipt"]
+    assert document["complete"] is True, document["reasons"]
+    assert len(document["policy_source_receipts"]) == 1
+    source = document["policy_source_receipts"][0]
+    ownership = source["financial_narrative_ownership"]
+    expected_scope = "SEPARATE" if scope == "riêng" else "CONSOLIDATED"
+    assert source["owned"] is True and source["section_table_count"] == 0
+    assert source["locator"]["section_id"] == ("s2" if sibling_table else "s1")
+    assert source["original_section_json_sha256"] == canonical_json_sha256_v1(policy)
+    assert ownership["complete"] is True and ownership["context_complete"] is True
+    assert ownership["title_scope"] == ownership["parsed_flow_scope"] == expected_scope
+    assert ownership["caption_scope_coherent"] is True
+    assert ownership["section_narrative_count"] == 1
+    assert ownership["sibling_section_context_used"] is False
+    assert document["resolved_source_duration_semantics"] == [
+        ["SOURCE_YTD_QUARTER", 2025, 2], ["SOURCE_YTD_QUARTER", prior_year, 2],
+    ]
+    assert _period_proof(records, inventory=inventory)["complete"] is True
+    candidate = _public_candidate(records)
+    assert candidate["status"] == READY, candidate.get("reasons")
+    assert records == original
+
+
+def test_genuine_narrative_owner_is_not_a_written_six_source_specific_permission():
+    records = _genuine_narrative_policy_records()
+    _policy_section(records)["narratives_exact"] = [_printed_flow_policy()]
+    original = deepcopy(records)
+    assert _period_proof(records)["complete"] is True
+    assert _public_candidate(records)["status"] == READY
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", [
+    "wrong_page_status", "wrong_statement_type", "wrong_content_kind", "missing_title", "unknown_title",
+    "title_suffix", "title_footnote", "title_overlay", "borrowed_sibling_title", "policy_table",
+    "second_paragraph", "title_wrong_scope", "title_entity", "title_missing_scope", "missing_flow_year",
+])
+def test_genuine_narrative_owner_requires_full_original_section_and_scope_proof(mutation):
+    records = _genuine_narrative_policy_records()
+    policy = _policy_section(records)
+    if mutation == "wrong_page_status":
+        records[-1]["page_json"]["status"] = "PRIMARY_FINANCIAL_STATEMENT"
+    elif mutation == "wrong_statement_type":
+        policy["statement_type"] = "CASH_FLOW"
+    elif mutation == "wrong_content_kind":
+        policy["content_kind"] = "PRIMARY_STATEMENT"
+    elif mutation == "missing_title":
+        policy["title_exact"] = None
+    elif mutation == "unknown_title":
+        policy["title_exact"] = "Thông tin khác về số liệu so sánh"
+    elif mutation == "title_suffix":
+        policy["title_exact"] += " áp dụng trong trường hợp khác"
+    elif mutation == "title_footnote":
+        policy["title_exact"] += " (*)"
+    elif mutation == "title_overlay":
+        policy["title_exact"] += "\u0338"
+    elif mutation == "borrowed_sibling_title":
+        other = deepcopy(policy)
+        other["narratives_exact"] = ["Thông tin lịch sử."]
+        records[-1]["page_json"]["sections"].append(other)
+        policy["title_exact"] = "Thông tin khác về số liệu so sánh"
+    elif mutation == "policy_table":
+        policy["tables"] = _unrelated_policy_sibling()["tables"]
+    elif mutation == "second_paragraph":
+        policy["narratives_exact"].append("Thông tin lịch sử.")
+    elif mutation == "title_wrong_scope":
+        policy["title_exact"] = policy["title_exact"].replace("riêng", "hợp nhất")
+    elif mutation == "title_entity":
+        policy["title_exact"] += " của công ty con"
+    elif mutation == "title_missing_scope":
+        policy["title_exact"] = policy["title_exact"].replace(" riêng", "")
+    else:
+        policy["narratives_exact"][0] = policy["narratives_exact"][0].replace("30 tháng 6 năm 2024", "30 tháng 6")
+    original = deepcopy(records)
+    proof = _period_proof(records)
+    assert proof["complete"] is False, proof
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED, candidate.get("reasons")
+    assert candidate.get("mappings", []) == []
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", [
+    "unknown_word", "missing_year", "extra_sentence", "duplicate_flow", "not_reviewed",
+    "mixed_flow_scope", "mixed_stock_scope", "six_months_september_end",
+])
+def test_written_six_policy_cannot_drop_unknown_or_conflicting_source_assertions(mutation):
+    records = _genuine_narrative_policy_records()
+    policy = _policy_section(records)
+    raw = policy["narratives_exact"][0]
+    if mutation == "unknown_word":
+        raw = raw.replace("kỳ sáu tháng", "kỳ bảy tháng")
+    elif mutation == "missing_year":
+        raw = raw.replace("30 tháng 6 năm 2024", "30 tháng 6")
+    elif mutation == "extra_sentence":
+        raw += " Số liệu này áp dụng cho một kỳ khác."
+    elif mutation == "duplicate_flow":
+        raw += " " + raw.split(". ", 1)[1]
+    elif mutation == "not_reviewed":
+        raw = raw.replace("đã được soát xét", "chưa được soát xét")
+    elif mutation == "mixed_flow_scope":
+        raw = raw.replace("báo cáo lưu chuyển tiền tệ riêng", "báo cáo lưu chuyển tiền tệ hợp nhất")
+    elif mutation == "mixed_stock_scope":
+        raw = (raw.replace("báo cáo tình hình tài chính riêng", "báo cáo tình hình tài chính hợp nhất")
+               .replace("của báo cáo tài chính riêng cho năm", "của báo cáo tài chính hợp nhất cho năm"))
+    else:
+        raw = raw.replace("30 tháng 6 năm 2024", "30 tháng 9 năm 2024")
+    policy["narratives_exact"] = [raw]
+    original = deepcopy(records)
+    if mutation not in {"mixed_stock_scope", "six_months_september_end"}:
+        assert family._parse_printed_comparative_flow_policy(raw)["complete"] is False
+    assert _period_proof(records)["complete"] is False
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED, candidate.get("reasons")
+    assert candidate.get("mappings", []) == []
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", ["ownership_complete", "title_scope", "section_table_count", "source_exact"])
+def test_genuine_narrative_ownership_self_reseal_cannot_replace_fresh_source(mutation):
+    records = _genuine_narrative_policy_records()
+    original = deepcopy(records)
+    compiled, cluster, query = _public_query(records)
+    assert cluster["status"] == READY and query is not None
+    assert _evaluate_query(records, compiled, cluster, query)["status"] == READY
+    forged = deepcopy(query)
+    context = forged["source_context_receipt"]
+    document = context["document_statement_period_inventory"]["document_comparative_flow_policy_receipt"]
+    policy = document["policy_source_receipts"][0]
+    if mutation == "ownership_complete":
+        policy["financial_narrative_ownership"]["complete"] = False
+    elif mutation == "title_scope":
+        policy["financial_narrative_ownership"]["title_scope"] = "CONSOLIDATED"
+    elif mutation == "section_table_count":
+        policy["section_table_count"] = 1
+    else:
+        changed = deepcopy(records)
+        _policy_section(changed)["narratives_exact"][0] = _audited_written_six_policy(prior_year=2023)
+        context["document_statement_period_inventory"] = family._document_statement_period_inventory(
+            changed, compiled_specs=compiled,
+        )
+    _reseal_receipts(forged)
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error):
+        _evaluate_query(records, compiled, cluster, forged)
+    assert records == original
+
+
+def _absolute_flow_header_records(*, literal_note=False, scope="riêng", continuation=False):
+    records = _genuine_narrative_policy_records(scope=scope)
+    for index, record in enumerate(records[1:3], 1):
+        section = record["page_json"]["sections"][0]
+        statement = "kết quả hoạt động" if index == 1 else "lưu chuyển tiền tệ"
+        section["title_exact"] = f"BÁO CÁO {statement.upper()} {scope.upper()} GIỮA NIÊN ĐỘ"
+        section["narratives_exact"] = []
+        table = section["tables"][0]
+        table["title_exact"] = None
+        for column, year in zip(table["columns"], (2025, 2024), strict=True):
+            column["header_path_exact"] = ["Kỳ 6 tháng kết thúc ngày", f"30.6.{year}", "Triệu đồng"]
+    if literal_note:
+        note = records[0]["page_json"]["sections"][0]["tables"][0]
+        for column, year in zip(note["columns"], (2025, 2024), strict=True):
+            column["header_path_exact"] = ["Kỳ 6 tháng kết thúc ngày", f"30/6/{year}", "Triệu đồng"]
+    if continuation:
+        section = _append_flow_continuation(records, 2)
+        section["title_exact"] += " (TIẾP THEO)"
+    return records
+
+
+def _absolute_header_section_table(records, index=1):
+    section = records[index]["page_json"]["sections"][0]
+    return section, section["tables"][0]
+
+
+@pytest.mark.parametrize("statement_type", ["INCOME_STATEMENT", "CASH_FLOW"])
+@pytest.mark.parametrize("months,day", [(3, 31), (6, 30), (9, 30), (12, 31)])
+def test_owned_absolute_flow_header_pair_proves_only_full_printed_ytd_duration(statement_type, months, day):
+    records = _absolute_flow_header_records()
+    section, table = _absolute_header_section_table(records, 1 if statement_type == "INCOME_STATEMENT" else 2)
+    for column, year in zip(table["columns"], (2025, 2022), strict=True):
+        column["header_path_exact"] = [f"Kỳ {months} tháng kết thúc ngày", f"{day}.{months}.{year}", "Triệu đồng"]
+    before = deepcopy((section, table))
+    receipt = family._owned_absolute_flow_header_constraint(section, table)
+    assert receipt is not None
+    assert receipt["source_kind"] == "OWNED_PRIMARY_FLOW_HEADER_PAIR" and receipt["supported"] is True
+    assert receipt["printed_months"] == months and receipt["printed_end_date"] == f"2025-{months:02d}-{day:02d}"
+    assert receipt["annual_assertion"] is (months == 12)
+    evidence = receipt["source_header_pair_evidence"]
+    material = {key: value for key, value in evidence.items() if key != "receipt_id"}
+    assert evidence["receipt_id"] == "gjitfav1:owned-absolute-flow-header-pair:" + canonical_json_sha256_v1(material)
+    assert evidence["money_column_ordinals"] == [1, 2]
+    assert evidence["header_paths_exact"] == [column["header_path_exact"] for column in table["columns"]]
+    assert evidence["comparative_end_date"] == f"2022-{months:02d}-{day:02d}"
+    assert evidence["comparative_year_origin"] == "EXPLICIT_PRINTED_HEADER"
+    assert evidence["amounts_used_as_authority"] is False and evidence["source_period_keys_modified"] is False
+    for ordinal, header in enumerate(evidence["headers"], 1):
+        raw = " ".join(table["columns"][ordinal - 1]["header_path_exact"])
+        assert header["column_ordinal"] == ordinal and header["source_exact"] == raw
+        assert header["source_path_exact"] == table["columns"][ordinal - 1]["header_path_exact"]
+        assert header["source_sha256"] == sha256(raw.encode("utf-8")).hexdigest()
+        assert header["printed_months"] == months
+    assert (section, table) == before
+
+
+@pytest.mark.parametrize("presentation", ["no_currency", "trieu_vnd", "vnd", "dong", "unicode_nfd", "zero_padded", "text_column", "blank_unit"])
+def test_absolute_header_pair_retains_source_layout_without_unit_or_amount_inference(presentation):
+    records = _absolute_flow_header_records()
+    section, table = _absolute_header_section_table(records)
+    if presentation == "no_currency":
+        for column in table["columns"]:
+            column["header_path_exact"].pop()
+    elif presentation in {"trieu_vnd", "vnd", "dong"}:
+        for column in table["columns"]:
+            column["header_path_exact"][-1] = {"trieu_vnd": "Triệu VND", "vnd": "VND", "dong": "đồng"}[presentation]
+    elif presentation == "unicode_nfd":
+        for column in table["columns"]:
+            column["header_path_exact"] = [unicodedata.normalize("NFD", value) for value in column["header_path_exact"]]
+    elif presentation == "zero_padded":
+        for column in table["columns"]:
+            column["header_path_exact"][1] = column["header_path_exact"][1].replace("30.6.", "30.06.")
+    elif presentation == "text_column":
+        table["columns"].insert(0, {"value_kind": "TEXT", "header_path_exact": ["Thuyết minh"]})
+        for row in table["rows"]:
+            row["values_exact"].insert(0, None)
+    else:
+        table["unit_exact"] = None
+    before = deepcopy((section, table))
+    receipt = family._owned_absolute_flow_header_constraint(section, table)
+    assert receipt is not None and receipt["supported"] is True
+    assert receipt["source_header_pair_evidence"]["money_column_ordinals"] == ([2, 3] if presentation == "text_column" else [1, 2])
+    assert receipt["printed_end_date"] == "2025-06-30"
+    assert (section, table) == before
+    if presentation == "blank_unit":
+        assert table["unit_exact"] is None
+
+
+@pytest.mark.parametrize("literal_note,scope,continuation", [
+    (False, "riêng", False), (True, "riêng", False), (False, "hợp nhất", False),
+    (True, "hợp nhất", False), (False, "riêng", True), (True, "riêng", True),
+])
+def test_absolute_primary_header_context_supports_literal_and_policy_relative_note_without_rewriting_source(literal_note, scope, continuation):
+    records = _absolute_flow_header_records(literal_note=literal_note, scope=scope, continuation=continuation)
+    original = deepcopy(records)
+    inventory = family._document_statement_period_inventory(records, compiled_specs=_adapter_compiled())
+    policy = inventory["document_comparative_flow_policy_receipt"]
+    assert policy["complete"] is True, policy["reasons"]
+    assert len(policy["anchor_source_receipts"]) == (3 if continuation else 2)
+    for source in inventory["sources"]:
+        assert source["owned_current_period_constraints"]
+        assert all(item["source_kind"] == "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in source["owned_current_period_constraints"])
+    for anchor in policy["anchor_source_receipts"]:
+        surfaces = anchor["local_period_surface_census"]
+        captions = [surface for surface in surfaces if surface.get("owned_header_pair_caption_evidence")]
+        dates = [surface for surface in surfaces if surface.get("owned_header_pair_date_evidence")]
+        assert captions and dates
+        pair = anchor["owned_current_period_constraints"][0]["source_header_pair_evidence"]
+        assert all(surface["finite_owned_interim_flow_caption"] is True for surface in captions)
+        assert all(surface["owned_header_pair_caption_evidence"]["header_pair_receipt_id"] == pair["receipt_id"] for surface in captions)
+        assert all(surface["owned_header_pair_date_evidence"]["header_pair_receipt_id"] == pair["receipt_id"] for surface in dates)
+    proof = _period_proof(records, inventory=inventory)
+    assert proof["complete"] is True, proof["reasons"]
+    assert proof["status"] == ("PASS_LITERAL_SOURCE_DURATION" if literal_note else "PASS_AUTHENTICATED_PRINTED_COMPARATIVE_FLOW_POLICY")
+    assert proof["amounts_used_as_authority"] is False and proof["source_period_keys_modified"] is False
+    assert proof["start_dates_inferred"] is False
+    assert _public_candidate(records)["status"] == READY
+    assert records == original
+
+
+@pytest.mark.parametrize("linebreak,method", [("\n", "trực tiếp"), ("\\n", "trực tiếp"), ("\n", "gián tiếp"), ("\\n", "gián tiếp")])
+def test_owned_absolute_header_cf_continuation_accepts_only_full_finite_method_caption(linebreak, method):
+    records = _absolute_flow_header_records(continuation=True)
+    for index in (2, 4):
+        section, _table = _absolute_header_section_table(records, index)
+        section["title_exact"] += linebreak + f"(Phương pháp {method})"
+    before = deepcopy(records)
+    assert _period_proof(records)["complete"] is True
+    assert _public_candidate(records)["status"] == READY
+    assert records == before
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing_header_part", "empty_path", "null_path_token", "relative_label", "unknown_month_word",
+    "unsupported_month", "non_ytd_month", "non_last_day", "invalid_date", "different_months",
+    "different_endpoint", "same_year", "reversed_years", "slash_dates", "mixed_separators",
+    "suffix", "prefix", "footnote", "overlay", "superscript", "extra_money", "one_money",
+    "percent_column", "unknown_unit", "date_range", "duplicate_date",
+])
+def test_absolute_header_pair_rejects_every_unreviewed_or_incomplete_axis(mutation):
+    records = _absolute_flow_header_records()
+    section, table = _absolute_header_section_table(records)
+    current, prior = table["columns"]
+    path = current["header_path_exact"]
+    if mutation == "missing_header_part":
+        path.pop(0)
+    elif mutation == "empty_path":
+        current["header_path_exact"] = []
+    elif mutation == "null_path_token":
+        path[1] = None
+    elif mutation == "relative_label":
+        current["header_path_exact"] = ["Kỳ này"]
+    elif mutation == "unknown_month_word":
+        path[0] = "Kỳ sáu tháng kết thúc ngày"
+    elif mutation == "unsupported_month":
+        path[0] = "Kỳ 2 tháng kết thúc ngày"
+    elif mutation == "non_ytd_month":
+        path[1] = "30.9.2025"
+    elif mutation == "non_last_day":
+        path[1] = "29.6.2025"
+    elif mutation == "invalid_date":
+        path[1] = "31.6.2025"
+    elif mutation == "different_months":
+        prior["header_path_exact"] = ["Kỳ 3 tháng kết thúc ngày", "31.3.2024", "Triệu đồng"]
+    elif mutation == "different_endpoint":
+        prior["header_path_exact"][1] = "29.6.2024"
+    elif mutation == "same_year":
+        prior["header_path_exact"][1] = "30.6.2025"
+    elif mutation == "reversed_years":
+        current["header_path_exact"], prior["header_path_exact"] = prior["header_path_exact"], current["header_path_exact"]
+    elif mutation == "slash_dates":
+        path[1] = "30/6/2025"
+    elif mutation == "mixed_separators":
+        path[1] = "30.6/2025"
+    elif mutation == "suffix":
+        path.append("cho kỳ khác")
+    elif mutation == "prefix":
+        path.insert(0, "Ước tính")
+    elif mutation == "footnote":
+        path.append("(*)")
+    elif mutation == "overlay":
+        path[0] += "\u0338"
+    elif mutation == "superscript":
+        path[0] += "¹"
+    elif mutation == "extra_money":
+        table["columns"].append(deepcopy(current))
+        for row in table["rows"]:
+            row["values_exact"].append("999")
+    elif mutation == "one_money":
+        prior["value_kind"] = "TEXT"
+    elif mutation == "percent_column":
+        table["columns"].append({"value_kind": "PERCENT", "header_path_exact": ["Tỷ lệ"]})
+        for row in table["rows"]:
+            row["values_exact"].append("20%")
+    elif mutation == "unknown_unit":
+        path[-1] = "USD"
+    elif mutation == "date_range":
+        path[1] = "1.1.2025-30.6.2025"
+    else:
+        path.append("30.6.2025")
+    before = deepcopy((section, table))
+    assert family._owned_absolute_flow_header_constraint(section, table) is None
+    assert (section, table) == before
+
+
+@pytest.mark.parametrize("kind,statement_type", [
+    ("FINANCIAL_NOTE", "NOT_APPLICABLE"), ("FINANCIAL_NARRATIVE", "NOT_APPLICABLE"),
+    ("PRIMARY_STATEMENT", "BALANCE_SHEET"), ("PRIMARY_STATEMENT", "NOT_APPLICABLE"),
+])
+def test_header_duration_fallback_cannot_create_statement_ownership(kind, statement_type):
+    records = _absolute_flow_header_records()
+    section, table = _absolute_header_section_table(records)
+    section["content_kind"], section["statement_type"] = kind, statement_type
+    before = deepcopy((section, table))
+    assert family._owned_absolute_flow_header_constraint(section, table) is None
+    assert (section, table) == before
+
+
+@pytest.mark.parametrize("mutation", [
+    "unsupported_caption", "conflicting_caption", "conflicting_narrative", "unknown_caption_suffix",
+    "method_suffix", "income_method", "wrong_scope", "entity_override", "unknown_row_ancestor",
+    "note_interim_title", "policy_prior_conflict", "competing_policy", "continuation_missing_date",
+])
+def test_header_fallback_never_waives_caption_scope_policy_or_other_source_veto(mutation):
+    records = _absolute_flow_header_records(continuation=True)
+    section, table = _absolute_header_section_table(records, 2)
+    if mutation == "unsupported_caption":
+        section["title_exact"] += "\nCho kỳ kế toán chưa xác định"
+    elif mutation == "conflicting_caption":
+        section["title_exact"] += "\nCho kỳ hoạt động 6 tháng kết thúc ngày 30 tháng 6 năm 2023"
+    elif mutation == "conflicting_narrative":
+        section["narratives_exact"] = ["Cho kỳ hoạt động 6 tháng kết thúc ngày 30 tháng 6 năm 2023"]
+    elif mutation == "unknown_caption_suffix":
+        section["title_exact"] += " cho một kỳ khác"
+    elif mutation == "method_suffix":
+        section["title_exact"] += "\n(Phương pháp trực tiếp) thêm"
+    elif mutation == "income_method":
+        _absolute_header_section_table(records)[0]["title_exact"] += "\n(Phương pháp trực tiếp)"
+    elif mutation == "wrong_scope":
+        section["title_exact"] = section["title_exact"].replace("RIÊNG", "HỢP NHẤT")
+    elif mutation == "entity_override":
+        section["title_exact"] += " của công ty con"
+    elif mutation == "unknown_row_ancestor":
+        table["rows"][0]["hierarchy_path_exact"].insert(0, "Kỳ vô định năm 2023")
+    elif mutation == "note_interim_title":
+        records[0]["page_json"]["sections"][0]["title_exact"] += " GIỮA NIÊN ĐỘ"
+    elif mutation == "policy_prior_conflict":
+        _policy_section(records)["narratives_exact"] = [_audited_written_six_policy(prior_year=2022)]
+    elif mutation == "competing_policy":
+        second = deepcopy(_policy_section(records))
+        second["narratives_exact"] = [_audited_written_six_policy(prior_year=2022)]
+        records[-2]["page_json"]["sections"].append(second)
+    else:
+        continuation, _ = _absolute_header_section_table(records, 4)
+        continuation["tables"][0]["columns"][1]["header_path_exact"] = ["Kỳ trước"]
+    before = deepcopy(records)
+    assert _period_proof(records)["complete"] is False
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED, candidate.get("reasons")
+    assert candidate.get("mappings", []) == []
+    assert records == before
+
+
+def test_matching_owned_caption_remains_authority_instead_of_header_fallback():
+    records = _absolute_flow_header_records()
+    section, table = _absolute_header_section_table(records)
+    section["title_exact"] += "\nCho kỳ hoạt động 6 tháng kết thúc ngày 30 tháng 6 năm 2025"
+    before = deepcopy(records)
+    inventory = family._document_statement_period_inventory(records, compiled_specs=_adapter_compiled())
+    income = next(source for source in inventory["sources"] if source["statement_type"] == "INCOME_STATEMENT")
+    assert income["owned_current_period_constraints"]
+    assert all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in income["owned_current_period_constraints"])
+    assert _period_proof(records, inventory=inventory)["complete"] is True
+    assert _public_candidate(records)["status"] == READY
+    assert records == before and table["columns"][0]["header_path_exact"][1] == "30.6.2025"
+
+
+@pytest.mark.parametrize("mutation", ["end_date", "header_path", "money_axis", "comparative_year_origin", "source_pair_hash"])
+def test_self_resealed_absolute_header_context_cannot_replace_original_source(mutation):
+    records = _absolute_flow_header_records()
+    before = deepcopy(records)
+    compiled, cluster, query = _public_query(records)
+    assert query is not None and _evaluate_query(records, compiled, cluster, query)["status"] == READY
+    forged = deepcopy(query)
+    inventory = forged["source_context_receipt"]["document_statement_period_inventory"]
+    source = next(item for item in inventory["sources"] if item["statement_type"] == "INCOME_STATEMENT")
+    constraint = source["owned_current_period_constraints"][0]
+    evidence = constraint["source_header_pair_evidence"]
+    if mutation == "end_date":
+        constraint["printed_end_date"] = "2023-06-30"
+    elif mutation == "header_path":
+        evidence["header_paths_exact"][0][1] = "30.6.2023"
+    elif mutation == "money_axis":
+        evidence["money_column_ordinals"] = [2, 1]
+    elif mutation == "comparative_year_origin":
+        evidence["comparative_year_origin"] = "DERIVED_YEAR_MINUS_ONE"
+    else:
+        evidence["headers"][0]["source_sha256"] = "0" * 64
+    _reseal_receipts(forged)
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error):
+        _evaluate_query(records, compiled, cluster, forged)
+    assert records == before
+
+
+@pytest.mark.parametrize("index,statement", [(1, "kết quả hoạt động"), (2, "lưu chuyển tiền tệ")])
+def test_bare_annual_statement_caption_cannot_be_overridden_by_six_month_headers(index, statement):
+    records = _absolute_flow_header_records()
+    section, table = _absolute_header_section_table(records, index)
+    section["title_exact"] = f"Báo cáo {statement} riêng năm 2025"
+    before = deepcopy(records)
+    constraints = family._owned_current_period_constraints(section, table)
+    assert constraints and all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in constraints)
+    assert any(item["supported"] is True and item.get("printed_annual_year") == 2025 for item in constraints)
+    inventory = family._document_statement_period_inventory(records, compiled_specs=_adapter_compiled())
+    policy = inventory["document_comparative_flow_policy_receipt"]
+    assert policy["complete"] is False and policy["status"] == "ALGORITHM_HOLD"
+    assert _period_proof(records, inventory=inventory)["complete"] is False
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("index,statement", [(1, "kết quả hoạt động"), (2, "lưu chuyển tiền tệ")])
+def test_matching_bare_annual_statement_is_existing_caption_authority_not_header_fallback(index, statement):
+    records = _absolute_flow_header_records()
+    section, table = _absolute_header_section_table(records, index)
+    section["title_exact"] = f"Báo cáo {statement} riêng năm 2025"
+    for column, year in zip(table["columns"], (2025, 2024), strict=True):
+        column["header_path_exact"] = ["Kỳ 12 tháng kết thúc ngày", f"31.12.{year}", "Triệu đồng"]
+    before = deepcopy((section, table))
+    constraints = family._owned_current_period_constraints(section, table)
+    assert constraints and all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in constraints)
+    assert any(item["supported"] is True and item.get("printed_annual_year") == 2025
+               and item["source_kind"] == "SECTION_TITLE" for item in constraints)
+    assert (section, table) == before
+
+
+@pytest.mark.parametrize("index,statement", [(1, "kết quả hoạt động"), (2, "lưu chuyển tiền tệ")])
+@pytest.mark.parametrize("annotation", [" kỳ chưa xác định", " (*)", "\u0338"])
+def test_malformed_bare_annual_caption_is_unsupported_never_ignored_for_header_fallback(index, statement, annotation):
+    records = _absolute_flow_header_records()
+    section, table = _absolute_header_section_table(records, index)
+    section["title_exact"] = f"Báo cáo {statement} riêng năm 2025" + annotation
+    before = deepcopy(records)
+    constraints = family._owned_current_period_constraints(section, table)
+    assert constraints and any(item["supported"] is False for item in constraints)
+    assert all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in constraints)
+    assert _period_proof(records)["complete"] is False
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("index", [1, 2])
+@pytest.mark.parametrize("literal_note", [False, True])
+@pytest.mark.parametrize("assertion", [
+    "Quý II năm 2025",
+    "Kỳ kế toán 9 tháng kết thúc ngày 30 tháng 9 năm 2025",
+    "Từ ngày 01/04/2025 đến ngày 30/06/2025",
+    "For the period ended 30/6/2025",
+    "For the year ended 31/12/2025",
+    "For the quarter ended 30/6/2025",
+    "From 01/04/2025 to 30/06/2025",
+])
+def test_unparsed_explicit_caption_without_cho_cannot_hide_behind_dated_header_fallback(index, literal_note, assertion):
+    records = _absolute_flow_header_records(literal_note=literal_note)
+    section, table = _absolute_header_section_table(records, index)
+    section["title_exact"] += "\n" + assertion
+    before = deepcopy(records)
+    constraints = family._owned_current_period_constraints(section, table)
+    assert constraints and any(item["supported"] is False for item in constraints)
+    assert all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in constraints)
+    compiled = _adapter_compiled()
+    lane = family._multitable_lane_axis(section, table, compiled_specs=compiled)
+    assert lane["complete"] is True
+    assert family._absolute_source_duration_semantics(section, table, lane) is None
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    policy = inventory["document_comparative_flow_policy_receipt"]
+    assert policy["complete"] is False and policy["status"] == "ALGORITHM_HOLD"
+    for left in (index, 0):
+        rejected = family._source_period_correspondence_receipt(
+            left_locator=_contextual_period_locator(records[left]),
+            right_locator=_contextual_period_locator(records[index]),
+            left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+            page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+        )
+        assert rejected["complete"] is False and rejected["status"] == "ALGORITHM_HOLD"
+    selected = _period_proof(records, inventory=inventory)
+    candidate = _public_candidate(records)
+    if index == 2 and literal_note:
+        # Unsupported unselected CF cannot supply authority, but does not
+        # falsify an independent literal NOTE/INCOME pair either.
+        assert selected["complete"] is True and selected["status"] == "PASS_LITERAL_SOURCE_DURATION"
+        assert selected["period_resolution_evidence"] == []
+        assert candidate["status"] == READY and candidate["mappings"]
+        allowed_versions = {records[0]["page_json_version_id"], records[1]["page_json_version_id"]}
+        refs = [ref for mapping in candidate["mappings"] for ref in mapping.get("source_refs", [])]
+        assert refs and all(ref["locator"]["page_json_version_id"] in allowed_versions for ref in refs)
+        assert all(ref["locator"]["page_json_version_id"] != records[2]["page_json_version_id"] for ref in refs)
+    else:
+        assert selected["complete"] is False
+        assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("index", [1, 2])
+@pytest.mark.parametrize("literal_note", [False, True])
+def test_multi_table_section_does_not_make_its_explicit_caption_assertion_absent(index, literal_note):
+    records = _absolute_flow_header_records(literal_note=literal_note)
+    section, table = _absolute_header_section_table(records, index)
+    section["title_exact"] += "\nKỳ kế toán 9 tháng kết thúc ngày 30 tháng 9 năm 2025"
+    section["tables"].append(deepcopy(table))
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    for source_table in section["tables"]:
+        constraints = family._owned_current_period_constraints(section, source_table)
+        assert constraints and any(item["supported"] is False for item in constraints)
+        assert all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in constraints)
+        lane = family._multitable_lane_axis(section, source_table, compiled_specs=compiled)
+        assert lane["complete"] is True
+        assert family._absolute_source_duration_semantics(section, source_table, lane) is None
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    assert inventory["document_comparative_flow_policy_receipt"]["complete"] is False
+    for table_ordinal, _source_table in enumerate(section["tables"], 1):
+        bad_locator = _contextual_period_locator(records[index]) | {"table_id": f"t{table_ordinal}"}
+        for left_locator in (bad_locator, _contextual_period_locator(records[0])):
+            rejected = family._source_period_correspondence_receipt(
+                left_locator=left_locator, right_locator=bad_locator,
+                left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+                page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+            )
+            assert rejected["complete"] is False and rejected["status"] == "ALGORITHM_HOLD"
+    selected = _period_proof(records, inventory=inventory)
+    candidate = _public_candidate(records)
+    if index == 2 and literal_note:
+        assert selected["complete"] is True and selected["status"] == "PASS_LITERAL_SOURCE_DURATION"
+        assert selected["period_resolution_evidence"] == []
+        assert candidate["status"] == READY and candidate["mappings"]
+        allowed_versions = {records[0]["page_json_version_id"], records[1]["page_json_version_id"]}
+        refs = [ref for mapping in candidate["mappings"] for ref in mapping.get("source_refs", [])]
+        assert refs and all(ref["locator"]["page_json_version_id"] in allowed_versions for ref in refs)
+        assert all(ref["locator"]["page_json_version_id"] != records[2]["page_json_version_id"] for ref in refs)
+    else:
+        assert selected["complete"] is False
+        assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
