@@ -69,6 +69,8 @@ _QUERY_ADAPTER_STRATEGIES = {
     "DIRECT_NOTE_PLUS_SUPPLEMENTAL_NOTE_PLUS_PRIMARY_INCOME_STATEMENT_SOURCE_PRESENTATION",
     "DIRECT_PRIMARY_INCOME_STATEMENT_SOURCE_PRESENTATION",
 }
+ORIGINAL_NOTE_ADAPTER_FORMAT_VERSION = "GEMINI_JSON_INCOME_TAX_ORIGINAL_NOTE_ADAPTER_V1"
+_ORIGINAL_NOTE_STRATEGY = "DIRECT_ORIGINAL_NOTE_POPULATIONS_SOURCE_PRESENTATION"
 _ORIGINAL_BASIS_ROLES = {
     "RATE": ("PROFIT_BEFORE_TAX", "CURRENT_TAX_PARENT", "PRIOR_PERIOD_TAX_ADJUSTMENT"),
     "INCOME": ("PROFIT_BEFORE_TAX", "NON_TAXABLE_AGGREGATE", "NON_DEDUCTIBLE_EXPENSE", "TAXABLE_INCOME"),
@@ -1366,6 +1368,35 @@ def _all_observed(values: Sequence[int | None]) -> bool:
     return bool(values and all(value is not None for value in values))
 
 
+def _deferred_net_source_frontier(source_rows: Sequence[Mapping[str, Any]]) -> dict[str, Any] | None:
+    """One explicitly named net child, not a blank group or inferred residual."""
+    group_labels = {_normalized(label) for label in (
+        "Chi phí thuế TNDN hoãn lại", "Chi phí thuế thu nhập doanh nghiệp hoãn lại",
+    )}
+    net_label = _normalized("Phát sinh và hoàn nhập các chênh lệch tạm thời")
+    groups = [item for item in source_rows if item["normalized_label"] in group_labels and item["row_kind"] == "GROUP"]
+    children = [item for item in source_rows if item["normalized_label"] == net_label]
+    if len(groups) != 1 or len(children) != 1:
+        return None
+    group, child = groups[0], children[0]
+    ordinal = group["row_ordinal"]
+    if ordinal + 2 > len(source_rows):
+        return None
+    root = source_rows[ordinal + 1]
+    if (group["hierarchy_path_exact"] != [group["label_exact"]]
+            or any(value is not None for value in group["source_values_exact"])
+            or child["row_ordinal"] != ordinal + 1 or child["row_kind"] != "ITEM"
+            or child["hierarchy_path_exact"] != [group["label_exact"], child["label_exact"]]
+            or root["row_kind"] != "TOTAL" or root["normalized_label"] not in _ROOT_LABELS
+            or root["hierarchy_path_exact"] != [root["label_exact"]]
+            or not all(item["values_usable"] and _all_observed(item["parsed_values"]) for item in (child, root))):
+        return None
+    material = {"group_source_row": canonical_clone_v1(group), "net_source_row": canonical_clone_v1(child),
+                "closing_root_source_row": canonical_clone_v1(root),
+                "rule": "SOLE_PRINTED_DEFERRED_NET_CHANGE_CHILD_UNDER_EXACT_BLANK_EXPENSE_GROUP_NO_VALUE_INFERENCE"}
+    return {**material, "receipt_id": "gjitfav1:deferred-net-frontier:" + canonical_json_sha256_v1(material)}
+
+
 def _exact_sum(
     components: Sequence[Mapping[str, Any]], parent: Mapping[str, Any]
 ) -> bool:
@@ -1638,6 +1669,7 @@ def _supplemental_presentations(
     compiled_specs: Mapping[str, Any],
     issues: list[str] | None = None,
     consumed_source_rows: frozenset[tuple[str, str, str, int]] = frozenset(),
+    authenticated_rate_table_axis: frozenset[tuple[str, str, str]] = frozenset(),
 ) -> list[dict[str, Any]]:
     role_alias_axis = _supplemental_role_alias_axis(compiled_specs)
     document_unit = _primary_statement_unit_corroboration(
@@ -1730,6 +1762,21 @@ def _supplemental_presentations(
                 table_has_certified_equation = False
                 table_equation_receipts: list[dict[str, Any]] = []
                 certified_adjustment_ordinals: set[int] = set()
+
+                deferred_frontier = _deferred_net_source_frontier(source_rows)
+                if deferred_frontier is not None:
+                    net_row = deferred_frontier["net_source_row"]
+                    descriptor = _finalize_supplemental_descriptor(
+                        record=record, page=page, section_ordinal=section_ordinal, table_ordinal=table_ordinal,
+                        table=table, money_column_ordinals=money_ordinals, canonical_unit=canonical_unit,
+                        unit_evidence=unit_evidence, unit_receipt=unit_receipt, source_rows=all_source_rows,
+                        rows=[_projected_source_row(net_row, role="DEFERRED_TAX_NET", projected_row_kind="ITEM")],
+                        presentation_kind="DEFERRED_TAX_SINGLE_NET_SOURCE_CHILD", equation_receipts=[],
+                        compiled_specs=compiled_specs, source_population_receipt=deferred_frontier,
+                    )
+                    if descriptor is not None:
+                        descriptors.append(descriptor)
+                        claimed.update((deferred_frontier["group_source_row"]["row_ordinal"], net_row["row_ordinal"]))
 
                 year_frontier = _current_year_source_frontier(
                     source_rows, compiled_specs=compiled_specs,
@@ -1913,9 +1960,10 @@ def _supplemental_presentations(
                     for item in source_rows
                     if item["matched_role"] in {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"}
                 ]
-                if len(rate_rows) > 1 and issues is not None:
+                rate_handled = (record["page_json_version_id"], f"s{section_ordinal}", f"t{table_ordinal}") in authenticated_rate_table_axis
+                if not rate_handled and len(rate_rows) > 1 and issues is not None:
                     issues.append("SUPPLEMENTAL_CURRENT_TAX_RATE_AXIS_NOT_UNIQUE")
-                if len(rate_rows) == 1:
+                if not rate_handled and len(rate_rows) == 1:
                     parent_options = [
                         item
                         for item in source_rows
@@ -3091,6 +3139,542 @@ def _bind_source_context(
     return _reseal_cluster(cluster, owner_receipt=owner)
 
 
+def _original_note_population_ancestry(
+    table: Mapping[str, Any], section: Mapping[str, Any], *, row_ordinal: int,
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Strip a real YEAR/PERIOD group only through its original frontier proof."""
+    # The ownership helper requires original numeric operands too.
+    lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+    rows = _supplemental_source_rows(table, money_column_ordinals=lane.get("money_column_ordinals") or [],
+                                    role_alias_axis=_supplemental_role_alias_axis(compiled_specs))
+    frontier = _current_year_source_frontier(rows, compiled_specs=compiled_specs)
+    deferred_frontier = _deferred_net_source_frontier(rows)
+    if deferred_frontier is not None and deferred_frontier["net_source_row"]["row_ordinal"] == row_ordinal:
+        material = {"rule": "AUTHENTICATED_ORIGINAL_DEFERRED_NET_GROUP_FRONTIER_NOT_ENTITY_ANCESTRY",
+                    "common_population_ancestry_exact": [], "source_rows": [deferred_frontier["net_source_row"]],
+                    "deferred_net_frontier_receipt": deferred_frontier,
+                    "original_table_json_sha256": canonical_json_sha256_v1(table)}
+        return {**material, "receipt_id": "gjitfav1:note-population:" + canonical_json_sha256_v1(material)}
+    if frontier is not None:
+        members = [*frontier["component_source_rows"], frontier["parent_source_row"]]
+        matches = [item for item in members if item["row_ordinal"] == row_ordinal]
+        if matches:
+            row = matches[0]
+            material = {
+                "rule": "AUTHENTICATED_ORIGINAL_CURRENT_EXPENSE_GROUP_FRONTIER_NOT_ENTITY_ANCESTRY",
+                "common_population_ancestry_exact": [], "source_rows": [canonical_clone_v1(row)],
+                "current_expense_frontier_receipt": frontier,
+                "original_table_json_sha256": canonical_json_sha256_v1(table),
+            }
+            return {**material, "receipt_id": "gjitfav1:note-population:" + canonical_json_sha256_v1(material)}
+    return _primary_bridge_population_ancestry(
+        table, row_ordinals=[row_ordinal],
+        structural_owner_surfaces=[section.get("title_exact"), table.get("title_exact")],
+        structural_owner_aliases=[*compiled_specs["topology"]["parent"]["aliases"],
+                                  *compiled_specs["evaluation"]["query_owner_aliases"]],
+    )
+
+
+def _original_note_restored_candidate(receipt: Mapping[str, Any], *, original_region: Mapping[str, Any]) -> dict[str, Any]:
+    """Restore only output observations/equations, never private query proofs."""
+    if not same_typed_json_v1(receipt["locator"], _record_locator(
+            original_region, section_id=original_region["section_id"], table_id=original_region["table_id"])):
+        raise _error("income-tax original-note carrier region locator drifted")
+    private = receipt["private_candidate_proof"]
+    descriptor = {"locator": original_region,
+                  "money_column_ordinals": receipt["identity_view_receipt"]["money_column_ordinals"],
+                  "rows": [{**item["row_exact"], "row_ordinal": item["original_row_ordinal"]}
+                           for item in receipt["identity_view_receipt"]["source_rows"]]}
+    output = {key: canonical_clone_v1(value) for key, value in private.items() if key != "closure_receipt"}
+    output["component_regions"] = [canonical_clone_v1(original_region)]
+    output["mappings"] = _restore_source_refs(private["mappings"], descriptor=descriptor)
+    for mapping in output["mappings"]:
+        if len(mapping.get("source_refs", [])) == 1:
+            mapping["row_id"] = mapping["source_refs"][0]["row_id"]
+        mapping["item_mapping_id"] = "gjmthfmv1:item:" + canonical_json_sha256_v1(
+            {key: value for key, value in mapping.items() if key != "item_mapping_id"}
+        )
+    output["closure_receipt"] = {
+        "equations": _restore_source_refs(private["closure_receipt"].get("equations", []), descriptor=descriptor),
+        "source_only_unmapped_rows": _restore_source_refs(private["closure_receipt"].get("source_only_unmapped_rows", []), descriptor=descriptor),
+        "original_basis_receipt_id": receipt["receipt_id"],
+    }
+    def assert_original_source_locator(value: Any) -> None:
+        if type(value) is list:
+            for child in value:
+                assert_original_source_locator(child)
+        elif type(value) is dict:
+            if "locator" in value and "row_ordinal" in value and not same_typed_json_v1(value["locator"], original_region):
+                raise _error("income-tax original-note output retains private source locator metadata")
+            for child in value.values():
+                assert_original_source_locator(child)
+    assert_original_source_locator(output["mappings"])
+    assert_original_source_locator(output["closure_receipt"])
+    _reseal_equations(output)
+    for key in ("page_json_version_id", "physical_page", "section_id", "table_id"):
+        output[key] = receipt["locator"][key]
+    output["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in output.items() if key != "candidate_id"}
+    )
+    return output
+
+
+def _original_note_bind_supplemental_output_region(candidate: Mapping[str, Any], *, original_region: Mapping[str, Any]) -> dict[str, Any]:
+    """Only output refs get carrier metadata; private projection proofs do not."""
+    locator = _record_locator(original_region, section_id=original_region["section_id"], table_id=original_region["table_id"])
+
+    def restore(value: Any) -> Any:
+        if type(value) is list:
+            return [restore(child) for child in value]
+        if type(value) is not dict:
+            return value
+        output = {key: restore(child) for key, child in value.items()}
+        if "locator" in output and "row_ordinal" in output:
+            if (type(output["locator"]) is not dict
+                    or any(not same_typed_json_v1(output["locator"].get(key), item) for key, item in locator.items())):
+                raise _error("income-tax supplemental original output locator drifted")
+            output["locator"] = canonical_clone_v1(original_region)
+        return output
+
+    output = canonical_clone_v1(candidate)
+    output["component_regions"] = [canonical_clone_v1(original_region)]
+    output["mappings"] = restore(output["mappings"])
+    for mapping in output["mappings"]:
+        mapping["item_mapping_id"] = "gjmthfmv1:item:" + canonical_json_sha256_v1({key: item for key, item in mapping.items() if key != "item_mapping_id"})
+    for key in ("equations", "source_only_unmapped_rows"):
+        if key in output["closure_receipt"]:
+            output["closure_receipt"][key] = restore(output["closure_receipt"][key])
+    _reseal_equations(output)
+    output["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1({key: value for key, value in output.items() if key != "candidate_id"})
+    return output
+
+
+def _original_note_population_proofs(
+    parts: Sequence[tuple[Mapping[str, Any], Mapping[str, Any]]], *,
+    page_records: Sequence[Mapping[str, Any]], primary: Mapping[str, Any] | None,
+    compiled_specs: Mapping[str, Any], issues: list[str],
+) -> dict[str, Any]:
+    pages = {item["page_json_version_id"]: item["page_json"] for item in page_records}
+    document_scope = _document_report_scope_receipt(page_records)
+    populations = []
+    for descriptor, candidate in parts:
+        locator = descriptor["locator"]
+        section, table = _source_table(pages[locator["page_json_version_id"]], section_id=locator["section_id"], table_id=locator["table_id"])
+        lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+        paths, ancestries = [], []
+        for mapping in candidate["mappings"]:
+            for ref in mapping.get("source_refs", []):
+                if (not all(same_typed_json_v1(ref.get("locator", {}).get(key), value) for key, value in locator.items())
+                        or not same_typed_json_v1(ref.get("money_column_ordinals"), descriptor["money_column_ordinals"])):
+                    issues.append("ORIGINAL_NOTE_MAPPING_SOURCE_POPULATION_AXIS_DRIFT")
+                    continue
+                ancestry = _original_note_population_ancestry(table, section, row_ordinal=ref["row_ordinal"], compiled_specs=compiled_specs)
+                if ancestry is None or ancestry["common_population_ancestry_exact"]:
+                    issues.append("ORIGINAL_NOTE_MAPPING_POPULATION_ANCESTRY_UNPROVEN")
+                ancestries.append(ancestry)
+                raw_path = ref.get("hierarchy_path_exact") or []
+                paths.append(raw_path[:-1] if raw_path[-1:] == [ref.get("label_exact")] else raw_path)
+        scope = _note_report_scope_receipt(section, table, source_paths=paths, document_scope=document_scope)
+        if scope["conflict"] or scope["report_scope"] is None or scope["local_entity_qualifiers"]:
+            issues.append("ORIGINAL_NOTE_REPORT_ENTITY_POPULATION_NOT_PROVEN")
+        unit = descriptor["canonical_unit"]
+        if unit not in {"MILLION_VND", "VND"} or not same_typed_json_v1(lane.get("money_column_ordinals"), descriptor["money_column_ordinals"]):
+            issues.append("ORIGINAL_NOTE_UNIT_OR_PERIOD_AXIS_NOT_PROVEN")
+        populations.append({
+            "descriptor_id": descriptor["descriptor_id"], "locator": canonical_clone_v1(locator),
+            "lane_axis": lane, "canonical_unit": unit, "report_scope_receipt": scope,
+            "mapping_ancestry_receipts": ancestries,
+            "printed_duration_lengths": _printed_duration_lengths(table, descriptor["money_column_ordinals"], section=section),
+            "original_table_json_sha256": canonical_json_sha256_v1(table),
+        })
+    counterparts = list(populations)
+    if primary is not None:
+        descriptor = primary["descriptor"]
+        locator = descriptor["locator"]
+        section, table = _source_table(pages[locator["page_json_version_id"]], section_id=locator["section_id"], table_id=locator["table_id"])
+        scope = _note_report_scope_receipt(section, table, source_paths=[item["hierarchy_path_exact"][:-1] for item in descriptor["rows"]], document_scope=document_scope)
+        if scope["conflict"] or scope["report_scope"] is None or scope["local_entity_qualifiers"]:
+            issues.append("ORIGINAL_NOTE_PRIMARY_REPORT_ENTITY_POPULATION_NOT_PROVEN")
+        primary_ancestry = _primary_bridge_population_ancestry(table, row_ordinals=[item["row_ordinal"] for item in descriptor["rows"]])
+        if primary_ancestry is None or primary_ancestry["common_population_ancestry_exact"]:
+            issues.append("ORIGINAL_NOTE_PRIMARY_POPULATION_ANCESTRY_UNPROVEN")
+        counterparts.append({
+            "descriptor_id": canonical_json_sha256_v1(descriptor), "locator": locator,
+            "lane_axis": _multitable_lane_axis(section, table, compiled_specs=compiled_specs),
+            "canonical_unit": descriptor["canonical_unit"], "report_scope_receipt": scope,
+            "printed_duration_lengths": _printed_duration_lengths(table, descriptor["money_column_ordinals"], section=section),
+            "original_table_json_sha256": canonical_json_sha256_v1(table),
+            "primary_population_ancestry_receipt": primary_ancestry,
+        })
+    for population in counterparts:
+        section, table = _source_table(pages[population["locator"]["page_json_version_id"]],
+                                       section_id=population["locator"]["section_id"], table_id=population["locator"]["table_id"])
+        complete = _source_duration_correspondence_complete(
+            population["lane_axis"], population["lane_axis"], note_table=table, primary_table=table,
+            note_lengths=population["printed_duration_lengths"], primary_lengths=population["printed_duration_lengths"],
+        )
+        if any(key[0] in {"BARE_YEAR", "DURATION_BARE_YEAR"} for key in population["lane_axis"].get("source_lane_keys") or []):
+            surface = _normalized(section.get("title_exact"))
+            if ("luy ke" in surface or "year to date" in surface or "quarter" in surface
+                    or re.search(r"\bquy (?:i|ii|iii|iv|1|2|3|4)\b", surface)):
+                complete = False
+        population["self_source_duration_proven"] = complete
+        if not complete:
+            issues.append("ORIGINAL_NOTE_INDIVIDUAL_SOURCE_DURATION_NOT_PROVEN")
+    pairs = []
+    for index, left in enumerate(counterparts):
+        for right in counterparts[index + 1:]:
+            left_section, left_table = _source_table(pages[left["locator"]["page_json_version_id"]], section_id=left["locator"]["section_id"], table_id=left["locator"]["table_id"])
+            right_section, right_table = _source_table(pages[right["locator"]["page_json_version_id"]], section_id=right["locator"]["section_id"], table_id=right["locator"]["table_id"])
+            same_period = _source_duration_correspondence_complete(
+                left["lane_axis"], right["lane_axis"], note_table=left_table, primary_table=right_table,
+                note_lengths=left["printed_duration_lengths"], primary_lengths=right["printed_duration_lengths"],
+            )
+            if any(key[0] in {"BARE_YEAR", "DURATION_BARE_YEAR"} for key in left["lane_axis"].get("source_lane_keys") or []):
+                if any("luy ke" in _normalized(value) or "year to date" in _normalized(value) or "quarter" in _normalized(value)
+                       or re.search(r"\bquy (?:i|ii|iii|iv|1|2|3|4)\b", _normalized(value))
+                       for value in [left_section.get("title_exact"), right_section.get("title_exact")]):
+                    same_period = False
+            same_population = (left["report_scope_receipt"]["report_scope"] == right["report_scope_receipt"]["report_scope"]
+                               and left["report_scope_receipt"]["report_scope"] is not None)
+            if not same_period or not same_population:
+                issues.append("ORIGINAL_NOTE_INDEPENDENT_POPULATION_PERIOD_OR_SCOPE_CONFLICT")
+            pairs.append({"left_descriptor_id": left["descriptor_id"], "right_descriptor_id": right["descriptor_id"],
+                          "same_source_period": same_period, "same_report_entity_population": same_population,
+                          "amounts_used_as_population_authority": False})
+    material = {"populations": counterparts, "pairwise_proofs": pairs,
+                "rule": "ORIGINAL_SOURCE_PERIOD_SCOPE_BEFORE_DUPLICATE_AMOUNT_SELECTION_NO_POPULATION_SUM"}
+    return {**material, "receipt_id": "gjitfav1:original-populations:" + canonical_json_sha256_v1(material)}
+
+
+def _temporary_difference_rollforward_control(
+    *, page: Mapping[str, Any], section: Mapping[str, Any], table: Mapping[str, Any],
+    region: Mapping[str, Any], compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Retain a complete stock/movement/stock control, never an expense mapping."""
+    caption = _normalized(re.sub(r"^\([a-zA-Z]\)\s*", "", str(section.get("title_exact") or "").strip()))
+    annual = re.fullmatch(r"nam ket thuc ngay 31 thang 12 nam (\d{4})", _normalized(table.get("title_exact")))
+    columns = table.get("columns") or []
+    if (caption != "bien dong cac chenh lech tam thoi trong nam" or annual is None
+            or len(columns) != 3 or any(column.get("value_kind") != "MONEY" for column in columns)):
+        return None
+    headers = [_normalized(" ".join(column["header_path_exact"])) for column in columns]
+    unit_suffix = r"(?: (?:trieu vnd|trieu dong|vnd|dong))?"
+    opening = re.fullmatch(r"31 12 (\d{4})" + unit_suffix, headers[0])
+    closing = re.fullmatch(r"31 12 (\d{4})" + unit_suffix, headers[2])
+    movement = re.fullmatch(r"duoc ghi nhan trong bao cao ket qua hoat dong (?:rieng|hop nhat)" + unit_suffix, headers[1])
+    if (opening is None or closing is None or movement is None
+            or int(closing[1]) != int(annual[1]) or int(opening[1]) + 1 != int(closing[1])):
+        return None
+    classifications = [classify_gemini_json_multitable_hierarchical_table_v1(page, section, table, compiled_specs=specs)
+                       for specs in (compiled_specs, compiled_specs["income_tax_original_rate_specs"])]
+    if (any(item["role_hits"] for item in classifications)
+            or any(any(_original_basis_label_roles(table, specs)) for specs in (compiled_specs, compiled_specs["income_tax_original_rate_specs"]))
+            or any(_role_for_primary_label(row.get("label_exact")) is not None for row in table["rows"])):
+        return None
+    # The frozen unit parser reads "hoạt động" as currency "đồng" after
+    # normalization.  Only this exact non-unit semantic phrase is separated;
+    # every explicitly printed unit suffix stays in the private unit-only view.
+    unit_view = canonical_clone_v1(table)
+    semantic_header_controls = []
+    semantic_pattern = r"duoc ghi nhan trong bao cao ket qua hoat dong (?:rieng|hop nhat)(?: (?P<unit>trieu vnd|trieu dong|vnd|dong))?"
+    for ordinal, header in enumerate(columns[1]["header_path_exact"]):
+        semantic = re.fullmatch(semantic_pattern, _normalized(header))
+        if semantic is not None:
+            unit_view["columns"][1]["header_path_exact"][ordinal] = semantic.group("unit") or ""
+            semantic_header_controls.append({"column_ordinal": 2, "header_ordinal": ordinal + 1,
+                                             "source_exact": header, "explicit_unit_suffix": semantic.group("unit"),
+                                             "rule": "EXACT_PNL_RECOGNITION_PHRASE_IS_NOT_CURRENCY_UNIT"})
+    unit = _unit_axis(unit_view, compiled_specs=compiled_specs)
+    if not unit.get("complete") or unit.get("canonical_unit") not in {"MILLION_VND", "VND"}:
+        return None
+    rows = _supplemental_source_rows(table, money_column_ordinals=[1, 2, 3], role_alias_axis=_supplemental_role_alias_axis(compiled_specs))
+    if (len(rows) < 2 or rows[-1]["row_kind"] != "TOTAL" or any(row["row_kind"] != "ITEM" for row in rows[:-1])
+            or any(not row["normalized_label"] for row in rows[:-1])
+            or any(row["hierarchy_path_exact"] != [row["label_exact"]] for row in rows[:-1])
+            or rows[-1]["hierarchy_path_exact"] not in ([rows[-1]["label_exact"]], [] if rows[-1]["label_exact"] is None else [rows[-1]["label_exact"]])
+            or any(not row["values_usable"] or not _all_observed(row["parsed_values"]) for row in rows)):
+        return None
+    row_equations = [{"row_ordinal": row["row_ordinal"], "opening": row["parsed_values"][0],
+                      "movement": row["parsed_values"][1], "closing": row["parsed_values"][2],
+                      "residual": row["parsed_values"][2] - sum(row["parsed_values"][:2])} for row in rows]
+    column_equations = [{"column_ordinal": ordinal + 1, "observed_total": rows[-1]["parsed_values"][ordinal],
+                         "observed_items": [row["parsed_values"][ordinal] for row in rows[:-1]],
+                         "residual": rows[-1]["parsed_values"][ordinal] - sum(row["parsed_values"][ordinal] for row in rows[:-1])}
+                        for ordinal in range(3)]
+    if any(equation["residual"] for equation in [*row_equations, *column_equations]):
+        return None
+    material = {"format_version": "ORIGINAL_TEMPORARY_DIFFERENCE_BALANCE_ROLLFORWARD_SOURCE_CONTROL_V1",
+                "original_region": canonical_clone_v1(region), "original_page_json_sha256": canonical_json_sha256_v1(page),
+                "original_section_json_sha256": canonical_json_sha256_v1(section), "original_table_json_sha256": canonical_json_sha256_v1(table),
+                "source_table_exact": canonical_clone_v1(table), "source_row_axis": rows, "unit_axis": unit,
+                "non_unit_semantic_header_controls": semantic_header_controls,
+                "original_unfiltered_unit_axis": _unit_axis(table, compiled_specs=compiled_specs),
+                "classification_receipts": classifications, "opening_year": int(opening[1]), "closing_year": int(closing[1]),
+                "row_forward_equations": row_equations, "column_total_equations": column_equations,
+                "movement_columns_exported_as_expense": False,
+                "rule": "TEMPORARY_DIFFERENCE_BALANCE_MOVEMENT_NOT_TWO_PERIOD_TAX_EXPENSE_PRESENTATION"}
+    return {**material, "control_id": "gjitfav1:temporary-difference-rollforward:" + canonical_json_sha256_v1(material)}
+
+
+def _build_original_note_adapter_bundle(
+    page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
+    source_context: Mapping[str, Any], repair_receipts: Sequence[Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    """Fresh raw carrier and independent NOTE populations, never generic output."""
+    if not any(item["explicit_rate_surface_ordinals"] for item in source_context["tax_population_inventory"]):
+        rate_aliases = {alias for child in compiled_specs["topology"]["children"]
+                        if child["role"] in {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"}
+                        for matcher in child["matchers"] for alias in matcher["aliases"]}
+        if not any(_without_leading_ordinal(_normalized(surface)) in rate_aliases
+                   for record in page_records for section in record["page_json"].get("sections") or []
+                   if section.get("content_kind") == "FINANCIAL_NOTE"
+                   for table in section.get("tables") or [] for row in table.get("rows") or []
+                   for surface in [row.get("label_exact"), *(row.get("hierarchy_path_exact") or [])]):
+            # Retrieval shortcut only: any literal label/path anchor still
+            # triggers a fresh owner-fenced query.  No cached candidate output
+            # or amount is used as mapping authority.
+            return None
+    carrier = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=page_records, compiled_specs=compiled_specs)
+    if carrier.get("status") != READY:
+        return None
+    pages = {item["page_json_version_id"]: item["page_json"] for item in page_records}
+    basis_receipts, has_rate = [], False
+    for region in carrier["component_regions"]:
+        section, table = _source_table(pages[region["page_json_version_id"]], section_id=region["section_id"], table_id=region["table_id"])
+        if section.get("content_kind") != "FINANCIAL_NOTE":
+            continue
+        classification = classify_gemini_json_multitable_hierarchical_table_v1(
+            pages[region["page_json_version_id"]], section, table, compiled_specs=compiled_specs["income_tax_original_rate_specs"],
+        )
+        roles = {hit["role"] for hit in classification["role_hits"]}
+        bases = []
+        rate_hits = [hit for hit in classification["role_hits"] if hit["role"] in {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"}]
+        rate_ordinal = rate_hits[0]["row_ordinal"] if len(rate_hits) == 1 else None
+        current_ordinals = [hit["row_ordinal"] for hit in classification["role_hits"] if hit["role"] == "CURRENT_TAX_PARENT"]
+        literal_roles = _original_basis_label_roles(table, compiled_specs["income_tax_original_rate_specs"])
+        independent_tax_effect = bool(rate_ordinal is not None and len(current_ordinals) == 1 and any(
+            set(row_roles) & {"NON_DEDUCTIBLE_EXPENSE", "NON_TAXABLE_AGGREGATE"}
+            and rate_ordinal < ordinal < current_ordinals[0] for ordinal, row_roles in enumerate(literal_roles, 1)
+        ))
+        taxable_base_calculation = bool(
+            rate_ordinal is not None and not independent_tax_effect and any(
+                hit["role"] == "TAXABLE_INCOME" and hit["row_ordinal"] < rate_ordinal for hit in classification["role_hits"])
+        )
+        # A printed tax calculation on TAXABLE income is not a second PBT
+        # tax-effect reconciliation.  Keep its existing full INCOME evaluation;
+        # matching a monetary rate alias alone must not reinterpret its basis.
+        # This also applies to repeated printed taxable stages and payable
+        # rollforwards.  A genuine mixed table has a separate post-rate income
+        # adjustment frontier, evaluated privately rather than exported as income.
+        if len(rate_hits) == 1 and {"PROFIT_BEFORE_TAX", "CURRENT_TAX_PARENT"} <= roles and not taxable_base_calculation:
+            bases.append("RATE")
+            has_rate = True
+        if "TAXABLE_INCOME" in roles:
+            bases.append("INCOME")
+        record = next(item for item in page_records if item["page_json_version_id"] == region["page_json_version_id"])
+        for basis in bases:
+            basis_receipts.append(build_gemini_json_income_tax_original_basis_receipt_v1(
+                page_records=page_records, locator=_record_locator(record, section_id=region["section_id"], table_id=region["table_id"]),
+                basis=basis, compiled_specs=compiled_specs,
+            ))
+    if not has_rate:
+        return None
+    issues = []
+    parts = []
+    authenticated_rate_axis = set()
+    coverage_completions = []
+    for receipt in basis_receipts:
+        completed = []
+        if (receipt["status"] != "PASS_PRIVATE_ORIGINAL_BASIS_EVIDENCE_NOT_FAMILY_ACCEPTANCE"
+                and type(receipt.get("private_candidate_proof")) is dict
+                and receipt["private_candidate_proof"].get("status") == READY
+                and receipt["basis_frontier"]["source_boundary_supported"]
+                and receipt["reasons"] and all(re.fullmatch(r"ORIGINAL_BASIS_UNPROVEN_NUMERIC_TOTAL:\d+", reason) for reason in receipt["reasons"])):
+            # A complete INCOME stage need not independently close the separate
+            # RATE stage again.  Only an independently PASS, same-original-table
+            # complementary basis can supply its exact missing total proof.
+            for reason in receipt["reasons"]:
+                ordinal = int(reason.rsplit(":", 1)[1])
+                own = receipt["basis_frontier"]
+                if own["start_row_ordinal"] <= ordinal <= own["terminal_row_ordinal"]:
+                    break
+                row = receipt["source_coverage_receipt"]["source_rows"][ordinal - 1]
+                peers = [peer for peer in basis_receipts
+                         if peer["basis"] != receipt["basis"]
+                         and peer["status"] == "PASS_PRIVATE_ORIGINAL_BASIS_EVIDENCE_NOT_FAMILY_ACCEPTANCE"
+                         and same_typed_json_v1(peer["locator"], receipt["locator"])
+                         and peer["original_page_json_sha256"] == receipt["original_page_json_sha256"]
+                         and peer["original_table_json_sha256"] == receipt["original_table_json_sha256"]
+                         and same_typed_json_v1(peer["original_lane_axis"], receipt["original_lane_axis"])
+                         and same_typed_json_v1(peer["original_unit_axis"], receipt["original_unit_axis"])
+                         and (peer["basis_frontier"]["terminal_row_ordinal"] < own["start_row_ordinal"]
+                              or own["terminal_row_ordinal"] < peer["basis_frontier"]["start_row_ordinal"])
+                         and peer["basis_frontier"]["start_row_ordinal"] <= ordinal <= peer["basis_frontier"]["terminal_row_ordinal"]
+                         and same_typed_json_v1(peer["source_coverage_receipt"]["source_rows"][ordinal - 1]["source_row_exact"], row["source_row_exact"])
+                         and set(peer["source_coverage_receipt"]["source_rows"][ordinal - 1]["dispositions"]) & {"SCHEMA_SOURCE_OBSERVATION", "EXACT_EQUATION_RESULT"}]
+                if len(peers) != 1:
+                    break
+                completed.append({"receipt_id": receipt["receipt_id"], "original_row_ordinal": ordinal,
+                                  "independent_complementary_receipt_id": peers[0]["receipt_id"],
+                                  "source_row_exact": row["source_row_exact"],
+                                  "independent_value_proof_ids": peers[0]["source_coverage_receipt"]["source_rows"][ordinal - 1]["private_value_proof_ids"],
+                                  "rule": "DISJOINT_PRINTED_STAGE_SAME_ORIGINAL_TABLE_TOTAL_HAS_INDEPENDENT_EXACT_VALUE_PROOF"})
+        if (receipt["status"] != "PASS_PRIVATE_ORIGINAL_BASIS_EVIDENCE_NOT_FAMILY_ACCEPTANCE"
+                and len(completed) != len(receipt["reasons"])):
+            issues.append("ORIGINAL_NOTE_BASIS_EVIDENCE_INCOMPLETE:" + receipt["basis"])
+            continue
+        coverage_completions.extend(completed)
+        descriptor = {"descriptor_id": receipt["receipt_id"], "locator": receipt["locator"],
+                      "canonical_unit": receipt["original_unit_axis"].get("canonical_unit"),
+                      "money_column_ordinals": receipt["identity_view_receipt"]["money_column_ordinals"]}
+        original_regions = [region for region in carrier["component_regions"]
+                            if all(same_typed_json_v1(region.get(key), value) for key, value in receipt["locator"].items())]
+        if len(original_regions) != 1:
+            raise _error("income-tax original-note output requires one original carrier region")
+        parts.append((descriptor, _original_note_restored_candidate(receipt, original_region=original_regions[0])))
+        if receipt["basis"] == "RATE":
+            authenticated_rate_axis.add(tuple(receipt["locator"][key] for key in ("page_json_version_id", "section_id", "table_id")))
+    supplemental_issues: list[str] = []
+    supplemental = _supplemental_presentations(page_records, compiled_specs=compiled_specs, issues=supplemental_issues,
+                                              authenticated_rate_table_axis=frozenset(authenticated_rate_axis))
+    issues.extend(supplemental_issues)
+    for descriptor in supplemental:
+        original_regions = [region for region in carrier["component_regions"]
+                            if all(same_typed_json_v1(region.get(key), value) for key, value in descriptor["locator"].items())]
+        if len(original_regions) != 1:
+            issues.append("ORIGINAL_NOTE_SUPPLEMENTAL_REGION_NOT_IN_ORIGINAL_CARRIER")
+            continue
+        part = _evaluate_supplemental_descriptor(descriptor, repaired_pages=pages, compiled_specs=compiled_specs)
+        parts.append((descriptor, _original_note_bind_supplemental_output_region(part, original_region=original_regions[0])))
+    primary, primary_reasons = _select_primary_presentation(page_records, compiled_specs=compiled_specs)
+    if primary is None and any(reason.startswith(("CONFLICTING_PRIMARY_", "MULTIPLE_EQUIVALENT_PRIMARY_", "INVALID_PRIMARY_",
+                                                  "DUPLICATE_PRIMARY_", "MISMATCHED_PRIMARY_")) for reason in primary_reasons):
+        issues.extend(primary_reasons)
+    # No original owned source table may disappear merely because a private
+    # candidate contains enough other rows.  Basis receipts cover full raw axes;
+    # other tables require explicit supplemental rows or root-control evidence.
+    coverage = []
+    for region in carrier["component_regions"]:
+        locator_key = tuple(region[key] for key in ("page_json_version_id", "section_id", "table_id"))
+        section, table = _source_table(pages[locator_key[0]], section_id=locator_key[1], table_id=locator_key[2])
+        if section.get("content_kind") != "FINANCIAL_NOTE":
+            issues.append("ORIGINAL_NOTE_CARRIER_CONTAINS_NON_NOTE_REGION")
+            continue
+        movement_control = _temporary_difference_rollforward_control(
+            page=pages[locator_key[0]], section=section, table=table, region=region, compiled_specs=compiled_specs,
+        )
+        if movement_control is not None:
+            coverage.append({"region": canonical_clone_v1(region), "original_table_json_sha256": canonical_json_sha256_v1(table),
+                             "basis_receipt_ids": [], "supplemental_claimed_ordinals": [], "unaccounted_quantitative_row_ordinals": [],
+                             "source_rows_exact": canonical_clone_v1(table["rows"]), "source_only_table_control": movement_control})
+            continue
+        basis_ids = [item["receipt_id"] for item in basis_receipts if tuple(item["locator"][key] for key in ("page_json_version_id", "section_id", "table_id")) == locator_key]
+        claimed = {row["row_ordinal"] for descriptor in supplemental
+                   if tuple(descriptor["locator"][key] for key in ("page_json_version_id", "section_id", "table_id")) == locator_key
+                   for row in descriptor["rows"]}
+        claimed.update(control["root_source_row"]["row_ordinal"] for control in source_context["supplemental_root_controls"]
+                       if tuple(control["locator"][key] for key in ("page_json_version_id", "section_id", "table_id")) == locator_key)
+        lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+        ordinals = lane.get("money_column_ordinals") or []
+        if not lane.get("complete") or len(ordinals) != 2:
+            issues.append("ORIGINAL_NOTE_CARRIER_SOURCE_PERIOD_AXIS_INCOMPLETE")
+        uncovered = [ordinal for ordinal, row in enumerate(table["rows"], 1) if not basis_ids and ordinal not in claimed
+                     and any(row["values_exact"][column - 1] is not None for column in ordinals)]
+        if uncovered:
+            issues.append("ORIGINAL_NOTE_UNACCOUNTED_SOURCE_POPULATION_ROWS")
+        coverage.append({"region": canonical_clone_v1(region), "original_table_json_sha256": canonical_json_sha256_v1(table),
+                         "basis_receipt_ids": basis_ids, "supplemental_claimed_ordinals": sorted(claimed),
+                         "unaccounted_quantitative_row_ordinals": uncovered, "source_rows_exact": canonical_clone_v1(table["rows"])})
+    population_proof = _original_note_population_proofs(parts, page_records=page_records, primary=primary,
+                                                      compiled_specs=compiled_specs, issues=issues)
+    if not parts:
+        issues.append("ORIGINAL_NOTE_POPULATION_PARTS_ABSENT")
+    material = {
+        "adapter_format_version": ORIGINAL_NOTE_ADAPTER_FORMAT_VERSION,
+        "adapter_spec_sha256": compiled_specs["income_tax_adapter_spec_sha256"],
+        "strategy": _ORIGINAL_NOTE_STRATEGY, "rule": "INDEPENDENT_ORIGINAL_NOTE_POPULATIONS_BEFORE_GENUINE_PRIMARY_COMPARISON",
+        "repair_receipt_ids": [item["receipt_id"] for item in repair_receipts],
+        "source_context_receipt_id": source_context["receipt_id"],
+        "original_shared_query_receipt": build_gemini_json_multitable_hierarchical_region_query_receipt_v1(carrier["component_regions"]),
+        "basis_table_receipts": basis_receipts, "supplemental_projection_receipts": supplemental,
+        "independent_basis_coverage_completion_receipts": coverage_completions,
+        "primary_projection_receipt": primary["descriptor"] if primary is not None else None,
+        "primary_selection_reasons": primary_reasons,
+        "source_population_coverage": coverage, "independent_population_receipt": population_proof,
+        "reasons": sorted(set(issues)),
+    }
+    adapter = {**material, "receipt_id": "gjitfav1:original-query:" + canonical_json_sha256_v1(material)}
+    return {"carrier": carrier, "adapter": adapter, "parts": parts, "primary": primary,
+            "status": READY if not issues else UNRESOLVED, "reasons": sorted(set(issues))}
+
+
+def _evaluate_original_note_adapter(
+    bundle: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
+    repair_receipts: Sequence[Mapping[str, Any]], source_context: Mapping[str, Any],
+    page_records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    if bundle["status"] != READY or not bundle["parts"]:
+        first = bundle["carrier"]["component_regions"][0]
+        material = {
+            "claim_boundary": CLAIM_BOUNDARY, "component_regions": canonical_clone_v1(bundle["carrier"]["component_regions"]),
+            **{key: first[key] for key in ("document_id", "page_json_version_id", "physical_page", "section_id", "table_id", "source_logical_name", "source_sha256")},
+            "family_id": FAMILY_ID, "mappings": [], "reasons": bundle["reasons"], "status": UNRESOLVED,
+            "closure_receipt": {"original_note_adapter_receipt": canonical_clone_v1(bundle["adapter"]),
+                                "income_tax_source_context_receipt": canonical_clone_v1(source_context)},
+        }
+        return {**material, "candidate_id": "gjmthfcv1:candidate:" + canonical_json_sha256_v1(material)}
+    selection_parts, identical_source_controls, seen_source = [], [], {}
+    for descriptor, part in bundle["parts"]:
+        unique = []
+        for mapping in part["mappings"]:
+            identity = canonical_json_sha256_v1({
+                "role": mapping["role"], "report_norm_id": mapping["report_norm_id"], "unit": mapping["unit"],
+                "source_refs": [{key: canonical_clone_v1(ref[key]) for key in (
+                    "row_ordinal", "row_kind", "label_exact", "hierarchy_path_exact", "money_column_ordinals",
+                )} | {"locator": {key: ref["locator"][key] for key in descriptor["locator"]}}
+                                for ref in mapping["source_refs"]],
+            })
+            if identity in seen_source:
+                if not same_typed_json_v1(mapping["values"], seen_source[identity]["values"]):
+                    raise _error("income-tax same-original-source observation values drifted")
+                identical_source_controls.append({"descriptor_id": descriptor["descriptor_id"],
+                                                  "source_identity_sha256": identity, "mapping": canonical_clone_v1(mapping)})
+            else:
+                seen_source[identity] = mapping
+                unique.append(mapping)
+        selection_parts.append((descriptor, {"status": READY, "mappings": unique}))
+    selected, suppressed, conflict = _select_supplemental_role_mappings(selection_parts)
+    template = canonical_clone_v1(bundle["parts"][0][1])
+    template["component_regions"] = canonical_clone_v1(bundle["carrier"]["component_regions"])
+    if conflict:
+        return _unresolved_from_candidate(template, reason=conflict, evidence=bundle["adapter"])
+    note = {key: canonical_clone_v1(value) for key, value in template.items() if key != "closure_receipt"}
+    note["component_regions"] = canonical_clone_v1(bundle["carrier"]["component_regions"])
+    note["mappings"] = [selected[role][0] for role in sorted(selected)]
+    note["closure_receipt"] = {
+        "equations": [canonical_clone_v1(equation) for _, part in bundle["parts"] for equation in part["closure_receipt"].get("equations", [])],
+        "source_only_unmapped_rows": [canonical_clone_v1(row) for _, part in bundle["parts"] for row in part["closure_receipt"].get("source_only_unmapped_rows", [])],
+        "original_note_adapter_receipt": canonical_clone_v1(bundle["adapter"]),
+        "suppressed_equivalent_note_mappings": suppressed,
+        "identical_original_source_observation_controls": identical_source_controls,
+        "rule": "INDEPENDENT_SOURCE_NOTE_POPULATIONS_UNION_NO_CROSS_POPULATION_ADDITION",
+    }
+    note["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1({key: value for key, value in note.items() if key != "candidate_id"})
+    primary = bundle["primary"]
+    if primary is not None:
+        primary_candidate = _evaluate_selected_primary(primary, repaired_pages={item["page_json_version_id"]: item["page_json"] for item in page_records},
+                                                       repair_receipts=repair_receipts, compiled_specs=compiled_specs)
+        note = _merge_note_and_primary_candidates(note, primary_candidate, descriptor=primary["descriptor"],
+                                                  repair_receipts=repair_receipts, compiled_specs=compiled_specs,
+                                                  strategy=_ORIGINAL_NOTE_STRATEGY, page_records=page_records)
+    else:
+        note = _reseal_candidate(note, descriptor=None, repair_receipts=repair_receipts,
+                                 strategy=_ORIGINAL_NOTE_STRATEGY, compiled_specs=compiled_specs)
+    return _seal_income_tax_source_controls(note, source_context=source_context, repaired_records=page_records, compiled_specs=compiled_specs)
+
+
 def recover_gemini_json_income_tax_query_cluster_v1(
     *,
     page_records: Any,
@@ -3135,6 +3719,17 @@ def recover_gemini_json_income_tax_query_cluster_v1(
             reasons=root_issues,
             status=UNRESOLVED,
         )
+    original_bundle = _build_original_note_adapter_bundle(
+        repaired_records, compiled_specs=compiled_specs, source_context=context, repair_receipts=repair_receipts,
+    )
+    if original_bundle is not None:
+        carrier = original_bundle["carrier"]
+        owner = canonical_clone_v1(carrier.get("owner_receipt")) or {}
+        owner["income_tax_source_context_receipt"] = context
+        owner["income_tax_query_adapter_receipt"] = original_bundle["adapter"]
+        # READY here means the original query carrier is authenticated.  All
+        # semantic holds are preserved in the adapter and final disposition.
+        return _reseal_cluster(carrier, owner_receipt=owner, status=READY, reasons=[])
     note_candidate = None
     if selected_base.get("status") == READY:
         regions = selected_base["component_regions"]
@@ -4183,23 +4778,27 @@ def _source_duration_correspondence_complete(
     keys = note_lane.get("source_lane_keys")
     if (not note_lane.get("complete") or not primary_lane.get("complete")
             or not same_typed_json_v1(keys, primary_lane.get("source_lane_keys"))
-            or len(keys or []) != 2 or note_lengths != primary_lengths
+            or len(keys or []) != 2 or len(note_lengths) != 2 or len(primary_lengths) != 2
             or any(len(lengths) > 1 or any(length < 1 or length > 12 for length in lengths)
                    for lengths in [*note_lengths, *primary_lengths])):
         return False
     for index, key in enumerate(keys):
         if key[0] == "DURATION_DATE_RANGE":
-            if note_lengths[index]:
+            for stated_lengths in (note_lengths[index], primary_lengths[index]):
+                if not stated_lengths:
+                    continue
                 try:
                     start, end = date.fromisoformat(key[1]), date.fromisoformat(key[2])
                     end_exclusive = end + timedelta(days=1)
                 except (ValueError, TypeError, IndexError, OverflowError):
                     return False
-                printed_months = note_lengths[index][0]
+                printed_months = stated_lengths[0]
                 if (start.day != end_exclusive.day or start > end
                         or (end_exclusive.year - start.year) * 12 + end_exclusive.month - start.month != printed_months):
                     return False
             continue
+        if note_lengths[index] != primary_lengths[index]:
+            return False
         if key[0] == "DURATION_END_DATE":
             if len(note_lengths[index]) != 1:
                 return False
@@ -4247,7 +4846,7 @@ def _note_primary_signed_display_proof(
     if not primary_scope and document_scope["report_scope"] is not None:
         primary_scope = [document_scope["report_scope"]]
     primary_by_role = {mapping["role"]: mapping for mapping in primary_candidate["mappings"]}
-    overlaps, tables = [], {}
+    overlaps, tables, neutral_zero_controls = [], {}, []
     tax_roles = {"CURRENT_TAX_PARENT", "DEFERRED_TAX_NET", "FAMILY_ROOT_TOTAL"}
     for mapping in note_candidate["mappings"]:
         role = mapping["role"]
@@ -4284,13 +4883,8 @@ def _note_primary_signed_display_proof(
                 or not same_typed_json_v1(lane.get("money_column_ordinals"), ref.get("money_column_ordinals"))
             ):
                 return None
-            population = _primary_bridge_population_ancestry(
-                table, row_ordinals=[ref["row_ordinal"]],
-                structural_owner_surfaces=[section.get("title_exact"), table.get("title_exact")],
-                structural_owner_aliases=[
-                    *compiled_specs["topology"]["parent"]["aliases"],
-                    *compiled_specs["evaluation"]["query_owner_aliases"],
-                ],
+            population = _original_note_population_ancestry(
+                table, section, row_ordinal=ref["row_ordinal"], compiled_specs=compiled_specs,
             )
             if population is None or not same_typed_json_v1(
                 population["common_population_ancestry_exact"],
@@ -4337,7 +4931,13 @@ def _note_primary_signed_display_proof(
             for ref in primary["source_refs"]
         ):
             return None
-        if _cross_source_mapping_signs(mapping, primary, allow_sign_inversion=True) != frozenset({-1}):
+        signs = _cross_source_mapping_signs(mapping, primary, allow_sign_inversion=True)
+        if signs == frozenset({-1, 1}):
+            neutral_zero_controls.append({"note_mapping": canonical_clone_v1(mapping),
+                                          "primary_mapping": canonical_clone_v1(primary),
+                                          "rule": "OBSERVED_ZERO_OVERLAP_HAS_NO_SIGN_ORIENTATION_AUTHORITY"})
+            continue
+        if signs != frozenset({-1}):
             return None
         overlaps.append({"note_mapping": canonical_clone_v1(mapping),
                          "primary_mapping": canonical_clone_v1(primary), "orientation": -1})
@@ -4347,6 +4947,7 @@ def _note_primary_signed_display_proof(
         "rule": "PRINTED_PROFIT_BRIDGE_AND_INDEPENDENT_NONROOT_TAX_OVERLAP_EXACT_SOURCE_PERIODS_NO_VALUE_CHANGE",
         "primary_expense_display_receipt": canonical_clone_v1(display),
         "independent_nonroot_overlaps": overlaps,
+        "neutral_observed_zero_controls": neutral_zero_controls,
         "note_source_tables": [tables[key] for key in sorted(tables)],
         "note_candidate_id": note_candidate["candidate_id"],
         "primary_candidate_id": primary_candidate["candidate_id"],
@@ -4987,6 +5588,18 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
         raise _error("income-tax source context query replay drifted")
     repaired_pages = {item["page_json_version_id"]: item["page_json"] for item in repaired_records}
     adapter = checked["adapter_receipt"]
+    original_bundle = _build_original_note_adapter_bundle(
+        repaired_records, compiled_specs=compiled_specs, source_context=expected_context, repair_receipts=repair_receipts,
+    )
+    if original_bundle is not None:
+        if (type(adapter) is not dict or adapter.get("adapter_format_version") != ORIGINAL_NOTE_ADAPTER_FORMAT_VERSION
+                or not same_typed_json_v1(adapter, original_bundle["adapter"])
+                or not same_typed_json_v1(checked["shared_query_receipt"], original_bundle["adapter"]["original_shared_query_receipt"])):
+            raise _error("income-tax original-note adapter source query replay drifted")
+        return _evaluate_original_note_adapter(original_bundle, compiled_specs=compiled_specs, repair_receipts=repair_receipts,
+                                               source_context=expected_context, page_records=repaired_records)
+    if type(adapter) is dict and adapter.get("adapter_format_version") == ORIGINAL_NOTE_ADAPTER_FORMAT_VERSION:
+        raise _error("income-tax original-note adapter has no original source populations")
     if adapter is None:
         selected_primary, primary_reasons = _select_primary_presentation(
             repaired_records, compiled_specs=compiled_specs

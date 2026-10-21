@@ -1895,8 +1895,10 @@ def test_rich_supplemental_reconciliation_keeps_unknown_adjustment_source_only()
     records[0]["page_json"] = note_page
     records[1]["page_json"] = primary_page
     _printed_annual_primary(records)
+    note_page["sections"][0]["title_exact"] = OWNER + " hợp nhất"
+    primary_page["sections"][0]["title_exact"] = "Báo cáo kết quả hoạt động hợp nhất"
     _cluster, candidate = _evaluate_supplemental_records(records, compiled=compiled)
-    assert candidate["status"] == READY
+    assert candidate["status"] == READY, candidate["reasons"]
     by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
     assert "CURRENT_TAX_AT_RATE" not in by_role
     assert "NON_DEDUCTIBLE_EXPENSE" not in by_role
@@ -1908,22 +1910,11 @@ def test_rich_supplemental_reconciliation_keeps_unknown_adjustment_source_only()
         by_role["CURRENT_YEAR_TAX_EXPENSE"]["source_refs"][0]["locator"]["table_id"]
         == "t1"
     )
-    proof = candidate["closure_receipt"]["income_tax_adapter_receipt"][
-        "primary_candidate_proof"
-    ]
-    reconciliation_receipt = next(
-        item
-        for item in proof["supplemental_projection_receipts"]
-        if item["locator"]["table_id"] == "t2"
-    )
-    assert [
-        component["role"]
-        for component in reconciliation_receipt["equation_receipts"][0]["component_rows"]
-    ] == [
-        "CURRENT_TAX_AT_RATE",
-        "SOURCE_ONLY_EQUATION_COMPONENT",
-        "SOURCE_ONLY_EQUATION_COMPONENT",
-    ]
+    proof = candidate["closure_receipt"]["original_note_adapter_receipt"]
+    reconciliation_receipt = next(item for item in proof["basis_table_receipts"] if item["locator"]["table_id"] == "t2")
+    assert reconciliation_receipt["basis"] == "RATE"
+    assert reconciliation_receipt["identity_view_receipt"]["source_rows"][3]["row_exact"] == reconciliation["rows"][3]
+    assert reconciliation_receipt["source_coverage_receipt"]["source_rows"][3]["source_values_exact"] == ["(1)", "(1)"]
     assert all(
         mapping["source_refs"][0]["locator"]["table_id"] != "t2"
         for mapping in candidate["mappings"]
@@ -2426,7 +2417,8 @@ def test_direct_note_rate_tax_effect_is_not_exported_as_income_adjustment(rate_l
     )
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
-    assert candidate["reasons"] == ["INCOME_TAX_RATE_RECONCILIATION_MEASUREMENT_BASIS_AMBIGUITY"]
+    assert "ORIGINAL_NOTE_REPORT_ENTITY_POPULATION_NOT_PROVEN" in candidate["reasons"]
+    assert candidate["closure_receipt"]["original_note_adapter_receipt"]["basis_table_receipts"][0]["private_candidate_proof"]["mappings"]
 
 
 @pytest.mark.parametrize("field", ["tax_population_inventory", "semantic_spec_sha256"])
@@ -2547,11 +2539,14 @@ def test_rich_reconciliation_parent_conflict_with_primary_fails_closed() -> None
     )
     records[0]["page_json"] = _page([], tables=[reconciliation])
     records[1]["page_json"] = primary_page
+    records[0]["page_json"]["sections"][0]["title_exact"] = OWNER + " hợp nhất"
+    primary_page["sections"][0]["title_exact"] = "Báo cáo kết quả hoạt động hợp nhất"
+    _printed_annual_primary(records)
     _cluster, candidate = _evaluate_supplemental_records(records, compiled=compiled)
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
     assert candidate["reasons"] == [
-        "CONFLICTING_DIRECT_SUPPLEMENTAL_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"
+        "CONFLICTING_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"
     ]
 
 
@@ -3345,3 +3340,487 @@ def test_original_validation_operand_report_scope_is_checked_not_only_schema_map
     assert (reason in receipt["reasons"]) is expected_hold
     if expected_hold:
         assert receipt["status"] == "ALGORITHM_HOLD"
+
+
+def _original_note_production_records(*, income: bool = False, expense_component: str | None = None,
+                                      primary_present: bool = True) -> list[dict[str, Any]]:
+    records, _ = _original_basis_fixture()
+    note = records[0]["page_json"]
+    note["sections"][0]["title_exact"] = OWNER + " hợp nhất"
+    tables = note["sections"][0]["tables"]
+    if income:
+        income_records, _ = _original_basis_fixture("INCOME")
+        tables.insert(0, deepcopy(income_records[0]["page_json"]["sections"][0]["tables"][0]))
+    if expense_component is not None:
+        group = "Chi phí thuế hiện hành"
+        tables.insert(0, _table([
+            _row(group, None, None, kind="GROUP"),
+            {**_row(expense_component, "25", "20"), "hierarchy_path_exact": [group, expense_component]},
+            {**_row("Chi phí năm trước", "2", "1"), "hierarchy_path_exact": [group, "Chi phí năm trước"]},
+            {**_row(None, "27", "21", kind="SUBTOTAL"), "hierarchy_path_exact": [group, None]},
+        ]))
+    if primary_present:
+        primary_page = _primary_page(_primary_tax_rows(current=("27", "21"), deferred=("2", "1"), root=("29", "22")))
+        primary_page["sections"][0]["title_exact"] = "Báo cáo kết quả hoạt động hợp nhất"
+        records.append(_primary_record(primary_page, page_json_version_id="gfpstorev1:json:" + "d" * 64,
+                                       physical_page=2, selected_page_ordinal=2))
+        _printed_annual_primary(records)
+    return records
+
+
+def _evaluate_original_note_production(records, *, compiled=None):
+    compiled = _adapter_compiled() if compiled is None else compiled
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=records, compiled_specs=compiled)
+    cluster = recover_gemini_json_income_tax_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
+    receipt = build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster)
+    candidate = evaluate_gemini_json_income_tax_family_cluster_v1(
+        regions=cluster["component_regions"], page_json_by_version={item["page_json_version_id"]: item["page_json"] for item in records},
+        selected_page_axis=[{key: value for key, value in item.items() if key != "page_json"} for item in records],
+        compiled_specs=compiled, query_receipt=receipt,
+    )
+    return cluster, receipt, candidate
+
+
+@pytest.mark.parametrize("income", [False, True])
+@pytest.mark.parametrize("expense_component", [None, "Năm hiện hành", "Kỳ hiện hành"])
+def test_original_note_adapter_preserves_independent_income_rate_and_expense_populations(income, expense_component) -> None:
+    records = _original_note_production_records(income=income, expense_component=expense_component)
+    original = deepcopy(records)
+    cluster, receipt, candidate = _evaluate_original_note_production(records)
+    assert receipt["adapter_receipt"]["adapter_format_version"] == "GEMINI_JSON_INCOME_TAX_ORIGINAL_NOTE_ADAPTER_V1"
+    assert candidate["status"] == READY, candidate["reasons"]
+    assert records == original
+    mappings = {item["role"]: item for item in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in mappings["CURRENT_TAX_PARENT"]["values"]] == [27, 21]
+    assert [cell["coefficient"] for cell in mappings["PRIOR_PERIOD_TAX_ADJUSTMENT"]["values"]] == [2, 1]
+    assert [cell["coefficient"] for cell in mappings["PROFIT_BEFORE_TAX"]["values"]] == [100, 80]
+    assert ("NON_TAXABLE_AGGREGATE" in mappings) is income
+    assert ("NON_DEDUCTIBLE_EXPENSE" in mappings) is income
+    assert ("TAXABLE_INCOME" in mappings) is income
+    assert ("CURRENT_YEAR_TAX_EXPENSE" in mappings) is (expense_component == "Năm hiện hành")
+    assert "CURRENT_PERIOD_TAX_EXPENSE_SOURCE_ONLY" not in mappings
+    assert all(item["role"] not in {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"} for item in mappings.values())
+    adapter = receipt["adapter_receipt"]
+    assert adapter["original_shared_query_receipt"] == receipt["shared_query_receipt"]
+    assert len(cluster["component_regions"]) == len(records[0]["page_json"]["sections"][0]["tables"])
+    assert all(not pair["amounts_used_as_population_authority"] for pair in adapter["independent_population_receipt"]["pairwise_proofs"])
+
+
+def test_original_note_adapter_without_primary_keeps_real_note_identity_and_no_fabricated_primary() -> None:
+    records = _original_note_production_records(primary_present=False)
+    _, receipt, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    assert receipt["adapter_receipt"]["primary_projection_receipt"] is None
+    assert candidate["closure_receipt"]["income_tax_adapter_receipt"]["primary_projection_receipt"] is None
+    assert {item["report_norm_id"] for item in candidate["mappings"]} == {5728, 5723, 5733}
+
+
+@pytest.mark.parametrize("second_section", [False, True])
+@pytest.mark.parametrize("expense_component", [None, "Năm hiện hành"])
+def test_original_note_restores_entire_raw_carrier_locator_not_private_fragment_metadata(second_section: bool, expense_component) -> None:
+    records = _original_note_production_records(income=True, expense_component=expense_component)
+    if second_section:
+        records[0]["page_json"]["sections"].insert(0, {
+            "content_kind": "FINANCIAL_NOTE", "narratives_exact": [], "statement_type": "NOT_APPLICABLE",
+            "tables": [], "title_exact": "1 Tổng quan",
+        })
+    original = deepcopy(records)
+    cluster, receipt, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    regions = {(region["page_json_version_id"], region["section_id"], region["table_id"]): region
+               for region in cluster["component_regions"]}
+    restored = []
+
+    def collect(value):
+        if type(value) is list:
+            for child in value:
+                collect(child)
+        elif type(value) is dict:
+            if type(value.get("locator")) is dict and type(value.get("row_ordinal")) is int:
+                locator = value["locator"]
+                key = tuple(locator[field] for field in ("page_json_version_id", "section_id", "table_id"))
+                if locator["page_json_version_id"] == VERSION_ID:
+                    assert locator == regions[key]
+                    restored.append(locator)
+            else:
+                for child in value.values():
+                    collect(child)
+
+    collect(candidate["mappings"])
+    collect(candidate["closure_receipt"]["equations"])
+    collect(candidate["closure_receipt"]["source_only_unmapped_rows"])
+    assert restored and any(locator["table_id"] == "t2" and locator["fragment_ordinal"] == 2 for locator in restored)
+    if second_section:
+        assert all(locator["section_id"] == "s2" for locator in restored)
+    # The original private proof remains in its own identity-view namespace.
+    assert all(region["section_id"] == "s1" and region["table_id"] == "t1"
+               for basis in receipt["adapter_receipt"]["basis_table_receipts"]
+               for region in basis["private_candidate_proof"]["component_regions"])
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", ["scope", "entity", "year", "relative", "unknown_total", "extra_period"])
+def test_original_note_adapter_does_not_merge_equal_values_across_unknown_source_populations(mutation) -> None:
+    records = _original_note_production_records(expense_component="Năm hiện hành")
+    section = records[0]["page_json"]["sections"][0]
+    if mutation == "scope":
+        section["tables"][0]["title_exact"] = "Chi phí thuế hiện hành riêng"
+    elif mutation == "entity":
+        section["tables"][1]["rows"][-1]["hierarchy_path_exact"] = ["Ngân hàng mẹ", section["tables"][1]["rows"][-1]["label_exact"]]
+    elif mutation == "year":
+        section["tables"][1]["columns"][1]["header_path_exact"] = ["Năm 2024", "Triệu đồng"]
+    elif mutation == "relative":
+        section["tables"][1]["columns"] = [{"header_path_exact": [label], "value_kind": "MONEY"} for label in ("Năm nay", "Năm trước")]
+    elif mutation == "unknown_total":
+        section["tables"][1]["rows"].insert(3, _row("Tổng khác chưa được chứng minh", "999", "999", kind="SUBTOTAL"))
+    else:
+        section["tables"][1]["rows"].insert(3, _row("Kỳ hiện hành", "0", "0"))
+    _, _, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+
+
+@pytest.mark.parametrize("path,value", [
+    (("source_population_coverage", 0, "unaccounted_quantitative_row_ordinals"), [999]),
+    (("basis_table_receipts", 0, "private_semantic_spec_sha256"), "0" * 64),
+    (("independent_population_receipt", "pairwise_proofs", 0, "same_source_period"), False),
+    (("primary_projection_receipt",), None),
+    (("reasons",), ["FORGED"]),
+    (("supplemental_projection_receipts",), []),
+])
+def test_original_note_adapter_rebuild_rejects_self_resealed_population_proof(path, value) -> None:
+    records = _original_note_production_records(expense_component="Năm hiện hành")
+    compiled = _adapter_compiled()
+    cluster, receipt, candidate = _evaluate_original_note_production(records, compiled=compiled)
+    assert candidate["status"] == READY, candidate["reasons"]
+    forged = deepcopy(receipt)
+    parent = forged["adapter_receipt"]
+    for key in path[:-1]:
+        parent = parent[key]
+    parent[path[-1]] = value
+    adapter = forged["adapter_receipt"]
+    adapter["receipt_id"] = "gjitfav1:original-query:" + canonical_json_sha256_v1({key: item for key, item in adapter.items() if key != "receipt_id"})
+    forged["query_receipt_id"] = "gjitfav1:query-receipt:" + canonical_json_sha256_v1({key: item for key, item in forged.items() if key != "query_receipt_id"})
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="original-note adapter source query replay drifted"):
+        evaluate_gemini_json_income_tax_family_cluster_v1(
+            regions=cluster["component_regions"], page_json_by_version={item["page_json_version_id"]: item["page_json"] for item in records},
+            selected_page_axis=[{key: item for key, item in record.items() if key != "page_json"} for record in records],
+            compiled_specs=compiled, query_receipt=forged,
+        )
+
+
+def test_original_note_adapter_keeps_income_and_rate_stages_in_one_unchanged_table() -> None:
+    records = _original_note_production_records(income=True)
+    tables = records[0]["page_json"]["sections"][0]["tables"]
+    tables[0]["rows"].extend(deepcopy(tables[1]["rows"][1:]))
+    tables.pop()
+    original = deepcopy(records)
+    _, receipt, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    mappings = {item["role"]: item for item in candidate["mappings"]}
+    assert [value["coefficient"] for value in mappings["NON_DEDUCTIBLE_EXPENSE"]["values"]] == [5, 3]
+    assert mappings["NON_DEDUCTIBLE_EXPENSE"]["source_refs"][0]["row_ordinal"] == 3
+    assert [value["coefficient"] for value in mappings["CURRENT_TAX_PARENT"]["values"]] == [27, 21]
+    assert {item["basis"] for item in receipt["adapter_receipt"]["basis_table_receipts"]} == {"INCOME", "RATE"}
+    assert records == original
+
+
+@pytest.mark.parametrize("right_lengths,expected", [([[], []], True), ([[6], [6]], True), ([[3], [6]], False)])
+def test_original_exact_date_range_does_not_require_redundant_month_length_on_both_sources(right_lengths, expected) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _source_duration_correspondence_complete,
+    )
+
+    table = _table([])
+    lane = {"complete": True, "money_column_ordinals": [1, 2],
+            "source_lane_keys": [["DURATION_DATE_RANGE", "2026-01-01", "2026-06-30"],
+                                 ["DURATION_DATE_RANGE", "2025-01-01", "2025-06-30"]]}
+    assert _source_duration_correspondence_complete(lane, lane, note_table=table, primary_table=table,
+                                                   note_lengths=[[6], [6]], primary_lengths=right_lengths) is expected
+
+
+def test_original_note_signed_primary_preserves_independent_period_observations() -> None:
+    records = _original_note_production_records(expense_component="Kỳ hiện hành")
+    table = records[-1]["page_json"]["sections"][0]["tables"][0]
+    for row in table["rows"]:
+        row["values_exact"] = ["(" + value + ")" for value in row["values_exact"]]
+    table["rows"].insert(0, _row("Tổng lợi nhuận trước thuế", "100", "80"))
+    table["rows"].append(_row("Lợi nhuận sau thuế", "71", "58"))
+    original = deepcopy(records)
+    _, _, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    mappings = {item["role"]: item for item in candidate["mappings"]}
+    assert [value["coefficient"] for value in mappings["CURRENT_TAX_PARENT"]["values"]] == [27, 21]
+    assert [value["coefficient"] for value in mappings["PRIOR_PERIOD_TAX_ADJUSTMENT"]["values"]] == [2, 1]
+    assert [value["coefficient"] for value in mappings["FAMILY_ROOT_TOTAL"]["values"]] == [-29, -22]
+    assert "CURRENT_YEAR_TAX_EXPENSE" not in mappings
+    assert candidate["closure_receipt"]["income_tax_adapter_receipt"]["primary_candidate_proof"]["signed_display_proof"]
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", ["relative", "quarter_caption", "endpoint_without_length", "unknown_primary_ancestry", "second_table_bad_axis"])
+def test_original_note_population_proof_has_no_empty_pair_or_carrier_axis_bypass(mutation) -> None:
+    primary_present = mutation == "unknown_primary_ancestry"
+    records = _original_note_production_records(primary_present=primary_present)
+    section = records[0]["page_json"]["sections"][0]
+    if mutation == "relative":
+        section["tables"][0]["columns"] = [{"header_path_exact": [label], "value_kind": "MONEY"} for label in ("Năm nay", "Năm trước")]
+    elif mutation == "quarter_caption":
+        section["title_exact"] += " quarter 4 year 2026"
+    elif mutation == "endpoint_without_length":
+        section["tables"][0]["columns"] = [{"header_path_exact": ["30/6/" + year], "value_kind": "MONEY"} for year in ("2026", "2025")]
+    elif mutation == "unknown_primary_ancestry":
+        for row in records[-1]["page_json"]["sections"][0]["tables"][0]["rows"]:
+            row["hierarchy_path_exact"].insert(0, "Phân khúc A")
+    else:
+        extra = _table([_row("Chi phí thuế TNDN hiện hành", "27", "21")])
+        extra["columns"] = [{"header_path_exact": ["Không rõ kỳ"], "value_kind": "MONEY"}] * 2
+        section["tables"].append(extra)
+    _, _, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert any(reason in candidate["reasons"] for reason in (
+        "ORIGINAL_NOTE_INDIVIDUAL_SOURCE_DURATION_NOT_PROVEN", "ORIGINAL_NOTE_PRIMARY_POPULATION_ANCESTRY_UNPROVEN",
+        "ORIGINAL_NOTE_CARRIER_SOURCE_PERIOD_AXIS_INCOMPLETE"))
+
+
+def test_original_note_nullable_primary_cannot_waive_expense_population_counterpart() -> None:
+    records = _original_note_production_records(primary_present=False, expense_component="Kỳ hiện hành")
+    _, receipt, candidate = _evaluate_original_note_production(records)
+    assert receipt["adapter_receipt"]["primary_projection_receipt"] is None
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["reasons"] == ["CURRENT_TAX_EXPENSE_SOURCE_POPULATION_WITHOUT_AUTHENTICATED_COUNTERPART"]
+
+
+def test_original_note_repeated_same_vnd_source_proof_is_not_a_second_high_precision_population() -> None:
+    records = _original_note_production_records(income=True)
+    tables = records[0]["page_json"]["sections"][0]["tables"]
+    tables[0]["rows"].extend(deepcopy(tables[1]["rows"][1:]))
+    tables.pop()
+    for record in records:
+        for section in record["page_json"]["sections"]:
+            for table in section["tables"]:
+                table["unit_exact"] = "VND"
+                for column in table["columns"]:
+                    column["header_path_exact"] = [part.replace("Triệu đồng", "VND") for part in column["header_path_exact"]]
+    _, _, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    assert all(mapping["unit"] == "VND" for mapping in candidate["mappings"])
+    assert len([mapping for mapping in candidate["mappings"] if mapping["role"] == "PROFIT_BEFORE_TAX"]) == 1
+    assert candidate["closure_receipt"]["identical_original_source_observation_controls"]
+
+
+@pytest.mark.parametrize("mutation", ["remove", "ordinal", "peer"])
+def test_original_note_complementary_stage_total_proof_cannot_be_self_resealed(mutation) -> None:
+    records = _original_note_production_records(income=True)
+    tables = records[0]["page_json"]["sections"][0]["tables"]
+    tables[0]["rows"].extend(deepcopy(tables[1]["rows"][1:]))
+    tables.pop()
+    compiled = _adapter_compiled()
+    cluster, receipt, candidate = _evaluate_original_note_production(records, compiled=compiled)
+    assert candidate["status"] == READY
+    forged = deepcopy(receipt)
+    controls = forged["adapter_receipt"]["independent_basis_coverage_completion_receipts"]
+    assert controls
+    if mutation == "remove":
+        controls.clear()
+    elif mutation == "ordinal":
+        controls[0]["original_row_ordinal"] = 1
+    else:
+        controls[0]["independent_complementary_receipt_id"] = controls[0]["receipt_id"]
+    adapter = forged["adapter_receipt"]
+    adapter["receipt_id"] = "gjitfav1:original-query:" + canonical_json_sha256_v1({key: item for key, item in adapter.items() if key != "receipt_id"})
+    forged["query_receipt_id"] = "gjitfav1:query-receipt:" + canonical_json_sha256_v1({key: item for key, item in forged.items() if key != "query_receipt_id"})
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="original-note adapter source query replay drifted"):
+        evaluate_gemini_json_income_tax_family_cluster_v1(
+            regions=cluster["component_regions"], page_json_by_version={item["page_json_version_id"]: item["page_json"] for item in records},
+            selected_page_axis=[{key: item for key, item in record.items() if key != "page_json"} for record in records],
+            compiled_specs=compiled, query_receipt=forged,
+        )
+
+
+def test_original_note_zero_overlap_is_a_neutral_control_not_a_sign_proof_or_blank_zero() -> None:
+    records = _original_note_production_records(expense_component="Kỳ hiện hành")
+    note_section = records[0]["page_json"]["sections"][0]
+    note_section["tables"].append(_table([_row("Chi phí thuế thu nhập doanh nghiệp hoãn lại", "-", "-")]))
+    table = records[-1]["page_json"]["sections"][0]["tables"][0]
+    table["rows"][0]["values_exact"] = ["(27)", "(21)"]
+    table["rows"][1]["values_exact"] = [None, "-"]
+    table["rows"][2]["values_exact"] = ["(27)", "(21)"]
+    table["rows"].insert(0, _row("Tổng lợi nhuận trước thuế", "100", "80"))
+    table["rows"].append(_row("Lợi nhuận sau thuế", "73", "59"))
+    original = deepcopy(records)
+    _, _, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    proof = candidate["closure_receipt"]["income_tax_adapter_receipt"]["primary_candidate_proof"]["signed_display_proof"]
+    assert len(proof["independent_nonroot_overlaps"]) == 1
+    assert len(proof["neutral_observed_zero_controls"]) == 1
+    deferred = next(mapping for mapping in candidate["mappings"] if mapping["role"] == "DEFERRED_TAX_NET")
+    assert all(value == {"coefficient": 0, "source_text": "-", "state": "DASH_ZERO"} for value in deferred["values"])
+    assert records == original
+
+
+def _original_note_deferred_group_records(*, dash: bool = False):
+    records = _original_note_production_records(expense_component="Kỳ hiện hành")
+    rows = records[0]["page_json"]["sections"][0]["tables"][0]["rows"]
+    label = "Chi phí thuế TNDN hoãn lại"
+    rows.extend([
+        _row(label, None, None, kind="GROUP"),
+        {**_row("Phát sinh và hoàn nhập các chênh lệch tạm thời", *(('-', '-') if dash else ('2', '1'))),
+         "hierarchy_path_exact": [label, "Phát sinh và hoàn nhập các chênh lệch tạm thời"]},
+        _row("Chi phí thuế TNDN", *(('27', '21') if dash else ('29', '22')), kind="TOTAL"),
+    ])
+    if dash:
+        primary_rows = records[1]["page_json"]["sections"][0]["tables"][0]["rows"]
+        primary_rows[1]["values_exact"][-2:] = ["-", "-"]
+        primary_rows[2]["values_exact"][-2:] = ["27", "21"]
+    return records
+
+
+@pytest.mark.parametrize("dash", [False, True])
+def test_original_note_deferred_net_is_observed_child_never_blank_group_or_root_residual(dash: bool) -> None:
+    records = _original_note_deferred_group_records(dash=dash)
+    original = deepcopy(records)
+    _, receipt, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == READY, candidate["reasons"]
+    mapping = next(item for item in candidate["mappings"] if item["role"] == "DEFERRED_TAX_NET")
+    assert [cell["coefficient"] for cell in mapping["values"]] == ([0, 0] if dash else [2, 1])
+    if dash:
+        assert all(cell["source_text"] == "-" and cell["state"] == "DASH_ZERO" for cell in mapping["values"])
+    projections = receipt["adapter_receipt"]["supplemental_projection_receipts"]
+    proof = next(item for item in projections if item["presentation_kind"] == "DEFERRED_TAX_SINGLE_NET_SOURCE_CHILD")
+    assert proof["rows"][0]["row_ordinal"] == 6
+    assert proof["source_population_receipt"]["group_source_row"]["source_values_exact"] == [None, None]
+    assert records == original
+
+
+@pytest.mark.parametrize("mutation", ["blank", "layout_marker", "wrong_ancestor", "nonblank_group", "extra_child", "duplicate_child", "missing_root", "foreign_group"])
+def test_original_note_deferred_net_frontier_does_not_guess_unknown_or_incomplete_children(mutation: str) -> None:
+    records = _original_note_deferred_group_records(dash=True)
+    rows = records[0]["page_json"]["sections"][0]["tables"][0]["rows"]
+    if mutation in {"blank", "layout_marker"}:
+        rows[5]["values_exact"][0] = None if mutation == "blank" else "?"
+    elif mutation == "wrong_ancestor":
+        rows[5]["hierarchy_path_exact"].insert(0, "Ngân hàng mẹ")
+    elif mutation == "nonblank_group":
+        rows[4]["values_exact"] = ["0", "0"]
+    elif mutation in {"extra_child", "duplicate_child"}:
+        child = deepcopy(rows[5])
+        if mutation == "extra_child":
+            child["label_exact"] = "Khoản khác chưa xác định"
+            child["hierarchy_path_exact"][-1] = child["label_exact"]
+        rows.insert(6, child)
+    elif mutation == "missing_root":
+        rows.pop()
+    else:
+        rows[4]["label_exact"] += " của Ngân hàng mẹ"
+        rows[4]["hierarchy_path_exact"] = [rows[4]["label_exact"]]
+        rows[5]["hierarchy_path_exact"][0] = rows[4]["label_exact"]
+    _, _, candidate = _evaluate_original_note_production(records)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+
+
+def _temporary_difference_rollforward_fixture():
+    page = _page([
+        _row("Dự phòng tài sản", "10", "2"),
+        _row("Dự phòng phải thu", "20", "-"),
+        _row(None, "30", "2", kind="TOTAL"),
+    ])
+    section = page["sections"][0]
+    section["title_exact"] = "(c) Biến động các chênh lệch tạm thời trong năm"
+    table = section["tables"][0]
+    table["title_exact"] = "Năm kết thúc ngày 31 tháng 12 năm 2025"
+    table["columns"] = [{"value_kind": "MONEY", "header_path_exact": [label, "Triệu đồng"]} for label in (
+        "31/12/2024", "Được ghi nhận trong báo cáo kết quả hoạt động riêng", "31/12/2025",
+    )]
+    for row, closing in zip(table["rows"], ("12", "20", "32"), strict=True):
+        row["values_exact"].append(closing)
+    region = {key: value for key, value in _record(page).items() if key != "page_json"}
+    region.update(section_id="s1", table_id="t1", fragment_ordinal=1, component_roles=[])
+    return page, section, table, region
+
+
+@pytest.mark.parametrize("mutation", [None, "caption", "title", "opening_date", "movement_header", "unit_conflict", "extra_column", "blank", "unknown_marker", "row_closure", "column_total", "expense_role", "private_rate_role", "foreign_ancestor", "group_row", "unnamed_item"])
+def test_original_note_temporary_difference_control_is_complete_stock_movement_not_expense(mutation) -> None:
+    from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (
+        _temporary_difference_rollforward_control,
+    )
+
+    page, section, table, region = _temporary_difference_rollforward_fixture()
+    if mutation == "caption":
+        section["title_exact"] = "Thuyết minh thuế TNDN"
+    elif mutation == "title":
+        table["title_exact"] = "Năm kết thúc ngày 31 tháng 12 năm 2026"
+    elif mutation == "opening_date":
+        table["columns"][0]["header_path_exact"][0] = "31/12/2023"
+    elif mutation == "movement_header":
+        table["columns"][1]["header_path_exact"][0] = "Năm trước"
+    elif mutation == "unit_conflict":
+        table["columns"][1]["header_path_exact"] = ["Được ghi nhận trong báo cáo kết quả hoạt động riêng VND"]
+    elif mutation == "extra_column":
+        table["columns"].append(deepcopy(table["columns"][-1]))
+        for row in table["rows"]:
+            row["values_exact"].append("0")
+    elif mutation in {"blank", "unknown_marker"}:
+        table["rows"][1]["values_exact"][1] = None if mutation == "blank" else "?"
+    elif mutation == "row_closure":
+        table["rows"][0]["values_exact"][2] = "13"
+    elif mutation == "column_total":
+        table["rows"][-1]["values_exact"] = ["31", "2", "33"]
+    elif mutation in {"expense_role", "private_rate_role"}:
+        table["rows"][0]["label_exact"] = ("Chi phí thuế TNDN hoãn lại" if mutation == "expense_role"
+                                           else "Thuế TNDN nộp bổ sung từ các năm trước")
+        table["rows"][0]["hierarchy_path_exact"] = [table["rows"][0]["label_exact"]]
+    elif mutation == "foreign_ancestor":
+        table["rows"][0]["hierarchy_path_exact"].insert(0, "Ngân hàng mẹ")
+    elif mutation == "group_row":
+        table["rows"][0]["row_kind"] = "GROUP"
+    elif mutation == "unnamed_item":
+        table["rows"][0]["label_exact"] = None
+        table["rows"][0]["hierarchy_path_exact"] = [None]
+    original = deepcopy(page)
+    receipt = _temporary_difference_rollforward_control(page=page, section=section, table=table, region=region, compiled_specs=_adapter_compiled())
+    assert (receipt is not None) is (mutation is None)
+    if receipt is not None:
+        assert receipt["source_table_exact"] == table
+        assert receipt["source_row_axis"][1]["source_values_exact"][1] == "-"
+        assert receipt["movement_columns_exported_as_expense"] is False
+        assert all(equation["residual"] == 0 for equation in receipt["row_forward_equations"] + receipt["column_total_equations"])
+    assert page == original
+
+
+def test_original_note_retains_rollforward_control_without_exporting_movement_and_rejects_resealed_tamper() -> None:
+    records = _original_note_production_records(income=True)
+    _, _, before = _evaluate_original_note_production(records)
+    _, section, _, _ = _temporary_difference_rollforward_fixture()
+    records[0]["page_json"]["sections"].append(section)
+    original = deepcopy(records)
+    compiled = _adapter_compiled()
+    cluster, receipt, candidate = _evaluate_original_note_production(records, compiled=compiled)
+    assert candidate["status"] == READY, candidate["reasons"]
+    fields = ("role", "report_norm_id", "unit", "values", "source_refs")
+    assert [{key: item[key] for key in fields} for item in candidate["mappings"]] == [
+        {key: item[key] for key in fields} for item in before["mappings"]
+    ]
+    coverage = receipt["adapter_receipt"]["source_population_coverage"]
+    controls = [item["source_only_table_control"] for item in coverage if "source_only_table_control" in item]
+    assert len(controls) == 1
+    assert controls[0]["source_table_exact"] == section["tables"][0]
+    assert controls[0]["movement_columns_exported_as_expense"] is False
+    forged = deepcopy(receipt)
+    next(item for item in forged["adapter_receipt"]["source_population_coverage"] if "source_only_table_control" in item)["source_only_table_control"]["movement_columns_exported_as_expense"] = True
+    forged["adapter_receipt"]["receipt_id"] = "gjitfav1:original-query:" + canonical_json_sha256_v1({
+        key: value for key, value in forged["adapter_receipt"].items() if key != "receipt_id"
+    })
+    forged["query_receipt_id"] = "gjitfav1:query-receipt:" + canonical_json_sha256_v1({
+        key: value for key, value in forged.items() if key != "query_receipt_id"
+    })
+    with pytest.raises(GeminiJsonIncomeTaxFamilyV1Error, match="original-note adapter source query replay drifted"):
+        evaluate_gemini_json_income_tax_family_cluster_v1(
+            regions=cluster["component_regions"], page_json_by_version={item["page_json_version_id"]: item["page_json"] for item in records},
+            selected_page_axis=[{key: value for key, value in item.items() if key != "page_json"} for item in records],
+            compiled_specs=compiled, query_receipt=forged,
+        )
+    assert records == original

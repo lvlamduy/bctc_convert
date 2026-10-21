@@ -328,14 +328,19 @@ def test_supplemental_root_column_order_is_bound_by_explicit_source_periods() ->
     assert _evaluate_query(records, _adapter_compiled(), cluster, receipt)["status"] == READY
 
 
-def test_authenticated_root_without_final_root_mapping_is_retained_not_exported_or_compared() -> None:
+@pytest.mark.parametrize("tax_calculation_label", [
+    "Chi phí thuế TNDN tính trên thu nhập chịu thuế",
+    "Chi phí thuế TNDN tính trên thu nhập chịu thuế kỳ hiện hành",
+    "Thuế TNDN theo thuế suất quy định (20%)",
+])
+def test_authenticated_root_without_final_root_mapping_is_retained_not_exported_or_compared(tax_calculation_label: str) -> None:
     compiled = _adapter_compiled_with_fixture_row_repair()
     record = _record(_page([
         _row("Lợi nhuận kế toán trước thuế TNDN", "100", "80"),
         _row("Thu nhập chịu thuế", "100", "80", kind="SUBTOTAL"),
         _row("Thu nhập không chịu thuế", "-", "-"),
         _row("Chi phí không được khấu trừ", "1", "2"),
-        _row("Chi phí thuế TNDN tính trên thu nhập chịu thuế kỳ hiện hành", "20", "15", kind="SUBTOTAL"),
+        _row(tax_calculation_label, "20", "15", kind="SUBTOTAL"),
         _collapsed_current_tax_row(),
         _row("Thu nhập thuế TNDN - hoãn lại", "-", "-"),
         _root_row("20", "15"),
