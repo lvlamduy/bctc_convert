@@ -1,0 +1,584 @@
+# PRIMARY statement retrieval catalog (CDKT / KQKD / LCTT).
+#
+# Aliases are retrieval aids only. A row is mapped to a ReportNormId only when
+# exactly one candidate survives statement, cash-flow branch, section, scope and
+# the declared structural constraints. Template canonical names and the
+# registry's structural aliases are included automatically. Every alias is
+# normalized with PRIMARY_LABEL_KEY_V1; a normalized key shared by several
+# identities is legal only when every sharing identity declares a structural
+# constraint, otherwise the catalog fails to load.
+#
+# Constraint vocabulary:
+#   requires_parent: [ids]   source parent row must be mapped to one of these
+#                            ids (ReportNormIds or pseudo-heading keys)
+#   requires_top_level: true source parent is absent or a section heading
+#   requires_section: NAME   row must lie in this explicitly headed section
+#   requires_values: true    row must carry at least one numeric lane
+format_version: PRIMARY_STATEMENT_CATALOG_V1
+schema_revision: UNIVERSAL_BANK_BCTC_SCHEMA@6076
+normalization_version: PRIMARY_LABEL_KEY_V1
+
+statements:
+  CDKT:
+    statement_type: BALANCE_SHEET
+    period_basis: INSTANT
+    sections:
+      ASSETS: [4302, 4375]
+      LIABILITIES_EQUITY: [4303, 4305]
+      OFF_BALANCE: [6038, 6055]
+    section_headings:
+      4302: ASSETS
+      4303: LIABILITIES_EQUITY
+      6038: OFF_BALANCE
+      H_LIABILITIES: LIABILITIES_EQUITY
+      H_EQUITY: LIABILITIES_EQUITY
+    pseudo_headings:
+      H_LIABILITIES:
+        aliases: ["NỢ PHẢI TRẢ", "A. NỢ PHẢI TRẢ", "I. NỢ PHẢI TRẢ"]
+      H_EQUITY:
+        aliases: ["VỐN CHỦ SỞ HỮU", "B. VỐN CHỦ SỞ HỮU", "II. VỐN CHỦ SỞ HỮU"]
+    items:
+      4302: {aliases: ["TÀI SẢN"], requires_top_level: true}
+      4310:
+        aliases: ["Tiền mặt", "Tiền mặt và vàng", "Tiền mặt, vàng", "Tiền mặt, vàng bạc, đá quý"]
+      4311:
+        aliases: ["Tiền gửi tại Ngân hàng Nhà nước", "Tiền gửi tại NHNN"]
+      4312:
+        aliases:
+          - "Tiền gửi và cho vay các tổ chức tín dụng khác"
+          - "Tiền gửi và cấp tín dụng cho các TCTD khác"
+          - "Tiền gửi tại và cho vay các TCTD khác"
+          - "Tiền gửi tại các TCTD khác và cho vay các TCTD khác"
+          - "Tiền, vàng gửi tại các TCTD khác và cho vay các TCTD"
+      4344:
+        aliases: ["Tiền gửi tại các TCTD khác", "Tiền gửi tại TCTD khác", "Tiền, vàng gửi tại các TCTD khác", "Tiền gửi các TCTD khác"]
+        requires_parent: [4312]
+      4326:
+        aliases: ["Cho vay các TCTD khác", "Cấp tín dụng cho các TCTD khác"]
+        requires_parent: [4312]
+      4345:
+        aliases:
+          - "Dự phòng rủi ro cho vay các TCTD khác"
+          - "Dự phòng rủi ro cấp tín dụng cho các TCTD khác"
+          - "Dự phòng cho vay các TCTD khác"
+          - "Dự phòng rủi ro"
+        requires_parent: [4312]
+      4313: {aliases: ["Chứng khoán kinh doanh"], requires_top_level: true}
+      4346: {aliases: ["Chứng khoán kinh doanh"], requires_parent: [4313]}
+      6035:
+        aliases: ["Dự phòng rủi ro chứng khoán kinh doanh", "Dự phòng chứng khoán kinh doanh", "Dự phòng rủi ro"]
+        requires_parent: [4313]
+      4347:
+        aliases: ["Dự phòng giảm giá chứng khoán kinh doanh"]
+        requires_parent: [4313]
+      4314:
+        aliases: ["Các công cụ tài chính phái sinh và các tài sản tài chính khác"]
+      4315: {aliases: ["Cho vay khách hàng"], requires_top_level: true}
+      4348:
+        aliases: ["Cho vay khách hàng", "Cho vay và cho thuê tài chính khách hàng"]
+        requires_parent: [4315]
+      4349:
+        aliases: ["Dự phòng rủi ro cho vay khách hàng", "Dự phòng rủi ro cho vay và cho thuê tài chính khách hàng", "Dự phòng rủi ro"]
+        requires_parent: [4315]
+      5322: {aliases: ["Hoạt động mua nợ"]}
+      5323: {aliases: ["Mua nợ"], requires_parent: [5322]}
+      5324:
+        aliases: ["Dự phòng rủi ro hoạt động mua nợ", "Dự phòng rủi ro"]
+        requires_parent: [5322]
+      4316: {aliases: ["Chứng khoán đầu tư"], requires_top_level: true}
+      4350: {aliases: ["Chứng khoán đầu tư sẵn sàng để bán"]}
+      4351: {aliases: ["Chứng khoán đầu tư giữ đến ngày đáo hạn"]}
+      6036:
+        aliases: ["Dự phòng rủi ro chứng khoán đầu tư", "Dự phòng chứng khoán đầu tư", "Dự phòng rủi ro"]
+        requires_parent: [4316]
+      4352:
+        aliases: ["Dự phòng giảm giá chứng khoán đầu tư"]
+        requires_parent: [4316]
+      4317: {aliases: ["Góp vốn, đầu tư dài hạn"]}
+      4333: {aliases: ["Đầu tư vào công ty con"]}
+      4354: {aliases: ["Đầu tư vào công ty liên doanh, liên kết", "Đầu tư vào công ty liên kết"]}
+      4334: {aliases: ["Đầu tư dài hạn khác", "Góp vốn, đầu tư dài hạn khác"]}
+      4355:
+        aliases:
+          - "Dự phòng giảm giá đầu tư dài hạn"
+          - "Dự phòng giảm giá góp vốn, đầu tư dài hạn"
+          - "Dự phòng tổn thất đầu tư dài hạn"
+          - "Dự phòng đầu tư dài hạn"
+          - "Dự phòng rủi ro"
+        requires_parent: [4317]
+      4307: {aliases: ["Tài sản cố định"]}
+      4328: {aliases: ["Tài sản cố định hữu hình"]}
+      4367:
+        aliases: ["Nguyên giá", "Nguyên giá TSCĐ", "Nguyên giá tài sản cố định", "Nguyên giá tài sản cố định hữu hình"]
+        requires_parent: [4328]
+      4368:
+        aliases:
+          - "Giá trị hao mòn lũy kế"
+          - "Hao mòn TSCĐ"
+          - "Hao mòn tài sản cố định"
+          - "Hao mòn lũy kế"
+          - "Khấu hao lũy kế"
+          - "Giá trị khấu hao lũy kế"
+          - "Khấu hao tài sản cố định"
+          - "Hao mòn tài sản cố định hữu hình"
+        requires_parent: [4328]
+      4329: {aliases: ["Tài sản cố định thuê tài chính", "Tài sản cố định cho thuê tài chính"]}
+      4369:
+        aliases: ["Nguyên giá", "Nguyên giá TSCĐ", "Nguyên giá tài sản cố định", "Nguyên giá tài sản cố định thuê tài chính", "Nguyên giá TSCĐ tài chính"]
+        requires_parent: [4329]
+      4370:
+        aliases:
+          - "Giá trị hao mòn lũy kế"
+          - "Hao mòn TSCĐ"
+          - "Hao mòn tài sản cố định"
+          - "Hao mòn lũy kế"
+          - "Khấu hao lũy kế"
+          - "Giá trị khấu hao lũy kế"
+          - "Khấu hao tài sản cố định"
+          - "Hao mòn tài sản cố định thuê tài chính"
+          - "Hao mòn TSCĐ tài chính"
+        requires_parent: [4329]
+      4330: {aliases: ["Tài sản cố định vô hình"]}
+      4371:
+        aliases: ["Nguyên giá", "Nguyên giá TSCĐ", "Nguyên giá tài sản cố định", "Nguyên giá tài sản cố định vô hình"]
+        requires_parent: [4330]
+      4372:
+        aliases:
+          - "Giá trị hao mòn lũy kế"
+          - "Hao mòn TSCĐ"
+          - "Hao mòn tài sản cố định"
+          - "Hao mòn lũy kế"
+          - "Khấu hao lũy kế"
+          - "Giá trị khấu hao lũy kế"
+          - "Khấu hao tài sản cố định"
+          - "Hao mòn tài sản cố định vô hình"
+        requires_parent: [4330]
+      4308: {aliases: ["Bất động sản đầu tư"]}
+      4331:
+        aliases: ["Nguyên giá", "Nguyên giá BĐSĐT", "Nguyên giá bất động sản đầu tư"]
+        requires_parent: [4308]
+      4332:
+        aliases:
+          - "Giá trị hao mòn lũy kế"
+          - "Hao mòn BĐSĐT"
+          - "Hao mòn bất động sản đầu tư"
+          - "Hao mòn lũy kế"
+          - "Khấu hao lũy kế"
+          - "Khấu hao bất động sản đầu tư"
+        requires_parent: [4308]
+      4327: {aliases: ["Tài sản Có khác"], requires_top_level: true}
+      4356: {aliases: ["Các khoản phải thu"]}
+      4357: {aliases: ["Các khoản lãi, phí phải thu"]}
+      4335: {aliases: ["Tài sản thuế thu nhập doanh nghiệp hoãn lại", "Tài sản thuế TNDN hoãn lại"]}
+      4366: {aliases: ["Tài sản Có khác"], requires_parent: [4327]}
+      4309: {aliases: ["Lợi thế thương mại", "Trong đó: Lợi thế thương mại"]}
+      4358:
+        aliases:
+          - "Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác"
+          - "Dự phòng rủi ro cho các tài sản Có nội bảng khác"
+          - "Các khoản dự phòng rủi ro cho các tài sản Có nội bảng"
+          - "Dự phòng rủi ro các tài sản Có nội bảng khác"
+          - "Dự phòng rủi ro tài sản Có khác"
+          - "Dự phòng rủi ro"
+        requires_parent: [4327]
+      4375:
+        aliases: ["TỔNG CỘNG TÀI SẢN", "TỔNG TÀI SẢN", "TỔNG TÀI SẢN CÓ", "TỔNG CỘNG TÀI SẢN CÓ", "TỔNG CỘNG"]
+        requires_section: ASSETS
+      4303: {aliases: ["NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU"], requires_top_level: true}
+      4318:
+        aliases: ["Các khoản nợ Chính phủ và NHNN", "Các khoản nợ Chính phủ và Ngân hàng Nhà nước"]
+      6037:
+        aliases: ["Tiền gửi và vay Chính phủ, NHNN", "Tiền gửi và vay Ngân hàng Nhà nước"]
+        requires_parent: [4318]
+      4319:
+        aliases:
+          - "Tiền gửi và vay các TCTD khác"
+          - "Tiền gửi và vay của các TCTD khác"
+          - "Tiền gửi và tiền vay các TCTD khác"
+          - "Tiền gửi và vay các tổ chức tài chính, các TCTD khác"
+      4359:
+        aliases:
+          - "Tiền gửi của các TCTD khác"
+          - "Tiền gửi các tổ chức tài chính, các TCTD khác"
+          - "Tiền gửi của các tổ chức tài chính, các TCTD khác"
+          - "Tiền gửi các TCTD khác"
+        requires_parent: [4319]
+      4360:
+        aliases: ["Vay các TCTD khác", "Vay các tổ chức tài chính, các TCTD khác"]
+        requires_parent: [4319]
+      4320: {aliases: ["Tiền gửi của khách hàng"]}
+      4321:
+        aliases:
+          - "Các công cụ tài chính phái sinh và các khoản nợ tài chính khác"
+          - "Các công cụ tài chính phái sinh và các công nợ tài chính khác"
+          - "Các công cụ tài chính phái sinh và các khoản nợ tài chính"
+      4322:
+        aliases:
+          - "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+          - "Vốn tài trợ, ủy thác đầu tư, cho vay mà TCTD chịu rủi ro"
+          - "Vốn tài trợ, ủy thác đầu tư, cho vay mà TCTD phải chịu rủi ro"
+      4323: {aliases: ["Phát hành giấy tờ có giá"]}
+      4324: {aliases: ["Các khoản nợ khác", "Tài sản Nợ khác"]}
+      4361: {aliases: ["Các khoản lãi, phí phải trả"]}
+      4336: {aliases: ["Thuế TNDN hoãn lại phải trả", "Thuế thu nhập doanh nghiệp hoãn lại phải trả"]}
+      4362: {aliases: ["Các khoản phải trả và công nợ khác"]}
+      4363:
+        aliases:
+          - "Dự phòng rủi ro khác"
+          - "Dự phòng rủi ro khác (Dự phòng cho công nợ tiềm ẩn)"
+          - "Dự phòng rủi ro khác (Dự phòng cho công nợ tiềm ẩn và cam kết ngoại bảng)"
+          - "Dự phòng rủi ro khác (DP cho công nợ tiềm ẩn và cam kết ngoại bảng)"
+          - "Dự phòng cho công nợ tiềm ẩn và cam kết ngoại bảng"
+          - "Dự phòng nợ tiềm ẩn và cam kết ngoại bảng"
+          - "Dự phòng rủi ro cho các cam kết ngoại bảng"
+          - "Dự phòng cho công nợ tiềm ẩn"
+          - "Dự phòng rủi ro phải trả khác"
+        requires_parent: [4324]
+      4304:
+        aliases: ["TỔNG NỢ PHẢI TRẢ", "NỢ PHẢI TRẢ", "TỔNG CỘNG NỢ PHẢI TRẢ"]
+        requires_values: true
+        requires_section: LIABILITIES_EQUITY
+      4325: {aliases: ["Vốn và các quỹ", "Vốn chủ sở hữu"], requires_values: true}
+      4364: {aliases: ["Vốn của TCTD", "Vốn", "Vốn của Ngân hàng"], requires_parent: [4325, H_EQUITY]}
+      4337: {aliases: ["Vốn điều lệ", "Vốn cổ phần", "Vốn đầu tư của chủ sở hữu"], requires_parent: [4364]}
+      4373:
+        aliases: ["Vốn đầu tư XDCB", "Vốn đầu tư xây dựng cơ bản, mua sắm tài sản cố định", "Vốn đầu tư xây dựng cơ bản và mua sắm tài sản cố định"]
+        requires_parent: [4364]
+      4338: {aliases: ["Thặng dư vốn cổ phần"], requires_parent: [4364]}
+      4340: {aliases: ["Cổ phiếu quỹ"], requires_parent: [4364]}
+      4374: {aliases: ["Cổ phiếu ưu đãi"], requires_parent: [4364]}
+      4339: {aliases: ["Vốn khác", "Vốn khác của chủ sở hữu"], requires_parent: [4364]}
+      4365:
+        aliases: ["Quỹ của TCTD", "Các quỹ", "Các quỹ của TCTD", "Quỹ của Ngân hàng", "Các quỹ dự trữ", "Quỹ dự trữ"]
+        requires_parent: [4325, H_EQUITY]
+      4342: {aliases: ["Chênh lệch tỷ giá hối đoái"], requires_parent: [4325, H_EQUITY]}
+      4341: {aliases: ["Chênh lệch đánh giá lại tài sản"], requires_parent: [4325, H_EQUITY]}
+      4343:
+        aliases: ["Lợi nhuận chưa phân phối", "Lợi nhuận chưa phân phối/ Lỗ lũy kế", "Lợi nhuận sau thuế chưa phân phối"]
+        requires_parent: [4325, H_EQUITY]
+      5699:
+        aliases: ["Lợi ích của cổ đông không kiểm soát", "Lợi ích cổ đông không kiểm soát", "Lợi ích của cổ đông thiểu số"]
+        requires_parent: [4325, H_EQUITY]
+      4306:
+        aliases: ["Lợi ích của cổ đông thiểu số", "Lợi ích của cổ đông không kiểm soát", "Lợi ích cổ đông không kiểm soát"]
+        requires_top_level: true
+      5712: {aliases: ["TỔNG VỐN CHỦ SỞ HỮU", "TỔNG CỘNG VỐN CHỦ SỞ HỮU"]}
+      4305:
+        aliases:
+          - "TỔNG NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU"
+          - "TỔNG CỘNG NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU"
+          - "TỔNG CỘNG NGUỒN VỐN"
+          - "TỔNG CỘNG"
+        requires_section: LIABILITIES_EQUITY
+      6038:
+        aliases:
+          - "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH"
+          - "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT"
+          - "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH RIÊNG"
+          - "CÁC CHỈ TIÊU NGOẠI BẢNG"
+          - "CÁC CHỈ TIÊU NGOÀI BẢNG"
+          - "CÁC CHỈ TIÊU NGOÀI BẢNG CÂN ĐỐI KẾ TOÁN"
+          - "CÁC CHỈ TIÊU NGOÀI BẢNG CÂN ĐỐI KẾ TOÁN HỢP NHẤT"
+          - "Chỉ tiêu ngoại bảng"
+          - "Chỉ tiêu ngoài bảng"
+      6039: {aliases: ["Nghĩa vụ nợ tiềm ẩn"]}
+      6040: {aliases: ["Bảo lãnh vay vốn", "Cam kết bảo lãnh vay vốn"]}
+      6041: {aliases: ["Cam kết giao dịch hối đoái", "Cam kết giao dịch ngoại hối"]}
+      6042: {aliases: ["Cam kết mua ngoại tệ"], requires_parent: [6041]}
+      6043: {aliases: ["Cam kết bán ngoại tệ"], requires_parent: [6041]}
+      6056: {aliases: ["Cam kết giao dịch hoán đổi"], requires_parent: [6041]}
+      6044:
+        aliases: ["Cam kết mua giao dịch hoán đổi ngoại tệ", "Cam kết mua - giao dịch hoán đổi tiền tệ", "Cam kết nhận - giao dịch hoán đổi tiền tệ"]
+        requires_parent: [6056, 6041]
+      6045:
+        aliases: ["Cam kết bán giao dịch hoán đổi ngoại tệ", "Cam kết bán - giao dịch hoán đổi tiền tệ", "Cam kết trả - giao dịch hoán đổi tiền tệ"]
+        requires_parent: [6056, 6041]
+      6046:
+        aliases:
+          - "Cam kết trong nghiệp vụ L/C"
+          - "Cam kết trong nghiệp vụ LC"
+          - "Cam kết trong nghiệp vụ thư tín dụng"
+          - "Cam kết trong nghiệp vụ thư tín dụng (L/C)"
+          - "Cam kết trong nghiệp L/C"
+      6047: {aliases: ["Bảo lãnh khác"]}
+      6048: {aliases: ["Các cam kết khác", "Cam kết khác"]}
+      6049: {aliases: ["Trong đó: hạn mức tín dụng chưa sử dụng có thể hủy ngang"]}
+      6050: {aliases: ["Các khoản mục ngoại bảng khác"]}
+      6051: {aliases: ["Lãi cho vay và phí phải thu chưa thu được", "Lãi cho vay và chi phí chưa thu được"]}
+      6052: {aliases: ["Nợ khó đòi đã xử lý"]}
+      6053: {aliases: ["Tài sản và chứng từ khác"]}
+      6055: {aliases: ["Tổng chỉ tiêu ngoại bảng"]}
+    source_only:
+      - aliases: ["Vốn góp liên doanh"]
+        reason: POSSIBLE_SCHEMA_GAP_JOINT_VENTURE_INVESTMENT_DISTINCT_FROM_ASSOCIATES
+      - aliases: ["Giao dịch bán và mua lại trái phiếu Chính phủ với KBNN", "Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước"]
+        reason: POSSIBLE_SCHEMA_GAP_GOVERNMENT_BOND_REPO_WITH_STATE_TREASURY
+      - aliases: ["Vay NHNN", "Vay Ngân hàng Nhà nước"]
+        reason: NARROWER_COMPONENT_THAN_6037_NO_SCHEMA_IDENTITY
+      - aliases: ["Lợi nhuận/ Lỗ năm nay", "Lợi nhuận/ Lỗ năm trước", "Lợi nhuận/ Lỗ lũy kế năm trước", "Lợi nhuận / (lỗ) chưa phân phối năm nay", "Lợi nhuận / (lỗ) chưa phân phối năm trước"]
+        reason: DETAIL_OF_4343_WITHOUT_SCHEMA_IDENTITY
+      - aliases: ["Cam kết cho vay không hủy ngang", "Các cam kết cho vay không hủy ngang"]
+        reason: POSSIBLE_SCHEMA_GAP_IRREVOCABLE_LOAN_COMMITMENT
+      - aliases: ["Cam kết giao dịch tương lai", "Hợp đồng hoán đổi lãi suất", "Cam kết hoán đổi lãi suất bằng ngoại tệ", "Cam kết hoán đổi lãi suất bằng VND", "Cam kết hoán đổi tiền tệ chéo bằng ngoại tệ", "Cam kết hoán đổi tiền tệ chéo bằng VND", "Cam kết kỳ hạn giấy tờ có giá"]
+        reason: POSSIBLE_SCHEMA_GAP_OFF_BALANCE_DERIVATIVE_COMMITMENT
+      - aliases: ["Cam kết mua ngoại tệ giao ngay", "Cam kết bán ngoại tệ giao ngay", "Cam kết mua ngoại tệ trao ngay", "Cam kết bán ngoại tệ trao ngay", "Cam kết mua với các ngoại tệ quy đổi", "Cam kết bán với các ngoại tệ quy đổi", "Cam kết giao dịch hoán đổi tiền tệ", "Cam kết giao dịch hoán đổi đến", "Cam kết giao dịch hoán đổi đi"]
+        reason: DETAIL_OF_6041_WITHOUT_SCHEMA_IDENTITY
+      - aliases: ["Hạn mức tín dụng chưa sử dụng", "Nợ gốc khó đòi đã xử lý"]
+        reason: NARROWER_OR_DIFFERENT_OFF_BALANCE_CONCEPT_NO_SCHEMA_IDENTITY
+    structural:
+      - aliases: ["Trong đó"]
+        reason: PRESENTATION_LEAD_IN
+
+  KQKD:
+    statement_type: INCOME_STATEMENT
+    period_basis: DURATION
+    sections:
+      MAIN: [4399, 4381]
+    items:
+      4399:
+        aliases: ["Thu nhập lãi và các khoản thu nhập tương tự", "Thu nhập từ lãi và các khoản thu nhập tương tự", "Thu nhập lãi và các khoản thu nhập tương đương", "Thu nhập từ lãi và các khoản thu nhập tương đương"]
+      4396: {aliases: ["Chi phí lãi và các chi phí tương tự", "Chi phí lãi và các khoản chi phí tương tự"]}
+      4385: {aliases: ["Thu nhập lãi thuần", "Thu nhập thuần từ lãi"]}
+      4397: {aliases: ["Thu nhập từ hoạt động dịch vụ", "Thu nhập hoạt động dịch vụ"]}
+      4398: {aliases: ["Chi phí hoạt động dịch vụ", "Chi phí từ hoạt động dịch vụ"]}
+      4386: {aliases: ["Lãi/lỗ thuần từ hoạt động dịch vụ"]}
+      4387: {aliases: ["Lãi/lỗ thuần từ hoạt động kinh doanh ngoại hối và vàng", "Lãi/lỗ thuần từ hoạt động kinh doanh ngoại hối", "Lãi/lỗ thuần từ kinh doanh ngoại hối"]}
+      4388: {aliases: ["Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh"]}
+      4389: {aliases: ["Lãi/lỗ thuần từ mua bán chứng khoán đầu tư"]}
+      4394: {aliases: ["Thu nhập khác", "Thu nhập từ hoạt động khác"]}
+      4395: {aliases: ["Chi phí khác", "Chi phí hoạt động khác", "Chi phí cho hoạt động khác", "Chi phí từ hoạt động khác"]}
+      4390: {aliases: ["Lãi/lỗ thuần từ hoạt động khác"]}
+      4393: {aliases: ["Thu nhập từ góp vốn, mua cổ phần", "Thu nhập góp vốn, mua cổ phần", "Thu nhập từ góp vốn mua cổ phần"]}
+      5713: {aliases: ["TỔNG THU NHẬP HOẠT ĐỘNG"]}
+      4391: {aliases: ["Chi phí hoạt động", "TỔNG CHI PHÍ HOẠT ĐỘNG"]}
+      4376:
+        aliases:
+          - "Lợi nhuận thuần từ hoạt động kinh doanh trước chi phí dự phòng rủi ro tín dụng"
+          - "Lợi nhuận thuần từ hoạt động kinh doanh trước dự phòng rủi ro tín dụng"
+          - "Lợi nhuận thuần từ hoạt động kinh doanh trước chi phí dự phòng rủi ro"
+          - "Lợi nhuận thuần từ hoạt động kinh doanh"
+      4392:
+        aliases: ["Chi phí dự phòng rủi ro tín dụng", "Hoàn nhập/(chi phí) dự phòng rủi ro tín dụng", "Hoàn nhập dự phòng rủi ro tín dụng", "Chi phí/(hoàn nhập) dự phòng rủi ro tín dụng"]
+      4377: {aliases: ["Tổng lợi nhuận trước thuế", "Tổng lợi nhuận kế toán trước thuế", "Lợi nhuận trước thuế"]}
+      4383: {aliases: ["Chi phí thuế TNDN hiện hành", "Chi phí thuế thu nhập doanh nghiệp hiện hành", "Chi phí thuế thu nhập doanh nghiệp - hiện hành", "Chi phí thuế TNDN hiện hành tạm tính"]}
+      4384:
+        aliases:
+          - "Chi phí thuế TNDN hoãn lại"
+          - "Chi phí thuế thu nhập doanh nghiệp hoãn lại"
+          - "Thu nhập thuế TNDN hoãn lại"
+          - "Thu nhập thuế thu nhập doanh nghiệp hoãn lại"
+          - "(Chi phí)/thu nhập thuế TNDN hoãn lại"
+          - "Lợi ích thuế thu nhập doanh nghiệp hoãn lại"
+          - "Chi phí thuế TNDN - hoãn lại"
+          - "Chi phí thuế thu nhập DN hoãn lại"
+      4382: {aliases: ["Chi phí thuế TNDN", "Chi phí thuế thu nhập doanh nghiệp", "Tổng chi phí thuế TNDN", "Tổng chi phí thuế thu nhập doanh nghiệp"]}
+      4378: {aliases: ["Lợi nhuận sau thuế", "Lợi nhuận sau thuế TNDN", "Lợi nhuận sau thuế thu nhập doanh nghiệp", "Tổng lợi nhuận sau thuế"]}
+      4379: {aliases: ["Lợi ích của cổ đông thiểu số", "Lợi ích của cổ đông không kiểm soát", "Lợi ích cổ đông không kiểm soát"]}
+      4380:
+        aliases:
+          - "Lợi nhuận sau thuế của cổ đông của Ngân hàng mẹ"
+          - "Lợi nhuận thuần của cổ đông của Ngân hàng"
+          - "Lợi nhuận thuần cho các cổ đông của Ngân hàng"
+          - "Lợi nhuận thuần của cổ đông Ngân hàng"
+          - "Lợi nhuận sau thuế của cổ đông Ngân hàng"
+          - "Cổ đông của Ngân hàng mẹ"
+          - "Phân bổ cho: Cổ đông của ngân hàng mẹ"
+          - "Lợi nhuận thuần của chủ sở hữu"
+      4381: {aliases: ["Lãi cơ bản trên cổ phiếu"]}
+    source_only:
+      - aliases: ["Lãi suy giảm trên cổ phiếu"]
+        reason: POSSIBLE_SCHEMA_GAP_DILUTED_EARNINGS_PER_SHARE
+      - aliases: ["Chi phí nhân viên", "Chi phí cho nhân viên", "Chi phí khấu hao và khấu trừ", "Chi phí khấu hao", "Chi phí về tài sản", "Chi phí hoạt động quản lý công vụ"]
+        reason: DETAIL_OF_4391_WITHOUT_PRIMARY_SCHEMA_IDENTITY_TM_ONLY
+    structural:
+      - aliases: ["Phân bổ cho"]
+        reason: PRESENTATION_LEAD_IN
+
+  LCTT:
+    statement_type: CASH_FLOW
+    period_basis: DURATION
+    branch_rules: config/mapping/lctt-v2.yaml
+    sections:
+      INDIRECT_OPERATING: [4155, 4163]
+      INDIRECT_INVESTING: [4157, 4164]
+      INDIRECT_FINANCING: [4158, 4165]
+      INDIRECT_SUMMARY: [4166, 4168]
+      DIRECT_OPERATING: [4104, 4110]
+      DIRECT_INVESTING: [4105, 4111]
+      DIRECT_FINANCING: [4106, 4112]
+      DIRECT_SUMMARY: [4114, 4116]
+    section_headings:
+      4155: INDIRECT_OPERATING
+      4157: INDIRECT_INVESTING
+      4158: INDIRECT_FINANCING
+      4104: DIRECT_OPERATING
+      4105: DIRECT_INVESTING
+      4106: DIRECT_FINANCING
+    items:
+      # ---- DIRECT branch -------------------------------------------------
+      4104: {aliases: ["Lưu chuyển tiền từ hoạt động kinh doanh"]}
+      4123: {aliases: ["Thu nhập lãi và các khoản thu nhập tương tự nhận được"]}
+      4124: {aliases: ["Chi phí lãi và các chi phí tương tự đã trả", "Chi phí lãi và các khoản chi phí tương tự đã trả", "Chi phí lãi và các khoản thu nhập tương tự đã trả"]}
+      4125: {aliases: ["Thu nhập từ hoạt động dịch vụ nhận được"]}
+      4126:
+        aliases:
+          - "Chênh lệch số tiền thực thu/thực chi từ hoạt động kinh doanh (ngoại tệ, vàng bạc, chứng khoán)"
+          - "Chênh lệch số tiền thực thu/thực chi từ hoạt động kinh doanh chứng khoán, vàng bạc, ngoại tệ"
+          - "Chênh lệch số tiền thực thu từ hoạt động kinh doanh chứng khoán, vàng bạc, ngoại tệ"
+          - "Chênh lệch số tiền thực thu từ hoạt động kinh doanh (ngoại tệ và chứng khoán)"
+          - "Chênh lệch số tiền thực thu từ hoạt động kinh doanh ngoại tệ, chứng khoán"
+          - "Chênh lệch số tiền thực thu/thực chi từ hoạt động kinh doanh (ngoại tệ, chứng khoán)"
+      4154: {aliases: ["Thu nhập khác", "Thu nhập khác nhận được"]}
+      4127:
+        aliases:
+          - "Tiền thu các khoản nợ đã được xử lý xóa, bù đắp bằng nguồn rủi ro"
+          - "Tiền thu các khoản nợ đã được xử lý xóa, bù đắp bằng nguồn dự phòng rủi ro"
+          - "Tiền thu các khoản nợ đã được xử lý bằng nguồn dự phòng rủi ro"
+          - "Tiền thu các khoản nợ đã được xử lý hóa, bù đắp bằng nguồn rủi ro"
+      4122: {aliases: ["Tiền chi trả cho nhân viên và hoạt động quản lý, công vụ"]}
+      4128: {aliases: ["Tiền thuế thu nhập thực nộp trong kỳ", "Tiền thuế thu nhập doanh nghiệp thực nộp trong kỳ", "Tiền thuế thu nhập thực nộp trong năm", "Tiền thuế thu nhập doanh nghiệp thực nộp trong năm"]}
+      4109:
+        aliases:
+          - "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động"
+          - "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và nợ phải trả hoạt động"
+          - "Lợi nhuận từ hoạt động kinh doanh trước thay đổi vốn lưu động"
+      4107: {aliases: ["Những thay đổi về tài sản hoạt động"]}
+      4129:
+        aliases:
+          - "Tăng, giảm các khoản tiền, vàng gửi và cho vay các TCTD khác"
+          - "Tăng, giảm các khoản tiền gửi và cho vay các TCTD khác"
+          - "Tăng, giảm các khoản tiền và cho vay các TCTD khác"
+          - "Tăng, giảm các khoản tiền gửi và cho vay các tổ chức tín dụng khác"
+      4130: {aliases: ["Tăng, giảm các khoản về kinh doanh chứng khoán"]}
+      4131: {aliases: ["Tăng, giảm các công cụ tài chính phái sinh và các tài sản tài chính khác"]}
+      4132: {aliases: ["Tăng, giảm các khoản cho vay khách hàng"]}
+      6054: {aliases: ["Tăng, giảm các khoản cho vay khách hàng và mua nợ"]}
+      4133:
+        aliases:
+          - "Giảm nguồn dự phòng để bù đắp tổn thất các khoản"
+          - "Giảm nguồn dự phòng để xử lý rủi ro, xử lý, bù đắp tổn thất các khoản"
+          - "Giảm nguồn dự phòng để bù đắp tổn thất các khoản tín dụng, chứng khoán, đầu tư dài hạn"
+      4134: {aliases: ["Tăng, giảm khác về tài sản hoạt động"]}
+      4108: {aliases: ["Những thay đổi về công nợ hoạt động", "Những thay đổi về nợ phải trả hoạt động"]}
+      4135: {aliases: ["Tăng, giảm các khoản nợ chính phủ và NHNN"]}
+      4136:
+        aliases:
+          - "Tăng, giảm các khoản tiền gửi, tiền vay các TCTD"
+          - "Tăng, giảm các khoản tiền gửi, tiền vay các TCTD khác"
+          - "Tăng, giảm tiền gửi, tiền vay các TCTD khác"
+          - "Tăng, giảm tiền gửi, tiền vay từ các tổ chức tài chính, tổ chức tín dụng khác"
+          - "Tăng, giảm các khoản tiền gửi, tiền vay các tổ chức tín dụng"
+          - "Tăng, giảm các khoản tiền gửi và vay các TCTD"
+          - "Tăng, giảm các khoản tiền gửi và vay các TCTD khác"
+          - "Tăng, giảm các khoản tiền gửi và vay các TCTC, TCTD"
+      4137: {aliases: ["Tăng, giảm tiền gửi của khách hàng", "Tăng, giảm tiền gửi của khách hàng (bao gồm cả KBNN)"]}
+      4138:
+        aliases:
+          - "Tăng, giảm phát hành giấy tờ có giá"
+          - "Tăng, giảm phát hành giấy tờ có giá (ngoại trừ GTCG được tính vào hoạt động tài chính)"
+          - "Tăng, giảm phát hành giấy tờ có giá (ngoại trừ giấy tờ có giá phát hành được tính vào hoạt động tài chính)"
+          - "Tăng, giảm phát hành giấy tờ có giá (ngoại trừ GTCG phát hành được tính vào hoạt động tài chính)"
+      4139: {aliases: ["Tăng, giảm vốn tài trợ, ủy thác đầu tư, cho vay mà TCTD chịu rủi ro"]}
+      4140: {aliases: ["Tăng, giảm các công cụ tài chính phái sinh và các khoản nợ tài chính khác"]}
+      4141: {aliases: ["Tăng, giảm khác về công nợ hoạt động"]}
+      4142: {aliases: ["Chi từ các quỹ của TCTD"]}
+      4110: {aliases: ["Lưu chuyển tiền thuần từ hoạt động kinh doanh"]}
+      4105: {aliases: ["Lưu chuyển tiền từ hoạt động đầu tư"]}
+      4118: {aliases: ["Mua sắm tài sản cố định", "Mua sắm TSCĐ"]}
+      4119: {aliases: ["Tiền thu từ thanh lý, nhượng bán TSCĐ", "Tiền thu từ thanh lý tài sản cố định"]}
+      4143: {aliases: ["Tiền chi từ thanh lý, nhượng bán TSCĐ"]}
+      4144: {aliases: ["Mua sắm bất động sản đầu tư"]}
+      4145: {aliases: ["Tiền thu từ bán, thanh lý bất động sản đầu tư"]}
+      4146: {aliases: ["Tiền chi ra do bán, thanh lý bất động sản đầu tư"]}
+      4120:
+        aliases:
+          - "Tiền chi đầu tư, góp vốn vào các đơn vị khác"
+          - "Tiền chi đầu tư, góp vốn vào các đơn vị khác (Chi đầu tư mua công ty con, góp vốn liên doanh, liên kết, và các khoản đầu tư dài hạn khác)"
+      4121:
+        aliases:
+          - "Tiền thu đầu tư, góp vốn vào các đơn vị khác"
+          - "Tiền thu đầu tư, góp vốn vào các đơn vị khác (Thu bán, thanh lý công ty con, góp vốn liên doanh, liên kết, các khoản đầu tư dài hạn khác)"
+      4147: {aliases: ["Tiền thu cổ tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn"]}
+      4111: {aliases: ["Lưu chuyển tiền thuần từ hoạt động đầu tư"]}
+      4106: {aliases: ["Lưu chuyển tiền từ hoạt động tài chính"]}
+      4148: {aliases: ["Tăng vốn cổ phần từ góp vốn và/hoặc phát hành cổ phiếu", "Tăng vốn cổ phần từ phát hành cổ phiếu"]}
+      4149:
+        aliases:
+          - "Tiền thu từ phát hành giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác"
+          - "Tiền thu từ phát hành giấy tờ có giá dài hạn đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác"
+      4150:
+        aliases:
+          - "Tiền chi thanh toán giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác"
+          - "Tiền chi thanh toán giấy tờ có giá dài hạn đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác"
+      4153: {aliases: ["Cổ tức trả cho cổ đông, lợi nhuận đã chia", "Cổ tức trả cho cổ đông"]}
+      4151: {aliases: ["Tiền chi ra mua cổ phiếu quỹ", "Tiền chi ra mua cổ phiếu ngân quỹ"]}
+      4152: {aliases: ["Tiền thu được do bán cổ phiếu quỹ", "Tiền thu được do bán cổ phiếu ngân quỹ"]}
+      4112: {aliases: ["Lưu chuyển tiền thuần từ hoạt động tài chính"]}
+      4114: {aliases: ["Lưu chuyển tiền thuần trong kỳ", "Lưu chuyển tiền thuần trong năm"]}
+      4115:
+        aliases: ["Tiền và các khoản tương đương tiền tại thời điểm đầu kỳ", "Tiền và các khoản tương đương tiền đầu kỳ", "Tiền và các khoản tương đương tiền đầu năm", "Tiền và các khoản tương đương tiền tại thời điểm đầu năm"]
+      4117: {aliases: ["Điều chỉnh ảnh hưởng của thay đổi tỷ giá", "Điều chỉnh của ảnh hưởng thay đổi tỷ giá"]}
+      4116:
+        aliases: ["Tiền và các khoản tương đương tiền tại thời điểm cuối kỳ", "Tiền và các khoản tương đương tiền cuối kỳ", "Tiền và các khoản tương đương tiền cuối năm", "Tiền và các khoản tương đương tiền tại thời điểm cuối năm"]
+      # ---- INDIRECT branch (labels shared with DIRECT are separated by branch) ----
+      4155: {aliases: ["Lưu chuyển tiền từ hoạt động kinh doanh"]}
+      4162: {aliases: ["Lợi nhuận trước thuế", "Lợi nhuận trước thuế thu nhập doanh nghiệp", "Tổng lợi nhuận trước thuế"]}
+      4156: {aliases: ["Điều chỉnh cho các khoản"]}
+      4195: {aliases: ["Khấu hao TSCĐ, bất động sản đầu tư", "Khấu hao tài sản cố định và bất động sản đầu tư", "Khấu hao và phân bổ"]}
+      4196: {aliases: ["Dự phòng rủi ro tín dụng, giảm giá, đầu tư tăng thêm / (hoàn nhập) trong năm", "Chi phí dự phòng rủi ro tín dụng"]}
+      4197: {aliases: ["Lãi và phí phải thu trong kỳ (thực tế chưa thu)"]}
+      4198: {aliases: ["Lãi và phí phải trả trong kỳ (thực tế chưa trả)"]}
+      4199: {aliases: ["Lãi, lỗ do thanh lý TSCĐ"]}
+      4200: {aliases: ["Lãi, lỗ do bán, thanh lý bất động sản đầu tư"]}
+      4201: {aliases: ["Lãi, lỗ do thanh lý những khoản đầu tư, góp vốn dài hạn vào đơn vị khác, cổ tức nhận được, lợi nhuận được chia từ HĐ đầu tư, góp vốn dài hạn"]}
+      4202: {aliases: ["Chênh lệch tỷ giá hối đoái chưa thực hiện"]}
+      4203: {aliases: ["Các điều chỉnh khác"]}
+      4161: {aliases: ["Những thay đổi về tài sản và công nợ hoạt động"]}
+      4159: {aliases: ["Những thay đổi về tài sản hoạt động"]}
+      4174: {aliases: ["Tăng, giảm các khoản tiền, vàng gửi và cho vay các TCTD khác", "Tăng, giảm các khoản tiền gửi và cho vay các TCTD khác"]}
+      4175: {aliases: ["Tăng, giảm các khoản về kinh doanh chứng khoán"]}
+      4204: {aliases: ["Tăng, giảm các công cụ tài chính phái sinh và các tài sản tài chính khác"]}
+      4176: {aliases: ["Tăng, giảm các khoản cho vay khách hàng"]}
+      4205: {aliases: ["Tăng, giảm lãi, phí phải thu"]}
+      4206: {aliases: ["Tăng, giảm nguồn dự phòng để bù đắp tổn thất các khoản", "Giảm nguồn dự phòng để bù đắp tổn thất các khoản"]}
+      4177: {aliases: ["Tăng, giảm khác về tài sản hoạt động"]}
+      4160: {aliases: ["Những thay đổi về công nợ hoạt động", "Những thay đổi về nợ phải trả hoạt động"]}
+      4178: {aliases: ["Tăng, giảm các khoản nợ chính phủ và NHNN"]}
+      4179: {aliases: ["Tăng, giảm các khoản tiền gửi và vay các TCTD", "Tăng, giảm các khoản tiền gửi, tiền vay các TCTD"]}
+      4180: {aliases: ["Tăng, giảm tiền gửi của khách hàng (bao gồm cả Kho bạc Nhà nước)", "Tăng, giảm tiền gửi của khách hàng"]}
+      4182: {aliases: ["Tăng, giảm các công cụ tài chính phái sinh và các khoản nợ tài chính khác"]}
+      4181: {aliases: ["Tăng, giảm vốn tài trợ, ủy thác đầu tư, cho vay mà TCTD chịu rủi ro"]}
+      4207: {aliases: ["Tăng, giảm phát hành giấy tờ có giá (ngoại trừ GTCG được tính vào hoạt động tài chính)", "Tăng, giảm phát hành giấy tờ có giá"]}
+      4208: {aliases: ["Tăng, giảm lãi, phí phải trả"]}
+      4183: {aliases: ["Tăng, giảm khác về công nợ hoạt động"]}
+      4169: {aliases: ["Lưu chuyển tiền thuần từ hoạt động kinh doanh trước thuế thu nhập"]}
+      4171: {aliases: ["Thuế thu nhập doanh nghiệp đã nộp", "Tiền thuế thu nhập doanh nghiệp thực nộp trong kỳ", "Tiền thuế thu nhập thực nộp trong kỳ"]}
+      4184: {aliases: ["Chi từ các quỹ của TCTD"]}
+      4163: {aliases: ["Lưu chuyển tiền thuần từ hoạt động kinh doanh"]}
+      4157: {aliases: ["Lưu chuyển tiền từ hoạt động đầu tư"]}
+      4172: {aliases: ["Tiền chi để mua sắm, xây dựng TSCĐ và các tài sản dài hạn khác", "Mua sắm tài sản cố định", "Mua sắm TSCĐ"]}
+      4173: {aliases: ["Tiền thu từ thanh lý, nhượng bán TSCĐ và các tài sản dài hạn khác", "Tiền thu từ thanh lý, nhượng bán TSCĐ"]}
+      4185: {aliases: ["Tiền chi từ thanh lý, nhượng bán TSCĐ"]}
+      4186: {aliases: ["Mua sắm bất động sản đầu tư"]}
+      4187: {aliases: ["Tiền thu từ bán, thanh lý bất động sản đầu tư"]}
+      4188: {aliases: ["Tiền chi ra do bán, thanh lý bất động sản đầu tư"]}
+      4209: {aliases: ["Tiền chi đầu tư, góp vốn vào các đơn vị khác"]}
+      4210: {aliases: ["Tiền thu đầu tư, góp vốn vào các đơn vị khác"]}
+      4189: {aliases: ["Tiền thu cổ tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn"]}
+      4164: {aliases: ["Lưu chuyển tiền thuần từ hoạt động đầu tư"]}
+      4158: {aliases: ["Lưu chuyển tiền từ hoạt động tài chính"]}
+      4190: {aliases: ["Tăng vốn cổ phần từ góp vốn và/hoặc phát hành cổ phiếu", "Tăng vốn cổ phần từ phát hành cổ phiếu"]}
+      4191: {aliases: ["Tiền thu từ phát hành giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác"]}
+      4192: {aliases: ["Tiền chi thanh toán giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác"]}
+      4211: {aliases: ["Cổ tức trả cho cổ đông, lợi nhuận đã chia", "Cổ tức trả cho cổ đông"]}
+      4193: {aliases: ["Tiền chi ra mua cổ phiếu quỹ"]}
+      4194: {aliases: ["Tiền thu được do bán cổ phiếu quỹ"]}
+      4165: {aliases: ["Lưu chuyển tiền thuần từ hoạt động tài chính"]}
+      4166: {aliases: ["Lưu chuyển tiền thuần trong kỳ", "Lưu chuyển tiền thuần trong năm"]}
+      4167: {aliases: ["Tiền và các khoản tương đương tiền đầu kỳ", "Tiền và các khoản tương đương tiền tại thời điểm đầu kỳ", "Tiền và các khoản tương đương tiền đầu năm"]}
+      4170: {aliases: ["Điều chỉnh ảnh hưởng của thay đổi tỷ giá"]}
+      4168: {aliases: ["Tiền và các khoản tương đương tiền cuối kỳ", "Tiền và các khoản tương đương tiền tại thời điểm cuối kỳ", "Tiền và các khoản tương đương tiền cuối năm"]}
+    source_only:
+      - aliases: ["Chi phí khác", "Chi phí khác đã trả", "Tiền chi cho các hoạt động khác"]
+        reason: POSSIBLE_SCHEMA_GAP_DIRECT_OTHER_OPERATING_EXPENSE_PAID
+    structural: []
