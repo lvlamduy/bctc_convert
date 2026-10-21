@@ -142,6 +142,9 @@ def test_identical_carry_forward_row_is_control_and_not_a_restart(catalog, equat
     page1 = [row("Thu nhập lãi và các khoản thu nhập tương tự", ["10", "9"]),
              row("Chi phí lãi và các chi phí tương tự", ["(4)", "(3)"]),
              row("Thu nhập lãi thuần", ["6", "6"]),
+             row("Thu nhập từ hoạt động dịch vụ", ["2", "2"]),
+             row("Chi phí hoạt động dịch vụ", ["(2)", "(2)"]),
+             row("Lãi thuần từ hoạt động dịch vụ", ["0", "0"]),
              row("Tổng lợi nhuận trước thuế (mang sang trang sau)", ["6", "6"])]
     page2 = [row("Tổng lợi nhuận trước thuế (mang sang từ trang trước)", ["6", "6"]),
              row("Chi phí thuế TNDN hiện hành", ["(1)", "(1)"]),
@@ -158,10 +161,16 @@ def test_identical_carry_forward_row_is_control_and_not_a_restart(catalog, equat
 def test_vnd_and_million_presentations_retire_control_with_cell_veto(catalog, equations):
     vnd = [row("Tiền mặt, vàng bạc, đá quý", ["100.400.000", "90.000.000"]),
            row("Tiền gửi tại NHNN", ["5.000.000", "4.000.000"]),
-           row("Cho vay khách hàng", ["900.000.000", "800.000.000"])]
+           row("Cho vay khách hàng", ["900.000.000", "800.000.000"]),
+           row("Chứng khoán đầu tư", ["7.000.000", "6.000.000"]),
+           row("Tài sản cố định", ["3.000.000", "2.000.000"]),
+           row("Tiền gửi của khách hàng", ["800.000.000", "700.000.000"])]
     mil = [row("Tiền mặt, vàng bạc, đá quý", ["100", "90"]),
            row("Tiền gửi tại NHNN", ["5", "4"]),
-           row("Cho vay khách hàng", ["903", "800"])]
+           row("Cho vay khách hàng", ["903", "800"]),
+           row("Chứng khoán đầu tư", ["7", "6"]),
+           row("Tài sản cố định", ["3", "2"]),
+           row("Tiền gửi của khách hàng", ["800", "700"])]
     vnd_headers = [["30/06/2025", "VND"], ["31/12/2024", "VND"]]
     pages = [bs_page(vnd, headers=vnd_headers), bs_page(mil)]
     run = run_doc(catalog, equations, pages)
@@ -209,6 +218,9 @@ def test_cash_flow_branch_from_ordered_anchors_and_mixed_branch_holds(catalog, e
     headers = [["Kỳ sáu tháng kết thúc ngày 30/6/2025", "Triệu VND"]]
     direct = [row("Thu nhập lãi và các khoản thu nhập tương tự nhận được", ["10"]),
               row("Chi phí lãi và các chi phí tương tự đã trả", ["(4)"]),
+              row("Thu nhập từ hoạt động dịch vụ nhận được", ["2"]),
+              row("Tiền chi trả cho nhân viên và hoạt động quản lý, công vụ", ["(1)"]),
+              row("Tiền thuế thu nhập thực nộp trong kỳ", ["(1)"]),
               row("Lưu chuyển tiền thuần từ hoạt động kinh doanh", ["6"])]
     run = run_doc(catalog, equations, [[section([table(direct, headers, title=title)], statement="CASH_FLOW", title=title)]])
     result = result_of(run, catalog)
@@ -227,10 +239,15 @@ def test_quarter_and_ytd_lanes_keep_distinct_write_keys(catalog, equations):
     title = "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT\nQuý 2 năm 2025"
     headers = [["Quý 2", "Năm nay"], ["Quý 2", "Năm trước"],
                ["Lũy kế từ đầu năm đến cuối quý này", "Năm nay"], ["Lũy kế từ đầu năm đến cuối quý này", "Năm trước"]]
-    rows = [row("Thu nhập lãi và các khoản thu nhập tương tự", ["10", "9", "20", "18"])]
+    rows = [row("Thu nhập lãi và các khoản thu nhập tương tự", ["10", "9", "20", "18"]),
+            row("Chi phí lãi và các chi phí tương tự", ["(4)", "(3)", "(8)", "(6)"]),
+            row("Thu nhập lãi thuần", ["6", "6", "12", "12"]),
+            row("Thu nhập từ hoạt động dịch vụ", ["2", "2", "4", "4"]),
+            row("Chi phí hoạt động dịch vụ", ["(1)", "(1)", "(2)", "(2)"]),
+            row("Lãi thuần từ hoạt động dịch vụ", ["1", "1", "2", "2"])]
     page = [section([table(rows, headers, title=title, unit="Đơn vị: triệu đồng")], statement="INCOME_STATEMENT", title=title)]
     result = result_of(run_doc(catalog, equations, [page]), catalog)
-    keys = [c["period_key"] for c in result["cells"]]
+    keys = [c["period_key"] for c in result["cells"] if c["report_norm_id"] == 4399]
     assert keys == ["DURATION:QUARTER:2:2025", "DURATION:QUARTER:2:PRIOR_YEAR_OF(2025)",
                     "DURATION:YTD:Q2:2025", "DURATION:YTD:Q2:PRIOR_YEAR_OF(2025)"]
     assert {c["acceptance"] for c in result["cells"]} == {"ACCEPTED"}
