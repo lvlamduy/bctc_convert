@@ -2298,8 +2298,10 @@ def test_caption_only_owned_duration_is_bound_and_conflicting_caption_is_not_ign
     assert candidate["reasons"] == ["CURRENT_TAX_EXPENSE_SOURCE_PERIOD_AMBIGUITY"]
 
 
-def test_equal_bare_years_cannot_annualize_a_primary_year_to_date_lane() -> None:
+def test_equal_bare_years_cannot_annualize_a_primary_nonannual_year_to_date_lane() -> None:
     records, _, _ = _supplemental_records(_year_population_rows(), primary_current=("21", "18"), primary_root=("23", "19"))
+    for column in records[-1]["page_json"]["sections"][0]["tables"][0]["columns"][:2]:
+        column["header_path_exact"] = [value.replace("Quý IV", "Quý III") for value in column["header_path_exact"]]
     _, candidate = _evaluate_supplemental_records(records, compiled=_adapter_compiled())
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
