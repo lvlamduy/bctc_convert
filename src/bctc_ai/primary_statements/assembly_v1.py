@@ -792,6 +792,38 @@ def resolve_instance_scope_v1(
                 return
 
 
+def resolve_document_scope_v1(instances: list[StatementInstance], document_titles: list[str]) -> None:
+    """Propagate one report's scope to its statements lacking their own evidence.
+
+    1. Statements of one document form one report: a single scope proven by
+       another statement's own title or printed form code applies to the rest.
+    2. If no title anywhere in the document mentions consolidation ("hợp
+       nhất") after scanning every section title, and the document prints
+       financial-statement or note titles, the report is not consolidated; the
+       scope is SEPARATE with an explicit absence basis. Contradictions veto.
+    """
+
+    proven = {i.scope for i in instances
+              if i.scope and i.scope_basis.get("basis") in {"STATEMENT_TITLE", "PRINTED_STATEMENT_FORM_CODE"}}
+    folded_titles = [fold_vietnamese(text) for text in document_titles]
+    for instance in instances:
+        if instance.scope is not None:
+            continue
+        if len(proven) == 1:
+            instance.scope = next(iter(proven))
+            instance.scope_basis = {"basis": "DOCUMENT_PRIMARY_STATEMENT_SCOPE",
+                                    "evidence": sorted({i.key for i in instances if i.scope == instance.scope and i is not instance})}
+        elif not proven and not any("hop nhat" in text for text in folded_titles) and any(
+            "bao cao tai chinh" in text or "thuyet minh" in text for text in folded_titles
+        ):
+            instance.scope = "SEPARATE"
+            instance.scope_basis = {"basis": "NO_CONSOLIDATION_MARKER_AFTER_FULL_DOCUMENT_TITLE_SCAN",
+                                    "titles_scanned": len(folded_titles)}
+        else:
+            continue
+        instance.reasons = [reason for reason in instance.reasons if reason != "SCOPE_UNRESOLVED"]
+
+
 def resolve_cash_flow_branch_v1(instance: StatementInstance, rules_path, catalog: PrimaryCatalog) -> None:
     """DIRECT/INDIRECT from the lctt-v2 ordered ReportNormId anchor sequences.
 
@@ -888,7 +920,31 @@ def assign_parents_v1(instance: StatementInstance) -> None:
                 row.alt_parent_row = path_parent
         elif path_parent is not None:
             row.parent_row, row.parent_basis = path_parent, "GEMINI_HIERARCHY_PATH"
+        elif numbering_is_header_hierarchy and stack and not _heading_or_total(row) \
+                and _sibling_follows(instance.rows, index, stack[-1][1]):
+            # An unnumbered run printed between two same-level numbered siblings
+            # belongs to the preceding numbered row (e.g. "Cam kết mua ngoại tệ"
+            # between "2 Cam kết giao dịch hối đoái" and "3 ...").
+            row.parent_row, row.parent_basis = stack[-1][1], "UNNUMBERED_BETWEEN_NUMBERED_SIBLINGS"
         else:
             row.parent_row, row.parent_basis = None, "TOP_LEVEL_OR_UNSTATED"
         if path:
             by_path[path] = index
+
+
+def _heading_or_total(row: LogicalRow) -> bool:
+    """Upper-case headings and "Tổng ..." totals never hang under a numbered item."""
+
+    letters = [ch for ch in (row.label_exact or "") if ch.isalpha()]
+    upper = bool(letters) and sum(ch.isupper() for ch in letters) >= 0.8 * len(letters)
+    return upper or row.label_key.startswith("tong ") or row.label_key == "tong cong"
+
+
+def _sibling_follows(rows: list[LogicalRow], index: int, numbered: int) -> bool:
+    kind = rows[numbered].enumerator_class
+    if kind not in {"ROMAN", "ARABIC", "LETTER", "DOTTED"}:
+        return False
+    for following in rows[index + 1:]:
+        if following.enumerator_class is not None:
+            return following.enumerator_class == kind
+    return False

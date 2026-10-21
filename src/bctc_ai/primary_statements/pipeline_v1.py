@@ -23,6 +23,7 @@ from bctc_ai.primary_statements.assembly_v1 import (
     instance_page_sections,
     iter_source_tables,
     resolve_cash_flow_branch_v1,
+    resolve_document_scope_v1,
     resolve_instance_lanes_v1,
     resolve_instance_scope_v1,
 )
@@ -184,14 +185,17 @@ def run_document_v1(document, census, titles, loaded, catalog, rules_path, equat
         others_on_pages = instance_page_sections(instance, page_sections)
         own_texts = [
             text for source in instance.tables
-            for text in [source.section.get("title_exact"), *(source.section.get("narratives_exact") or [])] if text
+            for text in [source.section.get("title_exact"), source.table.get("title_exact"),
+                         *(source.section.get("narratives_exact") or [])] if text
         ]
         other_texts = [text for section in others_on_pages
                        if section["content_kind"] != "FINANCIAL_NOTE"
                        for text in [section["title"], *section["narratives"]] if text]
         resolve_instance_scope_v1(instance, document_titles, own_texts + other_texts)
+    resolve_document_scope_v1(instances, document_titles)
+    for instance in instances:
         resolve_cash_flow_branch_v1(instance, rules_path, catalog)
-        resolve_instance_lanes_v1(instance, catalog, document_roles, others_on_pages)
+        resolve_instance_lanes_v1(instance, catalog, document_roles, instance_page_sections(instance, page_sections))
         assign_parents_v1(instance)
         dispositions[instance.key] = map_instance_rows_v1(instance, catalog)
     receipts = resolve_duplicate_presentations_v1(instances, dispositions)

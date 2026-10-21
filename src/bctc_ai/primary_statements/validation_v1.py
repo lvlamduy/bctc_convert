@@ -42,7 +42,8 @@ from bctc_ai.primary_statements.units_v1 import SCALE
 
 VALIDATION_VERSION = "PRIMARY_ACCOUNTING_VALIDATION_V1"
 EQUATIONS_RELATIVE_PATH = "config/primary_statements/equations_v1.yaml"
-PASS_STATES = {"PASS", "PASS_WITHIN_DECLARED_ROUNDING", "PASS_UNDER_ALTERNATE_SIGN_READING"}
+PASS_STATES = {"PASS", "PASS_WITHIN_DECLARED_ROUNDING", "PASS_UNDER_ALTERNATE_SIGN_READING",
+               "PASS_UNDER_DECLARED_ALTERNATIVE_MEMBERSHIP"}
 
 
 @dataclass
@@ -185,12 +186,35 @@ def validate_instance_v1(
                 absent.append(child)
         return terms, absent
 
-    def unmapped_source_children(rnid: int) -> list[str]:
+    def ancestors_of(position: int) -> set[int]:
+        found, pending = set(), [position]
+        while pending:
+            current = dispositions[pending.pop()].row
+            for parent in (current.parent_row, current.alt_parent_row):
+                if parent is not None and parent not in found:
+                    found.add(parent)
+                    pending.append(parent)
+        return found
+
+    def unmapped_source_components(rnid: int, terms: list[int]) -> list[str]:
+        """Valued rows without identity printed as components of this check.
+
+        Either a direct source child of the parent row, or (for statements that
+        print subtotals after their components) a row inside the row span of
+        the check that is not inside one of the terms' own subtrees."""
+
         position = row_index[id(mapped[rnid].row)]
+        term_positions = {row_index[id(mapped[term].row)] for term in terms}
+        span = term_positions | {position}
+        low, high = min(span), max(span)
         found = []
-        for item in dispositions:
-            if item.row.parent_row == position and item.row.has_numeric and item.report_norm_id is None \
-                    and item.disposition not in {"STRUCTURAL"}:
+        for index, item in enumerate(dispositions):
+            if not item.row.has_numeric or item.report_norm_id is not None or item.disposition in {"STRUCTURAL"}:
+                continue
+            if item.disposition.startswith("DUPLICATE_"):
+                continue
+            ancestry = ancestors_of(index)
+            if item.row.parent_row == position or (low < index < high and not (ancestry & term_positions)):
                 found.append(item.row.label_exact or item.row.uid)
         return found
 
@@ -200,7 +224,7 @@ def validate_instance_v1(
         if children.get(parent):
             terms, absent = frontier(parent, {parent})
             if terms:
-                equations.append((parent, terms, absent, unmapped_source_children(parent)))
+                equations.append((parent, terms, absent, unmapped_source_components(parent, terms)))
     # Validated DASH_ZERO: a dash on a parent whose valued components do not sum
     # to zero is not a numeric zero; the lane becomes non-numeric (DASH).
     for parent, terms, _absent, _extra in equations:
@@ -227,32 +251,17 @@ def validate_instance_v1(
             elif any(value is None for _, value in raw_terms):
                 result.reason = "COMPONENT_LANE_NOT_NUMERIC"
             else:
-                for alternate in (False, True):
-                    oriented_parent = roles.orient(parent, parent_value, alternate)
-                    oriented = [roles.orient(term, value, alternate) for term, value in raw_terms]
-                    if oriented_parent is None or any(value is None for value in oriented):
-                        result.reason = f"SIGN_CONVENTION_{roles.convention}"
-                        continue
-                    total = sum(oriented, Decimal(0))
-                    residual = oriented_parent - total
-                    tolerance = Decimal(0)
-                    if unit_scale >= config.rounding["minimum_unit_scale"]:
-                        tolerance = Decimal(max(1, (len(oriented) + 1) // 2))
-                    if residual == 0 or abs(residual) <= tolerance:
-                        result.status = ("PASS_UNDER_ALTERNATE_SIGN_READING" if alternate else
-                                         "PASS" if residual == 0 else "PASS_WITHIN_DECLARED_ROUNDING")
-                        result.left, result.right, result.residual = str(oriented_parent), str(total), str(residual)
-                        result.tolerance = str(tolerance)
-                        result.reason = None
-                        break
-                    if not alternate:
-                        result.left, result.right, result.residual = str(oriented_parent), str(total), str(residual)
-                        result.tolerance = str(tolerance)
-                        result.status = "FAIL" if not absent and not extra else "MISMATCH_WITH_INCOMPLETE_FRONTIER"
-                        result.reason = ("SOURCE_ONLY_COMPONENTS:" + "|".join(extra)[:300]) if extra else (
-                            "ABSENT_SCHEMA_COMPONENTS" if absent else "COMPLETE_FRONTIER_DOES_NOT_CLOSE")
-                    if not (roles.reversible & ({parent} | set(terms))):
-                        break
+                _evaluate_lane(result, roles, parent, parent_value, raw_terms, absent, extra, unit_scale, config)
+                if result.status == "FAIL":
+                    alternative = _alternative_terms(spec, parent, raw_terms, values, mapped, lane_index)
+                    if alternative is not None:
+                        probe = EquationResult(result.equation_id, result.kind, parent, lane_index, key, "NOT_EVALUABLE",
+                                               None, convention=roles.convention)
+                        _evaluate_lane(probe, roles, parent, parent_value, alternative, [], [], unit_scale, config)
+                        if probe.status in PASS_STATES:
+                            result.status = "PASS_UNDER_DECLARED_ALTERNATIVE_MEMBERSHIP"
+                            result.reason = "ALTERNATIVE_TERMS:" + ",".join(str(term) for term, _ in alternative)
+                            result.residual = probe.residual
             results.append(result)
     for identity in spec.get("cross_identities", []):
         left, right = identity["left"], identity["right"]
@@ -272,3 +281,50 @@ def validate_instance_v1(
                 result.reason = "LANE_NOT_NUMERIC"
             results.append(result)
     return results
+
+
+def _alternative_terms(spec, parent, raw_terms, values, mapped, lane_index):
+    """Terms of a declared alternative membership for this parent, if any applies."""
+
+    for membership in spec.get("alternative_memberships", []) or []:
+        child = membership["child"]
+        if child not in mapped or lane_index >= len(values[child]) or values[child][lane_index] is None:
+            continue
+        if parent == membership["alternative_parent"] and child not in {term for term, _ in raw_terms}:
+            return raw_terms + [(child, values[child][lane_index])]
+        if parent == membership["standard_parent"] and child in {term for term, _ in raw_terms}:
+            return [(term, value) for term, value in raw_terms if term != child]
+    return None
+
+
+def _evaluate_lane(result, roles, parent, parent_value, raw_terms, absent, extra, unit_scale, config) -> None:
+    """Close one lane by declared orientation; an alternate unsigned reading is
+    tried only when a reversible identity takes part. Values are never changed."""
+
+    terms = [term for term, _ in raw_terms]
+    for alternate in (False, True):
+        oriented_parent = roles.orient(parent, parent_value, alternate)
+        oriented = [roles.orient(term, value, alternate) for term, value in raw_terms]
+        if oriented_parent is None or any(value is None for value in oriented):
+            result.reason = f"SIGN_CONVENTION_{roles.convention}"
+            continue
+        total = sum(oriented, Decimal(0))
+        residual = oriented_parent - total
+        tolerance = Decimal(0)
+        if unit_scale >= config.rounding["minimum_unit_scale"]:
+            tolerance = Decimal(max(1, (len(oriented) + 1) // 2))
+        if residual == 0 or abs(residual) <= tolerance:
+            result.status = ("PASS_UNDER_ALTERNATE_SIGN_READING" if alternate else
+                             "PASS" if residual == 0 else "PASS_WITHIN_DECLARED_ROUNDING")
+            result.left, result.right, result.residual = str(oriented_parent), str(total), str(residual)
+            result.tolerance = str(tolerance)
+            result.reason = None
+            return
+        if not alternate:
+            result.left, result.right, result.residual = str(oriented_parent), str(total), str(residual)
+            result.tolerance = str(tolerance)
+            result.status = "FAIL" if not absent and not extra else "MISMATCH_WITH_INCOMPLETE_FRONTIER"
+            result.reason = ("SOURCE_ONLY_COMPONENTS:" + "|".join(extra)[:300]) if extra else (
+                "ABSENT_SCHEMA_COMPONENTS" if absent else "COMPLETE_FRONTIER_DOES_NOT_CLOSE")
+        if not (roles.reversible & ({parent} | set(terms))):
+            return

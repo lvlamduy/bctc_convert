@@ -109,8 +109,126 @@ def map_instance_rows_v1(instance: StatementInstance, catalog: PrimaryCatalog) -
             current_section = headings.get(disposition.reason.split(":", 1)[1], current_section)
         disposition.section = current_section
         dispositions.append(disposition)
-    _resolve_duplicate_targets(dispositions)
+    _unlabeled_subtotal_controls(dispositions)
+    _resolve_duplicate_targets(dispositions, statement_catalog)
+    _order_bracketed_lexical_matches(dispositions, instance, statement_catalog)
     return dispositions
+
+
+LEXICAL_MATCH_THRESHOLD = 0.75
+LEXICAL_MATCH_MARGIN = 0.1
+_STOP_TOKENS = frozenset({"cac", "va", "cua", "cho", "cac khoan", "khoan", "nhung", "ve", "tu", "tai"})
+
+
+def _tokens(key: str) -> frozenset[str]:
+    return frozenset(token for token in key.split() if token not in _STOP_TOKENS)
+
+
+def _order_bracket(dispositions: list[RowDisposition], index: int, statement_catalog,
+                   exclude: set[int] | None = None) -> tuple[int | None, int | None]:
+    """Display orders of the nearest mapped rows before and after ``index``."""
+
+    def order_of(item: RowDisposition) -> int | None:
+        if item.disposition in {MAPPED, MAPPED_HEADING} and item.report_norm_id is not None \
+                and (exclude is None or id(item) not in exclude):
+            return statement_catalog.items[item.report_norm_id].display_order
+        return None
+
+    before = next((o for o in (order_of(item) for item in reversed(dispositions[:index])) if o is not None), None)
+    after = next((o for o in (order_of(item) for item in dispositions[index + 1:]) if o is not None), None)
+    return before, after
+
+
+def _in_bracket(order: int, bracket: tuple[int | None, int | None]) -> bool:
+    before, after = bracket
+    return (before is None or before < order) and (after is None or order < after) and not (before is None and after is None)
+
+
+def _order_bracketed_lexical_matches(dispositions: list[RowDisposition], instance: StatementInstance, statement_catalog) -> None:
+    """Retrieve an identity for an unrecognized valued row by wording similarity,
+    accepted only when exactly one unused identity is both lexically close and
+    printed exactly where the schema order places it between its mapped
+    neighbours. The basis is recorded; the source label is never rewritten."""
+
+    used = {item.report_norm_id for item in dispositions if item.report_norm_id is not None}
+    alias_tokens: dict[int, list[frozenset[str]]] = defaultdict(list)
+    for key, hits in statement_catalog.index.items():
+        for hit in hits:
+            if hit.kind == "ITEM":
+                alias_tokens[int(hit.target)].append(_tokens(key))
+    for index, item in enumerate(dispositions):
+        if item.reason != "UNRECOGNIZED_VALUE_ROW_NO_CATALOG_IDENTITY" or not item.row.label_key:
+            continue
+        row_tokens = _tokens(item.row.label_key)
+        if len(row_tokens) < 3:
+            continue
+        bracket = _order_bracket(dispositions, index, statement_catalog)
+        scored = []
+        for rnid, token_sets in alias_tokens.items():
+            spec = statement_catalog.items[rnid]
+            if rnid in used or spec.constrained:
+                continue
+            if instance.statement == "LCTT" and spec.branch != instance.branch:
+                continue
+            if instance.scope is not None and instance.scope not in spec.scope:
+                continue
+            score = max(len(row_tokens & tokens) / len(row_tokens | tokens) for tokens in token_sets)
+            scored.append((score, rnid))
+        scored.sort(reverse=True)
+        if not scored or scored[0][0] < LEXICAL_MATCH_THRESHOLD:
+            continue
+        if len(scored) > 1 and scored[0][0] - scored[1][0] < LEXICAL_MATCH_MARGIN:
+            continue
+        score, rnid = scored[0]
+        if not _in_bracket(statement_catalog.items[rnid].display_order, bracket):
+            continue
+        item.disposition = MAPPED
+        item.report_norm_id = rnid
+        item.reason = f"ORDER_BRACKETED_LEXICAL_MATCH:{score:.3f}:BRACKET:{bracket[0]}..{bracket[1]}"
+        used.add(rnid)
+
+
+def _lane_numbers(row: LogicalRow) -> list[Decimal] | None:
+    numbers = []
+    for cell in row.cells:
+        if cell.state in {"VALUE", "PRINTED_ZERO"} and cell.value is not None:
+            numbers.append(Decimal(cell.value))
+        elif cell.state == "DASH":
+            numbers.append(Decimal(0))
+        else:
+            return None
+    return numbers
+
+
+def _unlabeled_subtotal_controls(dispositions: list[RowDisposition]) -> None:
+    """An unlabeled valued row equal (on every lane) to the sum of exactly one
+    contiguous block of preceding valued rows is an unlabeled subtotal. It is
+    kept as a structural control with its equation; no identity is assigned."""
+
+    for index, item in enumerate(dispositions):
+        if item.reason != "UNLABELED_VALUE_ROW":
+            continue
+        target = _lane_numbers(item.row)
+        if target is None or not target:
+            continue
+        totals = [Decimal(0)] * len(target)
+        count, matches = 0, []
+        for previous in reversed(dispositions[:index]):
+            if previous.reason == "UNLABELED_VALUE_ROW":
+                break
+            if not previous.row.has_numeric:
+                continue
+            numbers = _lane_numbers(previous.row)
+            if numbers is None or len(numbers) != len(target):
+                break
+            totals = [a + b for a, b in zip(totals, numbers, strict=True)]
+            count += 1
+            if count >= 2 and totals == target:
+                matches.append((count, previous.row.uid))
+        if len(matches) == 1:
+            count, first_uid = matches[0]
+            item.disposition = STRUCTURAL
+            item.reason = f"UNLABELED_SUBTOTAL_OF_{count}_PRECEDING_ROWS_FROM_{first_uid}"
 
 
 def _map_one(
@@ -215,7 +333,7 @@ def _is_top_level(row: LogicalRow, parent_row: LogicalRow | None, parent_id: str
     return parent_id is not None and parent_id in statement_catalog.section_headings
 
 
-def _resolve_duplicate_targets(dispositions: list[RowDisposition]) -> None:
+def _resolve_duplicate_targets(dispositions: list[RowDisposition], statement_catalog=None) -> None:
     by_id: dict[int, list[RowDisposition]] = defaultdict(list)
     for item in dispositions:
         if item.disposition in {MAPPED, MAPPED_HEADING} and item.report_norm_id is not None:
@@ -260,8 +378,21 @@ def _resolve_duplicate_targets(dispositions: list[RowDisposition]) -> None:
                     item.disposition = DUPLICATE_CONTROL
                     item.reason = f"IDENTICAL_REPETITION_OF_ROW_{keep.row.uid}"
         else:
+            consistent = []
+            if statement_catalog is not None:
+                order = statement_catalog.items[rnid].display_order
+                members = {id(item) for item in group}
+                for item in group:
+                    position = next(i for i, candidate in enumerate(dispositions) if candidate is item)
+                    if _in_bracket(order, _order_bracket(dispositions, position, statement_catalog, exclude=members)):
+                        consistent.append(item)
             for item in group:
-                item.disposition, item.reason = UNRESOLVED, f"DUPLICATE_TARGET_CONFLICT:{rnid}"
+                if len(consistent) == 1 and item is consistent[0]:
+                    item.reason = f"UNIQUE_ORDER_CONSISTENT_OCCURRENCE_OF_DUPLICATE_LABEL:{rnid}"
+                    continue
+                item.disposition, item.report_norm_id = UNRESOLVED, None if len(consistent) == 1 else rnid
+                item.reason = (f"ORDER_INCONSISTENT_DUPLICATE_OF:{rnid}" if len(consistent) == 1
+                               else f"DUPLICATE_TARGET_CONFLICT:{rnid}")
 
 
 # --------------------------------------------------------------------------- cells

@@ -41,3 +41,7 @@ statements:
     convention_witnesses: []
     non_additive_children: []
     cross_identities: []
+    # Form line 22 "Chi từ các quỹ" is printed by many banks inside the
+    # liabilities-changes block whose subtotal (4108) then includes it.
+    alternative_memberships:
+      - {child: 4142, standard_parent: 4110, alternative_parent: 4108}

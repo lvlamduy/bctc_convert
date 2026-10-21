@@ -442,7 +442,7 @@ statements:
       # ---- DIRECT branch -------------------------------------------------
       4104: {aliases: ["Lưu chuyển tiền từ hoạt động kinh doanh"]}
       4123: {aliases: ["Thu nhập lãi và các khoản thu nhập tương tự nhận được"]}
-      4124: {aliases: ["Chi phí lãi và các chi phí tương tự đã trả", "Chi phí lãi và các khoản chi phí tương tự đã trả", "Chi phí lãi và các khoản thu nhập tương tự đã trả"]}
+      4124: {aliases: ["Chi phí lãi và các chi phí tương tự đã trả", "Chi phí lãi và các khoản chi phí tương tự đã trả", "Chi phí lãi và các khoản thu nhập tương tự đã trả", "Chi phí lãi và các khoản tương tự đã trả"]}
       4125: {aliases: ["Thu nhập từ hoạt động dịch vụ nhận được", "Thu nhập thuần từ hoạt động dịch vụ nhận được"]}
       4126:
         aliases:
