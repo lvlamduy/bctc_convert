@@ -6605,6 +6605,10 @@ def _parse_printed_comparative_flow_policy(source_exact: Any) -> dict[str, Any]:
          + r" giua nien do, bao cao luu chuyen tien te(?P=scope) giua nien do va cac thuyet minh lien quan "
          + r"la so lieu cua bao cao tai chinh(?P=scope) giua nien do cho ky (?P<months>chin) thang ket thuc ngay "
          + r"(?P<day>\d{1,2}) thang (?P<month>\d{1,2}) nam (?P<year>\d{4}) da duoc soat xet\."),
+        ("TREN_RELATED_NOTES_WRITTEN_NINE_MONTHS_NO_REVIEW_ASSERTION", r"so lieu so sanh tren bao cao ket qua hoat dong" + scope
+         + r" giua nien do, bao cao luu chuyen tien te(?P=scope) giua nien do va cac thuyet minh lien quan "
+         + r"la so lieu cua bao cao tai chinh(?P=scope) giua nien do cho ky (?P<months>chin) thang ket thuc ngay "
+         + r"(?P<day>[0-9]{1,2}) thang (?P<month>[0-9]{1,2}) nam (?P<year>[0-9]{4})\."),
         ("TREN_RELATED_NOTES_WRITTEN_SIX_MONTHS", r"so lieu so sanh tren bao cao ket qua hoat dong" + scope
          + r" giua nien do, bao cao luu chuyen tien te(?P=scope) giua nien do va cac thuyet minh lien quan "
          + r"la so lieu cua bao cao tai chinh(?P=scope) giua nien do cho ky (?P<months>sau) thang ket thuc ngay "
@@ -6633,6 +6637,22 @@ def _parse_printed_comparative_flow_policy(source_exact: Any) -> dict[str, Any]:
                 if matched is not None:
                     name, match = matched
                     try:
+                        if name == "TREN_RELATED_NOTES_WRITTEN_NINE_MONTHS_NO_REVIEW_ASSERTION":
+                            # New source scaffold only: accent folding must not
+                            # turn annotated numerals into printed calendar tokens.
+                            numeric_tokens = [token for token in raw.split()
+                                              if any(char.isdecimal() for char in token)]
+                            if numeric_tokens != [match["day"], match["month"], match["year"] + "."]:
+                                raise ValueError("calendar tokens are not plain printed ASCII")
+                            base = None
+                            for char in unicodedata.normalize("NFD", raw):
+                                if unicodedata.combining(char):
+                                    if base is None or not base.isascii() or not base.isalpha():
+                                        raise ValueError("combining annotation outside a printed letter")
+                                else:
+                                    base = char
+                                if unicodedata.category(char) in {"Cc", "Cf", "Cs"} and char not in "\t\r\n":
+                                    raise ValueError("unsupported raw policy control character")
                         end = date(int(match["year"]), int(match["month"]), int(match["day"]))
                         if name == "TREN_ANNUAL_ALL_STATEMENTS_RELATED_NOTES":
                             months = 12

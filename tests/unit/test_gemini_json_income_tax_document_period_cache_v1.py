@@ -72,6 +72,9 @@ CALLABLE_NAMES = (
     "_owned_note_report_quarter_constraint_v1",
     "_cash_flow_partial_current_header_assertion_v1",
     "_cash_flow_printed_period_control_v1",
+    "_recognition_immediate_ancestor_owner_v1",
+    "_recognition_expense_source_frontier",
+    "_recognition_rate_effect_forward_control",
 )
 SPEC_AXES = (
     "topology", "evaluation", "schema", "query_policy",

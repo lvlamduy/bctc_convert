@@ -2980,6 +2980,290 @@ def test_quarter_caption_policy_builder_rejects_reserialized_forged_absolute_der
     assert records == before
 
 
+
+def _written_nine_policy_without_review_assertion():
+    # Exact p8/s2 paragraph retained in the independently pinned SSB180 b4743d8a...
+    # original-source diagnostic. Synthetic records below do not authenticate PDF.
+    raw = (
+        "Số liệu so sánh trên báo cáo tình hình tài chính riêng giữa niên độ và các thuyết minh liên quan "
+        "là số liệu của báo cáo tài chính riêng cho năm tài chính kết thúc ngày 31 tháng 12 năm 2024 "
+        "đã được kiểm toán. Số liệu so sánh trên báo cáo kết quả hoạt động riêng giữa niên độ, báo cáo "
+        "lưu chuyển tiền tệ riêng giữa niên độ và các thuyết minh liên quan là số liệu của báo cáo tài chính "
+        "riêng giữa niên độ cho kỳ chín tháng kết thúc ngày 30 tháng 9 năm 2024."
+    )
+    assert canonical_json_sha256_v1(raw) == "378ad64423197343e1eb64c6dbdf4f55ede6319913538e4767efcca2ce501c96"
+    return raw
+
+
+def _written_nine_no_review_contextual_records():
+    from test_gemini_json_income_tax_signed_display_v1 import _contextual_period_records
+
+    records = _contextual_period_records(quarter="III", absolute_primary=False)
+    for record in records:
+        for section in record["page_json"]["sections"]:
+            for table in section["tables"]:
+                for column in table["columns"]:
+                    column["header_path_exact"] = [
+                        text.replace("2025", "2024").replace("2026", "2025")
+                        for text in column["header_path_exact"]
+                    ]
+    for index, statement in ((1, "KẾT QUẢ HOẠT ĐỘNG"), (2, "LƯU CHUYỂN TIỀN TỆ")):
+        section = records[index]["page_json"]["sections"][0]
+        section["title_exact"] = f"BÁO CÁO {statement} RIÊNG GIỮA NIÊN ĐỘ"
+        section["tables"][0]["title_exact"] = None
+    policy_record = deepcopy(_comparative_flow_records()[-1])
+    policy = policy_record["page_json"]["sections"][0]
+    policy["title_exact"] = (
+        "Trình bày về khả năng so sánh thông tin trên báo cáo tài chính riêng giữa niên độ Quý III năm 2025"
+    )
+    policy["narratives_exact"] = [_written_nine_policy_without_review_assertion()]
+    records.append(policy_record)
+    return records
+
+
+@pytest.mark.parametrize("presentation", ["exact", "nfd", "newline", "consolidated", "unqualified", "nonadjacent_prior"])
+def test_written_nine_without_review_is_an_exact_period_assertion_not_an_assurance_grant(presentation):
+    raw = _written_nine_policy_without_review_assertion()
+    if presentation == "nfd":
+        raw = unicodedata.normalize("NFD", raw)
+    elif presentation == "newline":
+        raw = raw.replace(". Số liệu", ".\nSố liệu")
+    elif presentation == "consolidated":
+        raw = raw.replace(" riêng", " hợp nhất")
+    elif presentation == "unqualified":
+        raw = raw.replace(" riêng", "")
+    elif presentation == "nonadjacent_prior":
+        raw = raw.replace("năm 2024.", "năm 2022.")
+    before = deepcopy(raw)
+    receipt = family._parse_printed_comparative_flow_policy(raw)
+    assert receipt["complete"] is True and receipt["status"] == "PASS", receipt["reasons"]
+    scope = None if presentation == "unqualified" else "CONSOLIDATED" if presentation == "consolidated" else "SEPARATE"
+    assert receipt["comparative_period"] == {
+        "printed_months": 9, "printed_end_date": "2022-09-30" if presentation == "nonadjacent_prior" else "2024-09-30",
+        "report_scope": scope,
+    }
+    stock, flow = receipt["clause_receipts"]
+    assert stock["kind"] == "RETAINED_NON_FLOW_SENTENCE"
+    assert stock["printed_snapshot_date"] == "2024-12-31" and stock["used_as_flow_period_authority"] is False
+    assert flow["scaffold"] == "TREN_RELATED_NOTES_WRITTEN_NINE_MONTHS_NO_REVIEW_ASSERTION"
+    assert set(flow) == {"start", "end", "source_exact", "source_sha256", "kind", "scaffold", "comparative_period", "applies_to"}
+    for clause in (stock, flow):
+        assert raw[clause["start"]:clause["end"]] == clause["source_exact"]
+        assert clause["source_sha256"] == canonical_json_sha256_v1(clause["source_exact"])
+    assert receipt["source_exact"] == raw == before
+
+
+@pytest.mark.parametrize("mutation", [
+    "negated", "extra_assertion", "duplicate_flow", "missing_dot", "unsupported_review_suffix", "negated_review_suffix",
+    "unsupported_assurance", "invalid_date", "missing_day", "missing_year", "unknown_month_word", "missing_cash_flow",
+    "mixed_flow_scope", "entity", "overlay", "circle", "day_acute", "month_grave", "year_horn", "fullwidth_year",
+    "stray_mark", "raw_vt", "prefix", "stock_only",
+])
+def test_written_nine_without_review_never_erases_unknown_prose_or_calendar_annotations(mutation):
+    raw = _written_nine_policy_without_review_assertion()
+    if mutation == "negated":
+        raw = raw.replace("là số liệu của báo cáo tài chính riêng giữa niên độ", "không phải là số liệu của báo cáo tài chính riêng giữa niên độ")
+    elif mutation == "extra_assertion":
+        raw += " Số liệu này áp dụng cho quý III năm 2023."
+    elif mutation == "duplicate_flow":
+        raw += " " + raw.split(". ", 1)[1]
+    elif mutation == "missing_dot":
+        raw = raw[:-1]
+    elif mutation in {"unsupported_review_suffix", "negated_review_suffix", "unsupported_assurance"}:
+        suffix = {"unsupported_review_suffix": "đã được soát xét có điều kiện",
+                  "negated_review_suffix": "chưa được soát xét", "unsupported_assurance": "đã được kiểm toán"}[mutation]
+        raw = raw[:-1] + " " + suffix + "."
+    elif mutation == "invalid_date":
+        raw = raw.replace("30 tháng 9", "31 tháng 9")
+    elif mutation == "missing_day":
+        raw = raw.replace("ngày 30 tháng 9", "ngày tháng 9")
+    elif mutation == "missing_year":
+        raw = raw.replace("năm 2024.", ".")
+    elif mutation == "unknown_month_word":
+        raw = raw.replace("kỳ chín tháng", "kỳ bảy tháng")
+    elif mutation == "missing_cash_flow":
+        raw = raw.replace(", báo cáo lưu chuyển tiền tệ riêng giữa niên độ", "")
+    elif mutation == "mixed_flow_scope":
+        raw = raw.replace("báo cáo lưu chuyển tiền tệ riêng", "báo cáo lưu chuyển tiền tệ hợp nhất")
+    elif mutation == "entity":
+        raw = raw.replace("báo cáo kết quả hoạt động riêng", "báo cáo kết quả hoạt động riêng của công ty con")
+    elif mutation in {"overlay", "circle"}:
+        raw = raw.replace("kỳ chín", "kỳ chín" + ("\u0338" if mutation == "overlay" else "\u20dd"))
+    elif mutation == "day_acute":
+        raw = raw.replace("ngày 30 tháng 9", "ngày 30\u0301 tháng 9")
+    elif mutation == "month_grave":
+        raw = raw.replace("tháng 9 năm", "tháng 9\u0300 năm")
+    elif mutation == "year_horn":
+        raw = raw.replace("năm 2024.", "năm 2024\u031b.")
+    elif mutation == "fullwidth_year":
+        raw = raw.replace("năm 2024.", "năm ２０２４.")
+    elif mutation == "stray_mark":
+        raw = raw.replace("kỳ chín tháng", "kỳ chín \u0301tháng")
+    elif mutation == "raw_vt":
+        raw = raw.replace("kỳ chín tháng", "kỳ chín\vtháng")
+    elif mutation == "prefix":
+        raw = "Thông tin tham khảo: " + raw
+    else:
+        raw = raw.split(". ", 1)[0] + "."
+    before = deepcopy(raw)
+    receipt = family._parse_printed_comparative_flow_policy(raw)
+    assert receipt["complete"] is False and receipt["status"] != "PASS"
+    assert receipt["comparative_period"] is None and receipt["source_exact"] == raw == before
+
+
+@pytest.mark.parametrize("pair", ["note_self", "primary_self", "note_primary"])
+def test_written_nine_no_review_policy_veto_preserves_independent_source_period_proofs_not_global_anchor_waiver(pair):
+    from test_gemini_json_income_tax_signed_display_v1 import _contextual_period_proof
+
+    records = _written_nine_no_review_contextual_records()
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    document = inventory["document_comparative_flow_policy_receipt"]
+    assert document["complete"] is False and document["status"] == "ALGORITHM_HOLD"
+    assert document["policy_source_receipts"][0]["owned"] is True
+    assert document["policy_source_receipts"][0]["parser_receipt"]["complete"] is True
+    primary = next(source for source in inventory["sources"] if source["statement_type"] == "INCOME_STATEMENT")
+    assert primary["owned_current_period_constraints"] == [] and primary["absolute_duration_semantics"] is None
+    if pair == "note_self":
+        proof = family._source_period_correspondence_receipt(
+            left_locator=_contextual_period_locator(records[0]), right_locator=_contextual_period_locator(records[0]),
+            left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+            page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+        )
+        assert proof["status"] == "PASS_LITERAL_SOURCE_DURATION"
+    else:
+        proof = _contextual_period_proof(records, same_primary=pair == "primary_self", inventory=inventory)
+        assert any(item["cash_flow_used_as_period_authority"] for item in proof["period_resolution_evidence"])
+        assert all(item["resolved_source_duration_semantics"] == [
+            ["SOURCE_YTD_QUARTER", 2025, 3], ["SOURCE_YTD_QUARTER", 2024, 3],
+        ] for item in proof["period_resolution_evidence"])
+    assert proof["complete"] is True and proof["reasons"] == []
+    control = proof["printed_comparative_flow_policy_consistency_receipt"]
+    assert control["complete"] is True and control["finite_owned_policy_present"] is True
+    assert control["checks"] and all(item["compatible"] for item in control["checks"])
+    assert proof["amounts_used_as_authority"] is proof["source_period_keys_modified"] is proof["start_dates_inferred"] is False
+    assert records == before
+
+
+def test_written_nine_no_review_public_synthetic_bridge_retains_original_cells_and_axes():
+    records = _written_nine_no_review_contextual_records()
+    before = deepcopy(records)
+    candidate = _public_candidate(records)
+    assert candidate["status"] == READY and candidate["mappings"], candidate.get("reasons")
+    assert records == before
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing_cf", "undated_cf", "relative_primary_missing_nam", "policy_prior_conflict", "cf_current_conflict", "note_current_conflict",
+])
+def test_written_nine_no_review_policy_never_supplies_missing_current_period_or_waives_contrary_source(mutation):
+    from test_gemini_json_income_tax_signed_display_v1 import _contextual_period_proof
+
+    records = _written_nine_no_review_contextual_records()
+    if mutation == "missing_cf":
+        records.pop(2)
+    elif mutation == "undated_cf":
+        table = records[2]["page_json"]["sections"][0]["tables"][0]
+        for column, label in zip(table["columns"], ("Kỳ này", "Kỳ trước"), strict=True):
+            column["header_path_exact"] = [label, "Triệu đồng"]
+    elif mutation == "relative_primary_missing_nam":
+        table = records[1]["page_json"]["sections"][0]["tables"][0]
+        for column in table["columns"]:
+            column["header_path_exact"] = [value.replace("Năm ", "") for value in column["header_path_exact"]]
+    elif mutation == "policy_prior_conflict":
+        _policy_section(records)["narratives_exact"][0] = _written_nine_policy_without_review_assertion().replace("năm 2024.", "năm 2023.")
+    else:
+        index = 2 if mutation == "cf_current_conflict" else 0
+        path = records[index]["page_json"]["sections"][0]["tables"][0]["columns"][0]["header_path_exact"]
+        path[:] = [value.replace("2025", "2026") for value in path]
+    before = deepcopy(records)
+    proof = _contextual_period_proof(records)
+    assert proof["complete"] is False and proof["status"] == "ALGORITHM_HOLD"
+    if mutation == "policy_prior_conflict":
+        assert "SOURCE_PERIOD_CONTRADICTS_EXPLICIT_PRINTED_COMPARATIVE_FLOW_POLICY" in proof["reasons"]
+    if mutation in {"missing_cf", "undated_cf"}:
+        compiled = _adapter_compiled()
+        inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+        own_note = family._source_period_correspondence_receipt(
+            left_locator=_contextual_period_locator(records[0]), right_locator=_contextual_period_locator(records[0]),
+            left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+            page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+        )
+        assert own_note["complete"] is True and own_note["status"] == "PASS_LITERAL_SOURCE_DURATION"
+    assert records == before
+
+
+@pytest.mark.parametrize("forgery", ["parser_period", "source_changed"])
+def test_written_nine_no_review_resealed_inventory_cannot_replace_fresh_policy_source(forgery):
+    from test_gemini_json_income_tax_signed_display_v1 import _contextual_period_proof
+
+    records = _written_nine_no_review_contextual_records()
+    inventory = family._document_statement_period_inventory(records, compiled_specs=_adapter_compiled())
+    if forgery == "parser_period":
+        parser = inventory["document_comparative_flow_policy_receipt"]["policy_source_receipts"][0]["parser_receipt"]
+        parser["comparative_period"]["printed_end_date"] = "2023-09-30"
+        _reseal_receipts(inventory)
+    else:
+        _policy_section(records)["narratives_exact"][0] = _written_nine_policy_without_review_assertion().replace("năm 2024.", "năm 2023.")
+    before = deepcopy(records)
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error, match="drifted"):
+        _contextual_period_proof(records, inventory=inventory)
+    assert records == before
+
+
+def test_written_nine_no_review_does_not_require_cf_for_independently_absolute_note_and_income():
+    records = _independent_existing_flow_records(policy_year=2025, include_cf=False)
+    for record in records[:2]:
+        section = record["page_json"]["sections"][0]
+        section["title_exact"] = section["title_exact"].replace("6 tháng", "9 tháng").replace("30 tháng 6", "30 tháng 9")
+        for column in section["tables"][0]["columns"]:
+            column["header_path_exact"] = [
+                value.replace("6 tháng", "9 tháng").replace("30/6/", "30/9/")
+                for value in column["header_path_exact"]
+            ]
+    _policy_section(records)["narratives_exact"] = [
+        _written_nine_policy_without_review_assertion().replace("năm 2024.", "năm 2025."),
+    ]
+    before = deepcopy(records)
+    inventory = family._document_statement_period_inventory(records, compiled_specs=_adapter_compiled())
+    assert inventory["document_comparative_flow_policy_receipt"]["complete"] is False
+    proof = _period_proof(records, inventory=inventory)
+    assert proof["complete"] is True and proof["status"] == "PASS_LITERAL_SOURCE_DURATION"
+    assert proof["period_resolution_evidence"] == [] and records == before
+
+
+def test_written_nine_no_review_cannot_date_an_entirely_relative_unanchored_document():
+    records = _comparative_flow_records(current_year=2025)
+    records.pop(2)
+    records[1]["page_json"]["sections"][0]["title_exact"] = "Báo cáo kết quả hoạt động riêng giữa niên độ"
+    _policy_section(records)["narratives_exact"] = [_written_nine_policy_without_review_assertion()]
+    before = deepcopy(records)
+    proof = _period_proof(records)
+    assert proof["complete"] is False and proof["status"] == "ALGORITHM_HOLD"
+    assert all(item["resolved_source_duration_semantics"] is None for item in proof["period_resolution_evidence"])
+    assert records == before
+
+
+def test_written_nine_no_review_literal_duration_is_not_an_inferred_january_ytd_window():
+    from test_gemini_json_income_tax_signed_display_v1 import _contextual_period_proof
+
+    raw = _written_nine_policy_without_review_assertion().replace("30 tháng 9", "30 tháng 6")
+    parsed = family._parse_printed_comparative_flow_policy(raw)
+    assert parsed["complete"] is True
+    assert parsed["comparative_period"] == {
+        "printed_months": 9, "printed_end_date": "2024-06-30", "report_scope": "SEPARATE",
+    }
+    records = _written_nine_no_review_contextual_records()
+    _policy_section(records)["narratives_exact"] = [raw]
+    before = deepcopy(records)
+    proof = _contextual_period_proof(records)
+    assert proof["complete"] is False and proof["status"] == "ALGORITHM_HOLD"
+    assert "SOURCE_PERIOD_CONTRADICTS_EXPLICIT_PRINTED_COMPARATIVE_FLOW_POLICY" in proof["reasons"]
+    assert proof["amounts_used_as_authority"] is proof["start_dates_inferred"] is False
+    assert records == before
+
+
 @pytest.mark.parametrize("conflict", [False, True])
 def test_primary_unknown_unit_view_only_vetoes_actual_mixed_units_without_promoting_source(conflict):
     records = _quarter_endpoint_absolute_policy_records()
