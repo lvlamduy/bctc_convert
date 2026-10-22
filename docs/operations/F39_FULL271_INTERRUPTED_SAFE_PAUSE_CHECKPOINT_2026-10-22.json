@@ -1,0 +1,102 @@
+{
+  "schema": "bctc-ai-f39-full271-interrupted-safe-pause-checkpoint-v1",
+  "date_utc": "2026-10-22",
+  "status": "SAFE_PAUSE_NONTERMINAL_NOT_FAMILY_ACCEPTANCE",
+  "user_requested_pause": true,
+  "git": {
+    "branch": "codex/f39-income-tax-laptop",
+    "implementation_commit": "5e208d2772509fa0ad085077b13ce49fadcd8dd3",
+    "migration_base_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+    "checkpoint_commit": "THE_DESCENDANT_COMMIT_CONTAINING_THIS_FILE",
+    "checkpoint_changes_are_documentation_only": true,
+    "push_only_to_own_branch": true
+  },
+  "previous_checkpoint": {
+    "path": "docs/operations/F39_NINE_MONTH_SAFE_PAUSE_CHECKPOINT_2026-10-22.json",
+    "sha256": "7409da9f0eb0e35560d2ec2a5aca77c4ea5d651368b26b916c97a8e69218a700"
+  },
+  "scope": {
+    "report_year_from": 2025,
+    "through": "current",
+    "standalone_2024_in_production_or_provider_queue": false,
+    "printed_2024_comparatives_inside_2025_plus_reports_allowed": true,
+    "codex_owns_notes_claude_owns_primary_three_statements": true,
+    "continuation_order": ["F39", "F36", "F37"],
+    "F39_terminal": false,
+    "F41_open": false,
+    "provider_calls_performed": false,
+    "source_pdf_json_database_or_frozen_shared_files_modified": false
+  },
+  "full271_attempt": {
+    "directory": "/srv/bctc-receipts/f39-full271-nine-month-replay-1792670066620-4f4faf",
+    "status": "INTENTIONALLY_INTERRUPTED_FOR_USER_PAUSE_NOT_ACCEPTED",
+    "elapsed": "53:21.45",
+    "termination": "Verified PID 372 received SIGINT; process has exited. Captured exec exit code 1 and GNU time signal 2. GNU time's separate exit-status-zero field is not success.",
+    "interruption_location": "Independent cold source callback closing verification, reading provisional raw-census JSON. Callback did not return successfully.",
+    "retained_provisional_raw_census_files": 271,
+    "final_sweep_audit_and_results_sqlite_absent": true,
+    "cold_replay_persistence_reload_or_corpus_pass_claimed": false,
+    "resource_ref": {
+      "path": "/srv/bctc-receipts/f39-full271-nine-month-replay-1792670066620-4f4faf-resources.txt",
+      "sha256": "fbe0047300475ba3bb5e9ddb51ae615ce7ab9fb9f3778398243be3da9e975893",
+      "size_bytes": 1844
+    },
+    "resume_rule": "Keep partial artifacts. A future full run needs a fresh output directory after revalidation. Never promote these census files to accepted output or infer a completed cold pass."
+  },
+  "post_interruption_gate": {
+    "status": "PASS",
+    "path": "/srv/bctc-receipts/f39-safe-pause-postcheck-20261022T125100Z.json",
+    "sha256": "0ca262c8d4b0577b37e2620558322a356bc8667b441ae1305fb77d138d17a8a8",
+    "size_bytes": 3334,
+    "filename_timestamp_is_only_a_label": true,
+    "checks": "Exact clean implementation Git/ancestry; previous checkpoint/current/frozen code pins; all 1867 retained focused input refs and exact enumeration; bounded SSB180 and full64/common41 evidence; both source index/SQLite hashes; read-only SQLite quick_check/foreign_key_check and post-hashes; local migration-manifest bytes. No fresh network restore acceptance claimed."
+  },
+  "retained_completed_work": {
+    "production_focused": "2683 nodes and 50 subtests PASS; not rerun in this pause. Receipt and source pins freshly reverified by postcheck.",
+    "production_focused_receipt_sha256": "1542c3fd1e92d7a495c6876bb766571adaccb018f92ee6c119b6c9078bc67154",
+    "isolated_drafts": "9 selector unittest methods and 21 crosswalk pytest cases PASS outside repo; not production integration or acceptance.",
+    "draft_test_receipt": "D:/bctc_bank/restore-receipts/F39_INACTIVE_SOURCE_VARIANT_AND_CELL_CROSSWALK_DRAFT_TESTS_2026-10-22_V1.json",
+    "draft_test_receipt_sha256": "222221079604e1fe207f87db2fafbbda8b137d6ecb4b803014e44ec83211f596",
+    "new_catalog_proposal": "D:/bctc_bank/restore-tools/drafts/f39_part_period_catalog_integration_proposal_v2.patch",
+    "new_catalog_proposal_sha256": "511ec477b43052ce532115cd189cd4f61d6761acc7b2e11187aa9c201da24e1b",
+    "new_catalog_sidecar": "D:/bctc_bank/restore-tools/drafts/f39_part_period_catalog_integration_proposal_v2.review.json",
+    "new_catalog_sidecar_sha256": "390a94243d64633d6473d63cf431ba2f3c236adde397723bc60de17d95894c72",
+    "catalog_status": "NOT_APPLIED_NOT_TESTED_MAIN_FULL_REVIEW_PENDING. Agent reports 31 static hunk checks, 42 proposed new cases and 18 expanded cache cases; these are not executed test results.",
+    "caption_integration": "INACTIVE",
+    "global_registry_c986_and_old13_repairs": "UNCHANGED"
+  },
+  "detailed_external_pause_receipt": {
+    "path": "D:/bctc_bank/restore-receipts/F39_FULL271_INTERRUPTED_SAFE_PAUSE_2026-10-22_V1.json",
+    "sha256": "1ea9061980374fd7ef0871e38c096ba1b57445b28884fc8f5a7f5159c54136a2",
+    "contains": "All frozen draft hashes, comparison helper pin, source/prototype evidence, postcheck and exact continuation priorities."
+  },
+  "coordination_before_checkpoint_mutation": {
+    "status": "PASS_EXACT_VERSION_READBACK",
+    "event": "HEARTBEAT",
+    "phase": "USER_REQUESTED_SAFE_PAUSE_FINALIZING",
+    "key": "bctc-ai/coordination/2025-current/v1/events/20261022T125039381330Z-LAPTOP_INTEGRATOR-HEARTBEAT-81c796caacff4be0b7e210f4935ad0de.json",
+    "version_id": "KtL8RsF_izslfDVDDorkflQQYCvcqaIO",
+    "sha256": "02565c738100e57131f1b8c0936e57a0af3eafddc25e1445ce3581b813a85890",
+    "ready_for_integration_claimed": false
+  },
+  "resume_instructions": [
+    "Wait for the user to resume. Read repository instructions, both earlier pause checkpoints, this checkpoint and detailed external receipt; revalidate actual Git/remote ancestry, source authority, current coordination events and all evidence/draft pins before mutation.",
+    "Do not rerun the exact-head preflight helper unchanged after this documentation commit: its HEAD guard intentionally pins implementation commit 5e208d2. Review an additive updated helper or explicitly prove documentation-only ancestry while preserving every implementation/source pin.",
+    "Main agent must completely review catalog V2/sidecar and obtain independent review before any apply. Focused production tests must precede actual source/corpus replay. Preserve unique exact ORIGINAL-span selection, separate pinned registries, old13 declarations, fresh PDF auth and original/evaluation domain checks.",
+    "Resolve COMMON204 alternate selected JSON representation without skipping or aliasing it. Caption integration and crosswalk drafts remain inactive. Finish their actual source/warm/cold/persistence proofs before activation or acceptance claims.",
+    "Any future full271 replay uses fresh output, Python3.12 and the actual official runner. Keep independent cold replay fully uncached; changing memo behavior is a separate future measured mode, not a silent NO_CACHE contract change.",
+    "Final mapping comparison helper is prepared but unexecuted: review its format/status guards and supply the actual successful final sweep SHA. Expected SSB180 improvement has bounded source evidence; all other mapping/status changes require source review.",
+    "Complete all-status final-map/source-cell ownership, source replay, observation contract, SQLite, PDF/residual audits and authoritative full271/common204 ledgers before F39 terminal; only then F36, F37. No F41, provider calls, forbidden OCR, guessed values/units, source mutations or old artifact cleanup."
+  ],
+  "pause_boundary": {
+    "all_three_subagents_completed": true,
+    "remaining_project_runner_or_pytest_pids": [],
+    "automatic_continuation_scheduled": false,
+    "new_algorithm_changes_since_implementation_commit": false,
+    "external_drafts_and_evidence_retained_locally": true,
+    "external_evidence_s3_backup_complete": false,
+    "old_s3_authorities_overwritten_or_deleted": false,
+    "old_artifacts_deleted": false,
+    "duplicate_pdf_or_database_archive_created": false
+  }
+}
