@@ -491,6 +491,124 @@ def _surface_axis(record: dict[str, Any]) -> list[tuple[tuple[Any, ...], str]]:
     return surfaces
 
 
+def select_declared_part_period_registry_variant_v1(
+    page_records: Any, *, registries: Any,
+) -> dict[str, Any]:
+    """Order-invariant pure selection; never registry/PDF approval.
+
+    A production wrapper must independently load/pin the COMPLETE registry
+    catalog and compare its compiled objects/refs before calling this function.
+    The wrapper must retain its BOTH-registry identity precheck for unrelated
+    legacy documents before this deep traversal. No partial match may bypass it.
+    Catalog positions are not corpus ordinals or source identities. The chosen
+    WHOLE actual registry must then pass existing source replay and fresh PDF
+    authentication; never concatenate overlapping contexts or catch a replay
+    failure to try another representation. This selector grants no scope,
+    amount, kind, unit, equation, period, export or acceptance permission.
+    """
+    records = _clone(page_records)
+    _require(type(records) is list and bool(records), "Nonempty source page records required")
+    _require(type(registries) is list and bool(registries), "Complete declared registry catalog required")
+    variants = [validate_registered_part_period_registry_v1(value) for value in registries]
+    _require(len({_canonical(value) for value in variants}) == len(variants),
+             "Duplicate declared registry variant")
+    identity_keys = ("document_id", "document_ordinal", "source_logical_name", "source_sha256")
+    identities, versions, physicals, selected = set(), set(), set(), set()
+    for record in records:
+        _require(type(record) is dict and all(key in record for key in (
+            *identity_keys, "physical_page", "selected_page_ordinal", "page_json_version_id", "page_json",
+        )), "Source variant record axis incomplete")
+        for key in ("document_ordinal", "physical_page", "selected_page_ordinal"):
+            _integer(record[key], key)
+        _require(type(record["document_id"]) is str and _DOC.fullmatch(record["document_id"]) is not None,
+                 "Runtime document ID invalid")
+        _require(type(record["page_json_version_id"]) is str
+                 and _VID.fullmatch(record["page_json_version_id"]) is not None, "Runtime source VID invalid")
+        _hash(record["source_sha256"], "Runtime source SHA")
+        _text(record["source_logical_name"], "Runtime logical source")
+        _validate_source_page(record["page_json"])
+        identities.add(tuple(record[key] for key in identity_keys))
+        for value, seen in ((record["page_json_version_id"], versions), (record["physical_page"], physicals),
+                            (record["selected_page_ordinal"], selected)):
+            _require(value not in seen, "Duplicate runtime source variant axis")
+            seen.add(value)
+    _require(len(identities) == 1, "Foreign/multiple runtime source identities")
+    # Canonicalize traversal only. Never rewrite stored physical/selected axes.
+    records.sort(key=lambda record: (record["physical_page"], record["selected_page_ordinal"]))
+    _require(all(left["physical_page"] < right["physical_page"]
+                 and left["selected_page_ordinal"] < right["selected_page_ordinal"]
+                 for left, right in zip(records[:-1], records[1:], strict=True)), "Runtime source record order differs")
+    identity, groups = records[0], []
+    for position, registry in enumerate(variants):
+        contexts = []
+        for context in registry["contexts"]:
+            pdf = context["pdf_source"]
+            match = (context["document_id"] == identity["document_id"],
+                     pdf["logical_name"] == identity["source_logical_name"],
+                     pdf["sha256"] == identity["source_sha256"])
+            if any(match):
+                _require(all(match), "Declared source variant identity partially matches")
+                contexts.append(context)
+        if contexts:
+            groups.append((position, contexts))
+    if not groups:
+        return {"status": "NOT_APPLICABLE", "selected_registry_position": None,
+                "selected_context_ids": [], "registry_json_authenticated": False,
+                "pdf_evidence_authenticated": False, "permission_grants": _clone(_PERMISSIONS)}
+
+    def population_domain(contexts):
+        domain = []
+        for context in contexts:
+            span = context["span_pages"]
+            targets = [{key: target[key] for key in (
+                "physical_page", "selected_page_ordinal", "section_id", "table_id",
+                "money_column_ordinals", "header_paths_exact", "period_order",
+            )} for target in context["target_tables"]]
+            lexical = parse_part_scoped_period_lexical_v1(
+                heading_exact=context["heading_occurrences"][0]["substring_exact"],
+                clause_exact=context["period_occurrences"][0]["substring_exact"])
+            domain.append({"span_positions": [[page["physical_page"], page["selected_page_ordinal"]]
+                                               for page in span],
+                           "targets": targets, "calendar": lexical["calendar_only_semantics"]})
+        return sorted(domain, key=_canonical)
+
+    expected_domain = _canonical(population_domain(groups[0][1]))
+    expected_pdf = _canonical(groups[0][1][0]["pdf_source"])
+    _require(all(_canonical(context["pdf_source"]) == expected_pdf
+                 for _, contexts in groups for context in contexts), "Source variants disagree on PDF byte identity")
+    _require(all(_canonical(population_domain(contexts)) == expected_domain for _, contexts in groups),
+             "Source alternatives change registered target or printed calendar domain")
+    observed = {record["physical_page"]: record for record in records}
+    matches = []
+    for position, contexts in groups:
+        complete, stages = True, set()
+        for context in contexts:
+            span = context["span_pages"]
+            actual = [(record["physical_page"], record["selected_page_ordinal"], record["page_json_version_id"])
+                      for record in records if span[0]["physical_page"] <= record["physical_page"] <= span[-1]["physical_page"]]
+            complete &= actual == [(page["physical_page"], page["selected_page_ordinal"], page["page_json_version_id"])
+                                   for page in span]
+            for page in span:
+                record = observed.get(page["physical_page"])
+                if record is None:
+                    complete = False
+                    continue
+                digest = sha256(_canonical(record["page_json"])).hexdigest()
+                original, evaluation = page["original_page_json_sha256"], page["evaluation_page_json_sha256"]
+                complete &= digest in {original, evaluation}
+                if digest in {original, evaluation} and original != evaluation:
+                    stages.add("ORIGINAL" if digest == original else "EVALUATION")
+        if complete and len(stages) <= 1:
+            matches.append((position, contexts))
+    _require(len(matches) == 1, "Source variant requires one unique complete registered span match")
+    position, contexts = matches[0]
+    return {"status": "EXACT_DECLARED_SOURCE_SPAN_SELECTION_NOT_APPROVAL",
+            "selected_registry_position": position,
+            "selected_context_ids": [context["context_id"] for context in contexts],
+            "registry_json_authenticated": False, "pdf_evidence_authenticated": False,
+            "permission_grants": _clone(_PERMISSIONS)}
+
+
 def replay_registered_part_period_contexts_v1(page_records: Any, *, registry: Any) -> list[dict[str, Any]]:
     """Bind a separately approved registry to fresh source objects, without I/O.
 

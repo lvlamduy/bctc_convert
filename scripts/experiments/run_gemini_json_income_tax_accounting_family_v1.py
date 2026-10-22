@@ -36,9 +36,12 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
 )
 from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (  # noqa: E402
     _PERIOD_INVENTORY_DEPENDENCY_PATHS,
+    DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
     DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
     FAMILY_ID,
-    _load_registered_part_period_registry_v1,
+    _approved_registered_part_period_loader_v1,
+    _checked_registered_part_period_catalog_v1,
+    _registered_part_period_source_view_v1,
     build_gemini_json_income_tax_region_query_receipt_v1,
     compile_gemini_json_income_tax_family_specs_v1,
     evaluate_gemini_json_income_tax_family_cluster_v1,
@@ -439,6 +442,7 @@ def _trial_v1(cluster, records, compiled):
 def _evaluate_stream_v1(
     database, documents, compiled, *, cache=None, implementation_refs=(), independent_base=None,
     original_census_source=None, raw_census_sink=None, original_document_callback=None,
+    original_document_records_callback=None,
 ):
     # Legacy internal fixture/replay calls may supply neither capability. They
     # make no authenticated raw-denominator claim. The official run always
@@ -450,6 +454,10 @@ def _evaluate_stream_v1(
             "An owned authenticated original census source is required")
     require(original_document_callback is None or original_census_source is not None
             and callable(original_document_callback), "Original document callback requires an authenticated source")
+    require(original_document_records_callback is None or original_census_source is not None
+            and callable(original_document_records_callback), "Original records callback requires an authenticated source")
+    require(original_document_callback is None or original_document_records_callback is None,
+            "Original two- and three-argument callbacks are mutually exclusive")
     source_documents = None if original_census_source is None else original_census_source.document_authorities
     source_positions = {} if source_documents is None else {
         item["manifest"]["document_manifest_id"]: (ordinal, item)
@@ -501,6 +509,8 @@ def _evaluate_stream_v1(
             raw_census_sink(census)
             if original_document_callback is not None:
                 original_document_callback(document, loaded)
+            if original_document_records_callback is not None:
+                original_document_records_callback(document, loaded, records)
             require(original_hashes == tuple(canonical_json_sha256_v1(value) for value in (document, loaded, records, census)),
                     "Original source/census changed in a document callback")
         source_replay_receipts.extend(r["source_json_replay_receipt"] for r in loaded)
@@ -709,9 +719,102 @@ def _raw_census_summary_v1(census_refs):
     }
 
 
+def _authenticate_registered_part_catalog_pdf_v1(document, loaded, original_records, compiled, source_pdf_root):
+    """Select from actual original bundle; fresh PDF proof remains separate.
+
+    Call only inside the owned original-source context. Neither this selection
+    nor its private compiled view authenticates arbitrary caller objects/DB.
+    """
+    before = canonical_json_sha256_v1([document, loaded, original_records, compiled])
+    require(type(original_records) is list and bool(original_records), "Actual original page records required")
+    view = _registered_part_period_source_view_v1(original_records, compiled_specs=compiled)
+    reference = view["registry_ref"]
+    context_ids = list(dict.fromkeys(item["context_id"] for item in view["contexts"]))
+    receipts = []
+    if reference is not None:
+        catalog = _checked_registered_part_period_catalog_v1(compiled)
+        matches = [item for item in catalog if same_typed_json_v1(item["registry_ref"], reference)]
+        require(len(matches) == 1, "Original part registry is not one unique approved catalog entry")
+        # Compatibility-only private clone; global compiled remains byteequal.
+        private_compiled = json.loads(canonical_json_bytes_v1(compiled))
+        private_compiled["income_tax_part_period_registry"] = json.loads(canonical_json_bytes_v1(matches[0]["registry"]))
+        private_compiled["income_tax_part_period_registry_ref"] = json.loads(canonical_json_bytes_v1(reference))
+        receipts = authenticate_registered_part_period_pdf_v1(
+            document, loaded, private_compiled, source_pdf_root,
+            registry_loader=_approved_registered_part_period_loader_v1(reference),
+        )
+    require([item["context_id"] for item in receipts] == context_ids,
+            "Fresh part PDF authentication omitted/added an original selected context")
+    require(before == canonical_json_sha256_v1([document, loaded, original_records, compiled]),
+            "Part catalog PDF authentication changed original source/global compiled inputs")
+    return {"document_source": json.loads(canonical_json_bytes_v1(document["manifest"]["document"])),
+            "runtime_document_ordinal": original_records[0]["document_ordinal"],
+            "original_records_sha256": canonical_json_sha256_v1(original_records),
+            "registry_ref": reference, "source_variant_selection": view["source_variant_selection"],
+            "context_ids": context_ids, "receipts": receipts}
+
+
+def _recheck_registered_part_catalog_pdf_v1(bundles, documents, compiled):
+    """Late fixed-loader rechecks only; not caller-proof admission."""
+    before = canonical_json_sha256_v1([bundles, documents, compiled])
+    catalog = _checked_registered_part_period_catalog_v1(compiled)
+    require(type(bundles) is list and len(bundles) == len(documents),
+            "Part PDF original document-selection axis is incomplete")
+    groups, seen = [[] for _ in catalog], set()
+    for ordinal, (bundle, document) in enumerate(zip(bundles, documents, strict=True), 1):
+        require(type(bundle) is dict and set(bundle) == {
+            "document_source", "runtime_document_ordinal", "original_records_sha256", "registry_ref",
+            "source_variant_selection", "context_ids", "receipts",
+        } and same_typed_json_v1(bundle["document_source"], document["manifest"]["document"])
+            and type(bundle["runtime_document_ordinal"]) is int and bundle["runtime_document_ordinal"] == ordinal,
+            "Part PDF original source/run-document axis differs")
+        require(type(bundle["original_records_sha256"]) is str and len(bundle["original_records_sha256"]) == 64,
+                "Part PDF original record hash missing")
+        require(type(bundle["context_ids"]) is list and type(bundle["receipts"]) is list
+                and [item["context_id"] for item in bundle["receipts"]] == bundle["context_ids"],
+                "Part PDF selected context receipt axis differs")
+        reference = bundle["registry_ref"]
+        if reference is None:
+            require(bundle["context_ids"] == [] and bundle["source_variant_selection"] is None,
+                    "Unrelated part document acquired a selected context")
+            source = bundle["document_source"]
+            require(not any(source.get("document_id") == context["document_id"]
+                            or source["source_logical_name"] == context["pdf_source"]["logical_name"]
+                            or source["source_sha256"] == context["pdf_source"]["sha256"]
+                            for item in catalog for context in item["registry"]["contexts"]),
+                    "Applicable part source has an empty authentication axis")
+            continue
+        positions = [position for position, item in enumerate(catalog)
+                     if same_typed_json_v1(item["registry_ref"], reference)]
+        require(len(positions) == 1, "Part PDF registry axis is not independently approved")
+        position = positions[0]
+        proof = bundle["source_variant_selection"]
+        require(type(proof) is dict and same_typed_json_v1(proof.get("registry_ref"), reference)
+                and proof.get("declared_span_selection", {}).get("status") == "EXACT_DECLARED_SOURCE_SPAN_SELECTION_NOT_APPROVAL"
+                and proof["declared_span_selection"].get("selected_registry_position") == position
+                and proof["declared_span_selection"].get("selected_context_ids") == bundle["context_ids"],
+                "Part PDF original variant selection detached from approved registry")
+        source = bundle["document_source"]
+        expected = [context["context_id"] for context in catalog[position]["registry"]["contexts"]
+                    if context["pdf_source"]["logical_name"] == source["source_logical_name"]
+                    and context["pdf_source"]["sha256"] == source["source_sha256"]
+                    and context["pdf_source"]["size_bytes"] == source["source_size_bytes"]]
+        require(bundle["context_ids"] == expected and not seen.intersection(expected),
+                "Part PDF selected original context axis is incomplete/duplicate")
+        seen.update(expected)
+        groups[position].extend(bundle["receipts"])
+    # Both files independently fresh-read even when the group has no contexts.
+    for item, receipts in zip(catalog, groups, strict=True):
+        recheck_registered_part_period_pdf_v1(
+            receipts, registry_loader=_approved_registered_part_period_loader_v1(item["registry_ref"]),
+        )
+    require(before == canonical_json_sha256_v1([bundles, documents, compiled]),
+            "Part catalog authentication inputs changed during late callback")
+
+
 def _make_authenticated_source_replay_adapter_v1(
     *, database, database_ref, artifact_root, corpus_index_ref, documents, expected_census_refs,
-    source_pdf_root=None,
+    source_pdf_root=None, implementation_refs=(), authority_refs=(),
 ):
     """Bind an independent cold pass to original authority and warm raw bytes.
 
@@ -721,12 +824,20 @@ def _make_authenticated_source_replay_adapter_v1(
     """
     document_bytes = canonical_json_bytes_v1(documents)
     census_ref_bytes = canonical_json_bytes_v1(expected_census_refs)
+    implementation_bytes = canonical_json_bytes_v1(list(implementation_refs))
+    authority_bytes = canonical_json_bytes_v1(list(authority_refs))
     database_ref_bytes, index_ref_bytes = map(canonical_json_bytes_v1, (database_ref, corpus_index_ref))
     database, artifact_root = Path(database), Path(artifact_root)
     source_pdf_root = None if source_pdf_root is None else Path(source_pdf_root)
 
     def replay(*, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence):
         require(Path(source_page_database) == database, "Cold raw census source database path differs")
+        expected_implementations = json.loads(implementation_bytes)
+        expected_authorities = json.loads(authority_bytes)
+        require(expected_implementations == [generic._file_ref(Path(ref["path"])) for ref in expected_implementations],
+                "Cold replay implementation bytes changed before source open")
+        require(expected_authorities == [generic._file_ref(Path(ref["path"])) for ref in expected_authorities],
+                "Cold replay immutable authority bytes changed before source open")
         cold_documents, refs = json.loads(document_bytes), json.loads(census_ref_bytes)
         require(len(cold_documents) == len(refs)
                 and list(selected_page_json_version_ids) == [item for document in cold_documents for item in document["ids"]],
@@ -736,15 +847,16 @@ def _make_authenticated_source_replay_adapter_v1(
         require(same_typed_json_v1(compiled_specs, compile_gemini_json_flat_family_specs_v1(
             specs["topology"], specs["evaluation"], specs["schema"],
         )), "Cold replay declarative specs differ")
-        seen, part_pdf_receipts = [], []
+        seen, part_pdf_receipts, part_pdf_bundles = [], [], []
 
-        def authenticate_original(document, loaded):
+        def authenticate_original(document, loaded, original_records):
             # Independent cold authentication, never a warm approval token.
             # A missing PDF root is permitted only for nonapplicable sources.
-            part_pdf_receipts.extend(authenticate_registered_part_period_pdf_v1(
-                document, loaded, family_compiled, source_pdf_root,
-                registry_loader=_load_registered_part_period_registry_v1,
-            ))
+            bundle = _authenticate_registered_part_catalog_pdf_v1(
+                document, loaded, original_records, family_compiled, source_pdf_root,
+            )
+            part_pdf_bundles.append(bundle)
+            part_pdf_receipts.extend(bundle["receipts"])
 
         def compare(census):
             ordinal = census["source_binding"]["run_document_ordinal"]
@@ -765,14 +877,34 @@ def _make_authenticated_source_replay_adapter_v1(
             indexed, trials, _timing = _evaluate_stream_v1(
                 database, cold_documents, family_compiled, independent_base=base,
                 original_census_source=source, raw_census_sink=compare,
-                original_document_callback=authenticate_original,
+                original_document_records_callback=authenticate_original,
             )
             require(same_typed_json_v1(indexed, indexed_query_evidence), "Cold replay indexed source query differs")
             require(len(seen) == len(refs), "Cold raw census omitted a document")
             require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed during cold replay")
-            recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
+            _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, cold_documents, family_compiled)
         require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed at cold source close")
-        recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
+        # The original owned context has exited successfully. Hold a fresh
+        # readonly FD across every later callback; no trial reaches the store
+        # until this barrier's final actual DB bytes/identity check succeeds.
+        with _authenticated_source_v1(database, json.loads(database_ref_bytes)):
+            _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, cold_documents, family_compiled)
+            require(expected_implementations == [generic._file_ref(Path(ref["path"])) for ref in expected_implementations],
+                    "Cold replay implementation bytes changed during final PDF callbacks")
+            require(expected_authorities == [generic._file_ref(Path(ref["path"])) for ref in expected_authorities],
+                    "Cold replay immutable authority bytes changed during final PDF callbacks")
+            # Official runs always provide a PDF root. Legacy nonapplicable
+            # fixture calls may omit it; that omission grants no PDF proof.
+            # Check ALL selected PDFs, not only the registered PART subset.
+            if source_pdf_root is not None:
+                for document in cold_documents:
+                    source = document["manifest"]["document"]
+                    path = _safe_path(source_pdf_root / source["source_logical_name"])
+                    require(path.is_file() and path.stat().st_size == source["source_size_bytes"]
+                            and generic._sha256(path) == source["source_sha256"],
+                            "Cold source PDF changed during final PDF callbacks: " + str(path))
+            require(same_typed_json_v1(_raw_census_summary_v1(refs), before),
+                    "Warm census files changed during final cold PDF callbacks")
         return trials
 
     return replay
@@ -1020,6 +1152,7 @@ def run(args):
         Path(__file__).resolve(),
         ROOT / "scripts/experiments/f39_registered_part_period_pdf_auth_v1.py",
         ROOT / DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
+        ROOT / DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
         ROOT / "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
         *(ROOT / p for p in SHARED_PINS),
         *SPEC_PATHS.values(),
@@ -1050,14 +1183,14 @@ def run(args):
     require(args.corpus_index.is_relative_to(args.artifact_root), "Corpus index must be inside explicit artifact root")
     corpus_index_ref = {**generic._file_ref(args.corpus_index),
                         "path": args.corpus_index.relative_to(args.artifact_root).as_posix()}
-    pdf_checked, repair_ids, census_refs, part_pdf_receipts = [], [], [], []
+    pdf_checked, repair_ids, census_refs, part_pdf_receipts, part_pdf_bundles = [], [], [], [], []
     args.output_dir.mkdir(mode=0o700)
     cache = BaseClusterCache(args.base_cluster_cache)
 
     def retain_original_census(census):
         census_refs.append(_write_raw_census_document_v1(args.output_dir, census))
 
-    def authenticate_original_document(document, loaded):
+    def authenticate_original_document(document, loaded, original_records):
         # The bundle's one original loader result is shared with pixel repair
         # authentication. Never reload JSON just to inspect registered repairs.
         source = document["manifest"]["document"]
@@ -1071,10 +1204,11 @@ def run(args):
             coverage = _check_page_scope_v1(document, len(source_pdf), scope_rows)
         pdf_checked.append({**source, **coverage, "status": "PASS_BYTES_ONLY_NOT_VISUAL_AUDIT"})
         repair_ids.extend(_authenticate_repairs_v1(document, loaded, compiled, path))
-        part_pdf_receipts.extend(authenticate_registered_part_period_pdf_v1(
-            document, loaded, compiled, args.source_pdf_root,
-            registry_loader=_load_registered_part_period_registry_v1,
-        ))
+        bundle = _authenticate_registered_part_catalog_pdf_v1(
+            document, loaded, original_records, compiled, args.source_pdf_root,
+        )
+        part_pdf_bundles.append(bundle)
+        part_pdf_receipts.extend(bundle["receipts"])
 
     try:
         with open_income_tax_original_census_source_v1(
@@ -1085,7 +1219,7 @@ def run(args):
             indexed, trials, timing = _evaluate_stream_v1(
                 args.source_page_database, documents, compiled, cache=cache, implementation_refs=implementation_refs,
                 original_census_source=original_source, raw_census_sink=retain_original_census,
-                original_document_callback=authenticate_original_document,
+                original_document_records_callback=authenticate_original_document,
             )
             sweep = build_gemini_json_flat_family_sweep_v1(
                 corpus_manifest_index_id=index["corpus_manifest_index_id"],
@@ -1108,11 +1242,27 @@ def run(args):
                     and generic._sha256(path) == source["source_sha256"],
                     "Source PDF bytes changed during replay: " + str(path),
                 )
-            recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
+            _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, documents, compiled)
     finally:
         cache.close()
     _assert_shared_pins_v1()
-    recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
+    warm_census_bytes = canonical_json_bytes_v1(_raw_census_summary_v1(census_refs))
+    # Authentication callbacks after owned-source exit are provisional until
+    # both the fresh held DB descriptor and every post-callback input pass.
+    with _authenticated_source_v1(args.source_page_database, index["database_ref"]):
+        _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, documents, compiled)
+        require(implementation_refs == [generic._file_ref(p) for p in implementation_paths],
+                "Implementation bytes changed during warm final PDF callbacks")
+        require(authority_refs == [generic._file_ref(p) for p in authority_paths],
+                "Immutable authority bytes changed during warm final PDF callbacks")
+        for document in documents:
+            source = document["manifest"]["document"]
+            path = _safe_path(args.source_pdf_root / source["source_logical_name"])
+            require(path.is_file() and path.stat().st_size == source["source_size_bytes"]
+                    and generic._sha256(path) == source["source_sha256"],
+                    "Source PDF changed during warm final PDF callbacks: " + str(path))
+        require(warm_census_bytes == canonical_json_bytes_v1(_raw_census_summary_v1(census_refs)),
+                "Original census files changed during warm final PDF callbacks")
     require(
         implementation_refs == [generic._file_ref(p) for p in implementation_paths],
         "Family/spec/storage bytes changed during run",
@@ -1138,6 +1288,7 @@ def run(args):
             artifact_root=args.artifact_root, corpus_index_ref=corpus_index_ref,
             documents=documents, expected_census_refs=census_refs,
             source_pdf_root=args.source_pdf_root,
+            implementation_refs=implementation_refs, authority_refs=authority_refs,
         )
         started = time.perf_counter()
         stored = ingest_gemini_accounting_family_sweep_v1(
@@ -1164,7 +1315,19 @@ def run(args):
                 "Source PDF changed before output handoff")
     require(same_typed_json_v1(raw_census["document_census_refs"], census_refs), "Raw census reference axis changed")
     _raw_census_summary_v1(census_refs)
-    recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
+    with _authenticated_source_v1(args.source_page_database, index["database_ref"]):
+        _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, documents, compiled)
+        require(implementation_refs == [generic._file_ref(p) for p in implementation_paths]
+                and authority_refs == [generic._file_ref(p) for p in authority_paths],
+                "Implementation/immutable authority bytes changed during output PDF callbacks")
+        for document in documents:
+            source = document["manifest"]["document"]
+            path = _safe_path(args.source_pdf_root / source["source_logical_name"])
+            require(path.is_file() and path.stat().st_size == source["source_size_bytes"]
+                    and generic._sha256(path) == source["source_sha256"],
+                    "Source PDF changed during output PDF callbacks: " + str(path))
+        require(warm_census_bytes == canonical_json_bytes_v1(_raw_census_summary_v1(census_refs)),
+                "Original census files changed during output PDF callbacks")
     if diagnostic_ordinals is not None:
         material = {
             "format_version": "INCOME_TAX_BOUNDED_DIAGNOSTIC_V1",

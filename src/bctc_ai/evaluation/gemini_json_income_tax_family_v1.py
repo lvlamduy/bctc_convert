@@ -32,6 +32,7 @@ from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
 from bctc_ai.evaluation.gemini_json_income_tax_part_period_context_v1 import (
     GeminiJsonIncomeTaxPartPeriodContextV1Error,
     replay_registered_part_period_contexts_v1,
+    select_declared_part_period_registry_variant_v1,
     validate_registered_part_period_registry_v1,
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
@@ -70,6 +71,9 @@ QUERY_RECEIPT_FORMAT_VERSION = "GEMINI_JSON_INCOME_TAX_QUERY_RECEIPT_V1"
 DEFAULT_ADAPTER_SPEC_PATH = "config/families/tm-income-tax-adapter-v1.json"
 DEFAULT_SOURCE_REPAIR_SPEC_PATH = "config/families/tm-income-tax-source-repair-v1.json"
 DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH = "config/families/tm-income-tax-part-period-contexts-v1.json"
+DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH = "config/families/tm-income-tax-part-period-contexts-common204-v1.json"
+_PART_PERIOD_COMMON204_REGISTRY_SHA256 = "7ba529e7878c1fd5d6af27abe4b5a7d2937bd395b40e3ea1160ee261448adaeb"
+_PART_PERIOD_ORIGINAL_REPAIR_SHA256 = "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4"
 # Independently reviewed source-context approval bytes. A caller-resealed
 # registry or receipt cannot replace this approval; PDF checks remain separate.
 _PART_PERIOD_CONTEXT_REGISTRY_SHA256 = "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b"
@@ -255,9 +259,10 @@ def _period_inventory_dependency_refs_v1() -> list[dict[str, Any]]:
         # Registry bytes are also checked at the operation's exit barrier,
         # including after the last memo hit. This path is relative to repo,
         # unlike the implementation paths above; it is never caller-supplied.
-        raw = (root.parents[1] / DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH).read_bytes()
-        refs.append({"path": DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
-                     "size_bytes": len(raw), "sha256": sha256(raw).hexdigest()})
+        for relative in (DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH, DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
+                         DEFAULT_SOURCE_REPAIR_SPEC_PATH):
+            raw = (root.parents[1] / relative).read_bytes()
+            refs.append({"path": relative, "size_bytes": len(raw), "sha256": sha256(raw).hexdigest()})
     except OSError as exc:
         raise _error("income-tax period inventory implementation dependency is absent") from exc
     return refs
@@ -309,7 +314,12 @@ def _period_inventory_callable_fence_v1():
         _owned_current_period_constraints, _note_report_scope_receipt,
         _printed_duration_lengths, _absolute_source_duration_semantics,
         _owned_relative_year_duration_evidence, _printed_ytd_sibling_period_evidence,
-        _load_registered_part_period_registry_v1, _registered_part_period_contexts_v1,
+        _load_registered_part_period_registry_v1, _load_registered_part_period_common204_registry_v1,
+        _load_registered_part_period_catalog_v1, _checked_registered_part_period_catalog_v1,
+        _registered_part_original_identity_stage_v1, _compile_source_repairs,
+        _registered_part_period_source_view_v1,
+        _registered_part_period_contexts_v1, _approved_registered_part_period_loader_v1,
+        select_declared_part_period_registry_variant_v1,
         replay_registered_part_period_contexts_v1, validate_registered_part_period_registry_v1,
         _registered_part_period_receipt, _owned_flow_report_quarter_constraint,
         _owned_note_report_quarter_constraint_v1,
@@ -361,26 +371,146 @@ def _load_registered_part_period_registry_v1() -> tuple[dict[str, Any], dict[str
                       "sha256": sha256(raw).hexdigest(), "size_bytes": len(raw)}
 
 
-def _registered_part_period_contexts_v1(
-    page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
-) -> list[dict[str, Any]]:
-    registry, ref = _load_registered_part_period_registry_v1()
-    if (not same_typed_json_v1(registry, compiled_specs.get("income_tax_part_period_registry"))
-            or not same_typed_json_v1(ref, compiled_specs.get("income_tax_part_period_registry_ref"))):
-        raise _error("income-tax compiled part-period authority drifted")
-    # This registration is not a replacement whole-document validator. Do
-    # not impose its deep part-specific schema on unrelated legacy controls;
-    # they keep their own validation gates and receive no new period proof.
-    # Any partial identity match still enters strict replay and fails closed.
+def _load_registered_part_period_common204_registry_v1() -> tuple[dict[str, Any], dict[str, Any]]:
+    """Read only the separately approved alternative; never replace c986."""
+    path = Path(__file__).resolve().parents[3] / DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise _error("income-tax alternative part-period authority is absent") from exc
+    if sha256(raw).hexdigest() != _PART_PERIOD_COMMON204_REGISTRY_SHA256:
+        raise _error("income-tax alternative part-period authority bytes differ")
+
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise _error("income-tax alternative part-period duplicate JSON key")
+            result[key] = value
+        return result
+
+    def invalid_number(_token):
+        raise _error("income-tax alternative part-period nonfinite JSON number")
+
+    try:
+        registry = validate_registered_part_period_registry_v1(json.loads(
+            raw, object_pairs_hook=pairs, parse_constant=invalid_number,
+        ))
+    except (UnicodeDecodeError, json.JSONDecodeError, GeminiJsonIncomeTaxPartPeriodContextV1Error) as exc:
+        raise _error("income-tax alternative part-period authority is invalid") from exc
+    return registry, {"path": DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
+                      "sha256": sha256(raw).hexdigest(), "size_bytes": len(raw)}
+
+
+def _load_registered_part_period_catalog_v1() -> list[dict[str, Any]]:
+    # Fixed trusted loader origin/order, not a caller's path/catalog/flag.
+    return [{"registry": registry, "registry_ref": ref} for registry, ref in (
+        _load_registered_part_period_registry_v1(),
+        _load_registered_part_period_common204_registry_v1(),
+    )]
+
+
+def _checked_registered_part_period_catalog_v1(compiled_specs) -> list[dict[str, Any]]:
+    catalog = _load_registered_part_period_catalog_v1()
+    if (not same_typed_json_v1(catalog, compiled_specs.get("income_tax_part_period_registry_catalog"))
+            or not same_typed_json_v1(catalog[0]["registry"], compiled_specs.get("income_tax_part_period_registry"))
+            or not same_typed_json_v1(catalog[0]["registry_ref"], compiled_specs.get("income_tax_part_period_registry_ref"))):
+        raise _error("income-tax compiled part-period authority drifted (catalog/refs)")
+    return catalog
+
+
+def _approved_registered_part_period_loader_v1(reference):
+    """Resolve an exact fresh approved ref to a fixed loader, not a closure."""
+    catalog = _load_registered_part_period_catalog_v1()
+    loaders = (_load_registered_part_period_registry_v1, _load_registered_part_period_common204_registry_v1)
+    matches = [loader for item, loader in zip(catalog, loaders, strict=True)
+               if same_typed_json_v1(item["registry_ref"], reference)]
+    if len(matches) != 1:
+        raise _error("income-tax part-period loader ref is not one unique approved authority")
+    return matches[0]
+
+
+def _registered_part_original_identity_stage_v1(contexts, *, compiled_specs):
+    """Bounded ORIGINAL==EVALUATION proof, not arbitrary clone provenance.
+
+    The currently approved variants are all disjoint from old13. Any future
+    registry with real original/evaluation differences must add an explicit
+    independently source-bound original-record seam; this path will HOLD.
+    """
+    path = Path(__file__).resolve().parents[3] / DEFAULT_SOURCE_REPAIR_SPEC_PATH
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise _error("income-tax registered context old13 authority is absent") from exc
+    if sha256(raw).hexdigest() != _PART_PERIOD_ORIGINAL_REPAIR_SHA256:
+        raise _error("income-tax registered context old13 authority bytes differ")
+    # Exact independent old13 bytes constrain the exclusion, not a caller list.
+    repairs = _compile_source_repairs(json.loads(raw))
+    supplied = compiled_specs.get("income_tax_source_repairs")
+    if not same_typed_json_v1(supplied, repairs):
+        raise _error("income-tax compiled old13 repair axis differs from freshly pinned authority")
+    for context in contexts:
+        components = [(item, ("page_json",)) for item in context["span_pages"]]
+        components.extend((item, ("section_json",)) for item in [
+            *context["heading_occurrences"], *context["period_occurrences"],
+        ])
+        components.extend((item, ("section_json", "table_json")) for item in context["target_tables"])
+        for item, keys in components:
+            for suffix in keys:
+                if item["original_" + suffix + "_sha256"] != item["evaluation_" + suffix + "_sha256"]:
+                    raise _error("income-tax registered context requires an explicit original-to-evaluation replay")
+        vids = {page["page_json_version_id"] for page in context["span_pages"]}
+        pdf = context["pdf_source"]
+        for repair in repairs:
+            if (repair["locator"]["page_json_version_id"] in vids
+                    or repair["pdf_source"]["sha256"] == pdf["sha256"]
+                    or repair["pdf_source"]["logical_name"] == pdf["logical_name"]):
+                raise _error("income-tax registered ORIGINAL identity span intersects a repair authority")
+    return {"rule": "EXACT_REGISTERED_ORIGINAL_EQUALS_EVALUATION_AND_FRESH_OLD13_SOURCE_EXCLUSION",
+            "old13_spec_ref": {"path": DEFAULT_SOURCE_REPAIR_SPEC_PATH,
+                              "sha256": sha256(raw).hexdigest(), "size_bytes": len(raw)},
+            "original_and_evaluation_hash_domains_explicit": True,
+            "private_clone_alone_authenticated_as_original": False}
+
+
+def _registered_part_period_source_view_v1(page_records, *, compiled_specs):
+    catalog = _checked_registered_part_period_catalog_v1(compiled_specs)
+    # Preserve the old unrelated-legacy short circuit BEFORE deep validation.
     if not any(record.get("document_id") == context["document_id"]
                or record.get("source_logical_name") == context["pdf_source"]["logical_name"]
                or record.get("source_sha256") == context["pdf_source"]["sha256"]
-               for record in page_records for context in registry["contexts"]):
-        return []
+               for record in page_records for item in catalog for context in item["registry"]["contexts"]):
+        return {"contexts": [], "registry_ref": None, "source_variant_selection": None}
+    before = canonical_json_sha256_v1({"records": list(page_records), "compiled": dict(compiled_specs)})
     try:
-        return replay_registered_part_period_contexts_v1(page_records, registry=registry)
+        selection = select_declared_part_period_registry_variant_v1(
+            list(page_records), registries=[item["registry"] for item in catalog],
+        )
+        if selection["status"] != "EXACT_DECLARED_SOURCE_SPAN_SELECTION_NOT_APPROVAL":
+            raise _error("income-tax related part-period source has no exact registered variant")
+        item = catalog[selection["selected_registry_position"]]
+        ids = selection["selected_context_ids"]
+        selected = [context for context in item["registry"]["contexts"] if context["context_id"] in ids]
+        stage = _registered_part_original_identity_stage_v1(selected, compiled_specs=compiled_specs)
+        contexts = replay_registered_part_period_contexts_v1(page_records, registry=item["registry"])
     except GeminiJsonIncomeTaxPartPeriodContextV1Error as exc:
         raise _error("income-tax registered part-period source binding drifted") from exc
+    if before != canonical_json_sha256_v1({"records": list(page_records), "compiled": dict(compiled_specs)}):
+        raise _error("income-tax original part-period source/spec inputs changed during selection")
+    material = {"declared_span_selection": selection, "registry_ref": item["registry_ref"],
+                "original_identity_stage": stage,
+                "source_span_selected_by_full_original_object_hashes": True,
+                "runtime_document_ordinal_is_registration_authority": False}
+    proof = {**material, "receipt_id": "gjitfav1:part-registry-selection:" + canonical_json_sha256_v1(material)}
+    return {"contexts": contexts, "registry_ref": canonical_clone_v1(item["registry_ref"]),
+            "source_variant_selection": proof}
+
+
+def _registered_part_period_contexts_v1(
+    page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    # Compatibility list API; full selected ref/proof lives in the source view.
+    return _registered_part_period_source_view_v1(page_records, compiled_specs=compiled_specs)["contexts"]
 
 
 def _compile_adapter_spec(value: Any) -> dict[str, Any]:
@@ -670,9 +800,10 @@ def compile_gemini_json_income_tax_family_specs_v1(
     base["income_tax_adapter_spec_sha256"] = canonical_json_sha256_v1(adapter_raw)
     base["income_tax_source_repairs"] = _compile_source_repairs(repairs_raw)
     base["income_tax_source_repair_spec_sha256"] = canonical_json_sha256_v1(repairs_raw)
-    registry, registry_ref = _load_registered_part_period_registry_v1()
-    base["income_tax_part_period_registry"] = registry
-    base["income_tax_part_period_registry_ref"] = registry_ref
+    catalog = _load_registered_part_period_catalog_v1()
+    base["income_tax_part_period_registry"] = canonical_clone_v1(catalog[0]["registry"])
+    base["income_tax_part_period_registry_ref"] = canonical_clone_v1(catalog[0]["registry_ref"])
+    base["income_tax_part_period_registry_catalog"] = canonical_clone_v1(catalog)
     base["income_tax_original_basis_source_specs"] = canonical_clone_v1({
         "topology": topology_spec, "evaluation": evaluation_spec, "schema": schema_binding_spec,
     })
@@ -7540,8 +7671,11 @@ def _registered_part_period_receipt(
     # result. The caller has freshly replayed the whole inventory already.
     if not document_period_inventory.get("registered_part_period_contexts"):
         return None
-    contexts = _registered_part_period_contexts_v1(page_records, compiled_specs=compiled_specs)
-    if not same_typed_json_v1(contexts, document_period_inventory.get("registered_part_period_contexts", [])):
+    view = _registered_part_period_source_view_v1(page_records, compiled_specs=compiled_specs)
+    contexts = view["contexts"]
+    if (not same_typed_json_v1(contexts, document_period_inventory.get("registered_part_period_contexts", []))
+            or not same_typed_json_v1(view["registry_ref"], document_period_inventory.get("registered_part_period_registry_ref"))
+            or not same_typed_json_v1(view["source_variant_selection"], document_period_inventory.get("registered_part_period_source_variant_selection"))):
         raise _error("income-tax registered part-period inventory source replay drifted")
     matches = [item for item in contexts if same_typed_json_v1(item["target_locator"], locator)]
     if not matches:
@@ -7582,7 +7716,8 @@ def _registered_part_period_receipt(
         "complete": not reasons,
         "status": "ALGORITHM_HOLD" if reasons else "PASS_REGISTERED_PART_SOURCE_PERIOD_PAIR",
         "locator": canonical_clone_v1(locator), "registered_source_context": canonical_clone_v1(context),
-        "registry_ref": canonical_clone_v1(compiled_specs["income_tax_part_period_registry_ref"]),
+        "registry_ref": canonical_clone_v1(view["registry_ref"]),
+        "source_variant_selection": canonical_clone_v1(view["source_variant_selection"]),
         "evaluation_section_json_sha256": canonical_json_sha256_v1(section),
         "evaluation_table_json_sha256": canonical_json_sha256_v1(table),
         "raw_lane_axis": canonical_clone_v1(lane), "header_paths_exact": paths,
@@ -7702,10 +7837,11 @@ def _build_document_statement_period_inventory_uncached_v1(page_records: Sequenc
                 "document_comparative_flow_policy_receipt": _document_comparative_flow_policy_receipt(
                     page_records, sources, scope, compiled_specs=compiled_specs),
                 "rule": "ALL_ORIGINAL_TYPED_INCOME_AND_CASH_FLOW_PERIOD_SOURCES_NO_FILENAME_OR_AMOUNT_AUTHORITY"}
-    contexts = _registered_part_period_contexts_v1(page_records, compiled_specs=compiled_specs)
-    if contexts:
-        material["registered_part_period_contexts"] = contexts
-        material["registered_part_period_registry_ref"] = canonical_clone_v1(compiled_specs["income_tax_part_period_registry_ref"])
+    view = _registered_part_period_source_view_v1(page_records, compiled_specs=compiled_specs)
+    if view["contexts"]:
+        material["registered_part_period_contexts"] = view["contexts"]
+        material["registered_part_period_registry_ref"] = canonical_clone_v1(view["registry_ref"])
+        material["registered_part_period_source_variant_selection"] = canonical_clone_v1(view["source_variant_selection"])
     return {**material, "receipt_id": "gjitfav1:document-statement-periods:" + canonical_json_sha256_v1(material)}
 
 

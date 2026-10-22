@@ -1,0 +1,101 @@
+{
+  "schema": "bctc-ai-f39-catalog-safe-pause-checkpoint-v1",
+  "date_utc": "2026-10-22",
+  "status": "USER_REQUESTED_SAFE_PAUSE_NONTERMINAL_NOT_ACCEPTANCE",
+  "git": {
+    "branch": "codex/f39-income-tax-laptop",
+    "parent_commit": "559f128f942195e867cb014e3e0b55bb0ebbf07f",
+    "migration_base_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+    "checkpoint_commit": "THE_DESCENDANT_COMMIT_CONTAINING_THIS_FILE",
+    "push_only_to_owned_branch": true,
+    "changes": "Six tested F39 files plus this additive checkpoint; no acceptance/release claim."
+  },
+  "scope": {
+    "report_year_from": 2025,
+    "through": "current",
+    "standalone_2024_excluded": true,
+    "printed_comparatives_inside_in_scope_reports_allowed": true,
+    "codex_owns_notes_claude_owns_primary_three_statements": true,
+    "continuation_order": ["F39", "F36", "F37"],
+    "F39_terminal": false,
+    "F36_F37_modified": false,
+    "F41_open": false,
+    "provider_calls": false,
+    "source_pdf_json_database_or_frozen_shared_files_modified": false
+  },
+  "completed": {
+    "implementation": "Separate pinned COMMON204 part-period catalog and whole ORIGINAL-span unique selection, preserving legacy catalog and old13 repairs; actual warm/cold original-record callback wiring and final callback/held-FD drift barriers.",
+    "focused": {
+      "status": "PASS_NOT_CORPUS_ACCEPTANCE",
+      "suite_count": 25,
+      "test_nodes": 2756,
+      "subtests": 50,
+      "junit_cases": 2806,
+      "failures_errors_skips": 0,
+      "python": "3.12.3",
+      "receipt_sha256": "953f176cc8b7c6d148310f73811d0e4ab835a9706a81938636566de1f4516490",
+      "junit_sha256": "b1b29e5c5930dde8f8645cb748408bd375d14313be612ab644a45cbaf9dd32c7",
+      "original_directory": "/srv/bctc-receipts/f39-part-catalog-active25-focused-1792683677987",
+      "tested_source_refs_reverified_at_pause": 1870,
+      "all_previous_2683_and_2450_node_ids_retained": true
+    },
+    "pause_postcheck": {
+      "status": "PASS_POSTCHECK_NONTERMINAL_CHECKPOINT_ONLY",
+      "path": "D:/bctc_bank/restore-receipts/F39_CATALOG_SAFE_PAUSE_20261022_V2/F39_CATALOG_SAFE_PAUSE_POSTCHECK.json",
+      "sha256": "a798a9b5098f2335f399fb52c452fb7d9a53056990fff6f245e8f23ee4e6dd9f",
+      "size_bytes": 18591,
+      "source_database_checks": "Both full271/common204 source stores exact SHA/size before and after read-only quick_check=ok, foreign_key_check=[], no SQLite sidecars.",
+      "durable_local_evidence_copies": 25,
+      "copy_scope": "Focused receipt/JUnit, completed source-attempt output, explicit external tools/drafts/reviews. No source PDF/database archive or credentials copied.",
+      "partial_V1_directory": "Retained but NOT accepted: copying deliberate hostile test scratch symlink was rejected. Successful V2 excludes test scratch and preserves its original files."
+    }
+  },
+  "source_attempt": {
+    "status": "FAIL_NOT_ACCEPTED_WARM_ONLY",
+    "original_directory": "/srv/bctc-receipts/f39-common41-catalog-source-1792685086821",
+    "receipt_sha256": "6040eca8152e5cf185d7d4ad220ce12da9c6e32b8b2f2e70f7f28245005e04f4",
+    "stage": "ACTUAL_OWNED_WARM_SOURCE41",
+    "error": "RuntimeError: Unsafe/missing evidence path",
+    "diagnosis": "External helper read() evidence-root allowlist omits /mnt/d/bctc_bank/restore-receipts. It rejects the existing alternate-source manual review. This is not evidence of source corruption or an accepted warm/cold result.",
+    "affected_review": "D:/bctc_bank/restore-receipts/F39_COMMON204_KLB41_PART_PERIOD_ALTERNATE_SOURCE_VISUAL_REVIEW_2026-10-22_V1.json",
+    "helper": "D:/bctc_bank/restore-tools/verify_f39_common41_part_period_source_v2.py",
+    "helper_sha256": "28fcba24be1e973fb3f0bf410f78a9e2933a9d4b880e40a8840f019507e65856",
+    "cold_completed": false,
+    "persistence_performed": false,
+    "results_database_created": false,
+    "full271_common204_acceptance": false,
+    "artifacts_retained": true
+  },
+  "inactive_work": {
+    "caption_evaluator_v3_patch": "D:/bctc_bank/restore-tools/drafts/f39_section_caption_evaluator_integration_v3.patch",
+    "patch_sha256": "41acbfb00ccdd24fcaf9430b58f3b4d740a1d936a7e63dcc0dda1d868f90fa5e",
+    "review_sha256": "e5b547e960f41cbe6998d9f6138b7a7d68e96a179eaa3aaf09887a59d71b8d62",
+    "status": "UNAPPLIED_UNRUN_MAIN_FULL_REVIEW_AND_JOINT_RUNNER_STORE_INTEGRATION_PENDING",
+    "proposed_tests_not_executed": 66,
+    "crosswalk": "INACTIVE_NOT_ACCEPTANCE",
+    "previous_interrupted_full271": "Preserve previous checkpoint and all 271 provisional census files; never promote them to accepted output."
+  },
+  "coordination_before_checkpoint": {
+    "status": "PASS_EXACT_VERSION_READBACK",
+    "key": "bctc-ai/coordination/2025-current/v1/events/20261022T161347170340Z-LAPTOP_INTEGRATOR-HEARTBEAT-37d226c94d9e4aa7b74ba8b2183b2474.json",
+    "version_id": "Wc3dks47glUtjYwwRbAJ5xx6yB2_oABt",
+    "sha256": "670ae02c24f4ff74a0bcd04193ce2e375977da807f1b11c6f6a12cfcc2e65bb5"
+  },
+  "resume_instructions": [
+    "Wait for explicit user resume. Read AGENTS, migration and current checkpoint; verify exact owned branch/remote ancestry, source/database/frozen pins and current coordination events before mutation.",
+    "Verify committed six implementation/config/test files exactly match focused source_refs and pause receipt. Existing helpers pin precommit HEAD/status; prove the checkpoint descendant and identical tested bytes rather than disabling identity guards.",
+    "First fix only the external COMMON41 helper evidence-root allowlist additively, with main and independent review and a new helper pin. Preserve V2/FAIL and use a fresh output directory. Do not rerun all focused tests merely for an external helper-only change when all project bytes remain exactly pinned.",
+    "Actual COMMON41 warm and independent uncached cold source proofs remain required. Generic persistence requires the complete common204 frontier; do not forge subset persistence, selected IDs, PDF evidence or denominators.",
+    "Caption V3 requires complete main review, independent review and joint actual runner/store/authenticated-source integration before applying. Preserve current catalog selection and all held-FD/final-callback barriers; do not overwrite with older runner prototypes.",
+    "Fresh authoritative full271/common204, source replay, observation contract, SQLite, PDF/residual audits and ledgers are still required before F39 terminal. F36 then F37; F41 stays closed. No provider, source mutation, blank-to-zero, guessed units, backsolving or artifact cleanup."
+  ],
+  "pause_boundary": {
+    "all_subagents_completed": true,
+    "no_new_source_or_corpus_job_started_for_pause": true,
+    "no_automatic_restart_scheduled": true,
+    "external_evidence_preserved_on_D_drive": true,
+    "complete_external_evidence_backup_to_s3_claimed": false,
+    "old_s3_objects_or_artifacts_overwritten_or_deleted": false,
+    "goal_pause_requested_by_user": true
+  }
+}

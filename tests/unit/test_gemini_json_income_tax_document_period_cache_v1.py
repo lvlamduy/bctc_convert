@@ -50,6 +50,8 @@ DEPENDENCY_FILES = (
     "evaluation/gemini_json_flat_accounting_family_v1.py",
     "source_structure/contracts_v1.py",
     "config/families/tm-income-tax-part-period-contexts-v1.json",
+    "config/families/tm-income-tax-part-period-contexts-common204-v1.json",
+    "config/families/tm-income-tax-source-repair-v1.json",
 )
 CALLABLE_NAMES = (
     "_build_document_statement_period_inventory_uncached_v1",
@@ -64,7 +66,15 @@ CALLABLE_NAMES = (
     "_owned_relative_year_duration_evidence",
     "_printed_ytd_sibling_period_evidence",
     "_load_registered_part_period_registry_v1",
+    "_load_registered_part_period_common204_registry_v1",
+    "_load_registered_part_period_catalog_v1",
+    "_checked_registered_part_period_catalog_v1",
+    "_registered_part_original_identity_stage_v1",
+    "_compile_source_repairs",
+    "_registered_part_period_source_view_v1",
     "_registered_part_period_contexts_v1",
+    "_approved_registered_part_period_loader_v1",
+    "select_declared_part_period_registry_variant_v1",
     "replay_registered_part_period_contexts_v1",
     "validate_registered_part_period_registry_v1",
     "_registered_part_period_receipt",
@@ -389,11 +399,15 @@ def test_dependency_refs_are_actual_complete_reviewed_file_bytes():
     assert [r["path"] for r in refs] == list(DEPENDENCY_FILES)
     root = Path(family.__file__).resolve().parents[1]
     for reference in refs:
-        dependency_root = root.parents[1] if reference["path"] == DEPENDENCY_FILES[-1] else root
+        dependency_root = root.parents[1] if reference["path"].startswith("config/") else root
         raw = (dependency_root / reference["path"]).read_bytes()
         assert reference["size_bytes"] == len(raw)
         assert reference["sha256"] == sha256(raw).hexdigest()
-    assert refs[-1]["sha256"] == "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b"
+    assert [ref["sha256"] for ref in refs[-3:]] == [
+        "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b",
+        "7ba529e7878c1fd5d6af27abe4b5a7d2937bd395b40e3ea1160ee261448adaeb",
+        "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4",
+    ]
 
 
 @pytest.mark.parametrize("axis", ["income_tax_part_period_registry", "income_tax_part_period_registry_ref"])
