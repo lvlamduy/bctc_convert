@@ -39,6 +39,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 ERROR = family.GeminiJsonIncomeTaxFamilyV1Error
 DEPENDENCY_FILES = (
+    "evaluation/gemini_json_income_tax_section_caption_repair_v1.py",
     "evaluation/gemini_json_income_tax_family_v1.py",
     "evaluation/gemini_json_income_tax_part_period_context_v1.py",
     "evaluation/gemini_json_multitable_hierarchical_family_v1.py",
@@ -52,6 +53,7 @@ DEPENDENCY_FILES = (
     "config/families/tm-income-tax-part-period-contexts-v1.json",
     "config/families/tm-income-tax-part-period-contexts-common204-v1.json",
     "config/families/tm-income-tax-source-repair-v1.json",
+    "config/families/tm-income-tax-section-caption-repair-auth-v2.json",
 )
 CALLABLE_NAMES = (
     "_build_document_statement_period_inventory_uncached_v1",
@@ -85,6 +87,9 @@ CALLABLE_NAMES = (
     "_recognition_immediate_ancestor_owner_v1",
     "_recognition_expense_source_frontier",
     "_recognition_rate_effect_forward_control",
+    "_load_registered_section_caption_auth_envelope_v1", "_section_caption_core_ref_v1",
+    "_section_caption_pinned_bytes_v1", "_section_caption_part_span_disjointness_v1",
+    "_prepare_income_tax_evaluation_records_v1", "_recover_income_tax_query_cluster_v1",
 )
 SPEC_AXES = (
     "topology", "evaluation", "schema", "query_policy",
@@ -94,6 +99,8 @@ SPEC_AXES = (
     "income_tax_primary_current_specs", "income_tax_primary_detail_specs",
     "income_tax_supplemental_specs", "income_tax_original_rate_specs",
     "income_tax_original_income_specs",
+    "income_tax_section_caption_auth_envelope", "income_tax_section_caption_auth_envelope_ref",
+    "income_tax_section_caption_clone_core_ref",
 )
 
 
@@ -403,10 +410,12 @@ def test_dependency_refs_are_actual_complete_reviewed_file_bytes():
         raw = (dependency_root / reference["path"]).read_bytes()
         assert reference["size_bytes"] == len(raw)
         assert reference["sha256"] == sha256(raw).hexdigest()
-    assert [ref["sha256"] for ref in refs[-3:]] == [
+    assert len(refs) == len({ref["path"] for ref in refs}) == 15
+    assert [ref["sha256"] for ref in refs[-4:]] == [
         "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b",
         "7ba529e7878c1fd5d6af27abe4b5a7d2937bd395b40e3ea1160ee261448adaeb",
         "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4",
+        "dc80fc86b1e718117e5a6ea80bf9a45d5c7a04a6cf084db89daa8621f4a14c74",
     ]
 
 

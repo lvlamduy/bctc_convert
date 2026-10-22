@@ -1,0 +1,231 @@
+{
+  "format_version": "INCOME_TAX_REGISTERED_SECTION_CAPTION_AUTH_ENVELOPE_V1",
+  "family_id": "INCOME_TAX",
+  "clone_registry": {
+    "family_id": "INCOME_TAX",
+    "format_version": "INCOME_TAX_SECTION_CAPTION_REPAIR_REGISTRY_V1",
+    "sources": [
+      {
+        "document_id": "gfpstorev1:document:9cc188aba2ecbe3c621a6c9794907a618b794604826664b1c7169b35f240f24e",
+        "pdf_source": {
+          "logical_name": "vietstock_bctc/KLB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+          "sha256": "91a030b2dcf82adee0ef5db4ef924f24287d08d72e9ec16ee116e5539c2c0f50",
+          "size_bytes": 11588444
+        },
+        "repairs": [
+          {
+            "repair_id": "caption:75175116f9d4681797d66c809ca14cd06306d437c08ee0103dab9df678bec7e8",
+            "repair_kind": "SECTION_TITLE_PDF_VISIBLE_EXACT",
+            "locator": {
+              "json_pointer": "/sections/0/title_exact",
+              "page_json_version_id": "gfpstorev1:json:bb240ceb453ad7b8609e5ea1cef271963c20353ee25bac604d94f76f7c407aca",
+              "physical_page": 10,
+              "section_id": "s1",
+              "selected_page_ordinal": 10
+            },
+            "before_exact": "BÁO CÁO LƯU CHUYỂN TIỀN TỆ RIÊNG\nQUÝ II NĂM 2020",
+            "after_exact": "BÁO CÁO LƯU CHUYỂN TIỀN TỆ RIÊNG\nQUÝ II NĂM 2026",
+            "original_page_object_canonical_sha256": "94d4572a54e0688e4686f93f917f31cd5ec7a47027e95b1818dcd4e4b0140f1b",
+            "evaluation_page_object_canonical_sha256": "ec6d5201e81c414ba27c71ee4f8d637532e2904cb69081788d59319ab4500937",
+            "original_section_object_canonical_sha256": "1be3828abbfd5f46baae5846e69be54bd2f700b592a005952f32381221415d6e",
+            "evaluation_section_object_canonical_sha256": "a7b48a671b8fea0ed90e807d704d176f0583db283928b49ca7ec52f45f3d5d17",
+            "review_evidence": {
+              "manual_review_ref": {
+                "path": "/mnt/d/bctc_bank/restore-receipts/F39_KLB_066_CF_CAPTION_FRESH_PIXEL_REVIEW_2026-10-22_V1.json",
+                "sha256": "df620a1611b58a4c381e07799248286db9d2f2109a839195ce4654ec90d277e1",
+                "size_bytes": 5177
+              },
+              "pixel_candidate_ref": {
+                "path": "/srv/bctc-receipts/f39-caption-pixels-candidate-1792640915548-3df554/F39_REGISTERED_CAPTION_PIXEL_CANDIDATE_V1.json",
+                "sha256": "d5a16812a6e9793d0b64c7a83c9310d25b59f1d55c35ba479ab28565df8f0177",
+                "size_bytes": 224814
+              }
+            }
+          }
+        ]
+      },
+      {
+        "document_id": "gfpstorev1:document:8f0c7562c36da2582b345927cd63558567834b5e7dc418b98530dae1ffb9d347",
+        "pdf_source": {
+          "logical_name": "vietstock_bctc/SHB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+          "sha256": "3a89cd8fda598448a84396498d23de913209b8145c2680e2e228b9976513e647",
+          "size_bytes": 5139704
+        },
+        "repairs": [
+          {
+            "repair_id": "caption:48428bf700666989662b4f634b07367fdf700cc17cd0df1a0bf478babe595948",
+            "repair_kind": "SECTION_TITLE_PDF_VISIBLE_EXACT",
+            "locator": {
+              "page_json_version_id": "gfpstorev1:json:d7cda4c196271795de04af7fd7dac7ba9a28947b281b83595182e84410a70f65",
+              "physical_page": 11,
+              "selected_page_ordinal": 11,
+              "section_id": "s1",
+              "json_pointer": "/sections/0/title_exact"
+            },
+            "before_exact": "BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT\nCho năm tài chính kết thúc ngày 31 tháng 12 năm 2023",
+            "after_exact": "BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT\nCho năm tài chính kết thúc ngày 31 tháng 12 năm 2025",
+            "original_page_object_canonical_sha256": "1484dc78041fefd4bcb3f1e1fc364ddff10ed0094593e07f11331da0ba80b40a",
+            "evaluation_page_object_canonical_sha256": "b17a76d97c1f4a3a9a495ad6bf37a6496d4e2b30f84a13fa669f586616a8196c",
+            "original_section_object_canonical_sha256": "bc203b0573342195a9764cc5d13d4e8f895e8ae5672018e201c79050dad1c852",
+            "evaluation_section_object_canonical_sha256": "40f700f5fe30357b6a0435856a10b58dbc758ca90b6cb3f4357d598d23da5bab",
+            "review_evidence": {
+              "manual_review_ref": {
+                "path": "/mnt/d/bctc_bank/restore-receipts/F39_SHB_167_CF_CAPTION_FRESH_PIXEL_REVIEW_2026-10-23_V1.json",
+                "sha256": "0b2a3a74ee916d455172cf43885875f293275620f69df0716608233fcdc34171",
+                "size_bytes": 5179
+              },
+              "pixel_candidate_ref": {
+                "path": "/srv/bctc-receipts/f39-shb167-caption-candidate200-1792693623250/F39_REGISTERED_CAPTION_PIXEL_CANDIDATE_V1.json",
+                "sha256": "442dd82460427019de18003845f769d5f4e3833e9359c1abf05fd2df4259a58b",
+                "size_bytes": 216569
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "legacy_source_repair_spec_ref": {
+    "path": "/mnt/d/bctc_bank/bctc-ai-2025-current/config/families/tm-income-tax-source-repair-v1.json",
+    "sha256": "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4",
+    "size_bytes": 22707
+  },
+  "source_version_lineages": [
+    {
+      "document_id": "gfpstorev1:document:9cc188aba2ecbe3c621a6c9794907a618b794604826664b1c7169b35f240f24e",
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/KLB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "sha256": "91a030b2dcf82adee0ef5db4ef924f24287d08d72e9ec16ee116e5539c2c0f50",
+        "size_bytes": 11588444
+      },
+      "restore_authorities": {
+        "migration_manifest": {
+          "local_ref": {
+            "path": "/mnt/d/bctc_bank/restore-20260905T014806Z/objects/2376cb2cbebdbe8d55f18679ee0982b7ee77a9bf610a5d214b75d32fe8bb6312/migration-manifest-final.json",
+            "sha256": "2376cb2cbebdbe8d55f18679ee0982b7ee77a9bf610a5d214b75d32fe8bb6312",
+            "size_bytes": 18384
+          },
+          "s3": {
+            "bucket": "test-s3-duylv",
+            "key": "bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/manifest/migration-manifest-final.json",
+            "version_id": "0_OPgrF.1VhQ9unZoVC4fyuNV2a0GF4a"
+          }
+        },
+        "coverage_manifest": {
+          "local_ref": {
+            "path": "/mnt/d/bctc_bank/restore-20260905T014806Z/objects/7e1c35cc26873477a53157754991a123ae2fc5fc2405470c7ba23c45980e5a35/source-pdf-coverage-manifest.json",
+            "sha256": "7e1c35cc26873477a53157754991a123ae2fc5fc2405470c7ba23c45980e5a35",
+            "size_bytes": 8361
+          },
+          "s3": {
+            "bucket": "test-s3-duylv",
+            "key": "bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/source/source-pdf-coverage-manifest.json",
+            "version_id": "dsXgarGk3Uh9XPE8JXe_VHk9RuXoIYiQ"
+          }
+        },
+        "parent_snapshot_manifest": {
+          "local_ref": {
+            "path": "/mnt/d/bctc_bank/restore-20260905T014806Z/objects/74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json",
+            "sha256": "74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b",
+            "size_bytes": 3044426
+          },
+          "s3": {
+            "bucket": "test-s3-duylv",
+            "key": "bctc-ai/snapshots/20260806T050030130746Z-4a469fab2334/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json",
+            "version_id": "8pu1ufCeFQ4RDdkwXxyjBZY.ljSECvCE"
+          }
+        }
+      },
+      "pdf_object": {
+        "bucket": "test-s3-duylv",
+        "key": "bctc-ai/objects/sha256/91/91a030b2dcf82adee0ef5db4ef924f24287d08d72e9ec16ee116e5539c2c0f50",
+        "version_id": "ARZHgW9npc4xCdJE5WShW_tDm258hq3n",
+        "sha256": "91a030b2dcf82adee0ef5db4ef924f24287d08d72e9ec16ee116e5539c2c0f50",
+        "size_bytes": 11588444
+      },
+      "repair_evidence": [
+        {
+          "repair_id": "caption:75175116f9d4681797d66c809ca14cd06306d437c08ee0103dab9df678bec7e8",
+          "manual_review_ref": {
+            "path": "/mnt/d/bctc_bank/restore-receipts/F39_KLB_066_CF_CAPTION_FRESH_PIXEL_REVIEW_2026-10-22_V1.json",
+            "sha256": "df620a1611b58a4c381e07799248286db9d2f2109a839195ce4654ec90d277e1",
+            "size_bytes": 5177
+          },
+          "pixel_candidate_ref": {
+            "path": "/srv/bctc-receipts/f39-caption-pixels-candidate-1792640915548-3df554/F39_REGISTERED_CAPTION_PIXEL_CANDIDATE_V1.json",
+            "sha256": "d5a16812a6e9793d0b64c7a83c9310d25b59f1d55c35ba479ab28565df8f0177",
+            "size_bytes": 224814
+          }
+        }
+      ]
+    },
+    {
+      "document_id": "gfpstorev1:document:8f0c7562c36da2582b345927cd63558567834b5e7dc418b98530dae1ffb9d347",
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/SHB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "3a89cd8fda598448a84396498d23de913209b8145c2680e2e228b9976513e647",
+        "size_bytes": 5139704
+      },
+      "restore_authorities": {
+        "migration_manifest": {
+          "local_ref": {
+            "path": "/mnt/d/bctc_bank/restore-20260905T014806Z/objects/2376cb2cbebdbe8d55f18679ee0982b7ee77a9bf610a5d214b75d32fe8bb6312/migration-manifest-final.json",
+            "sha256": "2376cb2cbebdbe8d55f18679ee0982b7ee77a9bf610a5d214b75d32fe8bb6312",
+            "size_bytes": 18384
+          },
+          "s3": {
+            "bucket": "test-s3-duylv",
+            "key": "bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/manifest/migration-manifest-final.json",
+            "version_id": "0_OPgrF.1VhQ9unZoVC4fyuNV2a0GF4a"
+          }
+        },
+        "coverage_manifest": {
+          "local_ref": {
+            "path": "/mnt/d/bctc_bank/restore-20260905T014806Z/objects/7e1c35cc26873477a53157754991a123ae2fc5fc2405470c7ba23c45980e5a35/source-pdf-coverage-manifest.json",
+            "sha256": "7e1c35cc26873477a53157754991a123ae2fc5fc2405470c7ba23c45980e5a35",
+            "size_bytes": 8361
+          },
+          "s3": {
+            "bucket": "test-s3-duylv",
+            "key": "bctc-ai/machine-migrations/20260905T014806Z-family40-checkpoint/source/source-pdf-coverage-manifest.json",
+            "version_id": "dsXgarGk3Uh9XPE8JXe_VHk9RuXoIYiQ"
+          }
+        },
+        "parent_snapshot_manifest": {
+          "local_ref": {
+            "path": "/mnt/d/bctc_bank/restore-20260905T014806Z/objects/74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json",
+            "sha256": "74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b",
+            "size_bytes": 3044426
+          },
+          "s3": {
+            "bucket": "test-s3-duylv",
+            "key": "bctc-ai/snapshots/20260806T050030130746Z-4a469fab2334/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json",
+            "version_id": "8pu1ufCeFQ4RDdkwXxyjBZY.ljSECvCE"
+          }
+        }
+      },
+      "pdf_object": {
+        "bucket": "test-s3-duylv",
+        "key": "bctc-ai/objects/sha256/3a/3a89cd8fda598448a84396498d23de913209b8145c2680e2e228b9976513e647",
+        "version_id": "XAkuF2bzYE1F45FpWgpHN18AQx7BFh.a",
+        "sha256": "3a89cd8fda598448a84396498d23de913209b8145c2680e2e228b9976513e647",
+        "size_bytes": 5139704
+      },
+      "repair_evidence": [
+        {
+          "repair_id": "caption:48428bf700666989662b4f634b07367fdf700cc17cd0df1a0bf478babe595948",
+          "manual_review_ref": {
+            "path": "/mnt/d/bctc_bank/restore-receipts/F39_SHB_167_CF_CAPTION_FRESH_PIXEL_REVIEW_2026-10-23_V1.json",
+            "sha256": "0b2a3a74ee916d455172cf43885875f293275620f69df0716608233fcdc34171",
+            "size_bytes": 5179
+          },
+          "pixel_candidate_ref": {
+            "path": "/srv/bctc-receipts/f39-shb167-caption-candidate200-1792693623250/F39_REGISTERED_CAPTION_PIXEL_CANDIDATE_V1.json",
+            "sha256": "442dd82460427019de18003845f769d5f4e3833e9359c1abf05fd2df4259a58b",
+            "size_bytes": 216569
+          }
+        }
+      ]
+    }
+  ]
+}

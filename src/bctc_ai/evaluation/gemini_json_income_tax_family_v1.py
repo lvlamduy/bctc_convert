@@ -24,6 +24,9 @@ from threading import get_ident
 from time import perf_counter
 from typing import Any
 
+from bctc_ai.evaluation import (
+    gemini_json_income_tax_section_caption_repair_v1 as section_caption_core,
+)
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _normalized,
     _path_has_role,
@@ -71,6 +74,10 @@ QUERY_RECEIPT_FORMAT_VERSION = "GEMINI_JSON_INCOME_TAX_QUERY_RECEIPT_V1"
 DEFAULT_ADAPTER_SPEC_PATH = "config/families/tm-income-tax-adapter-v1.json"
 DEFAULT_SOURCE_REPAIR_SPEC_PATH = "config/families/tm-income-tax-source-repair-v1.json"
 DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH = "config/families/tm-income-tax-part-period-contexts-v1.json"
+DEFAULT_SECTION_CAPTION_AUTH_ENVELOPE_PATH = "config/families/tm-income-tax-section-caption-repair-auth-v2.json"
+_SECTION_CAPTION_AUTH_ENVELOPE_SHA256 = "dc80fc86b1e718117e5a6ea80bf9a45d5c7a04a6cf084db89daa8621f4a14c74"
+_SECTION_CAPTION_CLONE_CORE_SHA256 = "13395179d0ec6e48bea94f0adb02f05c1972defd4fa6633a597596e3a2425ccc"
+_SECTION_CAPTION_LEGACY_SPEC_SHA256 = "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4"
 DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH = "config/families/tm-income-tax-part-period-contexts-common204-v1.json"
 _PART_PERIOD_COMMON204_REGISTRY_SHA256 = "7ba529e7878c1fd5d6af27abe4b5a7d2937bd395b40e3ea1160ee261448adaeb"
 _PART_PERIOD_ORIGINAL_REPAIR_SHA256 = "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4"
@@ -160,6 +167,7 @@ def _error(message: str) -> GeminiJsonIncomeTaxFamilyV1Error:
 
 _DOCUMENT_PERIOD_OPERATION = ContextVar("f39_document_period_operation", default=None)
 _PERIOD_INVENTORY_DEPENDENCY_PATHS = (
+    "evaluation/gemini_json_income_tax_section_caption_repair_v1.py",
     "evaluation/gemini_json_income_tax_family_v1.py",
     "evaluation/gemini_json_income_tax_part_period_context_v1.py",
     "evaluation/gemini_json_multitable_hierarchical_family_v1.py",
@@ -260,7 +268,7 @@ def _period_inventory_dependency_refs_v1() -> list[dict[str, Any]]:
         # including after the last memo hit. This path is relative to repo,
         # unlike the implementation paths above; it is never caller-supplied.
         for relative in (DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH, DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
-                         DEFAULT_SOURCE_REPAIR_SPEC_PATH):
+                         DEFAULT_SOURCE_REPAIR_SPEC_PATH, DEFAULT_SECTION_CAPTION_AUTH_ENVELOPE_PATH):
             raw = (root.parents[1] / relative).read_bytes()
             refs.append({"path": relative, "size_bytes": len(raw), "sha256": sha256(raw).hexdigest()})
     except OSError as exc:
@@ -326,6 +334,12 @@ def _period_inventory_callable_fence_v1():
         _cash_flow_partial_current_header_assertion_v1, _cash_flow_printed_period_control_v1,
         _recognition_immediate_ancestor_owner_v1, _recognition_expense_source_frontier,
         _recognition_rate_effect_forward_control,
+        _load_registered_section_caption_auth_envelope_v1, _section_caption_core_ref_v1,
+        _section_caption_pinned_bytes_v1, _section_caption_part_span_disjointness_v1,
+        _prepare_income_tax_evaluation_records_v1, _recover_income_tax_query_cluster_v1,
+        section_caption_core.validate_section_caption_registry_v1,
+        section_caption_core.apply_registered_section_caption_repairs_v1,
+        section_caption_core.replay_registered_section_caption_repairs_v1,
     )
 
 
@@ -678,6 +692,257 @@ def _compile_source_repairs(value: Any) -> list[dict[str, Any]]:
     return checked
 
 
+def _section_caption_pinned_bytes_v1(relative: str, expected_sha256: str) -> tuple[bytes, dict[str, Any]]:
+    """Fixed independently approved local files only; no caller path or I/O grant."""
+    root = Path(__file__).resolve().parents[3]
+    path = root / relative
+    try:
+        if (path.resolve(strict=True) != path or not path.is_file()
+                or any(entry.is_symlink() for entry in (path, *path.parents))):
+            raise _error("income-tax caption authority origin is not canonical")
+        before = path.stat()
+        raw = path.read_bytes()
+        after = path.stat()
+    except OSError as exc:
+        raise _error("income-tax caption authority file is absent") from exc
+    def identity(value):
+        return tuple(getattr(value, key) for key in (
+            "st_dev", "st_ino", "st_mode", "st_nlink", "st_size", "st_mtime_ns", "st_ctime_ns"))
+    if (identity(before) != identity(after) or len(raw) != before.st_size or sha256(raw).hexdigest() != expected_sha256):
+        raise _error("income-tax caption authority actual bytes differ from independent pin")
+    return raw, {"path": relative, "sha256": expected_sha256, "size_bytes": len(raw)}
+
+
+def _section_caption_core_ref_v1() -> dict[str, Any]:
+    relative = "src/bctc_ai/evaluation/gemini_json_income_tax_section_caption_repair_v1.py"
+    expected = Path(__file__).resolve().parents[3] / relative
+    if (Path(section_caption_core.__file__).resolve() != expected
+            or Path(section_caption_core.__spec__.origin).resolve() != expected):
+        raise _error("income-tax caption clone core actual origin differs")
+    return _section_caption_pinned_bytes_v1(relative, _SECTION_CAPTION_CLONE_CORE_SHA256)[1]
+
+
+def _load_registered_section_caption_auth_envelope_v1() -> tuple[dict[str, Any], dict[str, Any]]:
+    """Independent approved bytes, not caller-self-sealed registration authority.
+
+    Pure compilation verifies declarations/disjoint old13 only. Runtime PDF,
+    pixel, restore-lineage and source DB admission remain runner responsibilities.
+    """
+    raw, reference = _section_caption_pinned_bytes_v1(
+        DEFAULT_SECTION_CAPTION_AUTH_ENVELOPE_PATH, _SECTION_CAPTION_AUTH_ENVELOPE_SHA256)
+    _section_caption_core_ref_v1()
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise _error("income-tax caption envelope duplicate JSON key")
+            result[key] = value
+        return result
+    def nonfinite(_value):
+        raise _error("income-tax caption envelope nonfinite JSON number")
+    try:
+        envelope = json.loads(raw, object_pairs_hook=pairs, parse_constant=nonfinite)
+        if (type(envelope) is not dict or set(envelope) != {
+                "format_version", "family_id", "clone_registry", "legacy_source_repair_spec_ref", "source_version_lineages"}
+                or envelope["format_version"] != "INCOME_TAX_REGISTERED_SECTION_CAPTION_AUTH_ENVELOPE_V1"
+                or envelope["family_id"] != FAMILY_ID):
+            raise _error("income-tax caption envelope schema differs")
+        registry = section_caption_core.validate_section_caption_registry_v1(envelope["clone_registry"])
+        legacy_raw, legacy_ref = _section_caption_pinned_bytes_v1(
+            DEFAULT_SOURCE_REPAIR_SPEC_PATH, _SECTION_CAPTION_LEGACY_SPEC_SHA256)
+        declared = envelope["legacy_source_repair_spec_ref"]
+        if (type(declared) is not dict or set(declared) != {"path", "sha256", "size_bytes"}
+                or declared["sha256"] != legacy_ref["sha256"] or type(declared["size_bytes"]) is not int
+                or declared["size_bytes"] != legacy_ref["size_bytes"]):
+            raise _error("income-tax caption envelope legacy authority differs")
+        # Read the fixed project path above, never an arbitrary declared ref path.
+        legacy = _compile_source_repairs(json.loads(legacy_raw, object_pairs_hook=pairs, parse_constant=nonfinite))
+        if len(legacy) != 13:
+            raise _error("income-tax caption envelope requires complete unchanged legacy13")
+        lineages = envelope["source_version_lineages"]
+        if type(lineages) is not list or len(lineages) != len(registry["sources"]):
+            raise _error("income-tax caption envelope lineage axis differs")
+        for source, lineage in zip(registry["sources"], lineages, strict=True):
+            pdf = source["pdf_source"]
+            if (source["document_id"] != section_caption_core._document_id(pdf)
+                    or type(lineage) is not dict or set(lineage) != {
+                        "document_id", "pdf_source", "restore_authorities", "pdf_object", "repair_evidence"}
+                    or lineage["document_id"] != source["document_id"]
+                    or not same_typed_json_v1(lineage["pdf_source"], pdf)
+                    or not same_typed_json_v1(lineage["repair_evidence"], [
+                        {"repair_id": repair["repair_id"], **repair["review_evidence"]} for repair in source["repairs"]])):
+                raise _error("income-tax caption envelope source/review lineage differs")
+            for repair in source["repairs"]:
+                target = repair["locator"]
+                for old in legacy:
+                    same_source = same_typed_json_v1(old["pdf_source"], pdf)
+                    same_name = old["pdf_source"]["logical_name"] == pdf["logical_name"]
+                    same_vid = old["locator"]["page_json_version_id"] == target["page_json_version_id"]
+                    if ((same_name or same_vid) and not same_source) or (same_source and (
+                            same_vid or old["locator"]["physical_page"] == target["physical_page"])):
+                        raise _error("income-tax caption/legacy page composition is not approved")
+    except (OSError, KeyError, TypeError, ValueError, UnicodeError) as exc:
+        raise _error("income-tax caption envelope declaration is invalid") from exc
+    return canonical_clone_v1(envelope), reference
+
+
+def _section_caption_part_span_disjointness_v1(original_records, sources, *, compiled_specs):
+    """Fresh ORIGINAL-source selection only; no caption clone may select PART."""
+    before = canonical_json_sha256_v1({
+        "records": list(original_records), "sources": list(sources), "compiled": dict(compiled_specs),
+    })
+    # This preserves both fixed catalog loaders, exact source variant selection
+    # and the independently pinned ORIGINAL==EVALUATION/old13 exclusion guard.
+    view = _registered_part_period_source_view_v1(original_records, compiled_specs=compiled_specs)
+    catalog = _checked_registered_part_period_catalog_v1(compiled_specs)
+    selected_contexts = []
+    if view["registry_ref"] is not None:
+        matches = [item for item in catalog
+                   if same_typed_json_v1(item["registry_ref"], view["registry_ref"])]
+        ids = {item["context_id"] for item in view["contexts"]}
+        if len(matches) != 1 or not ids:
+            raise _error("income-tax caption/PART selected authority is ambiguous")
+        selected_contexts = [context for context in matches[0]["registry"]["contexts"]
+                             if context["context_id"] in ids]
+        if {context["context_id"] for context in selected_contexts} != ids:
+            raise _error("income-tax caption/PART selected context axis differs")
+    for source in sources:
+        for context in selected_contexts:
+            pdf = context["pdf_source"]
+            same_source = (source["document_id"] == context["document_id"]
+                           and same_typed_json_v1(source["pdf_source"], pdf))
+            # A partial source identity must never turn an overlap into absence.
+            related = (source["document_id"] == context["document_id"]
+                       or source["pdf_source"]["logical_name"] == pdf["logical_name"]
+                       or source["pdf_source"]["sha256"] == pdf["sha256"])
+            if related and not same_source:
+                raise _error("income-tax caption/PART partial source identity")
+            if not same_source:
+                continue
+            vids = {page["page_json_version_id"] for page in context["span_pages"]}
+            physical_pages = {page["physical_page"] for page in context["span_pages"]}
+            if any(repair["locator"]["page_json_version_id"] in vids
+                   or repair["locator"]["physical_page"] in physical_pages
+                   for repair in source["repairs"]):
+                raise _error("income-tax caption target intersects registered part-period span")
+    if before != canonical_json_sha256_v1({
+            "records": list(original_records), "sources": list(sources), "compiled": dict(compiled_specs)}):
+        raise _error("income-tax caption/PART disjointness changed original inputs")
+    material = {
+        "rule": "FRESH_ORIGINAL_SELECTED_PART_SPAN_DISJOINT_FROM_ALL_APPLICABLE_CAPTION_TARGET_PAGES",
+        "approved_catalog_refs": [item["registry_ref"] for item in catalog],
+        "selected_registry_ref": view["registry_ref"],
+        "selected_source_variant_receipt": view["source_variant_selection"],
+        "selected_context_ids": [context["context_id"] for context in selected_contexts],
+        "checked_caption_repair_ids": [repair["repair_id"] for source in sources for repair in source["repairs"]],
+        "pdf_pixels_or_source_database_authenticated": False,
+        "scope_entity_unit_period_value_or_acceptance_permission": False,
+    }
+    return {**material, "receipt_id": "gjitfav1:caption-part-disjointness:" + canonical_json_sha256_v1(material)}
+
+
+def _prepare_income_tax_evaluation_records_v1(
+    original_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Always rebuild caption then legacy13 from ORIGINAL selected records."""
+    envelope, reference = _load_registered_section_caption_auth_envelope_v1()
+    core_ref = _section_caption_core_ref_v1()
+    if any(not same_typed_json_v1(compiled_specs.get(key), value) for key, value in (
+            ("income_tax_section_caption_auth_envelope", envelope),
+            ("income_tax_section_caption_auth_envelope_ref", reference),
+            ("income_tax_section_caption_clone_core_ref", core_ref))):
+        raise _error("income-tax compiled caption approval/ref/core differs from fresh authority")
+    if type(original_records) not in {list, tuple} or not original_records:
+        raise _error("income-tax caption original record axis is absent")
+    # Two independent ordering domains. The caller's raw order and old13
+    # receipt order remain unchanged. Only the pure caption-core traversal and
+    # projection content hashes use a private physical/selected canonical axis.
+    raw_original = canonical_clone_v1(list(original_records))
+    raw_input_sha256 = canonical_json_sha256_v1(raw_original)
+    identity = {(item["document_id"], item["document_ordinal"], item["source_logical_name"], item["source_sha256"])
+                for item in raw_original}
+    if len(identity) != 1 or any(type(item[key]) is not int or item[key] <= 0 for item in raw_original
+                               for key in ("document_ordinal", "physical_page", "selected_page_ordinal")):
+        raise _error("income-tax caption original source axis is ambiguous")
+    versions = {item["page_json_version_id"] for item in raw_original}
+    if (len(versions) != len(raw_original)
+            or len({item["physical_page"] for item in raw_original}) != len(raw_original)
+            or len({item["selected_page_ordinal"] for item in raw_original}) != len(raw_original)):
+        raise _error("income-tax caption original selected axis is duplicate")
+    original = sorted(canonical_clone_v1(raw_original),
+                      key=lambda item: (item["physical_page"], item["selected_page_ordinal"]))
+    if [item["selected_page_ordinal"] for item in original] != sorted(
+            item["selected_page_ordinal"] for item in original):
+        raise _error("income-tax caption original physical/selected axes disagree")
+    before = canonical_json_sha256_v1(original)
+    first = original[0]
+    sources = []
+    for source in envelope["clone_registry"]["sources"]:
+        axes = (source["document_id"] == first["document_id"],
+                source["pdf_source"]["logical_name"] == first["source_logical_name"],
+                source["pdf_source"]["sha256"] == first["source_sha256"])
+        if any(axes):
+            if not all(axes) or source["pdf_source"]["sha256"] != first["source_sha256"]:
+                raise _error("income-tax caption partially matching registered source")
+            sources.append(source)
+        elif any(repair["locator"]["page_json_version_id"] in versions for repair in source["repairs"]):
+            raise _error("income-tax caption foreign source reuses selected VID")
+    part_disjointness = _section_caption_part_span_disjointness_v1(
+        original, sources, compiled_specs=compiled_specs)
+    caption_records, clone_receipts = canonical_clone_v1(original), []
+    if sources:
+        if len(sources) != 1:
+            raise _error("income-tax caption source registration is not unique")
+        legacy_raw, _ = _section_caption_pinned_bytes_v1(DEFAULT_SOURCE_REPAIR_SPEC_PATH, _SECTION_CAPTION_LEGACY_SPEC_SHA256)
+        legacy_spec = json.loads(legacy_raw)
+        approved_legacy = _compile_source_repairs(legacy_spec)
+        if (not same_typed_json_v1(approved_legacy, compiled_specs["income_tax_source_repairs"])
+                or compiled_specs.get("income_tax_source_repair_spec_sha256") != canonical_json_sha256_v1(legacy_spec)):
+            raise _error("income-tax caption cannot use a substituted legacy repair axis")
+        legacy_axis = [{"repair_id": item["repair_id"], "pdf_source": item["pdf_source"],
+                        "page_json_version_id": item["locator"]["page_json_version_id"],
+                        "physical_page": item["locator"]["physical_page"]} for item in approved_legacy]
+        try:
+            caption_records, receipt = section_caption_core.apply_registered_section_caption_repairs_v1(
+                original, registry=envelope["clone_registry"], source_pdf_identity=sources[0]["pdf_source"],
+                legacy_repair_page_axis=legacy_axis)
+            section_caption_core.replay_registered_section_caption_repairs_v1(
+                original, caption_records, receipt, registry=envelope["clone_registry"],
+                source_pdf_identity=sources[0]["pdf_source"], legacy_repair_page_axis=legacy_axis)
+        except section_caption_core.SectionCaptionRepairV1Error as exc:
+            raise _error("income-tax caption original-source clone replay drifted") from exc
+        clone_receipts.append(receipt)
+    caption_by_version = {record["page_json_version_id"]: record for record in caption_records}
+    caller_order_caption_records = [caption_by_version[record["page_json_version_id"]] for record in raw_original]
+    evaluation, legacy_receipts = _apply_source_repairs(
+        caller_order_caption_records, compiled_specs=compiled_specs)
+    canonical_evaluation = sorted(canonical_clone_v1(evaluation),
+                                 key=lambda item: (item["physical_page"], item["selected_page_ordinal"]))
+    material = {
+        "format_version": "INCOME_TAX_ORDERED_SECTION_CAPTION_AND_LEGACY_PROJECTION_V1",
+        "status": "EXACT_PRIVATE_CAPTION_PROJECTION_NOT_PDF_AUTHENTICATION" if sources else "NOT_APPLICABLE_EXACT_EMPTY_CAPTION_AXIS",
+        "envelope_ref": reference, "clone_core_ref": core_ref,
+        "registry_object_canonical_sha256": canonical_json_sha256_v1(envelope["clone_registry"]),
+        "source_page_axis": [{key: item[key] for key in (
+            "document_id", "document_ordinal", "source_logical_name", "source_sha256", "page_json_version_id",
+            "physical_page", "selected_page_ordinal")} for item in original],
+        "original_records_object_canonical_sha256": before,
+        "caption_stage_records_object_canonical_sha256": canonical_json_sha256_v1(caption_records),
+        "evaluation_records_object_canonical_sha256": canonical_json_sha256_v1(canonical_evaluation),
+        "part_period_disjointness_receipt": part_disjointness,
+        "ordered_caption_clone_receipts": clone_receipts,
+        "ordered_caption_repair_ids": [repair["repair_id"] for source in sources for repair in source["repairs"]],
+        "ordered_legacy_repair_receipts": legacy_receipts,
+        "stage_order": ["ORIGINAL", "DISJOINT_PRIVATE_SECTION_CAPTIONS", "UNCHANGED_LEGACY13_PRIVATE_TRANSCRIPTIONS"],
+        "source_database_pdf_or_pixels_authenticated": False,
+        "source_values_changed_by_caption_stage": False,
+        "permission_grants": {key: False for key in ("scope", "entity", "unit", "period", "source_value", "acceptance", "export")},
+    }
+    if raw_input_sha256 != canonical_json_sha256_v1(list(original_records)):
+        raise _error("income-tax caption preparation mutated original records")
+    return evaluation, legacy_receipts, {**material, "receipt_id": "gjitfav1:caption-projection:" + canonical_json_sha256_v1(material)}
+
+
 def _private_specs(
     topology_spec: Mapping[str, Any],
     evaluation_spec: Mapping[str, Any],
@@ -804,6 +1069,10 @@ def compile_gemini_json_income_tax_family_specs_v1(
     base["income_tax_part_period_registry"] = canonical_clone_v1(catalog[0]["registry"])
     base["income_tax_part_period_registry_ref"] = canonical_clone_v1(catalog[0]["registry_ref"])
     base["income_tax_part_period_registry_catalog"] = canonical_clone_v1(catalog)
+    caption_envelope, caption_ref = _load_registered_section_caption_auth_envelope_v1()
+    base["income_tax_section_caption_auth_envelope"] = caption_envelope
+    base["income_tax_section_caption_auth_envelope_ref"] = caption_ref
+    base["income_tax_section_caption_clone_core_ref"] = _section_caption_core_ref_v1()
     base["income_tax_original_basis_source_specs"] = canonical_clone_v1({
         "topology": topology_spec, "evaluation": evaluation_spec, "schema": schema_binding_spec,
     })
@@ -1323,11 +1592,103 @@ def _primary_equation_mismatch_axis(
     return mismatches
 
 
+def _primary_printed_outline_frontier_receipt_v1(
+    section: Mapping[str, Any], table: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Whole printed dual outline only; no amount or population inference."""
+    if (section.get("content_kind") != "PRIMARY_STATEMENT"
+            or section.get("statement_type") != "INCOME_STATEMENT"):
+        return None
+    tables = section.get("tables")
+    if (type(tables) is not list
+            or sum(same_typed_json_v1(item, table) for item in tables) != 1):
+        return None
+    rows, columns = table.get("rows"), table.get("columns")
+    if type(rows) is not list or len(rows) < 7 or type(columns) is not list or not columns:
+        return None
+    romans = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
+              "XI", "XII", "XIII", "XIV", "XV")
+    before_aliases = {"loi nhuan truoc thue", "tong loi nhuan truoc thue",
+                      "loi nhuan ke toan truoc thue", "tong loi nhuan ke toan truoc thue"}
+    after_aliases = {"loi nhuan sau thue", "tong loi nhuan sau thue",
+                     "loi nhuan sau thue tndn", "tong loi nhuan sau thue tndn",
+                     "loi nhuan sau thue thu nhap doanh nghiep",
+                     "tong loi nhuan sau thue thu nhap doanh nghiep"}
+    arabic_axis, roman_axis, source_axis, semantic_roles = [], [], [], []
+    for ordinal, row in enumerate(rows, 1):
+        if type(row) is not dict or row.get("row_kind") not in {"ITEM", "SUBTOTAL", "TOTAL"}:
+            return None
+        path, label, values = row.get("hierarchy_path_exact"), row.get("label_exact"), row.get("values_exact")
+        if (type(path) is not list or len(path) != 2 or type(label) is not str or not label.strip()
+                or path[-1] != label or type(path[0]) is not str
+                or type(values) is not list or len(values) != len(columns)):
+            return None
+        token = path[0]
+        if re.fullmatch(r"[1-9][0-9]*", token):
+            arabic_axis.append(int(token))
+            token_kind = "ARABIC"
+        elif token in romans:
+            roman_axis.append(romans.index(token) + 1)
+            token_kind = "ROMAN"
+        else:
+            return None
+        normalized_label = _without_leading_ordinal(_normalized(label))
+        role = ("PROFIT_BEFORE_TAX" if normalized_label in before_aliases
+                else "PROFIT_AFTER_TAX" if normalized_label in after_aliases
+                else _role_for_primary_label(label))
+        semantic_roles.append(role)
+        source_axis.append({
+            "row_ordinal": ordinal, "hierarchy_path_ordinal": 1,
+            "source_token_exact": token, "token_kind": token_kind,
+            "source_row_json_sha256": canonical_json_sha256_v1(row),
+        })
+    if (len(arabic_axis) < 2 or len(roman_axis) < 3
+            or arabic_axis != list(range(1, len(arabic_axis) + 1))
+            or roman_axis != list(range(1, len(roman_axis) + 1))):
+        return None
+    expected_roles = ["PROFIT_BEFORE_TAX", "CURRENT_TAX_PARENT", "DEFERRED_TAX_NET",
+                      "FAMILY_ROOT_TOTAL", "PROFIT_AFTER_TAX"]
+    if (semantic_roles[-5:] != expected_roles
+            or any(role is not None for role in semantic_roles[:-5])):
+        return None
+    numeric_count, roman_count = len(arabic_axis), len(roman_axis)
+    expected_tokens = [romans[roman_count - 3], str(numeric_count - 1),
+                       str(numeric_count), romans[roman_count - 2], romans[roman_count - 1]]
+    if [row["hierarchy_path_exact"][0] for row in rows[-5:]] != expected_tokens:
+        return None
+    material = {
+        "rule": "WHOLE_COMPLETE_DUAL_PRINTED_OUTLINE_WITH_UNIQUE_TERMINAL_PROFIT_TAX_FRONTIER_V1",
+        "section_json_sha256": canonical_json_sha256_v1(section),
+        "original_table_json_sha256": canonical_json_sha256_v1(table),
+        "source_columns_exact": canonical_clone_v1(columns),
+        "source_rows_exact": canonical_clone_v1(rows),
+        "ordered_outline_axis": source_axis,
+        "arabic_outline_length": numeric_count, "roman_outline_length": roman_count,
+        "permitted_frontier_tokens": [
+            {**item, "semantic_role": role}
+            for item, role in zip(source_axis[-5:], expected_roles, strict=True)
+        ],
+        "amounts_used_as_authority": False, "source_values_changed": False,
+        "report_scope_permission_granted": False, "entity_permission_granted": False,
+        "unit_permission_granted": False, "period_permission_granted": False,
+        "source_kind_permission_granted": False,
+    }
+    return {**material, "receipt_id": "gjitfav1:printed-primary-outline:" + canonical_json_sha256_v1(material)}
+
+
 def _primary_bridge_population_ancestry(
     table: Mapping[str, Any], *, row_ordinals: Sequence[int],
     structural_owner_surfaces: Sequence[Any] = (), structural_owner_aliases: Sequence[str] = (),
+    primary_section: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Same printed ancestry only; amounts cannot establish entity population."""
+    outline = (None if primary_section is None
+               else _primary_printed_outline_frontier_receipt_v1(primary_section, table))
+    permitted_outline_tokens = {
+        (item["row_ordinal"], item["hierarchy_path_ordinal"] - 1, item["source_token_exact"])
+        for item in (outline or {}).get("permitted_frontier_tokens", [])
+    }
+    used_outline = False
     roman_ordinals = {"i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv", "xv"}
     groups = [
         {"row_ordinal": ordinal, "source_row": canonical_clone_v1(row)}
@@ -1361,6 +1722,9 @@ def _primary_bridge_population_ancestry(
         # years/entity IDs and unknown qualifiers remain exact source evidence.
         ancestry = []
         for index, item in enumerate(path[:-1]):
+            if (ordinal, index, item) in permitted_outline_tokens:
+                used_outline = True
+                continue
             if _normalized(item) in roman_ordinals:
                 continue
             parent_groups = [group for group in groups
@@ -1394,13 +1758,15 @@ def _primary_bridge_population_ancestry(
         "structural_owner_sources": [used_owners[key] for key in sorted(used_owners)],
         "source_rows": proofs, "original_table_json_sha256": canonical_json_sha256_v1(table),
     }
+    if used_outline:
+        material["printed_primary_outline_receipt"] = outline
     return {**material, "receipt_id": "gjitfav1:bridge-population:" + canonical_json_sha256_v1(material)}
 
 
 def _primary_expense_display_receipt(
     table: Mapping[str, Any], *, rows: Sequence[Mapping[str, Any]],
     money_ordinals: Sequence[int], locator: Mapping[str, Any], lane: Mapping[str, Any],
-    canonical_unit: str,
+    canonical_unit: str, primary_section: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Check printed before + signed expense = after; never derive an operand."""
     before_aliases = {
@@ -1451,6 +1817,7 @@ def _primary_expense_display_receipt(
         return None
     population_ancestry = _primary_bridge_population_ancestry(
         table, row_ordinals=[before["row_ordinal"], *(row["row_ordinal"] for row in rows), after["row_ordinal"]],
+        primary_section=primary_section,
     )
     if population_ancestry is None:
         return None
@@ -1666,6 +2033,7 @@ def _primary_presentations(
                 descriptor["expense_display_receipt"] = _primary_expense_display_receipt(
                     table, rows=rows, money_ordinals=money_ordinals,
                     locator=descriptor["locator"], lane=lane, canonical_unit=canonical_unit,
+                    primary_section=section,
                 )
                 projected_page = _project_primary_page(page, descriptor=descriptor)
                 descriptor["projected_page_json_sha256"] = canonical_json_sha256_v1(projected_page)
@@ -4038,7 +4406,17 @@ def _source_context_receipt(
     repair_receipts: Sequence[Mapping[str, Any]],
     root_controls: Sequence[Mapping[str, Any]],
     page_records: Sequence[Mapping[str, Any]],
+    original_page_records: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    # Preserve unmodified fixture ergonomics. Repaired working records cannot
+    # impersonate originals: replay below must reproduce the entire working
+    # axis and exact old13 receipts. Active caption before-image is mandatory.
+    original = page_records if original_page_records is None else original_page_records
+    rebuilt, rebuilt_repairs, caption_projection = _prepare_income_tax_evaluation_records_v1(
+        original, compiled_specs=compiled_specs)
+    if (not same_typed_json_v1(rebuilt, list(page_records))
+            or not same_typed_json_v1(rebuilt_repairs, list(repair_receipts))):
+        raise _error("income-tax source context original/evaluation projection replay drifted")
     # Empty repair/control axes are meaningful, authenticated declarations too.
     material = {
         "adapter_spec_sha256": compiled_specs["income_tax_adapter_spec_sha256"],
@@ -4049,6 +4427,7 @@ def _source_context_receipt(
             page_records, compiled_specs=compiled_specs,
         ),
         "semantic_spec_sha256": _semantic_spec_sha256(compiled_specs),
+        "section_caption_projection_receipt": caption_projection,
         "document_report_scope_receipt": _document_report_scope_receipt(page_records),
         "document_statement_period_inventory": _document_statement_period_inventory(page_records, compiled_specs=compiled_specs),
         "rule": "EXACT_INCOME_TAX_SOURCE_CONTEXT_ALL_QUERY_STRATEGIES",
@@ -4254,7 +4633,10 @@ def _original_note_population_proofs(
         scope = _note_report_scope_receipt(section, table, source_paths=[item["hierarchy_path_exact"][:-1] for item in descriptor["rows"]], document_scope=document_scope)
         if scope["conflict"] or scope["report_scope"] is None or scope["local_entity_qualifiers"]:
             issues.append("ORIGINAL_NOTE_PRIMARY_REPORT_ENTITY_POPULATION_NOT_PROVEN")
-        primary_ancestry = _primary_bridge_population_ancestry(table, row_ordinals=[item["row_ordinal"] for item in descriptor["rows"]])
+        primary_ancestry = _primary_bridge_population_ancestry(
+            table, row_ordinals=[item["row_ordinal"] for item in descriptor["rows"]],
+            primary_section=section,
+        )
         if primary_ancestry is None or primary_ancestry["common_population_ancestry_exact"]:
             issues.append("ORIGINAL_NOTE_PRIMARY_POPULATION_ANCESTRY_UNPROVEN")
         counterparts.append({
@@ -4853,8 +5235,7 @@ def _evaluate_original_note_adapter(
     return _seal_income_tax_source_controls(note, source_context=source_context, repaired_records=page_records, compiled_specs=compiled_specs)
 
 
-@_document_period_operation
-def recover_gemini_json_income_tax_query_cluster_v1(
+def _recover_income_tax_query_cluster_v1(
     *,
     page_records: Any,
     base_cluster: Mapping[str, Any],
@@ -4864,11 +5245,11 @@ def recover_gemini_json_income_tax_query_cluster_v1(
 
     if type(page_records) not in {list, tuple} or not page_records:
         raise _error("income-tax page-record axis is invalid")
-    repaired_records, repair_receipts = _apply_source_repairs(
+    repaired_records, repair_receipts, caption_projection = _prepare_income_tax_evaluation_records_v1(
         page_records, compiled_specs=compiled_specs
     )
     selected_base = canonical_clone_v1(base_cluster)
-    if repair_receipts:
+    if repair_receipts or caption_projection["ordered_caption_repair_ids"]:
         # Source repairs are applied only to private page clones.  A row-level
         # repair can legitimately change the generic row classification, so
         # regions sealed against the unmodified selected JSON must never be
@@ -4886,6 +5267,7 @@ def recover_gemini_json_income_tax_query_cluster_v1(
         repair_receipts=repair_receipts,
         root_controls=root_controls,
         page_records=repaired_records,
+        original_page_records=page_records,
     )
     if root_issues:
         owner = canonical_clone_v1(selected_base.get("owner_receipt"))
@@ -5069,6 +5451,18 @@ def recover_gemini_json_income_tax_query_cluster_v1(
     )
 
 
+@_document_period_operation
+def recover_gemini_json_income_tax_query_cluster_v1(
+    *, page_records: Any, base_cluster: Mapping[str, Any], compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    result = _recover_income_tax_query_cluster_v1(
+        page_records=page_records, base_cluster=base_cluster, compiled_specs=compiled_specs)
+    _, _, projection = _prepare_income_tax_evaluation_records_v1(page_records, compiled_specs=compiled_specs)
+    # A top-level family-local cluster field is supported by the frozen indexed
+    # validator (no exact cluster-key set); no fake owner is invented for N/U.
+    return _reseal_cluster(result, income_tax_section_caption_projection_receipt=projection)
+
+
 def adapt_gemini_json_income_tax_indexed_query_evidence_v1(
     *,
     indexed_query_evidence: Any,
@@ -5123,6 +5517,9 @@ def build_gemini_json_income_tax_region_query_receipt_v1(
         context = cluster["owner_receipt"].get("income_tax_source_context_receipt")
     if type(context) is not dict:
         raise _error("income-tax query source context receipt is absent")
+    if not same_typed_json_v1(cluster.get("income_tax_section_caption_projection_receipt"),
+                              context.get("section_caption_projection_receipt")):
+        raise _error("income-tax query caption source projection axis is absent or drifted")
     material = {
         "adapter_receipt": canonical_clone_v1(adapter),
         "format_version": QUERY_RECEIPT_FORMAT_VERSION,
@@ -8988,8 +9385,25 @@ def _seal_income_tax_source_controls(
                 page_records=repaired_records, compiled_specs=compiled_specs,
                 document_period_inventory=source_context["document_statement_period_inventory"],
             ))
-        unknown_primary_ancestry = [value for ancestry in primary_ancestries for value in ancestry
-                                    if _without_leading_ordinal(_normalized(value)) not in _ROOT_LABELS]
+        primary_outline = _primary_printed_outline_frontier_receipt_v1(section, table)
+        permitted_outline_tokens = {
+            (item["row_ordinal"], item["hierarchy_path_ordinal"] - 1, item["source_token_exact"])
+            for item in (primary_outline or {}).get("permitted_frontier_tokens", [])
+        }
+        unknown_primary_ancestry = []
+        used_primary_outline = False
+        for item in primary["rows"]:
+            path, ordinal = item.get("hierarchy_path_exact"), item.get("row_ordinal")
+            if type(path) is not list:
+                continue
+            for index, value in enumerate(path[:-1]):
+                exact_source_row = (type(ordinal) is int and 1 <= ordinal <= len(table["rows"])
+                                    and same_typed_json_v1(path, table["rows"][ordinal - 1].get("hierarchy_path_exact")))
+                if exact_source_row and (ordinal, index, value) in permitted_outline_tokens:
+                    used_primary_outline = True
+                    continue
+                if _without_leading_ordinal(_normalized(value)) not in _ROOT_LABELS:
+                    unknown_primary_ancestry.append(value)
         # Validation-only PERIOD has no mapping.  Authenticate the source
         # population itself, including its parent and adjustment rows.
         expense_boundaries = [(inventory, inventory["current_year_frontier"], "YEAR_OR_PERIOD")
@@ -9046,6 +9460,8 @@ def _seal_income_tax_source_controls(
                 "source_population_kind": boundary_kind,
                 "rule": "PRINTED_EXPENSE_POPULATION_MUST_MATCH_PRIMARY_NOT_JUST_TOTAL_AMOUNT",
             }
+            if used_primary_outline:
+                material["printed_primary_outline_receipt"] = primary_outline
             expense_population_scope_receipts.append(material)
             if scope_receipt["conflict"] or note_scope != primary_scope or unknown_primary_ancestry:
                 year_domain_conflicts.append(material)
@@ -9174,6 +9590,8 @@ def _seal_income_tax_source_controls(
         "supplemental_root_lane_receipts": comparisons,
         "rule": "ALL_SOURCE_ROOT_CONTROLS_REPLAYED_AGAINST_FINAL_SOURCE_MAPPING_NO_BACKSOLVE",
     }
+    if type(primary) is dict and used_primary_outline:
+        material["printed_primary_outline_receipt"] = primary_outline
     if mismatch or any(
         lane["status"] in {"SOURCE_ROOT_CONTROL_CONFLICT", "SOURCE_ROOT_CONTROL_PERIOD_CONFLICT"}
         for item in comparisons for lane in item["lanes"]
@@ -9231,7 +9649,7 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
         page_records.append({**canonical_clone_v1(axis), "page_json": page})
     if not page_records or set(page_json_by_version) != seen_versions:
         raise _error("income-tax selected page axis does not bind supplied pages")
-    repaired_records, repair_receipts = _apply_source_repairs(
+    repaired_records, repair_receipts, _ = _prepare_income_tax_evaluation_records_v1(
         page_records, compiled_specs=compiled_specs
     )
     root_issues: list[str] = []
@@ -9243,6 +9661,7 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
         repair_receipts=repair_receipts,
         root_controls=root_controls,
         page_records=repaired_records,
+        original_page_records=page_records,
     )
     if root_issues or not same_typed_json_v1(checked["source_context_receipt"], expected_context):
         raise _error("income-tax source context query replay drifted")
@@ -9484,6 +9903,11 @@ def build_gemini_json_income_tax_trials_v1(
     for disposition in evidence["candidate_dispositions"]:
         cluster = disposition["cluster"]
         ordinal = disposition["document_ordinal"]
+        original_records = [{**canonical_clone_v1(axis), "page_json": page_json_by_document[ordinal][axis["page_json_version_id"]]}
+                            for axis in page_axis_by_document[ordinal]]
+        _, _, projection = _prepare_income_tax_evaluation_records_v1(original_records, compiled_specs=compiled_specs)
+        if not same_typed_json_v1(cluster.get("income_tax_section_caption_projection_receipt"), projection):
+            raise _error("income-tax indexed caption axis original-source replay drifted")
         candidates = []
         mappings = []
         reasons = []

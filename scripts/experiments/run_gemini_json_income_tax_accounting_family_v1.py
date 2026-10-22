@@ -23,6 +23,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "src"), str(ROOT / "scripts/experiments")]
 
+import f39_registered_section_caption_pdf_auth_v1 as section_caption_pdf_auth  # noqa: E402
 import run_gemini_json_multitable_hierarchical_accounting_family_v1 as generic  # noqa: E402
 from f39_registered_part_period_pdf_auth_v1 import (  # noqa: E402
     authenticate_registered_part_period_pdf_v1,
@@ -38,9 +39,12 @@ from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (  # noqa: E402
     _PERIOD_INVENTORY_DEPENDENCY_PATHS,
     DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
     DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
+    DEFAULT_SECTION_CAPTION_AUTH_ENVELOPE_PATH,
     FAMILY_ID,
     _approved_registered_part_period_loader_v1,
     _checked_registered_part_period_catalog_v1,
+    _load_registered_section_caption_auth_envelope_v1,
+    _prepare_income_tax_evaluation_records_v1,
     _registered_part_period_source_view_v1,
     build_gemini_json_income_tax_region_query_receipt_v1,
     compile_gemini_json_income_tax_family_specs_v1,
@@ -601,6 +605,15 @@ def replay_income_tax_trials_from_source_v1(
         selected_page_json_version_ids=selected_page_json_version_ids,
         compiled_specs=family_compiled,
     )
+    # This legacy compatibility replay has no owned original/PDF admission.
+    # It must not become a storage bypass for an actually registered caption.
+    envelope, _reference = _load_registered_section_caption_auth_envelope_v1()
+    require(not any(document["document_id"] == source["document_id"]
+                    or document["source_logical_name"] == source["pdf_source"]["logical_name"]
+                    or document["source_sha256"] == source["pdf_source"]["sha256"]
+                    for document in base["selected_document_axis"]
+                    for source in envelope["clone_registry"]["sources"]),
+            "Registered caption source requires the owned original-source replay adapter")
     documents = []
     for document in base["selected_document_axis"]:
         pages = [
@@ -812,9 +825,142 @@ def _recheck_registered_part_catalog_pdf_v1(bundles, documents, compiled):
             "Part catalog authentication inputs changed during late callback")
 
 
+def _authenticate_section_caption_admission_v1(document, loaded, original_records, compiled, source_pdf_root):
+    """Fresh admission from the SAME owned ORIGINAL bundle used for PART.
+
+    This internal helper is called only inside the actual original-source
+    context. No receipt argument, cached approval, or caller boolean admits a
+    correction. The returned metadata remains provisional until owner exit.
+    """
+    before = canonical_json_sha256_v1([document, loaded, original_records, compiled])
+    expected_module = ROOT / "scripts/experiments/f39_registered_section_caption_pdf_auth_v1.py"
+    require(Path(section_caption_pdf_auth.__file__).resolve() == expected_module
+            and Path(section_caption_pdf_auth.__spec__.origin).resolve() == expected_module,
+            "Caption authentication actual module origin differs")
+    require(type(original_records) is list and bool(original_records), "Actual original caption record axis required")
+    _axis, reconstructed = _records_v1(document, loaded, original_records[0]["document_ordinal"])
+    require(same_typed_json_v1(reconstructed, original_records),
+            "Caption admission differs from the actual original loaded bundle")
+    _evaluation, _old13, projection = _prepare_income_tax_evaluation_records_v1(
+        original_records, compiled_specs=compiled)
+    # The fresh independently pinned projection identifies applicability, not a
+    # caller approval flag. Unrelated documents retain an explicit EMPTY axis;
+    # do not rehash every original page through the pixel helper unnecessarily.
+    receipts = (section_caption_pdf_auth.authenticate_registered_section_caption_pdf_v1(
+        document, loaded, compiled, source_pdf_root, original_records=original_records,
+        registry_loader=_load_registered_section_caption_auth_envelope_v1,
+    ) if projection["ordered_caption_repair_ids"] else [])
+    original_sha = canonical_json_sha256_v1(original_records)
+    # Official selected records are already in their authenticated physical/
+    # selected order. Do not relabel an unordered caller digest as canonical.
+    require(projection["original_records_object_canonical_sha256"] == original_sha,
+            "Caption admission original raw/canonical record axes differ")
+    require(before == canonical_json_sha256_v1([document, loaded, original_records, compiled]),
+            "Caption admission changed original source/global compiled inputs")
+    return {
+        "document_source": json.loads(canonical_json_bytes_v1(document["manifest"]["document"])),
+        "runtime_document_ordinal": original_records[0]["document_ordinal"],
+        "original_records_sha256": original_sha,
+        "projection_receipt": projection,
+        "receipts": receipts,
+    }
+
+
+def _recheck_section_caption_admission_v1(bundles, documents, compiled, *, indexed_query_evidence):
+    """Check a complete fresh internal axis against every indexed R/N/U.
+
+    This is a late barrier, NOT admission of caller-created bundles. The only
+    official producer above freshly reads original source and authenticates
+    PDF/whole-page/crop evidence. All lower callbacks finish before the enclosing
+    held-FD and post-code/authority/PDF/census checks.
+    """
+    before = canonical_json_sha256_v1([bundles, documents, compiled, indexed_query_evidence])
+    envelope, reference = _load_registered_section_caption_auth_envelope_v1()
+    require(same_typed_json_v1(compiled.get("income_tax_section_caption_auth_envelope"), envelope)
+            and same_typed_json_v1(compiled.get("income_tax_section_caption_auth_envelope_ref"), reference),
+            "Caption compiled approval differs from fresh fixed authority")
+    evidence = validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        indexed_query_evidence, compiled_specs=compiled)
+    dispositions = evidence["candidate_dispositions"]
+    require(type(bundles) is list and len(bundles) == len(documents) == len(dispositions),
+            "Caption complete original document admission axis differs")
+    expected_pages, seen = [], set()
+    for ordinal, (bundle, document, disposition) in enumerate(zip(bundles, documents, dispositions, strict=True), 1):
+        source = document["manifest"]["document"]
+        identity = {key: source[key] for key in ("source_logical_name", "source_sha256", "source_size_bytes")}
+        document_id = "gfpstorev1:document:" + canonical_json_sha256_v1(identity)
+        require(source.get("document_id", document_id) == document_id and document_id not in seen,
+                "Caption selected original document identity differs/duplicates")
+        seen.add(document_id)
+        axis = {"document_id": document_id, "document_ordinal": ordinal,
+                "source_logical_name": source["source_logical_name"], "source_sha256": source["source_sha256"]}
+        require(type(bundle) is dict and set(bundle) == {
+            "document_source", "runtime_document_ordinal", "original_records_sha256", "projection_receipt", "receipts",
+        } and same_typed_json_v1(bundle["document_source"], source)
+            and type(bundle["runtime_document_ordinal"]) is int and bundle["runtime_document_ordinal"] == ordinal
+            and same_typed_json_v1(evidence["selected_document_axis"][ordinal - 1], axis)
+            and all(disposition[key] == value for key, value in axis.items()),
+            "Caption admission selected source/run-document axis differs")
+        pages = [{**axis, "page_json_version_id": page["page_json_version_id"],
+                  "physical_page": page["physical_page"], "selected_page_ordinal": selected}
+                 for selected, page in enumerate(document["manifest"]["pages"], 1)]
+        require(document["ids"] == [page["page_json_version_id"] for page in pages],
+                "Caption immutable selected page/VID axis differs")
+        expected_pages.extend(pages)
+        pdf = {"logical_name": source["source_logical_name"], "sha256": source["source_sha256"],
+               "size_bytes": source["source_size_bytes"]}
+        registered = []
+        for candidate in envelope["clone_registry"]["sources"]:
+            matches = (candidate["document_id"] == document_id,
+                       candidate["pdf_source"]["logical_name"] == pdf["logical_name"],
+                       candidate["pdf_source"]["sha256"] == pdf["sha256"])
+            if any(matches):
+                require(all(matches) and same_typed_json_v1(candidate["pdf_source"], pdf),
+                        "Caption selected and registered PDF identity partially match")
+                registered.append(candidate)
+        require(len(registered) <= 1, "Caption source registration is ambiguous")
+        expected_ids = [repair["repair_id"] for item in registered for repair in item["repairs"]]
+        projection, receipts = bundle["projection_receipt"], bundle["receipts"]
+        require(type(receipts) is list and all(type(item) is dict for item in receipts)
+                and [item.get("repair_id") for item in receipts] == expected_ids,
+                "Caption complete ordered repair axis missing/extra/reordered")
+        require(type(projection) is dict
+                and same_typed_json_v1(disposition["cluster"].get("income_tax_section_caption_projection_receipt"), projection)
+                and same_typed_json_v1(projection.get("source_page_axis"), pages)
+                and projection.get("envelope_ref") == reference
+                and projection.get("ordered_caption_repair_ids") == expected_ids
+                and projection.get("original_records_object_canonical_sha256") == bundle["original_records_sha256"]
+                and projection.get("source_database_pdf_or_pixels_authenticated") is False
+                and projection.get("permission_grants") == {
+                    key: False for key in ("scope", "entity", "unit", "period", "source_value", "acceptance", "export")},
+                "Caption full indexed projection detached from original admission")
+        clones = projection.get("ordered_caption_clone_receipts")
+        require(type(clones) is list and len(clones) == (1 if expected_ids else 0),
+                "Caption empty/nonempty pure clone axis differs")
+        for receipt in receipts:
+            require(receipt.get("document_id") == document_id
+                    and type(receipt.get("runtime_document_ordinal")) is int
+                    and receipt["runtime_document_ordinal"] == ordinal
+                    and same_typed_json_v1(receipt.get("pdf_source"), pdf)
+                    and receipt.get("loaded_original_records_object_sha256") == bundle["original_records_sha256"]
+                    and same_typed_json_v1(receipt.get("pure_clone_replay_receipt"), clones[0])
+                    and clones[0]["evaluation_records_object_canonical_sha256"]
+                    == projection["caption_stage_records_object_canonical_sha256"],
+                    "Caption actual source/PDF pure clone differs from indexed original projection")
+        # Per-document recheck preserves registered ordering even if a future
+        # approved source catalog has a different source order. Empty axes are
+        # explicit declarations, never borrowed warm approval tokens.
+        section_caption_pdf_auth.recheck_registered_section_caption_pdf_v1(
+            receipts, registry_loader=_load_registered_section_caption_auth_envelope_v1)
+    require(same_typed_json_v1(evidence["selected_page_axis"], expected_pages),
+            "Caption complete original selected page denominator differs")
+    require(before == canonical_json_sha256_v1([bundles, documents, compiled, indexed_query_evidence]),
+            "Caption admission inputs changed during late callbacks")
+
+
 def _make_authenticated_source_replay_adapter_v1(
     *, database, database_ref, artifact_root, corpus_index_ref, documents, expected_census_refs,
-    source_pdf_root=None, implementation_refs=(), authority_refs=(),
+    source_pdf_root=None, implementation_refs=(), authority_refs=(), expected_caption_admission_axis=None,
 ):
     """Bind an independent cold pass to original authority and warm raw bytes.
 
@@ -826,6 +972,8 @@ def _make_authenticated_source_replay_adapter_v1(
     census_ref_bytes = canonical_json_bytes_v1(expected_census_refs)
     implementation_bytes = canonical_json_bytes_v1(list(implementation_refs))
     authority_bytes = canonical_json_bytes_v1(list(authority_refs))
+    expected_caption_bytes = (None if expected_caption_admission_axis is None else
+                              canonical_json_bytes_v1(expected_caption_admission_axis))
     database_ref_bytes, index_ref_bytes = map(canonical_json_bytes_v1, (database_ref, corpus_index_ref))
     database, artifact_root = Path(database), Path(artifact_root)
     source_pdf_root = None if source_pdf_root is None else Path(source_pdf_root)
@@ -842,12 +990,20 @@ def _make_authenticated_source_replay_adapter_v1(
         require(len(cold_documents) == len(refs)
                 and list(selected_page_json_version_ids) == [item for document in cold_documents for item in document["ids"]],
                 "Cold raw census selected document/page axis differs")
+        if expected_caption_bytes is None:
+            envelope, _reference = _load_registered_section_caption_auth_envelope_v1()
+            require(not any(source.get("document_id") == registered["document_id"]
+                            or source["source_logical_name"] == registered["pdf_source"]["logical_name"]
+                            or source["source_sha256"] == registered["pdf_source"]["sha256"]
+                            for document in cold_documents for source in [document["manifest"]["document"]]
+                            for registered in envelope["clone_registry"]["sources"]),
+                    "Applicable caption cold replay requires the complete warm admission axis")
         before = _raw_census_summary_v1(refs)
         specs, family_compiled = _compile_specs_v1()
         require(same_typed_json_v1(compiled_specs, compile_gemini_json_flat_family_specs_v1(
             specs["topology"], specs["evaluation"], specs["schema"],
         )), "Cold replay declarative specs differ")
-        seen, part_pdf_receipts, part_pdf_bundles = [], [], []
+        seen, part_pdf_receipts, part_pdf_bundles, caption_admissions = [], [], [], []
 
         def authenticate_original(document, loaded, original_records):
             # Independent cold authentication, never a warm approval token.
@@ -857,6 +1013,8 @@ def _make_authenticated_source_replay_adapter_v1(
             )
             part_pdf_bundles.append(bundle)
             part_pdf_receipts.extend(bundle["receipts"])
+            caption_admissions.append(_authenticate_section_caption_admission_v1(
+                document, loaded, original_records, family_compiled, source_pdf_root))
 
         def compare(census):
             ordinal = census["source_binding"]["run_document_ordinal"]
@@ -883,12 +1041,22 @@ def _make_authenticated_source_replay_adapter_v1(
             require(len(seen) == len(refs), "Cold raw census omitted a document")
             require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed during cold replay")
             _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, cold_documents, family_compiled)
+            _recheck_section_caption_admission_v1(
+                caption_admissions, cold_documents, family_compiled, indexed_query_evidence=indexed)
+            require(expected_caption_bytes is not None or not any(bundle["receipts"] for bundle in caption_admissions),
+                    "Nonempty fresh caption authentication requires the complete warm admission axis")
+            require(expected_caption_bytes is None or canonical_json_bytes_v1(caption_admissions) == expected_caption_bytes,
+                    "Cold fresh caption admission axis differs from warm original authentication")
         require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed at cold source close")
         # The original owned context has exited successfully. Hold a fresh
         # readonly FD across every later callback; no trial reaches the store
         # until this barrier's final actual DB bytes/identity check succeeds.
         with _authenticated_source_v1(database, json.loads(database_ref_bytes)):
             _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, cold_documents, family_compiled)
+            _recheck_section_caption_admission_v1(
+                caption_admissions, cold_documents, family_compiled, indexed_query_evidence=indexed)
+            require(expected_caption_bytes is None or canonical_json_bytes_v1(caption_admissions) == expected_caption_bytes,
+                    "Cold caption admission axis changed during final callbacks")
             require(expected_implementations == [generic._file_ref(Path(ref["path"])) for ref in expected_implementations],
                     "Cold replay implementation bytes changed during final PDF callbacks")
             require(expected_authorities == [generic._file_ref(Path(ref["path"])) for ref in expected_authorities],
@@ -1151,6 +1319,8 @@ def run(args):
     implementation_paths = [
         Path(__file__).resolve(),
         ROOT / "scripts/experiments/f39_registered_part_period_pdf_auth_v1.py",
+        ROOT / "scripts/experiments/f39_registered_section_caption_pdf_auth_v1.py",
+        ROOT / DEFAULT_SECTION_CAPTION_AUTH_ENVELOPE_PATH,
         ROOT / DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
         ROOT / DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
         ROOT / "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
@@ -1183,7 +1353,7 @@ def run(args):
     require(args.corpus_index.is_relative_to(args.artifact_root), "Corpus index must be inside explicit artifact root")
     corpus_index_ref = {**generic._file_ref(args.corpus_index),
                         "path": args.corpus_index.relative_to(args.artifact_root).as_posix()}
-    pdf_checked, repair_ids, census_refs, part_pdf_receipts, part_pdf_bundles = [], [], [], [], []
+    pdf_checked, repair_ids, census_refs, part_pdf_receipts, part_pdf_bundles, caption_admissions = [], [], [], [], [], []
     args.output_dir.mkdir(mode=0o700)
     cache = BaseClusterCache(args.base_cluster_cache)
 
@@ -1209,6 +1379,8 @@ def run(args):
         )
         part_pdf_bundles.append(bundle)
         part_pdf_receipts.extend(bundle["receipts"])
+        caption_admissions.append(_authenticate_section_caption_admission_v1(
+            document, loaded, original_records, compiled, args.source_pdf_root))
 
     try:
         with open_income_tax_original_census_source_v1(
@@ -1243,6 +1415,8 @@ def run(args):
                     "Source PDF bytes changed during replay: " + str(path),
                 )
             _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, documents, compiled)
+            _recheck_section_caption_admission_v1(
+                caption_admissions, documents, compiled, indexed_query_evidence=indexed)
     finally:
         cache.close()
     _assert_shared_pins_v1()
@@ -1251,6 +1425,8 @@ def run(args):
     # both the fresh held DB descriptor and every post-callback input pass.
     with _authenticated_source_v1(args.source_page_database, index["database_ref"]):
         _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, documents, compiled)
+        _recheck_section_caption_admission_v1(
+            caption_admissions, documents, compiled, indexed_query_evidence=indexed)
         require(implementation_refs == [generic._file_ref(p) for p in implementation_paths],
                 "Implementation bytes changed during warm final PDF callbacks")
         require(authority_refs == [generic._file_ref(p) for p in authority_paths],
@@ -1289,6 +1465,7 @@ def run(args):
             documents=documents, expected_census_refs=census_refs,
             source_pdf_root=args.source_pdf_root,
             implementation_refs=implementation_refs, authority_refs=authority_refs,
+            expected_caption_admission_axis=caption_admissions,
         )
         started = time.perf_counter()
         stored = ingest_gemini_accounting_family_sweep_v1(
@@ -1317,6 +1494,8 @@ def run(args):
     _raw_census_summary_v1(census_refs)
     with _authenticated_source_v1(args.source_page_database, index["database_ref"]):
         _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, documents, compiled)
+        _recheck_section_caption_admission_v1(
+            caption_admissions, documents, compiled, indexed_query_evidence=indexed)
         require(implementation_refs == [generic._file_ref(p) for p in implementation_paths]
                 and authority_refs == [generic._file_ref(p) for p in authority_paths],
                 "Implementation/immutable authority bytes changed during output PDF callbacks")
@@ -1328,6 +1507,24 @@ def run(args):
                     "Source PDF changed during output PDF callbacks: " + str(path))
         require(warm_census_bytes == canonical_json_bytes_v1(_raw_census_summary_v1(census_refs)),
                 "Original census files changed during output PDF callbacks")
+    # Existing immutable diagnostic/audit metadata retains actual pixel/source
+    # admission. SQLite's exact sweep/index already retains V3 pure projection.
+    # This is NOT an additional SQLite authentication BLOB/table.
+    caption_admission = {
+        "format_version": "INCOME_TAX_RUN_LINKED_CAPTION_ADMISSION_AXIS_V1",
+        "status": "RETAINED_FRESH_ORIGINAL_SOURCE_ADMISSION_NOT_FAMILY_ACCEPTANCE",
+        "query_evidence_id": indexed["query_evidence_id"],
+        "indexed_query_evidence_sha256": canonical_json_sha256_v1(indexed),
+        "document_admission_axis": json.loads(canonical_json_bytes_v1(caption_admissions)),
+        "document_admission_axis_sha256": canonical_json_sha256_v1(caption_admissions),
+        "document_count": len(documents),
+        "all_indexed_dispositions_joined": True,
+        "actual_pixel_authentication_retained_in": "IMMUTABLE_RUN_AUDIT_OR_BOUNDED_DIAGNOSTIC",
+        "sqlite_retains_pure_projection_and_indexed_query": diagnostic_ordinals is None,
+        "additional_sqlite_authentication_blob_claimed": False,
+        "independent_cold_full_admission_axis_exact": diagnostic_ordinals is None,
+        "family_acceptance_claimed": False,
+    }
     if diagnostic_ordinals is not None:
         material = {
             "format_version": "INCOME_TAX_BOUNDED_DIAGNOSTIC_V1",
@@ -1348,6 +1545,7 @@ def run(args):
             "pdf_source_byte_bindings": pdf_checked,
             "authenticated_repair_ids": repair_ids,
             "registered_part_period_pdf_authentication": part_pdf_receipts,
+            "registered_section_caption_admission": caption_admission,
             "implementation_refs": implementation_refs,
             "immutable_input_refs": authority_refs,
         }
@@ -1380,6 +1578,7 @@ def run(args):
         "pdf_source_byte_bindings": pdf_checked,
         "authenticated_repair_ids": repair_ids,
         "registered_part_period_pdf_authentication": part_pdf_receipts,
+        "registered_section_caption_admission": caption_admission,
         "registered_part_period_cold_authentication": "FRESH_PER_APPLICABLE_SOURCE_IN_COLD_REPLAY_ADAPTER",
         "selected_page_ids_sha256": canonical_json_sha256_v1(selected_ids),
         "implementation_refs": implementation_refs,
@@ -1414,6 +1613,7 @@ def run(args):
         "metrics": sweep["metrics"],
         "output_ref": export,
         "audit_id": audit["audit_id"],
+        "audit_ref": generic._file_ref(args.output_dir / "income-tax-audit.json"),
         "timing": timing,
     }
 
