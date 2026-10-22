@@ -24,6 +24,10 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "src"), str(ROOT / "scripts/experiments")]
 
 import run_gemini_json_multitable_hierarchical_accounting_family_v1 as generic  # noqa: E402
+from f39_registered_part_period_pdf_auth_v1 import (  # noqa: E402
+    authenticate_registered_part_period_pdf_v1,
+    recheck_registered_part_period_pdf_v1,
+)
 
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: E402
     build_gemini_json_flat_family_sweep_v1,
@@ -32,7 +36,9 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
 )
 from bctc_ai.evaluation.gemini_json_income_tax_family_v1 import (  # noqa: E402
     _PERIOD_INVENTORY_DEPENDENCY_PATHS,
+    DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
     FAMILY_ID,
+    _load_registered_part_period_registry_v1,
     build_gemini_json_income_tax_region_query_receipt_v1,
     compile_gemini_json_income_tax_family_specs_v1,
     evaluate_gemini_json_income_tax_family_cluster_v1,
@@ -705,6 +711,7 @@ def _raw_census_summary_v1(census_refs):
 
 def _make_authenticated_source_replay_adapter_v1(
     *, database, database_ref, artifact_root, corpus_index_ref, documents, expected_census_refs,
+    source_pdf_root=None,
 ):
     """Bind an independent cold pass to original authority and warm raw bytes.
 
@@ -716,6 +723,7 @@ def _make_authenticated_source_replay_adapter_v1(
     census_ref_bytes = canonical_json_bytes_v1(expected_census_refs)
     database_ref_bytes, index_ref_bytes = map(canonical_json_bytes_v1, (database_ref, corpus_index_ref))
     database, artifact_root = Path(database), Path(artifact_root)
+    source_pdf_root = None if source_pdf_root is None else Path(source_pdf_root)
 
     def replay(*, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence):
         require(Path(source_page_database) == database, "Cold raw census source database path differs")
@@ -728,7 +736,15 @@ def _make_authenticated_source_replay_adapter_v1(
         require(same_typed_json_v1(compiled_specs, compile_gemini_json_flat_family_specs_v1(
             specs["topology"], specs["evaluation"], specs["schema"],
         )), "Cold replay declarative specs differ")
-        seen = []
+        seen, part_pdf_receipts = [], []
+
+        def authenticate_original(document, loaded):
+            # Independent cold authentication, never a warm approval token.
+            # A missing PDF root is permitted only for nonapplicable sources.
+            part_pdf_receipts.extend(authenticate_registered_part_period_pdf_v1(
+                document, loaded, family_compiled, source_pdf_root,
+                registry_loader=_load_registered_part_period_registry_v1,
+            ))
 
         def compare(census):
             ordinal = census["source_binding"]["run_document_ordinal"]
@@ -749,11 +765,14 @@ def _make_authenticated_source_replay_adapter_v1(
             indexed, trials, _timing = _evaluate_stream_v1(
                 database, cold_documents, family_compiled, independent_base=base,
                 original_census_source=source, raw_census_sink=compare,
+                original_document_callback=authenticate_original,
             )
             require(same_typed_json_v1(indexed, indexed_query_evidence), "Cold replay indexed source query differs")
             require(len(seen) == len(refs), "Cold raw census omitted a document")
             require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed during cold replay")
+            recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
         require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed at cold source close")
+        recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
         return trials
 
     return replay
@@ -999,6 +1018,8 @@ def run(args):
     _repair_render_bindings_v1(compiled)
     implementation_paths = [
         Path(__file__).resolve(),
+        ROOT / "scripts/experiments/f39_registered_part_period_pdf_auth_v1.py",
+        ROOT / DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
         ROOT / "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
         *(ROOT / p for p in SHARED_PINS),
         *SPEC_PATHS.values(),
@@ -1029,7 +1050,7 @@ def run(args):
     require(args.corpus_index.is_relative_to(args.artifact_root), "Corpus index must be inside explicit artifact root")
     corpus_index_ref = {**generic._file_ref(args.corpus_index),
                         "path": args.corpus_index.relative_to(args.artifact_root).as_posix()}
-    pdf_checked, repair_ids, census_refs = [], [], []
+    pdf_checked, repair_ids, census_refs, part_pdf_receipts = [], [], [], []
     args.output_dir.mkdir(mode=0o700)
     cache = BaseClusterCache(args.base_cluster_cache)
 
@@ -1050,6 +1071,10 @@ def run(args):
             coverage = _check_page_scope_v1(document, len(source_pdf), scope_rows)
         pdf_checked.append({**source, **coverage, "status": "PASS_BYTES_ONLY_NOT_VISUAL_AUDIT"})
         repair_ids.extend(_authenticate_repairs_v1(document, loaded, compiled, path))
+        part_pdf_receipts.extend(authenticate_registered_part_period_pdf_v1(
+            document, loaded, compiled, args.source_pdf_root,
+            registry_loader=_load_registered_part_period_registry_v1,
+        ))
 
     try:
         with open_income_tax_original_census_source_v1(
@@ -1083,9 +1108,11 @@ def run(args):
                     and generic._sha256(path) == source["source_sha256"],
                     "Source PDF bytes changed during replay: " + str(path),
                 )
+            recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
     finally:
         cache.close()
     _assert_shared_pins_v1()
+    recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
     require(
         implementation_refs == [generic._file_ref(p) for p in implementation_paths],
         "Family/spec/storage bytes changed during run",
@@ -1110,6 +1137,7 @@ def run(args):
             database=args.source_page_database, database_ref=index["database_ref"],
             artifact_root=args.artifact_root, corpus_index_ref=corpus_index_ref,
             documents=documents, expected_census_refs=census_refs,
+            source_pdf_root=args.source_pdf_root,
         )
         started = time.perf_counter()
         stored = ingest_gemini_accounting_family_sweep_v1(
@@ -1136,6 +1164,7 @@ def run(args):
                 "Source PDF changed before output handoff")
     require(same_typed_json_v1(raw_census["document_census_refs"], census_refs), "Raw census reference axis changed")
     _raw_census_summary_v1(census_refs)
+    recheck_registered_part_period_pdf_v1(part_pdf_receipts, registry_loader=_load_registered_part_period_registry_v1)
     if diagnostic_ordinals is not None:
         material = {
             "format_version": "INCOME_TAX_BOUNDED_DIAGNOSTIC_V1",
@@ -1155,6 +1184,7 @@ def run(args):
             "original_raw_money_census": raw_census,
             "pdf_source_byte_bindings": pdf_checked,
             "authenticated_repair_ids": repair_ids,
+            "registered_part_period_pdf_authentication": part_pdf_receipts,
             "implementation_refs": implementation_refs,
             "immutable_input_refs": authority_refs,
         }
@@ -1186,6 +1216,8 @@ def run(args):
         "original_raw_money_census_store": raw_census_store,
         "pdf_source_byte_bindings": pdf_checked,
         "authenticated_repair_ids": repair_ids,
+        "registered_part_period_pdf_authentication": part_pdf_receipts,
+        "registered_part_period_cold_authentication": "FRESH_PER_APPLICABLE_SOURCE_IN_COLD_REPLAY_ADAPTER",
         "selected_page_ids_sha256": canonical_json_sha256_v1(selected_ids),
         "implementation_refs": implementation_refs,
         "immutable_input_refs": authority_refs,

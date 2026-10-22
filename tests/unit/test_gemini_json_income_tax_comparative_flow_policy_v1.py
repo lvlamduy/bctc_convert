@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from copy import deepcopy
@@ -1547,6 +1548,63 @@ def test_unparsed_explicit_caption_without_cho_cannot_hide_behind_dated_header_f
     section["title_exact"] += "\n" + assertion
     before = deepcopy(records)
     constraints = family._owned_current_period_constraints(section, table)
+    if assertion == "Quý II năm 2025":
+        # Preserve this baseline NODEID. The complete typed report caption is
+        # now recognized by a finite endpoint grammar; it is no longer an
+        # unsupported assertion hidden behind the dated-header fallback.
+        # Select expectations from the literal fixture, never from whether the
+        # implementation happens to recognize it on this run.
+        expected_periods = [["SOURCE_YTD_QUARTER", 2025, 2], ["SOURCE_YTD_QUARTER", 2024, 2]]
+        assert len(constraints) == 1
+        constraint = constraints[0]
+        assert constraint["source_kind"] == "SECTION_TITLE"
+        assert constraint["source_exact"] == section["title_exact"]
+        assert constraint["supported"] is True
+        assert constraint["printed_reporting_quarter"] == 2
+        assert constraint["printed_year"] == 2025
+        endpoint = constraint["source_report_quarter_evidence"]
+        assert endpoint["supported"] is True
+        assert endpoint["source_exact"] == section["title_exact"]
+        assert endpoint["comparative_year_permission_granted"] is False
+        assert endpoint["start_dates_inferred"] is False
+        assert all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in constraints)
+        compiled = _adapter_compiled()
+        lane = family._multitable_lane_axis(section, table, compiled_specs=compiled)
+        assert lane["complete"] is True
+        assert family._printed_duration_lengths(table, [1, 2], section=section) == [[6], [6]]
+        assert family._absolute_source_duration_semantics(section, table, lane) == expected_periods
+        inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+        policy = inventory["document_comparative_flow_policy_receipt"]
+        assert policy["complete"] is True
+        assert policy["resolved_source_duration_semantics"] == expected_periods
+        for left in (index, 0):
+            accepted = family._source_period_correspondence_receipt(
+                left_locator=_contextual_period_locator(records[left]),
+                right_locator=_contextual_period_locator(records[index]),
+                left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+                page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+            )
+            assert accepted["complete"] is True
+            assert accepted["status"].startswith("PASS_")
+        selected = _period_proof(records, inventory=inventory)
+        assert selected["complete"] is True
+        if literal_note:
+            assert selected["status"] == "PASS_LITERAL_SOURCE_DURATION"
+            assert selected["period_resolution_evidence"] == []
+        else:
+            assert selected["status"] == "PASS_AUTHENTICATED_PRINTED_COMPARATIVE_FLOW_POLICY"
+            inherited = [item["inherited_document_comparative_flow_policy_receipt"]
+                         for item in selected["period_resolution_evidence"]
+                         if item["inherited_document_comparative_flow_policy_receipt"] is not None]
+            assert inherited and all(item["complete"] is True for item in inherited)
+        candidate = _public_candidate(records)
+        assert candidate["status"] == READY and candidate["mappings"]
+        allowed_versions = {records[0]["page_json_version_id"], records[1]["page_json_version_id"]}
+        refs = [ref for mapping in candidate["mappings"] for ref in mapping.get("source_refs", [])]
+        assert refs and all(ref["locator"]["page_json_version_id"] in allowed_versions for ref in refs)
+        assert all(ref["locator"]["page_json_version_id"] != records[2]["page_json_version_id"] for ref in refs)
+        assert records == before
+        return
     assert constraints and any(item["supported"] is False for item in constraints)
     assert all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in constraints)
     compiled = _adapter_compiled()
@@ -1576,6 +1634,82 @@ def test_unparsed_explicit_caption_without_cho_cannot_hide_behind_dated_header_f
         refs = [ref for mapping in candidate["mappings"] for ref in mapping.get("source_refs", [])]
         assert refs and all(ref["locator"]["page_json_version_id"] in allowed_versions for ref in refs)
         assert all(ref["locator"]["page_json_version_id"] != records[2]["page_json_version_id"] for ref in refs)
+    else:
+        assert selected["complete"] is False
+        assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("index", [1, 2])
+@pytest.mark.parametrize("literal_note", [False, True])
+def test_supported_report_quarter_endpoint_must_match_actual_six_month_header_window(index, literal_note):
+    records = _absolute_flow_header_records(literal_note=literal_note)
+    section, table = _absolute_header_section_table(records, index)
+    section["title_exact"] += "\nQuý III năm 2025"
+    before = deepcopy(records)
+    constraints = family._owned_current_period_constraints(section, table)
+    assert len(constraints) == 1 and constraints[0]["supported"] is True
+    assert constraints[0]["printed_reporting_quarter"] == 3
+    assert constraints[0]["printed_year"] == 2025
+    assert constraints[0]["source_report_quarter_evidence"]["source_exact"] == section["title_exact"]
+    compiled = _adapter_compiled()
+    lane = family._multitable_lane_axis(section, table, compiled_specs=compiled)
+    assert lane["complete"] is True
+    assert family._printed_duration_lengths(table, [1, 2], section=section) == [[6], [6]]
+    assert family._owned_current_period_constraints_match(section, table, lane) is False
+    assert family._absolute_source_duration_semantics(section, table, lane) is None
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    for left in (index, 0):
+        rejected = family._source_period_correspondence_receipt(
+            left_locator=_contextual_period_locator(records[left]),
+            right_locator=_contextual_period_locator(records[index]),
+            left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+            page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+        )
+        assert rejected["complete"] is False and rejected["status"] == "ALGORITHM_HOLD"
+    selected = _period_proof(records, inventory=inventory)
+    assert selected["complete"] is False and selected["status"] == "ALGORITHM_HOLD"
+    if index == 2:
+        assert any(item["status"] == "PROVEN_CONTRADICTORY_PRINTED_PERIOD"
+                   for item in selected["cash_flow_printed_period_controls"])
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("index", [1, 2])
+@pytest.mark.parametrize("literal_note", [False, True])
+def test_unknown_annotation_is_not_whole_report_quarter_endpoint_authority(index, literal_note):
+    records = _absolute_flow_header_records(literal_note=literal_note)
+    section, table = _absolute_header_section_table(records, index)
+    section["title_exact"] += "\nQuý II năm 2025 (kỳ kế toán khác)"
+    before = deepcopy(records)
+    constraints = family._owned_current_period_constraints(section, table)
+    assert constraints and any(item["supported"] is False for item in constraints)
+    assert all(item["source_kind"] != "OWNED_PRIMARY_FLOW_HEADER_PAIR" for item in constraints)
+    compiled = _adapter_compiled()
+    lane = family._multitable_lane_axis(section, table, compiled_specs=compiled)
+    assert lane["complete"] is True
+    assert family._absolute_source_duration_semantics(section, table, lane) is None
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    rejected = family._source_period_correspondence_receipt(
+        left_locator=_contextual_period_locator(records[index]),
+        right_locator=_contextual_period_locator(records[index]),
+        left_money_column_ordinals=[1, 2], right_money_column_ordinals=[1, 2],
+        page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+    )
+    assert rejected["complete"] is False and rejected["status"] == "ALGORITHM_HOLD"
+    selected = _period_proof(records, inventory=inventory)
+    candidate = _public_candidate(records)
+    if index == 2 and literal_note:
+        # An unknown, unselected CF caption remains unknown, not contradictory
+        # evidence against an independently printed literal NOTE/INCOME pair.
+        assert selected["complete"] is True and selected["status"] == "PASS_LITERAL_SOURCE_DURATION"
+        assert selected["period_resolution_evidence"] == []
+        assert candidate["status"] == READY and candidate["mappings"]
+        allowed_versions = {records[0]["page_json_version_id"], records[1]["page_json_version_id"]}
+        refs = [ref for mapping in candidate["mappings"] for ref in mapping.get("source_refs", [])]
+        assert refs and all(ref["locator"]["page_json_version_id"] in allowed_versions for ref in refs)
     else:
         assert selected["complete"] is False
         assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
@@ -2632,4 +2766,274 @@ def test_four_money_ytd_complete_ascii_tail_is_header_furniture_not_a_second_dat
     assert evidence["quarter"] == 2
     expected = None if relative else [["SOURCE_YTD_QUARTER", 2026, 2], ["SOURCE_YTD_QUARTER", 2025, 2]]
     assert evidence["intrinsic_absolute_periods"] == expected
+    assert records == before
+
+
+def _quarter_endpoint_absolute_policy_records(*, layout="slash"):
+    records = _absolute_flow_header_records()
+    _policy_section(records)["narratives_exact"] = [_audited_written_six_policy(prior_year=2023)]
+    for index in (1, 2):
+        section, table = _absolute_header_section_table(records, index)
+        section["title_exact"] += "\nQuý II năm 2025"
+        if layout == "four_money":
+            columns = []
+            for stem in ("Quý II", "Lũy kế từ đầu năm"):
+                columns.extend({"value_kind": "MONEY", "header_path_exact": [stem, str(year), "Triệu đồng"]}
+                               for year in (2025, 2023))
+            table["columns"] = columns
+            for row in table["rows"]:
+                # Synthetic parallel-quarter positions are retained, never
+                # used to establish calendar or selected-YTD authority.
+                row["values_exact"] = [*row["values_exact"], *row["values_exact"]]
+        else:
+            for column, year in zip(table["columns"], (2025, 2023), strict=True):
+                if layout == "date_range":
+                    column["header_path_exact"] = [f"Từ ngày 01/01/{year} đến ngày 30/06/{year}", "Triệu đồng"]
+                else:
+                    separator = "." if layout == "dotted" else "/"
+                    column["header_path_exact"] = ["Kỳ 6 tháng kết thúc ngày", f"30{separator}6{separator}{year}", "Triệu đồng"]
+    return records
+
+
+def _quarter_endpoint_selected_policy_proof(records, inventory, compiled):
+    left_section, left_table = _absolute_header_section_table(records, 0)
+    right_section, right_table = _absolute_header_section_table(records, 1)
+    left_lane = family._multitable_lane_axis(left_section, left_table, compiled_specs=compiled)
+    right_lane = family._multitable_lane_axis(right_section, right_table, compiled_specs=compiled)
+    return family._source_period_correspondence_receipt(
+        left_locator=_contextual_period_locator(records[0]), right_locator=_contextual_period_locator(records[1]),
+        left_money_column_ordinals=left_lane["money_column_ordinals"],
+        right_money_column_ordinals=right_lane["money_column_ordinals"],
+        page_records=records, compiled_specs=compiled, document_period_inventory=inventory,
+    )
+
+
+@pytest.mark.parametrize("layout", ["slash", "dotted", "date_range", "four_money"])
+def test_report_quarter_endpoint_requires_fresh_same_table_absolute_duration_with_printed_nonadjacent_policy(layout):
+    records = _quarter_endpoint_absolute_policy_records(layout=layout)
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    expected = [["SOURCE_YTD_QUARTER", 2025, 2], ["SOURCE_YTD_QUARTER", 2023, 2]]
+    policy = inventory["document_comparative_flow_policy_receipt"]
+    assert policy["complete"] is True and policy["resolved_source_duration_semantics"] == expected
+    assert {item["statement_type"] for item in policy["anchor_source_receipts"]} == {"INCOME_STATEMENT", "CASH_FLOW"}
+    for anchor in policy["anchor_source_receipts"]:
+        assert anchor["complete"] is True and anchor["reasons"] == []
+        assert anchor["owned_current_duration"] == {"printed_months": 6, "printed_end_date": "2025-06-30"}
+        evidence = anchor["quarter_caption_absolute_header_duration_evidence"]
+        assert evidence is not None
+        assert evidence["resolved_source_duration_semantics"] == expected
+        assert evidence["money_column_ordinals"] == ([3, 4] if layout == "four_money" else [1, 2])
+        assert evidence["columns_exact"] == anchor["columns_exact"]
+        assert evidence["relative_year_inference_used"] is False
+        if layout == "four_money":
+            assert evidence["intrinsic_absolute_sibling_evidence"]["intrinsic_absolute_periods"] == expected
+        else:
+            assert evidence["intrinsic_absolute_sibling_evidence"] is None
+            assert all(key[0] == ("DURATION_DATE_RANGE" if layout == "date_range" else "DURATION_END_DATE")
+                       for key in evidence["source_lane_keys"])
+    selected = _quarter_endpoint_selected_policy_proof(records, inventory, compiled)
+    assert selected["complete"] is True
+    assert selected["status"] == "PASS_AUTHENTICATED_PRINTED_COMPARATIVE_FLOW_POLICY"
+    inherited = [item["inherited_document_comparative_flow_policy_receipt"] for item in selected["period_resolution_evidence"]
+                 if item["inherited_document_comparative_flow_policy_receipt"] is not None]
+    assert inherited and all(item["resolved_source_duration_semantics"] == expected for item in inherited)
+    candidate = _public_candidate(records)
+    assert candidate["status"] == READY and candidate["mappings"]
+    assert records == before
+
+
+@pytest.mark.parametrize("mutation", [
+    "relative_two", "relative_four", "wrong_year", "three_months_june", "start_april", "start_jan2",
+    "malformed_prior", "continuation_relative", "continuation_conflict", "continuation_prior_conflict",
+])
+def test_report_quarter_endpoint_cannot_invent_or_select_away_independent_absolute_duration(mutation):
+    records = _quarter_endpoint_absolute_policy_records(layout="four_money" if mutation == "relative_four" else "slash")
+    section, table = _absolute_header_section_table(records, 2)
+    if mutation == "relative_two":
+        for column, label in zip(table["columns"], ("Kỳ này", "Kỳ trước"), strict=True):
+            column["header_path_exact"] = [label, "Triệu đồng"]
+    elif mutation == "relative_four":
+        for ordinal, column in enumerate(table["columns"]):
+            column["header_path_exact"][1] = "Năm " + ("nay" if ordinal % 2 == 0 else "trước")
+    elif mutation == "wrong_year":
+        table["columns"][0]["header_path_exact"][1] = "30/6/2024"
+    elif mutation == "three_months_june":
+        for column in table["columns"]:
+            column["header_path_exact"][0] = "Kỳ 3 tháng kết thúc ngày"
+    elif mutation in {"start_april", "start_jan2"}:
+        start = "01/04" if mutation == "start_april" else "02/01"
+        for column, year in zip(table["columns"], (2025, 2023), strict=True):
+            column["header_path_exact"] = [f"Từ ngày {start}/{year} đến ngày 30/06/{year}", "Triệu đồng"]
+    elif mutation == "malformed_prior":
+        table["columns"][1]["header_path_exact"][1] = "31/6/2023"
+    else:
+        section = _append_flow_continuation(records, 2)
+        table = section["tables"][0]
+        if mutation == "continuation_relative":
+            for column, label in zip(table["columns"], ("Kỳ này", "Kỳ trước"), strict=True):
+                column["header_path_exact"] = [label, "Triệu đồng"]
+        elif mutation == "continuation_conflict":
+            section["title_exact"] = section["title_exact"].replace("Quý II", "Quý III")
+        else:
+            table["columns"][1]["header_path_exact"][1] = "30/6/2024"
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    policy = inventory["document_comparative_flow_policy_receipt"]
+    assert policy["complete"] is False and policy["status"] == "ALGORITHM_HOLD"
+    assert policy["reasons"]
+    assert any(anchor["complete"] is False for anchor in policy["anchor_source_receipts"])
+    selected = _quarter_endpoint_selected_policy_proof(records, inventory, compiled)
+    assert selected["complete"] is False and selected["status"] == "ALGORITHM_HOLD"
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("gate", [
+    "scope", "unit", "rejected_header", "billion_table", "unknown_million_vnd", "unknown_thousand_million",
+])
+def test_quarter_caption_absolute_duration_composition_cannot_grant_scope_or_unit_acceptance(gate):
+    records = _quarter_endpoint_absolute_policy_records()
+    section, table = _absolute_header_section_table(records, 1)
+    if gate == "scope":
+        section["title_exact"] = section["title_exact"].replace("RIÊNG", "HỢP NHẤT")
+    elif gate == "rejected_header":
+        table["unit_exact"] = "Triệu đồng"
+        for column in table["columns"]:
+            column["header_path_exact"][-1] = "Nghìn đồng"
+    elif gate == "billion_table":
+        table["unit_exact"] = "Tỷ đồng"
+    elif gate.startswith("unknown_"):
+        table["unit_exact"] = "Triệu đồng" if gate == "unknown_million_vnd" else "Nghìn đồng"
+        for column in table["columns"]:
+            column["value_kind"] = "UNKNOWN"
+            column["header_path_exact"][-1] = "Đồng" if gate == "unknown_million_vnd" else "Triệu đồng"
+    else:
+        table["unit_exact"] = "Nghìn đồng"
+    before = deepcopy(records)
+    if gate != "scope":
+        compiled = _adapter_compiled()
+        unknown = gate.startswith("unknown_")
+        if unknown:
+            assert "UNKNOWN" in compiled["accepted_value_column_kinds"]
+            unit_view = {**table, "columns": [{**column, "value_kind": "MONEY"} for column in table["columns"]]}
+            unit = {
+                **family._unit_axis(unit_view, compiled_specs=compiled),
+                "veto_only_unknown_column_unit_view": {
+                    "column_ordinals": list(range(1, len(table["columns"]) + 1)),
+                    "source_column_kinds_modified": False,
+                    "positive_unit_permission_granted": False,
+                },
+            }
+        else:
+            unit = family._unit_axis(table, compiled_specs=compiled)
+        identities = {(item["canonical_unit"], item["magnitude_power10"]) for item in unit["evidence"]}
+        assert len(identities) > 1 and unit["complete"] is False
+        if gate == "unknown_million_vnd":
+            assert all(item["accepted"] is True for item in unit["evidence"])
+        else:
+            assert any(item["accepted"] is False for item in unit["evidence"])
+        assert any(item["accepted"] is True for item in unit["evidence"])
+        assert ("MILLION_VND", 6) in identities
+        expected_other = ("BILLION_VND", 9) if gate == "billion_table" else (
+            ("VND", 0) if gate == "unknown_million_vnd" else ("THOUSAND_VND", 3)
+        )
+        assert expected_other in identities
+        invalid = family._primary_invalid_source_role_rows(records, compiled_specs=compiled)
+        assert invalid
+        raw_columns = [{"column_ordinal": ordinal, "source_column_exact": column}
+                       for ordinal, column in enumerate(table["columns"], 1)
+                       if column["value_kind"] in compiled["accepted_value_column_kinds"]]
+        for item in invalid:
+            assert item["locator"]["page_json_version_id"] == records[1]["page_json_version_id"]
+            assert item["source_unit_axis"] == unit
+            assert item["source_money_columns_exact"] == raw_columns
+            assert item["source_row_exact"] == table["rows"][item["row_ordinal"] - 1]
+            assert item["source_lane_axis"] == family._multitable_lane_axis(section, table, compiled_specs=compiled)
+            assert "INVALID_PRIMARY_SOURCE_MONEY_UNIT_CONFLICT" in item["reasons"]
+        if unknown:
+            assert [column["value_kind"] for column in table["columns"]] == ["UNKNOWN", "UNKNOWN"]
+    candidate = _public_candidate(records)
+    assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
+    assert records == before
+
+
+@pytest.mark.parametrize("forged", [None, [["SOURCE_YTD_QUARTER", 2025, 2], ["SOURCE_YTD_QUARTER", 2022, 2]]])
+def test_quarter_caption_policy_builder_rejects_reserialized_forged_absolute_derived_field(forged):
+    records = _quarter_endpoint_absolute_policy_records()
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    sources = deepcopy(inventory["sources"])
+    original_source_sha = canonical_json_sha256_v1(sources[0])
+    sources[0]["absolute_duration_semantics"] = deepcopy(forged)
+    sources = json.loads(json.dumps(sources, ensure_ascii=False, allow_nan=False))
+    assert canonical_json_sha256_v1(sources[0]) != original_source_sha
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error,
+                       match="^income-tax quarter-caption absolute header duration source replay drifted$"):
+        family._document_comparative_flow_policy_receipt(
+            records, sources, family._document_report_scope_receipt(records), compiled_specs=compiled,
+        )
+    assert records == before
+
+
+@pytest.mark.parametrize("conflict", [False, True])
+def test_primary_unknown_unit_view_only_vetoes_actual_mixed_units_without_promoting_source(conflict):
+    records = _quarter_endpoint_absolute_policy_records()
+    _, table = _absolute_header_section_table(records, 1)
+    for column in table["columns"]:
+        column["value_kind"] = "UNKNOWN"
+    table["unit_exact"] = "Nghìn đồng" if conflict else "Triệu đồng"
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    assert "UNKNOWN" in compiled["accepted_value_column_kinds"]
+    invalid = family._primary_invalid_source_role_rows(records, compiled_specs=compiled)
+    if conflict:
+        assert invalid
+        raw_columns = [{"column_ordinal": ordinal, "source_column_exact": column}
+                       for ordinal, column in enumerate(table["columns"], 1)]
+        for item in invalid:
+            assert item["locator"]["page_json_version_id"] == records[1]["page_json_version_id"]
+            assert "INVALID_PRIMARY_SOURCE_MONEY_UNIT_CONFLICT" in item["reasons"]
+            assert item["source_money_columns_exact"] == raw_columns
+            assert all(column["source_column_exact"]["value_kind"] == "UNKNOWN" for column in raw_columns)
+            assert item["table_json_sha256"] == canonical_json_sha256_v1(table)
+            unit = item["source_unit_axis"]
+            assert {(evidence["canonical_unit"], evidence["magnitude_power10"])
+                    for evidence in unit["evidence"]} == {("MILLION_VND", 6), ("THOUSAND_VND", 3)}
+            assert unit["veto_only_unknown_column_unit_view"] == {
+                "column_ordinals": [1, 2], "source_column_kinds_modified": False,
+                "positive_unit_permission_granted": False,
+            }
+    else:
+        assert invalid == []
+    assert records == before
+
+
+def test_quarter_caption_policy_builder_cannot_reseal_a_forged_dated_lane_over_relative_four_money_headers():
+    records = _quarter_endpoint_absolute_policy_records(layout="four_money")
+    _, table = _absolute_header_section_table(records, 2)
+    for ordinal, column in enumerate(table["columns"]):
+        column["header_path_exact"][1] = "Năm " + ("nay" if ordinal % 2 == 0 else "trước")
+    before = deepcopy(records)
+    compiled = _adapter_compiled()
+    inventory = family._document_statement_period_inventory(records, compiled_specs=compiled)
+    sources = deepcopy(inventory["sources"])
+    forged = next(source for source in sources if source["statement_type"] == "CASH_FLOW")
+    assert forged["absolute_duration_semantics"] is None
+    assert forged["ytd_sibling_evidence"]["intrinsic_absolute_periods"] is None
+    forged["lane_axis"]["source_lane_keys"] = [
+        ["DURATION_DATE_RANGE", "2025-01-01", "2025-06-30"],
+        ["DURATION_DATE_RANGE", "2023-01-01", "2023-06-30"],
+    ]
+    forged["absolute_duration_semantics"] = [["SOURCE_YTD_QUARTER", 2025, 2], ["SOURCE_YTD_QUARTER", 2023, 2]]
+    sources = json.loads(json.dumps(sources, ensure_ascii=False, allow_nan=False))
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error,
+                       match="^income-tax quarter-caption original header lane source replay drifted$"):
+        family._document_comparative_flow_policy_receipt(
+            records, sources, family._document_report_scope_receipt(records), compiled_specs=compiled,
+        )
     assert records == before

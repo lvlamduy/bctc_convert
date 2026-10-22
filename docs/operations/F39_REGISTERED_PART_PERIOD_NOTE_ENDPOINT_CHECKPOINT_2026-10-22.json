@@ -1,0 +1,167 @@
+{
+  "schema": "bctc-ai-f39-nonterminal-algorithm-checkpoint-v1",
+  "checkpoint_date_utc": "2026-10-22",
+  "status": "FOCUSED_AND_BOUNDED_ORIGINAL_SOURCE_REPLAY_VERIFIED_NOT_FAMILY_ACCEPTANCE",
+  "worker": "LAPTOP_INTEGRATOR",
+  "git": {
+    "branch": "codex/f39-income-tax-laptop",
+    "migration_base_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+    "witnessed_head_before_this_checkpoint_commit": "0b1bec2d2742ee28988db0dc9e576090efa23afc",
+    "common_branch_remote_head_verified": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+    "common_branch_push_authorized": false,
+    "evidence_binds_exact_working_code_bytes_not_a_future_commit_id": true
+  },
+  "scope": {
+    "family_id": "INCOME_TAX",
+    "report_year_from": 2025,
+    "through": "current",
+    "excluded_production_report_years": [2024],
+    "printed_2024_comparatives_inside_2025_and_later_reports_permitted": true,
+    "claude_owns_primary_statements_in_separate_worktree": true,
+    "codex_continues_notes": true,
+    "continuation_order": ["F39", "F36", "F37"],
+    "family_41_open": false,
+    "provider_called": false,
+    "original_database_json_or_pdf_modified": false
+  },
+  "algorithm_changes": [
+    "Authenticate six separately registered source-visible part-period contexts from fresh original selected JSON, source PDF bytes and seventeen full-page renders; registry alone grants no period/scope/unit/value authority.",
+    "Recognize a finite whole PRIMARY report-quarter caption only as a reporting endpoint, requiring independent printed duration/comparative-year evidence.",
+    "Recognize a finite whole financial-note report-quarter caption only as a reporting endpoint. Preserve raw text, reject extra assertions, and retain the existing finite cho-quy grammar without broadening it.",
+    "Consume only the independently validated whole NOTE endpoint surface in the local temporal census; do not erase unrelated temporal assertions, narratives or hierarchy.",
+    "Keep source-period correspondence separate from population authorization: equal printed dates do not authorize a separate/consolidated cross-population mapping.",
+    "Retain current-only CF period veto evidence and unsupported-unit evidence through family-local deterministic guards, without promoting blank or UNKNOWN cells.",
+    "Fence operation-local inventory caching with exact source/config/code dependencies, cloned results and fresh owner-exit checks; retain an independent cache-disabled original-source replay."
+  ],
+  "owned_source_pins": {
+    "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py": "1f516751665fa86a09ad9f08c89810d84a224da94f82c8c4c82e86b5d035e6ce",
+    "scripts/experiments/run_gemini_json_income_tax_accounting_family_v1.py": "ab72fb733eefc0a4102766c7c1b6382226529a9936b3d91479be4e70e775b577",
+    "src/bctc_ai/evaluation/gemini_json_income_tax_part_period_context_v1.py": "d5f8536a5b84c7039799e43003d0f9f9805fbc40818b0fc4bc76c0946b101a45",
+    "scripts/experiments/f39_registered_part_period_pdf_auth_v1.py": "7a526831eb420838ecb85d2d69e988cb64ca0494071774ba39e467c3e16be80d",
+    "config/families/tm-income-tax-part-period-contexts-v1.json": "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b"
+  },
+  "preserved_pins": {
+    "src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py": "bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2",
+    "scripts/experiments/run_gemini_json_multitable_hierarchical_accounting_family_v1.py": "d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5",
+    "config/families/tm-income-tax-source-repair-v1.json": "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4"
+  },
+  "focused_tests": {
+    "receipt": {
+      "path": "/srv/bctc-receipts/f39-note-caption-full-focused-retry-1792640347083-5ca937/F39_IMPLEMENTATION_FOCUSED_RECEIPT.json",
+      "sha256": "19b2e7663656035216542cce85900f5189a99ed665503559e3a27e7e83ded78a"
+    },
+    "status": "PASS",
+    "suite_count": 21,
+    "tests": 2450,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "elapsed_seconds": 1023.55,
+    "inputs_unchanged": true,
+    "prior_2378_nodeids_independently_checked_retained": true,
+    "python": "3.12",
+    "ruff_current_ten_owned_python_files": "PASS",
+    "git_diff_check": "PASS",
+    "retained_failed_attempt": {
+      "receipt_path": "/srv/bctc-receipts/f39-note-caption-full-focused-1792638673761-687894/F39_IMPLEMENTATION_FOCUSED_RECEIPT.json",
+      "sha256": "67f7c67929f8328db2a54c8399b42343b7d4e8a1086b0076144c8bcb58f0b36c",
+      "counts": {"passed": 2449, "failed": 1},
+      "disposition": "New test incorrectly required the date-only proof to reject different populations. Corrected the test to preserve separately printed dates and require the independent population/output veto. Production code was not weakened; fresh full2450 rerun above passed."
+    }
+  },
+  "bounded_original_source_replay": {
+    "corpus_document_ordinals": [1, 23, 27, 30, 39, 40, 44, 45, 54, 56, 57, 64, 65, 66, 70, 72, 74, 142, 143, 167, 168, 180, 181, 185, 186, 187, 193, 231, 249, 259, 260, 261, 262, 264],
+    "child_receipt": {
+      "path": "/srv/bctc-receipts/f39-note-caption-source-runtime-1792641536120-71152c/child/F39_REGISTERED_PART_PERIOD_CENSUS_34_SOURCE_REPLAY_WITNESS_V1.json",
+      "sha256": "7516f71fc8881a4ae62ea8b7c5756c7ead99e1fbca908f128222dddbd0576565",
+      "size_bytes": 1427674
+    },
+    "outer_receipt": {
+      "path": "/srv/bctc-receipts/f39-note-caption-source-runtime-1792641536120-71152c/F39_SOURCE_PANEL_POPPLER_ELF_RUNTIME_BARRIER_V1.json",
+      "sha256": "56f21fbf45243daf1fa6f15588447194decddbb11b173459844c0015a00673bc",
+      "size_bytes": 220155
+    },
+    "warm_diagnostic": {
+      "path": "/srv/bctc-receipts/f39-note-caption-source-runtime-1792641536120-71152c/child/warm/income-tax-bounded-diagnostic.json",
+      "sha256": "39e31e9029bcc5db67aa52ad06235c7d6a29a9b7bc77e98c1e67f17f2514085a",
+      "size_bytes": 37931705
+    },
+    "baseline": {
+      "path": "/srv/bctc-receipts/f39-four-money-panel-1792619426288-16a764fade9398/income-tax-bounded-diagnostic.json",
+      "sha256": "55acd7f5c0f70c6a4ccd1a1a71be985377fcdcc8938c0dbba4cbbe6b82d0d1f7"
+    },
+    "source_replay_status": "PASS",
+    "current_full_trials_exact_independent_sqlite_replay": true,
+    "current_full_raw_censuses_exact_independent_source_replay": true,
+    "source_context_successfully_exited_before_return": true,
+    "all_source_config_test_database_and_census_bytes_unchanged": true,
+    "poppler_before_after_ldd_resolved_elf_graph_and_bytes_equal": true,
+    "runtime_scope": "OBSERVED_BEFORE_AFTER_POPPLER_ELF_CLOSURE_NOT_FONTS_ALL_PYTHON_OR_CONTINUOUS_MONITORING",
+    "outer_errors": [],
+    "child_returncode": 2,
+    "outer_receipt_exit_code": 2,
+    "disposition": "SOURCE_REPLAY_STABLE_ENVIRONMENT_SEMANTIC_DELTA_REVIEW_REQUIRED_NOT_ACCEPTANCE",
+    "warm_elapsed_seconds": 416.14933072300005,
+    "cold_elapsed_seconds": 396.8593536850001,
+    "warm_registered_contexts": 6,
+    "warm_fresh_whole_page_renders": 17,
+    "cold_receipt_counts_exposed_or_instrumented": false,
+    "persistence_performed": false,
+    "full271_or_common204_acceptance_performed": false
+  },
+  "bounded_final_proposal_delta_review": {
+    "status": "SOURCE_SUPPORTED_BOUNDED_PROPOSALS_REVIEWED_NOT_PRODUCTION_ACCEPTANCE",
+    "baseline_ready": 18,
+    "baseline_unresolved": 16,
+    "baseline_final_mappings": 90,
+    "current_ready_proposal_only": 23,
+    "current_unresolved": 11,
+    "current_final_mappings": 116,
+    "changed_documents_and_new_mapping_counts": {"54": 5, "56": 5, "57": 5, "64": 6, "65": 5},
+    "other_29_status_and_final_mapping_outputs_unchanged": true,
+    "documents_54_65_final_outputs_exactly_match_previously_reviewed_proposals": true,
+    "documents_56_57_64_all_16_final_mappings_reviewed_against_full_original_locators_rows_and_raw_columns": true,
+    "documents_56_57_64_scope": "SEPARATE",
+    "documents_56_57_64_unit": "MILLION_VND",
+    "documents_56_57_64_original_and_evaluation_identical": true,
+    "note_endpoint_does_not_grant_duration_or_comparative_year": true,
+    "independent_registered_note_period_pairs_and_primary_ytd_correspondence_required": true,
+    "documents_56_57_prior_deferred_cells": "NULL_PRESERVED_AS_BLANK_SOURCE_CELL_NOT_ZERO",
+    "documents_56_57_postmerge_closure": "INCOMPLETE_SOURCE_LANES_PRESERVED_NOT_COMPLETE_TWO_LANE_CLOSURE",
+    "document_64_unknown_raw_column_kinds_preserved": true,
+    "document_66": "UNRESOLVED_ZERO_MAPPINGS_CAPTION_TRANSCRIPTION_DISCREPANCY_STILL_UNREGISTERED",
+    "this_review_does_not_reseal_or_upgrade_child_receipts": true
+  },
+  "environment_failure_preserved": {
+    "old_failed_source_receipt_sha256": "50a6836c183e11b5b823a9abff7cfe18b9430f0759b49e3832c6245e3b94736e",
+    "cause": "Installed Poppler executable changed during the earlier run because of an automatic system update. That run remains FAIL_CLOSED, not acceptance.",
+    "fresh_renderer_revalidation_registry_sha256": "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b",
+    "new_successful_source_replay_is_separate_not_a_reseal": true,
+    "system_updates_disabled_or_renderer_downgraded": false
+  },
+  "coordination": {
+    "event_key": "bctc-ai/coordination/2025-current/v1/events/20261022T042047071195Z-LAPTOP_INTEGRATOR-HEARTBEAT-b967e2d19c8a4040bab3683ac3fc0192.json",
+    "version_id": "gJ95jFWuTVk6zixLOb.uiO9Z.gxYnv3c",
+    "sha256": "3c82262505738b36845219d74b94bc0a18204297a019b8357989f4d45e8431a7",
+    "status": "PASS_EXACT_VERSION_READBACK"
+  },
+  "remaining_required_work": [
+    "Implement separately authenticated caption-only private-clone repairs for actual PDF/selected-JSON caption discrepancies; keep legacy thirteen-repair and part-period pins unchanged.",
+    "Finish source-visible ancestry-owned recognition and adjustment frontiers, continuation/basis/scope gaps and other genuine algorithm holds; do not relabel them as genuine source conflicts.",
+    "Complete original MONEY/UNKNOWN cell disposition and explicit original-to-evaluation coordinate replay; final selected mappings alone and recursive observation validation are not no-left-behind coverage.",
+    "Run authoritative full271 and common204 independently, with complete source/PDF residual audits and genuine exception review.",
+    "Persist to new result stores, reload, independently replay source, verify observation contracts, unique IDs/common204 projection and SQLite quick_check/foreign_key_check.",
+    "Publish current external evidence with a reviewed additive publisher and exact-VersionId readback; reuse verified old census/PDF/image content objects without duplicate PDF archives.",
+    "Write the authoritative F39 release ledger and commit/push backed-up release evidence before claiming F39 terminal, then continue F36 and F37 in order."
+  ],
+  "completion_flags": {
+    "caption_core_or_ancestry_or_cell_disposition_drafts_applied_by_this_checkpoint": false,
+    "current_external_receipts_fully_backed_up_to_s3": false,
+    "full271_common204_acceptance_pass": false,
+    "new_results_database_persistence_verified": false,
+    "pdf_residual_audit_complete": false,
+    "excel_export_verified": false,
+    "family_terminal": false,
+    "ready_for_integration_event_permitted": false
+  }
+}

@@ -1,0 +1,949 @@
+{
+  "base_git_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+  "contexts": [
+    {
+      "context_id": "f39partctxv1:c7d46c7125d6ba94ab22f12456b0a4334cdfe9a94ba14167e9b2afd44dced865:7c8af9fff9656ab1cdef24a043614d7c85f78d21b9fa995e19be2ca1cb618da1:s1:t1",
+      "document_id": "gfpstorev1:document:fa48a6509f53029a7de2d12c05827b633ad3ced2d614324e506bae177365e432",
+      "heading_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "85e61616990ec3238ef27b20091e39f5e0c14cb1d893573c744144f40faedc7d",
+          "narrative_ordinal": 1,
+          "original_section_json_sha256": "85e61616990ec3238ef27b20091e39f5e0c14cb1d893573c744144f40faedc7d",
+          "page_json_version_id": "gfpstorev1:json:590c33e8a68dfca750652e0af7467235fa38cfd87955975baf1fd1dd5523b3d2",
+          "physical_page": 29,
+          "section_id": "s1",
+          "source_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh\nCác thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 30/9/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 30/9/2024",
+          "source_sha256": "58b9ebfed302a8f71a1dcc996c42bf2c607334b1d2d717c6372812387720067c",
+          "span_end": 88,
+          "span_start": 0,
+          "substring_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "table_id": null
+        }
+      ],
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/KLB/2025/BAO CAO TAI CHINH QUY 3.2025 RIENG.pdf",
+        "sha256": "c7d46c7125d6ba94ab22f12456b0a4334cdfe9a94ba14167e9b2afd44dced865",
+        "size_bytes": 9307963
+      },
+      "period_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "85e61616990ec3238ef27b20091e39f5e0c14cb1d893573c744144f40faedc7d",
+          "narrative_ordinal": 1,
+          "original_section_json_sha256": "85e61616990ec3238ef27b20091e39f5e0c14cb1d893573c744144f40faedc7d",
+          "page_json_version_id": "gfpstorev1:json:590c33e8a68dfca750652e0af7467235fa38cfd87955975baf1fd1dd5523b3d2",
+          "physical_page": 29,
+          "section_id": "s1",
+          "source_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh\nCác thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 30/9/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 30/9/2024",
+          "source_sha256": "58b9ebfed302a8f71a1dcc996c42bf2c607334b1d2d717c6372812387720067c",
+          "span_end": 217,
+          "span_start": 89,
+          "substring_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 30/9/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 30/9/2024",
+          "table_id": null
+        }
+      ],
+      "provenance_document_ordinal": 54,
+      "review_evidence": {
+        "manual_review_ref": {
+          "path": "/mnt/d/bctc_bank/restore-receipts/F39_KLB54_56_PART_SCOPED_PERIOD_MINIMAL_PREFIX_VISUAL_REVIEW_2026-10-22_V1.json",
+          "sha256": "07caffa6071ff66b4d103ec2151523a4f72ffa5da992c4a00a62b87e6dd002f0",
+          "size_bytes": 67100
+        },
+        "no_reset_observation_exact": "The whole printed page shows the INCOME-statement supplemental-information heading above the explicit current/comparative period clause, which is above note24. The printed current dates are01/01/2025 to30/9/2025; comparative dates are01/01/2024 to30/9/2024. Notes24 through27 appear below the heading/clause. No conflicting period definition or part reset occurs between that clause and the end of this page. The whole page continues the separate interim note report and contains notes28 and29. No new part heading or new comparative-period definition is printed on this intervening whole page. The whole page begins with note30 income-tax expense under Ky nay/Ky truoc columns. No new part heading or comparative-period reset is printed before this target tax note. Notes31 cash equivalents,32 employee income and33 tax-payable movement appear later on the same page. No whole-part endpoint is inferred from those topics.",
+        "visual_refs": [
+          {
+            "dpi": 144,
+            "height_pixels": 1698,
+            "physical_page": 29,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb54-part-prefix-visual-p29-f1ba598807f14cfca17eba2d2f854f87/source-page-29.png",
+              "sha256": "a63895698e5675d959fbbfbbe7fd353f245f21f5954183ce0db653062bd32682",
+              "size_bytes": 876008
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb54-part-prefix-visual-p29-f1ba598807f14cfca17eba2d2f854f87/RENDER_RECEIPT.json",
+              "sha256": "bcd63ef2c662eac81d975cbe5e715ae1bc6e36d2fa598404a187fe4d63d4a6c9",
+              "size_bytes": 1450
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1192
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1702,
+            "physical_page": 30,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb54-part-prefix-visual-p30-0bd564ff2cd9466b950bdf4bb6b67e90/source-page-30.png",
+              "sha256": "2f12435c70940faf8e24ec2f3879faabf0dcc6254adb2237c7c952a431cfbcb7",
+              "size_bytes": 699579
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb54-part-prefix-visual-p30-0bd564ff2cd9466b950bdf4bb6b67e90/RENDER_RECEIPT.json",
+              "sha256": "1111fe9c21037e5fa556799ba6a8af37fd06ebdd316c856deca06577b3cd6ce2",
+              "size_bytes": 1450
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1190
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1700,
+            "physical_page": 31,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb54-part-prefix-visual-p31-58809656c23843188355c64759541289/source-page-31.png",
+              "sha256": "0bef1b710e92a8ca8be8a2d577284c0ee412f0f13da0efc2601d738c50aa5bb7",
+              "size_bytes": 904517
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb54-part-prefix-visual-p31-58809656c23843188355c64759541289/RENDER_RECEIPT.json",
+              "sha256": "c27796456e0705adb95fc4c6eac57376f20153664d03441843c650e201905d50",
+              "size_bytes": 1450
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1190
+          }
+        ]
+      },
+      "span_pages": [
+        {
+          "evaluation_page_json_sha256": "4d794eef53511a32ad92e81462c165e60f04975f8d09de1daf7e5ee01718e620",
+          "original_page_json_sha256": "4d794eef53511a32ad92e81462c165e60f04975f8d09de1daf7e5ee01718e620",
+          "page_json_version_id": "gfpstorev1:json:590c33e8a68dfca750652e0af7467235fa38cfd87955975baf1fd1dd5523b3d2",
+          "physical_page": 29,
+          "selected_page_ordinal": 29
+        },
+        {
+          "evaluation_page_json_sha256": "26517f15695ac4e479721d07f128d4d198c699d4e9be60de8ef70837ce415f4b",
+          "original_page_json_sha256": "26517f15695ac4e479721d07f128d4d198c699d4e9be60de8ef70837ce415f4b",
+          "page_json_version_id": "gfpstorev1:json:c90718cec6251e79cc815cc651fdafde672ece6ea938d63e80bc5abcda637de9",
+          "physical_page": 30,
+          "selected_page_ordinal": 30
+        },
+        {
+          "evaluation_page_json_sha256": "6af551749df8e292db49627e925e13ded924f6f0a4fcb0e064b7a0b53ec8ab6f",
+          "original_page_json_sha256": "6af551749df8e292db49627e925e13ded924f6f0a4fcb0e064b7a0b53ec8ab6f",
+          "page_json_version_id": "gfpstorev1:json:7c8af9fff9656ab1cdef24a043614d7c85f78d21b9fa995e19be2ca1cb618da1",
+          "physical_page": 31,
+          "selected_page_ordinal": 31
+        }
+      ],
+      "target_tables": [
+        {
+          "column_value_kinds": [
+            "MONEY",
+            "MONEY"
+          ],
+          "evaluation_section_json_sha256": "a186079afe5878f90cb8bc906ba4b18e79923c25090aca9de108e234e925488a",
+          "evaluation_table_json_sha256": "131012c96bb05946ba707a8a89132ad534cb3d62d2e46998acb1d92752f07feb",
+          "header_paths_exact": [
+            [
+              "Kỳ này"
+            ],
+            [
+              "Kỳ trước"
+            ]
+          ],
+          "money_column_ordinals": [
+            1,
+            2
+          ],
+          "original_section_json_sha256": "a186079afe5878f90cb8bc906ba4b18e79923c25090aca9de108e234e925488a",
+          "original_table_json_sha256": "131012c96bb05946ba707a8a89132ad534cb3d62d2e46998acb1d92752f07feb",
+          "page_json_version_id": "gfpstorev1:json:7c8af9fff9656ab1cdef24a043614d7c85f78d21b9fa995e19be2ca1cb618da1",
+          "period_order": [
+            "CURRENT",
+            "COMPARATIVE"
+          ],
+          "physical_page": 31,
+          "section_id": "s1",
+          "selected_page_ordinal": 31,
+          "table_id": "t1"
+        }
+      ]
+    },
+    {
+      "context_id": "f39partctxv1:9adafd9c25ad6dd1a05bc12d9b182fc65c4921145e98e7fac84f5453632f0553:2036c8de67b041ef158c3db18ec3bc9939885506b05323c59809d10e522efe14:s1:t3",
+      "document_id": "gfpstorev1:document:b759959729fd88d0965c98221d59b8676c8d93ae10b39e4cf1d81c18d70c7c69",
+      "heading_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "cdde5d716aca3cd58afb8e0b08d27ded7995b64ed8adb72b06c3ef7f8758461c",
+          "narrative_ordinal": 1,
+          "original_section_json_sha256": "cdde5d716aca3cd58afb8e0b08d27ded7995b64ed8adb72b06c3ef7f8758461c",
+          "page_json_version_id": "gfpstorev1:json:e69b3a77345a45809b494dd4a2360ef4e58bc9fed70eb5c3b252a8adda5f2e81",
+          "physical_page": 28,
+          "section_id": "s1",
+          "source_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "source_sha256": "7d49847b2c2e9bd7ef4378c9f5b12b84c75d0d6e7a99886b19bdd3488e575275",
+          "span_end": 88,
+          "span_start": 0,
+          "substring_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "table_id": null
+        }
+      ],
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/KLB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+        "sha256": "9adafd9c25ad6dd1a05bc12d9b182fc65c4921145e98e7fac84f5453632f0553",
+        "size_bytes": 8675798
+      },
+      "period_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "cdde5d716aca3cd58afb8e0b08d27ded7995b64ed8adb72b06c3ef7f8758461c",
+          "narrative_ordinal": 2,
+          "original_section_json_sha256": "cdde5d716aca3cd58afb8e0b08d27ded7995b64ed8adb72b06c3ef7f8758461c",
+          "page_json_version_id": "gfpstorev1:json:e69b3a77345a45809b494dd4a2360ef4e58bc9fed70eb5c3b252a8adda5f2e81",
+          "physical_page": 28,
+          "section_id": "s1",
+          "source_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 31/03/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 31/03/2024",
+          "source_sha256": "bdce7382b124b0f3f3498896971cc6abec1a82a38956d7acdd0312e1130149e0",
+          "span_end": 130,
+          "span_start": 0,
+          "substring_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 31/03/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 31/03/2024",
+          "table_id": null
+        }
+      ],
+      "provenance_document_ordinal": 56,
+      "review_evidence": {
+        "manual_review_ref": {
+          "path": "/mnt/d/bctc_bank/restore-receipts/F39_KLB54_56_PART_SCOPED_PERIOD_MINIMAL_PREFIX_VISUAL_REVIEW_2026-10-22_V1.json",
+          "sha256": "07caffa6071ff66b4d103ec2151523a4f72ffa5da992c4a00a62b87e6dd002f0",
+          "size_bytes": 67100
+        },
+        "no_reset_observation_exact": "The whole printed page shows the INCOME-statement supplemental-information heading above the explicit current/comparative period clause, which is above note23. The printed current dates are01/01/2025 to31/03/2025; comparative dates are01/01/2024 to31/03/2024. Notes23 through26 appear below the heading/clause. No conflicting period definition or part reset occurs after that clause on this page. The whole page continues with note27 and note28, followed by target note29 income-tax expense near the bottom. The target has Ky nay/Ky truoc columns. No new part heading or comparative-period reset is printed between the start of the page and this tax table. No complete part endpoint after the target is asserted by this review.",
+        "visual_refs": [
+          {
+            "dpi": 144,
+            "height_pixels": 1696,
+            "physical_page": 28,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb56-part-prefix-visual-p28-f13574d4f09547b4ac5bac0577fc94ac/source-page-28.png",
+              "sha256": "842f1b41d5937e6844777830f46c2d6eab3d44b72db72d1b3bbb88718c2d1dba",
+              "size_bytes": 820655
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb56-part-prefix-visual-p28-f13574d4f09547b4ac5bac0577fc94ac/RENDER_RECEIPT.json",
+              "sha256": "5685bc9c2b476fdbb4f193c21ff260d9d8dcff84d8c08d459a6e5879c63e1081",
+              "size_bytes": 1482
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1192
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1704,
+            "physical_page": 29,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb56-part-prefix-visual-p29-a2873dba3f30447aa90971730c2b2865/source-page-29.png",
+              "sha256": "a6368893eb711d2442bd2b6946686393194ddd783ca81bc5c27a13b4ea6a8007",
+              "size_bytes": 791794
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb56-part-prefix-visual-p29-a2873dba3f30447aa90971730c2b2865/RENDER_RECEIPT.json",
+              "sha256": "a79eda5910a605707c5615641ba28a12ccd4ca66f792888002ffcae4d9e94ad6",
+              "size_bytes": 1482
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1192
+          }
+        ]
+      },
+      "span_pages": [
+        {
+          "evaluation_page_json_sha256": "24bff3884ebd03d446392fb1fb726cee0ae92b96e77c58138ef168278d26c905",
+          "original_page_json_sha256": "24bff3884ebd03d446392fb1fb726cee0ae92b96e77c58138ef168278d26c905",
+          "page_json_version_id": "gfpstorev1:json:e69b3a77345a45809b494dd4a2360ef4e58bc9fed70eb5c3b252a8adda5f2e81",
+          "physical_page": 28,
+          "selected_page_ordinal": 28
+        },
+        {
+          "evaluation_page_json_sha256": "644a7dd32d6dcc601e6bff2f124b77925a0e0d7462b8aebc9ae78ca8fc4cb936",
+          "original_page_json_sha256": "644a7dd32d6dcc601e6bff2f124b77925a0e0d7462b8aebc9ae78ca8fc4cb936",
+          "page_json_version_id": "gfpstorev1:json:2036c8de67b041ef158c3db18ec3bc9939885506b05323c59809d10e522efe14",
+          "physical_page": 29,
+          "selected_page_ordinal": 29
+        }
+      ],
+      "target_tables": [
+        {
+          "column_value_kinds": [
+            "MONEY",
+            "MONEY"
+          ],
+          "evaluation_section_json_sha256": "24ac2fe6cc0007ec454fe5c606004c927bc5f5cb601d35ca3c195c3b2f4a79ea",
+          "evaluation_table_json_sha256": "c92a41d60d2d3f91eb440b3136670ac62420ef02c8605b4073048a409b6056a6",
+          "header_paths_exact": [
+            [
+              "Kỳ này"
+            ],
+            [
+              "Kỳ trước"
+            ]
+          ],
+          "money_column_ordinals": [
+            1,
+            2
+          ],
+          "original_section_json_sha256": "24ac2fe6cc0007ec454fe5c606004c927bc5f5cb601d35ca3c195c3b2f4a79ea",
+          "original_table_json_sha256": "c92a41d60d2d3f91eb440b3136670ac62420ef02c8605b4073048a409b6056a6",
+          "page_json_version_id": "gfpstorev1:json:2036c8de67b041ef158c3db18ec3bc9939885506b05323c59809d10e522efe14",
+          "period_order": [
+            "CURRENT",
+            "COMPARATIVE"
+          ],
+          "physical_page": 29,
+          "section_id": "s1",
+          "selected_page_ordinal": 29,
+          "table_id": "t3"
+        }
+      ]
+    },
+    {
+      "context_id": "f39partctxv1:523cc89343c44d44d6bd59f3a309f88fb52877e285b8a0e286653d310fbcdfba:87efef5dc832ee9128a9286f0c4e0174992a642be9b872b2de8cdcf609dce92a:s1:t1",
+      "document_id": "gfpstorev1:document:7427b2baf18a6104c80814a986d8db9b0e2470fab64bc5e1faa1d574a6535a04",
+      "heading_occurrences": [
+        {
+          "carrier_kind": "SECTION_TITLE",
+          "evaluation_section_json_sha256": "ca8aff680c2b4129839bff4d865a3b8960f7894143b426979548dc4b21f81ead",
+          "narrative_ordinal": null,
+          "original_section_json_sha256": "ca8aff680c2b4129839bff4d865a3b8960f7894143b426979548dc4b21f81ead",
+          "page_json_version_id": "gfpstorev1:json:77e00a497155e095e6c12bcd03afdf2848d918f0717cfca6b44b5a6dbcc5e13c",
+          "physical_page": 28,
+          "section_id": "s1",
+          "source_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "source_sha256": "7d49847b2c2e9bd7ef4378c9f5b12b84c75d0d6e7a99886b19bdd3488e575275",
+          "span_end": 88,
+          "span_start": 0,
+          "substring_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "table_id": null
+        }
+      ],
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/KLB/2025/BCTC Công ty mẹ quý 2 năm 2025.pdf",
+        "sha256": "523cc89343c44d44d6bd59f3a309f88fb52877e285b8a0e286653d310fbcdfba",
+        "size_bytes": 14397616
+      },
+      "period_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "ca8aff680c2b4129839bff4d865a3b8960f7894143b426979548dc4b21f81ead",
+          "narrative_ordinal": 1,
+          "original_section_json_sha256": "ca8aff680c2b4129839bff4d865a3b8960f7894143b426979548dc4b21f81ead",
+          "page_json_version_id": "gfpstorev1:json:77e00a497155e095e6c12bcd03afdf2848d918f0717cfca6b44b5a6dbcc5e13c",
+          "physical_page": 28,
+          "section_id": "s1",
+          "source_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 30/06/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 30/06/2024",
+          "source_sha256": "63df2a43951fe43a78fcbc6c9d62b205fe5369957982d1773678f21ffc7c23ae",
+          "span_end": 130,
+          "span_start": 0,
+          "substring_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 30/06/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 30/06/2024",
+          "table_id": null
+        }
+      ],
+      "provenance_document_ordinal": 57,
+      "review_evidence": {
+        "manual_review_ref": {
+          "path": "/mnt/d/bctc_bank/restore-receipts/F39_KLB_57_64_65_PART_PERIOD_NINE_PAGE_VISUAL_REVIEW_2026-10-22_V1.json",
+          "sha256": "5232f6c600fffbdf2850e29b6f7427a96ad4226d0288d610669646ecbfe4bb65",
+          "size_bytes": 24353
+        },
+        "no_reset_observation_exact": "Positive visual heading plus explicit range precedes the tax target across the complete physical28-30 sequence. No resetting part heading or competing date clause was observed between this heading/clause and the tax target. This is a bounded prefix observation, not a whole-part-end or report-wide absence claim.",
+        "visual_refs": [
+          {
+            "dpi": 144,
+            "height_pixels": 1680,
+            "physical_page": 28,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb57-p28-visual-1l9ta3_j/tmp/pdfs/source-page-28.png",
+              "sha256": "b8da3eb0ea56cd297ea9e5a68207799d5f0352099be0f017c7289d28d8b6323a",
+              "size_bytes": 976556
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb57-p28-visual-1l9ta3_j/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "191130419109c15e717f3b7778caecddafd04f7abbcddd5eeeb5b377a40e6810",
+              "size_bytes": 1429
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1176
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1680,
+            "physical_page": 29,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb57-p29-visual-rw2zd4j8/tmp/pdfs/source-page-29.png",
+              "sha256": "4179d9ec683369edece67960113bf73079ab08b6c064abd498b758e66139095c",
+              "size_bytes": 820369
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb57-p29-visual-rw2zd4j8/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "0cc4ce2657727670d3ed3fe0fd459efc0234b3799c2c94686791ec4735fd46bd",
+              "size_bytes": 1429
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1176
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1680,
+            "physical_page": 30,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb57-p30-visual-5ujusi6m/tmp/pdfs/source-page-30.png",
+              "sha256": "acfb5228a06ba3c392511dde4a18855ac5e882bf79d19f1341dcd54c6fcb9bd5",
+              "size_bytes": 1116339
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb57-p30-visual-5ujusi6m/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "037402c66f28df148e7ab9b7f6488609a526b2c56690e46c4ba8cc06aefe3c99",
+              "size_bytes": 1430
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1174
+          }
+        ]
+      },
+      "span_pages": [
+        {
+          "evaluation_page_json_sha256": "c22cc97fb648c88a37543304a47825a5f92688f486adb9b3646f8226d01ff2d4",
+          "original_page_json_sha256": "c22cc97fb648c88a37543304a47825a5f92688f486adb9b3646f8226d01ff2d4",
+          "page_json_version_id": "gfpstorev1:json:77e00a497155e095e6c12bcd03afdf2848d918f0717cfca6b44b5a6dbcc5e13c",
+          "physical_page": 28,
+          "selected_page_ordinal": 28
+        },
+        {
+          "evaluation_page_json_sha256": "3764697ed2ce34c812e0ee9f484608441eb77a2b4fd7b659741d184ecd1b9441",
+          "original_page_json_sha256": "3764697ed2ce34c812e0ee9f484608441eb77a2b4fd7b659741d184ecd1b9441",
+          "page_json_version_id": "gfpstorev1:json:242ff49e3fccec9e127d5ee0ea64e843a877c5996d90956c45163f7db2352534",
+          "physical_page": 29,
+          "selected_page_ordinal": 29
+        },
+        {
+          "evaluation_page_json_sha256": "1acfaf9b7e95f63994dea44a3809d596f908302eedfbafb6729195b836359479",
+          "original_page_json_sha256": "1acfaf9b7e95f63994dea44a3809d596f908302eedfbafb6729195b836359479",
+          "page_json_version_id": "gfpstorev1:json:87efef5dc832ee9128a9286f0c4e0174992a642be9b872b2de8cdcf609dce92a",
+          "physical_page": 30,
+          "selected_page_ordinal": 30
+        }
+      ],
+      "target_tables": [
+        {
+          "column_value_kinds": [
+            "MONEY",
+            "MONEY"
+          ],
+          "evaluation_section_json_sha256": "9054d9a0b6822d8896221b10708acc025499056aa73df1ad6ba71c5ab21e8150",
+          "evaluation_table_json_sha256": "48703dc198c5812e73509fa49c3e88eae772ceab6a43f5eaa792b5aebcfb6da3",
+          "header_paths_exact": [
+            [
+              "Kỳ này"
+            ],
+            [
+              "Kỳ trước"
+            ]
+          ],
+          "money_column_ordinals": [
+            1,
+            2
+          ],
+          "original_section_json_sha256": "9054d9a0b6822d8896221b10708acc025499056aa73df1ad6ba71c5ab21e8150",
+          "original_table_json_sha256": "48703dc198c5812e73509fa49c3e88eae772ceab6a43f5eaa792b5aebcfb6da3",
+          "page_json_version_id": "gfpstorev1:json:87efef5dc832ee9128a9286f0c4e0174992a642be9b872b2de8cdcf609dce92a",
+          "period_order": [
+            "CURRENT",
+            "COMPARATIVE"
+          ],
+          "physical_page": 30,
+          "section_id": "s1",
+          "selected_page_ordinal": 30,
+          "table_id": "t1"
+        }
+      ]
+    },
+    {
+      "context_id": "f39partctxv1:e6dba37ac2ea7d1ba936913ec516130b1f09108a4efcc9501956321bfabac9c9:d5f198ee33b7d418bef80b1e0d21f97fa8da0b61beb53433cb0880a2487f577e:s1:t1",
+      "document_id": "gfpstorev1:document:3dc110d30239979b35de0ab140308379d4d57fd81490bae457a67ff60bbd9983",
+      "heading_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "b4343cb2b91d8d8a32e20bea69d2884ce4fed79936c91f8bbe8a8dded203c684",
+          "narrative_ordinal": 1,
+          "original_section_json_sha256": "b4343cb2b91d8d8a32e20bea69d2884ce4fed79936c91f8bbe8a8dded203c684",
+          "page_json_version_id": "gfpstorev1:json:4622d3d2aeff6bebba7291ce25ae522103e8bf800545d136680f922e804c8aa1",
+          "physical_page": 31,
+          "section_id": "s1",
+          "source_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "source_sha256": "7d49847b2c2e9bd7ef4378c9f5b12b84c75d0d6e7a99886b19bdd3488e575275",
+          "span_end": 88,
+          "span_start": 0,
+          "substring_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "table_id": null
+        }
+      ],
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/KLB/2025/bao-cao-tai-chinh-giua-nien-do-q4.2025-rieng_tv.pdf",
+        "sha256": "e6dba37ac2ea7d1ba936913ec516130b1f09108a4efcc9501956321bfabac9c9",
+        "size_bytes": 10583534
+      },
+      "period_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "b4343cb2b91d8d8a32e20bea69d2884ce4fed79936c91f8bbe8a8dded203c684",
+          "narrative_ordinal": 2,
+          "original_section_json_sha256": "b4343cb2b91d8d8a32e20bea69d2884ce4fed79936c91f8bbe8a8dded203c684",
+          "page_json_version_id": "gfpstorev1:json:4622d3d2aeff6bebba7291ce25ae522103e8bf800545d136680f922e804c8aa1",
+          "physical_page": 31,
+          "section_id": "s1",
+          "source_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 31/12/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 31/12/2024",
+          "source_sha256": "3c50925583348ae1084ac5860e4ac11919be8f9f6746e3348f5a9b50e095c9c4",
+          "span_end": 130,
+          "span_start": 0,
+          "substring_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2025 đến 31/12/2025; Kỳ trước bắt đầu từ 01/01/2024 đến 31/12/2024",
+          "table_id": null
+        }
+      ],
+      "provenance_document_ordinal": 64,
+      "review_evidence": {
+        "manual_review_ref": {
+          "path": "/mnt/d/bctc_bank/restore-receipts/F39_KLB_57_64_65_PART_PERIOD_NINE_PAGE_VISUAL_REVIEW_2026-10-22_V1.json",
+          "sha256": "5232f6c600fffbdf2850e29b6f7427a96ad4226d0288d610669646ecbfe4bb65",
+          "size_bytes": 24353
+        },
+        "no_reset_observation_exact": "Positive visual heading plus explicit full-year range precedes the tax target across complete physical31-33. No resetting part heading or competing date clause was observed before the target. Raw tax value_kind UNKNOWN is a separate unresolved typed-axis issue; this review does not repair or promote it.",
+        "visual_refs": [
+          {
+            "dpi": 144,
+            "height_pixels": 1702,
+            "physical_page": 31,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb64-p31-visual-iha3h7ug/tmp/pdfs/source-page-31.png",
+              "sha256": "a52d83d1d36cdb7207111dae4e5162f775020630e6077131cf77bdf66392b32f",
+              "size_bytes": 859814
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb64-p31-visual-iha3h7ug/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "e81ffe813e0245e1256dd0a7df9bdce75228096b1668b9c9d6da7430237b7dc3",
+              "size_bytes": 1423
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1188
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1704,
+            "physical_page": 32,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb64-p32-visual-wdl8zcnz/tmp/pdfs/source-page-32.png",
+              "sha256": "3d2a223bfa7861d1f387ea0e0bc614a887cbe506dfdc5e32a8acf1ed796650bc",
+              "size_bytes": 802269
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb64-p32-visual-wdl8zcnz/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "9762721631c019ce48331ed7e5353142fd0cee3ca54e1f9b92ac576a19732a7c",
+              "size_bytes": 1423
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1188
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1698,
+            "physical_page": 33,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb64-p33-visual-p7e3rih3/tmp/pdfs/source-page-33.png",
+              "sha256": "8f9de11595ea50752a3da2dcdadd42a566425f53388ef2f47c7d314f33ace680",
+              "size_bytes": 964076
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb64-p33-visual-p7e3rih3/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "f88f367b0621cdf3591303489435f79b1598b7878bac6f7f08775fcb508bd1ea",
+              "size_bytes": 1423
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1188
+          }
+        ]
+      },
+      "span_pages": [
+        {
+          "evaluation_page_json_sha256": "b0b395da79e8e04a523d3a3423aeaa1bc5e3599366d2fef3e3594e00bd29776b",
+          "original_page_json_sha256": "b0b395da79e8e04a523d3a3423aeaa1bc5e3599366d2fef3e3594e00bd29776b",
+          "page_json_version_id": "gfpstorev1:json:4622d3d2aeff6bebba7291ce25ae522103e8bf800545d136680f922e804c8aa1",
+          "physical_page": 31,
+          "selected_page_ordinal": 31
+        },
+        {
+          "evaluation_page_json_sha256": "025c806368fac94d16c3744b5aecf53b0da943b88e46937861b1ca20f69b2c7c",
+          "original_page_json_sha256": "025c806368fac94d16c3744b5aecf53b0da943b88e46937861b1ca20f69b2c7c",
+          "page_json_version_id": "gfpstorev1:json:e370da20d837909b2cf96e6d27bcc7d97f22ebfa9cd71a40f5c811377120d290",
+          "physical_page": 32,
+          "selected_page_ordinal": 32
+        },
+        {
+          "evaluation_page_json_sha256": "93a38dfde9fa32756b735ef8328269c37bfd41f75eb502a52a89e2a3bf61ebac",
+          "original_page_json_sha256": "93a38dfde9fa32756b735ef8328269c37bfd41f75eb502a52a89e2a3bf61ebac",
+          "page_json_version_id": "gfpstorev1:json:d5f198ee33b7d418bef80b1e0d21f97fa8da0b61beb53433cb0880a2487f577e",
+          "physical_page": 33,
+          "selected_page_ordinal": 33
+        }
+      ],
+      "target_tables": [
+        {
+          "column_value_kinds": [
+            "UNKNOWN",
+            "UNKNOWN"
+          ],
+          "evaluation_section_json_sha256": "b8b907b244b833701372dc68a042a8bb1cee644f0b59e3470fb30724b2605f0b",
+          "evaluation_table_json_sha256": "477fc06ac1c1bf7e71ba74bb7f7b4acde86354e7d16098b48a9e53e6fe4468ab",
+          "header_paths_exact": [
+            [
+              "Kỳ này"
+            ],
+            [
+              "Kỳ trước"
+            ]
+          ],
+          "money_column_ordinals": [
+            1,
+            2
+          ],
+          "original_section_json_sha256": "b8b907b244b833701372dc68a042a8bb1cee644f0b59e3470fb30724b2605f0b",
+          "original_table_json_sha256": "477fc06ac1c1bf7e71ba74bb7f7b4acde86354e7d16098b48a9e53e6fe4468ab",
+          "page_json_version_id": "gfpstorev1:json:d5f198ee33b7d418bef80b1e0d21f97fa8da0b61beb53433cb0880a2487f577e",
+          "period_order": [
+            "CURRENT",
+            "COMPARATIVE"
+          ],
+          "physical_page": 33,
+          "section_id": "s1",
+          "selected_page_ordinal": 33,
+          "table_id": "t1"
+        }
+      ]
+    },
+    {
+      "context_id": "f39partctxv1:e3390fa3488046844a471a0b196f094ec276910f0048cb3bdde2b8fe091572a4:183fd707cd66a6add2e94727e718d06f9aaff2c2e557d0748db3cff50ccade5a:s1:t1",
+      "document_id": "gfpstorev1:document:a062cb39667944eccc9066186e3570f9fa5e4fdfca422e2cc40365b05f5ae014",
+      "heading_occurrences": [
+        {
+          "carrier_kind": "TABLE_TITLE",
+          "evaluation_section_json_sha256": "ad823126735ca942ac140352e02ee8ebcdbbf1148dd1f06d8daae1c559f8b113",
+          "narrative_ordinal": null,
+          "original_section_json_sha256": "ad823126735ca942ac140352e02ee8ebcdbbf1148dd1f06d8daae1c559f8b113",
+          "page_json_version_id": "gfpstorev1:json:7e596496e223f9f5f031cd11c0e4f41ebd5414c4d25b1e1b9cd638f83b3e322a",
+          "physical_page": 33,
+          "section_id": "s1",
+          "source_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh\n25. Thu nhập lãi thuần",
+          "source_sha256": "939c3ebe22606675a5a65ea7b428255e2e1a71d4a8b0eefa0488e3d4728a41a8",
+          "span_end": 88,
+          "span_start": 0,
+          "substring_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "table_id": "t1"
+        }
+      ],
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/KLB/2026/BCTC Công ty mẹ quý 1 năm 2026.pdf",
+        "sha256": "e3390fa3488046844a471a0b196f094ec276910f0048cb3bdde2b8fe091572a4",
+        "size_bytes": 9852598
+      },
+      "period_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "ad823126735ca942ac140352e02ee8ebcdbbf1148dd1f06d8daae1c559f8b113",
+          "narrative_ordinal": 1,
+          "original_section_json_sha256": "ad823126735ca942ac140352e02ee8ebcdbbf1148dd1f06d8daae1c559f8b113",
+          "page_json_version_id": "gfpstorev1:json:7e596496e223f9f5f031cd11c0e4f41ebd5414c4d25b1e1b9cd638f83b3e322a",
+          "physical_page": 33,
+          "section_id": "s1",
+          "source_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2026 đến 31/03/2026; Kỳ trước bắt đầu từ 01/01/2025 đến 31/03/2025",
+          "source_sha256": "8b76e620cdc0bc01e4ec8521ddbf9722c2673f11d49f876e66dcc9d65d27f35b",
+          "span_end": 130,
+          "span_start": 0,
+          "substring_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2026 đến 31/03/2026; Kỳ trước bắt đầu từ 01/01/2025 đến 31/03/2025",
+          "table_id": null
+        }
+      ],
+      "provenance_document_ordinal": 65,
+      "review_evidence": {
+        "manual_review_ref": {
+          "path": "/mnt/d/bctc_bank/restore-receipts/F39_KLB_57_64_65_PART_PERIOD_NINE_PAGE_VISUAL_REVIEW_2026-10-22_V1.json",
+          "sha256": "5232f6c600fffbdf2850e29b6f7427a96ad4226d0288d610669646ecbfe4bb65",
+          "size_bytes": 24353
+        },
+        "no_reset_observation_exact": "Positive visual heading plus explicit range precedes the target across complete physical33-35. No resetting part heading or competing date clause was observed before the tax target. The original heading/table-title concatenation is a separate ownership representation requirement, not permission to invent a section title.",
+        "visual_refs": [
+          {
+            "dpi": 144,
+            "height_pixels": 1698,
+            "physical_page": 33,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb65-p33-visual-vmzcbfnj/tmp/pdfs/source-page-33.png",
+              "sha256": "2be1cfc0aa63b4e49a07e206ff1a03d134b0fa069af1c3f9ba30e4c65393082f",
+              "size_bytes": 779717
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb65-p33-visual-vmzcbfnj/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "a7a960dd7c8dbcfa356aaf8aebf1f9943265d1c5c7fbff2b6a558f86a2bbd3ec",
+              "size_bytes": 1428
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1190
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1692,
+            "physical_page": 34,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb65-p34-visual-8k35en3l/tmp/pdfs/source-page-34.png",
+              "sha256": "d59ef2d21460eb0c824e01111a855c8789bd404f74e8e2a8525b2c54584c2613",
+              "size_bytes": 644488
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb65-p34-visual-8k35en3l/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "0ca30da3aec958d4219f808757975eab6a663661be13891a2a82d12c1a556ee2",
+              "size_bytes": 1428
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1188
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1690,
+            "physical_page": 35,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb65-p35-visual-xl9pi9uo/tmp/pdfs/source-page-35.png",
+              "sha256": "c01d077bcef2b212c483a9b00d37dbfc28278a69528d69d6a045fd24a7cbab1c",
+              "size_bytes": 829621
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb65-p35-visual-xl9pi9uo/tmp/pdfs/RENDER_RECEIPT.json",
+              "sha256": "3585c6b09406c9adcdb2f6d4c7e491df8b757f2992fc660e0d849a1ecc316db4",
+              "size_bytes": 1428
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1188
+          }
+        ]
+      },
+      "span_pages": [
+        {
+          "evaluation_page_json_sha256": "448bb10c7702c68ed8b0922bb26f5db3c6e3227ec7390ebd39af78673abf06bc",
+          "original_page_json_sha256": "448bb10c7702c68ed8b0922bb26f5db3c6e3227ec7390ebd39af78673abf06bc",
+          "page_json_version_id": "gfpstorev1:json:7e596496e223f9f5f031cd11c0e4f41ebd5414c4d25b1e1b9cd638f83b3e322a",
+          "physical_page": 33,
+          "selected_page_ordinal": 33
+        },
+        {
+          "evaluation_page_json_sha256": "7ee878675cb8c833ab5ffaa542b828ba2d438cdc0769de3132b2ba441175fcae",
+          "original_page_json_sha256": "7ee878675cb8c833ab5ffaa542b828ba2d438cdc0769de3132b2ba441175fcae",
+          "page_json_version_id": "gfpstorev1:json:83afcb5dc3c147cb3aa698ffd4e37f56a57748ebc5acc6d862407758dfad9934",
+          "physical_page": 34,
+          "selected_page_ordinal": 34
+        },
+        {
+          "evaluation_page_json_sha256": "38c3476160102ab25e6ffdcf6e59df45ca4231f42900c57b0127d7f56f44a1d5",
+          "original_page_json_sha256": "38c3476160102ab25e6ffdcf6e59df45ca4231f42900c57b0127d7f56f44a1d5",
+          "page_json_version_id": "gfpstorev1:json:183fd707cd66a6add2e94727e718d06f9aaff2c2e557d0748db3cff50ccade5a",
+          "physical_page": 35,
+          "selected_page_ordinal": 35
+        }
+      ],
+      "target_tables": [
+        {
+          "column_value_kinds": [
+            "MONEY",
+            "MONEY"
+          ],
+          "evaluation_section_json_sha256": "54538b744e6373fe6ce5bdc9736377036c21c4f0c202d0318dbe32b779f0717f",
+          "evaluation_table_json_sha256": "f113a6023771319bb67d900cdfa32b831415b31a0df29725e1c65c67bef445ac",
+          "header_paths_exact": [
+            [
+              "Kỳ này"
+            ],
+            [
+              "Kỳ trước"
+            ]
+          ],
+          "money_column_ordinals": [
+            1,
+            2
+          ],
+          "original_section_json_sha256": "54538b744e6373fe6ce5bdc9736377036c21c4f0c202d0318dbe32b779f0717f",
+          "original_table_json_sha256": "f113a6023771319bb67d900cdfa32b831415b31a0df29725e1c65c67bef445ac",
+          "page_json_version_id": "gfpstorev1:json:183fd707cd66a6add2e94727e718d06f9aaff2c2e557d0748db3cff50ccade5a",
+          "period_order": [
+            "CURRENT",
+            "COMPARATIVE"
+          ],
+          "physical_page": 35,
+          "section_id": "s1",
+          "selected_page_ordinal": 35,
+          "table_id": "t1"
+        }
+      ]
+    },
+    {
+      "context_id": "f39partctxv1:91a030b2dcf82adee0ef5db4ef924f24287d08d72e9ec16ee116e5539c2c0f50:c64f034d085d0661b2e9cad36a72b1864563f4746b304510d3105d02fac5ca91:s1:t2",
+      "document_id": "gfpstorev1:document:9cc188aba2ecbe3c621a6c9794907a618b794604826664b1c7169b35f240f24e",
+      "heading_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "e04dec785b778e5247f2786917f5316896274a53f1d6ede660cbcb7e564fb78a",
+          "narrative_ordinal": 1,
+          "original_section_json_sha256": "e04dec785b778e5247f2786917f5316896274a53f1d6ede660cbcb7e564fb78a",
+          "page_json_version_id": "gfpstorev1:json:759ffe8fe3651352c01523f8e6bab0d6890edf6cabc411f117913ba762286dfa",
+          "physical_page": 33,
+          "section_id": "s1",
+          "source_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "source_sha256": "7d49847b2c2e9bd7ef4378c9f5b12b84c75d0d6e7a99886b19bdd3488e575275",
+          "span_end": 88,
+          "span_start": 0,
+          "substring_exact": "Thông tin bổ sung cho các khoản mục trình bày trong Báo cáo kết quả hoạt động kinh doanh",
+          "table_id": null
+        }
+      ],
+      "pdf_source": {
+        "logical_name": "vietstock_bctc/KLB/2026/BCTC Công ty mẹ quý 2 năm 2026.pdf",
+        "sha256": "91a030b2dcf82adee0ef5db4ef924f24287d08d72e9ec16ee116e5539c2c0f50",
+        "size_bytes": 11588444
+      },
+      "period_occurrences": [
+        {
+          "carrier_kind": "NARRATIVE",
+          "evaluation_section_json_sha256": "e04dec785b778e5247f2786917f5316896274a53f1d6ede660cbcb7e564fb78a",
+          "narrative_ordinal": 2,
+          "original_section_json_sha256": "e04dec785b778e5247f2786917f5316896274a53f1d6ede660cbcb7e564fb78a",
+          "page_json_version_id": "gfpstorev1:json:759ffe8fe3651352c01523f8e6bab0d6890edf6cabc411f117913ba762286dfa",
+          "physical_page": 33,
+          "section_id": "s1",
+          "source_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2026 đến 30/06/2026; Kỳ trước bắt đầu từ 01/01/2025 đến 30/06/2025",
+          "source_sha256": "848d022ff5a64fe9d8a1ccd2b8ba88a002e3bd9885c91db48890adcd8920d8a9",
+          "span_end": 130,
+          "span_start": 0,
+          "substring_exact": "Các thông tin trình bày trong phần này: Kỳ này bắt đầu từ 01/01/2026 đến 30/06/2026; Kỳ trước bắt đầu từ 01/01/2025 đến 30/06/2025",
+          "table_id": null
+        }
+      ],
+      "provenance_document_ordinal": 66,
+      "review_evidence": {
+        "manual_review_ref": {
+          "path": "/mnt/d/bctc_bank/restore-receipts/F39_KLB66_PART_SCOPED_PERIOD_MINIMAL_PREFIX_VISUAL_REVIEW_2026-10-22_V1.json",
+          "sha256": "85ee64872e7fabf1744aa87735821bd59343d388ab99a0d36762e6c0074316ae",
+          "size_bytes": 6485
+        },
+        "no_reset_observation_exact": "The printed heading about additional information for the income statement precedes the period clause, which precedes note 25. The period clause explicitly prints current 01/01/2026 to 30/06/2026 and comparative 01/01/2025 to 30/06/2025. Notes 25, 26 and 27 appear below that heading and clause. The page continues the separate interim note report and prints notes 28, 29, 30 and the start of 31. No new part heading or new comparative-period definition is printed on this whole page. The page begins with the remainder of note 31 and then prints note 32, income-tax expense, with Ky nay and Ky truoc columns. No new part heading or new comparative-period definition is printed between the start of this page and note 32. Notes 33, cash and cash equivalents, and 34, employee income, follow. There is no printed new cash-flow part heading before note 33.",
+        "visual_refs": [
+          {
+            "dpi": 144,
+            "height_pixels": 1685,
+            "physical_page": 33,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb66-comparability-review-p33-5e909f028bdd428db289b91859f4351e/source-page-33.png",
+              "sha256": "60cb2c2ea4ca223def1299f1481640220901e197956e5e6a39dd92c251c3bd3a",
+              "size_bytes": 848494
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb66-comparability-review-p33-5e909f028bdd428db289b91859f4351e/RENDER_RECEIPT.json",
+              "sha256": "a9003a1ca2f7e260fe3c0e68203b0cf7ea9315d183383dac25e01b120c7692bd",
+              "size_bytes": 1487
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1191
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1685,
+            "physical_page": 34,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb66-comparability-review-p34-65b2158f55cd49d39fe637bdb6d09506/source-page-34.png",
+              "sha256": "a1dd7a2e128d527156ea207eeb7c9263ed4efe41b3b0a42bb9cfb8bfd82c1e23",
+              "size_bytes": 743903
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb66-comparability-review-p34-65b2158f55cd49d39fe637bdb6d09506/RENDER_RECEIPT.json",
+              "sha256": "2eb92cb28d371b9432403207cac1700a467fd55c1e53534b1d607720d377061c",
+              "size_bytes": 1487
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1191
+          },
+          {
+            "dpi": 144,
+            "height_pixels": 1685,
+            "physical_page": 35,
+            "png_ref": {
+              "path": "/srv/bctc-receipts/f39-klb66-comparability-review-p35-6854c8fa8879442aa33e5fb7c1617556/source-page-35.png",
+              "sha256": "3a202dc445f8202ad337840fed9149bf7dd64a542220456388a06a65a3701a78",
+              "size_bytes": 878947
+            },
+            "render_receipt_ref": {
+              "path": "/srv/bctc-receipts/f39-klb66-comparability-review-p35-6854c8fa8879442aa33e5fb7c1617556/RENDER_RECEIPT.json",
+              "sha256": "2479a13e053768c7e3bb7e3f499045c82a227173df3b5560e871043e2537ae17",
+              "size_bytes": 1487
+            },
+            "renderer_version": "Poppler pdftoppm 24.02.0",
+            "width_pixels": 1191
+          }
+        ]
+      },
+      "span_pages": [
+        {
+          "evaluation_page_json_sha256": "176e234103fb9949c648509ff060281e44100a150ff8d23e7f26b75da85b91f4",
+          "original_page_json_sha256": "176e234103fb9949c648509ff060281e44100a150ff8d23e7f26b75da85b91f4",
+          "page_json_version_id": "gfpstorev1:json:759ffe8fe3651352c01523f8e6bab0d6890edf6cabc411f117913ba762286dfa",
+          "physical_page": 33,
+          "selected_page_ordinal": 33
+        },
+        {
+          "evaluation_page_json_sha256": "976826dfc954b7c51fe5207c8025445d789c34cc373df2d489354b30483c3311",
+          "original_page_json_sha256": "976826dfc954b7c51fe5207c8025445d789c34cc373df2d489354b30483c3311",
+          "page_json_version_id": "gfpstorev1:json:ab1e7ba9774d1a3988ede41bae450a4500863bd04dca4b96c4512d36fa29955b",
+          "physical_page": 34,
+          "selected_page_ordinal": 34
+        },
+        {
+          "evaluation_page_json_sha256": "0cb0f7ce632d0554a41e01d0ef56effb9885f279b6485e142094e6aa7a515492",
+          "original_page_json_sha256": "0cb0f7ce632d0554a41e01d0ef56effb9885f279b6485e142094e6aa7a515492",
+          "page_json_version_id": "gfpstorev1:json:c64f034d085d0661b2e9cad36a72b1864563f4746b304510d3105d02fac5ca91",
+          "physical_page": 35,
+          "selected_page_ordinal": 35
+        }
+      ],
+      "target_tables": [
+        {
+          "column_value_kinds": [
+            "UNKNOWN",
+            "UNKNOWN"
+          ],
+          "evaluation_section_json_sha256": "c47b05e1087483138ef6b25f50889e9baba0291a80c93fbb936c8e0ef96a0047",
+          "evaluation_table_json_sha256": "44e5c4899858ec24618fdc52fddc08c5b14c1727768479af405c5c3985b0fe02",
+          "header_paths_exact": [
+            [
+              "Kỳ này"
+            ],
+            [
+              "Kỳ trước"
+            ]
+          ],
+          "money_column_ordinals": [
+            1,
+            2
+          ],
+          "original_section_json_sha256": "c47b05e1087483138ef6b25f50889e9baba0291a80c93fbb936c8e0ef96a0047",
+          "original_table_json_sha256": "44e5c4899858ec24618fdc52fddc08c5b14c1727768479af405c5c3985b0fe02",
+          "page_json_version_id": "gfpstorev1:json:c64f034d085d0661b2e9cad36a72b1864563f4746b304510d3105d02fac5ca91",
+          "period_order": [
+            "CURRENT",
+            "COMPARATIVE"
+          ],
+          "physical_page": 35,
+          "section_id": "s1",
+          "selected_page_ordinal": 35,
+          "table_id": "t2"
+        }
+      ]
+    }
+  ],
+  "family_id": "INCOME_TAX",
+  "format_version": "INCOME_TAX_REGISTERED_PART_PERIOD_CONTEXTS_V1"
+}

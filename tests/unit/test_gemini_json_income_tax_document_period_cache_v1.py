@@ -40,6 +40,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 ERROR = family.GeminiJsonIncomeTaxFamilyV1Error
 DEPENDENCY_FILES = (
     "evaluation/gemini_json_income_tax_family_v1.py",
+    "evaluation/gemini_json_income_tax_part_period_context_v1.py",
     "evaluation/gemini_json_multitable_hierarchical_family_v1.py",
     "evaluation/gemini_json_hierarchical_accounting_family_v1.py",
     "evaluation/gemini_json_customer_deposit_family_v1.py",
@@ -48,6 +49,7 @@ DEPENDENCY_FILES = (
     "evaluation/source_observation_lane_math_v1.py",
     "evaluation/gemini_json_flat_accounting_family_v1.py",
     "source_structure/contracts_v1.py",
+    "config/families/tm-income-tax-part-period-contexts-v1.json",
 )
 CALLABLE_NAMES = (
     "_build_document_statement_period_inventory_uncached_v1",
@@ -61,6 +63,15 @@ CALLABLE_NAMES = (
     "_absolute_source_duration_semantics",
     "_owned_relative_year_duration_evidence",
     "_printed_ytd_sibling_period_evidence",
+    "_load_registered_part_period_registry_v1",
+    "_registered_part_period_contexts_v1",
+    "replay_registered_part_period_contexts_v1",
+    "validate_registered_part_period_registry_v1",
+    "_registered_part_period_receipt",
+    "_owned_flow_report_quarter_constraint",
+    "_owned_note_report_quarter_constraint_v1",
+    "_cash_flow_partial_current_header_assertion_v1",
+    "_cash_flow_printed_period_control_v1",
 )
 SPEC_AXES = (
     "topology", "evaluation", "schema", "query_policy",
@@ -375,9 +386,26 @@ def test_dependency_refs_are_actual_complete_reviewed_file_bytes():
     assert [r["path"] for r in refs] == list(DEPENDENCY_FILES)
     root = Path(family.__file__).resolve().parents[1]
     for reference in refs:
-        raw = (root / reference["path"]).read_bytes()
+        dependency_root = root.parents[1] if reference["path"] == DEPENDENCY_FILES[-1] else root
+        raw = (dependency_root / reference["path"]).read_bytes()
         assert reference["size_bytes"] == len(raw)
         assert reference["sha256"] == sha256(raw).hexdigest()
+    assert refs[-1]["sha256"] == "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b"
+
+
+@pytest.mark.parametrize("axis", ["income_tax_part_period_registry", "income_tax_part_period_registry_ref"])
+def test_changed_registered_authority_cannot_reuse_prior_successful_inventory(axis):
+    records, compiled = _comparative_flow_records(), _adapter_compiled()
+    changed = deepcopy(compiled)
+    changed[axis]["caller_resealed_marker"] = "not-approved"
+    with pytest.raises(ERROR, match="compiled part-period authority drifted"):
+        with family.income_tax_document_period_evaluation_scope_v1() as metrics:
+            _inventory(records, compiled)
+            state = family._DOCUMENT_PERIOD_OPERATION.get()
+            _inventory(records, changed)
+    assert metrics["hits"] == 0 and metrics["builds"] == 1
+    assert state["closed"] is True and state["entries"] == {}
+    assert family._DOCUMENT_PERIOD_OPERATION.get() is None
 
 
 @pytest.mark.parametrize("file_index", range(len(DEPENDENCY_FILES)))
