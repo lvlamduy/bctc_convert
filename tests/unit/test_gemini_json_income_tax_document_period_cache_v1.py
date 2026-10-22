@@ -87,6 +87,7 @@ CALLABLE_NAMES = (
     "_recognition_immediate_ancestor_owner_v1",
     "_recognition_expense_source_frontier",
     "_recognition_rate_effect_forward_control",
+    "_competing_taxable_stage_control_v1",
     "_load_registered_section_caption_auth_envelope_v1", "_section_caption_core_ref_v1",
     "_section_caption_pinned_bytes_v1", "_section_caption_part_span_disjointness_v1",
     "_prepare_income_tax_evaluation_records_v1", "_recover_income_tax_query_cluster_v1",

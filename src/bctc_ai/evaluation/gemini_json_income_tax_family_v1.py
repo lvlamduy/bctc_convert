@@ -334,6 +334,7 @@ def _period_inventory_callable_fence_v1():
         _cash_flow_partial_current_header_assertion_v1, _cash_flow_printed_period_control_v1,
         _recognition_immediate_ancestor_owner_v1, _recognition_expense_source_frontier,
         _recognition_rate_effect_forward_control,
+        _competing_taxable_stage_control_v1,
         _load_registered_section_caption_auth_envelope_v1, _section_caption_core_ref_v1,
         _section_caption_pinned_bytes_v1, _section_caption_part_span_disjointness_v1,
         _prepare_income_tax_evaluation_records_v1, _recover_income_tax_query_cluster_v1,
@@ -4328,6 +4329,64 @@ def _recognition_rate_effect_forward_control(
     return finish("ALGORITHM_HOLD" if reasons else "PASS")
 
 
+def _competing_taxable_stage_control_v1(
+    section: Mapping[str, Any], table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Veto competing printed bases only; never select a schema basis or value."""
+    rows = table.get("rows") or []
+    material = {
+        "status": "NOT_APPLICABLE", "competing_stage_pairs": [],
+        "independent_schema_basis_ownership_proven": False,
+        "source_values_changed": False, "amounts_used_as_authority": False,
+        "scope_unit_period_or_mapping_permission_granted": False,
+        "rule": "SAME_PRINTED_ANCESTRY_TAXABLE_STAGES_SEPARATED_BY_EXPLICIT_EXEMPT_INCOME_VETO_ONLY",
+    }
+    if section.get("content_kind") == "FINANCIAL_NOTE":
+        axis = _original_basis_label_roles(table, compiled_specs)
+        taxable = [ordinal for ordinal, roles in enumerate(axis, 1) if "TAXABLE_INCOME" in roles]
+        negative = [*compiled_specs["topology"].get("hard_negative_aliases", []),
+                    *compiled_specs["topology"].get("structural_reset_aliases", [])]
+        def ancestry(row):
+            path, label = row.get("hierarchy_path_exact"), row.get("label_exact")
+            return path[:-1] if type(path) is list and path and path[-1] == label else None
+        def exempt(row):
+            label = _without_leading_ordinal(_normalized(row.get("label_exact")))
+            return any(label == cue or label.startswith(cue + " ") for cue in
+                       ("thu nhap mien thue", "thu nhap khong chiu thue"))
+        for first, later in zip(taxable, taxable[1:], strict=False):
+            left, right = rows[first - 1], rows[later - 1]
+            common = ancestry(left)
+            if (common is None or not same_typed_json_v1(common, ancestry(right))
+                    or _without_leading_ordinal(_normalized(left.get("label_exact")))
+                    == _without_leading_ordinal(_normalized(right.get("label_exact")))):
+                continue
+            interval = rows[first - 1:later]
+            if any(_supplemental_negative_surface(row, negative) for row in interval):
+                continue
+            adjustments = [ordinal for ordinal in range(first + 1, later)
+                           if exempt(rows[ordinal - 1])
+                           and same_typed_json_v1(ancestry(rows[ordinal - 1]), common)]
+            if not adjustments:
+                continue
+            material["competing_stage_pairs"].append({
+                "first_taxable_row_ordinal": first, "later_taxable_row_ordinal": later,
+                "exempt_income_adjustment_row_ordinals": adjustments,
+                "stage_source_rows_exact": [
+                    {"row_ordinal": ordinal, "source_row_exact": canonical_clone_v1(rows[ordinal - 1])}
+                    for ordinal in [first, *adjustments, later]],
+                "common_printed_ancestry_exact": canonical_clone_v1(common),
+                "row_ordinals_are_input_table_ordinals": True,
+                "same_literal_header_axis_only_not_absolute_period_or_entity_authority": True,
+            })
+    if material["competing_stage_pairs"]:
+        material["status"] = "ALGORITHM_HOLD"
+        material["source_table_json_sha256"] = canonical_json_sha256_v1(table)
+        material["columns_exact"] = canonical_clone_v1(table.get("columns") or [])
+        material["owner_surfaces_exact"] = [section.get("title_exact"), table.get("title_exact")]
+        material["reason"] = "SOURCE_VISIBLE_COMPETING_TAXABLE_BASES_WITHOUT_SCHEMA_BASIS_OWNERSHIP"
+    return {**material, "receipt_id": "gjitfav1:competing-taxable-stages:" + canonical_json_sha256_v1(material)}
+
+
 def _tax_population_inventory(
     page_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
@@ -4346,8 +4405,10 @@ def _tax_population_inventory(
                     table, money_column_ordinals=money_ordinals, role_alias_axis=aliases,
                 )
                 recognition = _recognition_expense_source_frontier(section, table, compiled_specs=compiled_specs)
+                competing_stages = _competing_taxable_stage_control_v1(section, table, compiled_specs=compiled_specs)
                 if not (_supplemental_owner_matches(section, table, compiled_specs=compiled_specs)
                         or recognition["status"] != "NOT_APPLICABLE"
+                        or competing_stages["status"] != "NOT_APPLICABLE"
                         or any(item["matched_role"] in {
                             "CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY", "CURRENT_TAX_PARENT",
                         } or item["normalized_label"] == "chi phi thue hien hanh"
@@ -4388,6 +4449,7 @@ def _tax_population_inventory(
                     "explicit_rate_surface_ordinals": rates,
                     "current_year_frontier": _current_year_source_frontier(source_rows, compiled_specs=compiled_specs),
                     "recognition_expense_frontier": recognition,
+                    "competing_taxable_stage_control": competing_stages,
                     "recognition_rate_effect_control": _recognition_rate_effect_forward_control(section, table, compiled_specs=compiled_specs),
                     "rate_frontiers": rate_frontiers,
                     "rule": "ORIGINAL_TAX_POPULATION_BEFORE_GENERIC_CONSUMED_ROW_SUPPRESSION",
@@ -9282,6 +9344,15 @@ def _seal_income_tax_source_controls(
 ) -> dict[str, Any]:
     if candidate.get("status") != READY:
         return canonical_clone_v1(candidate)
+    competing_stages = [item for item in source_context["tax_population_inventory"]
+                        if item["competing_taxable_stage_control"]["status"] == "ALGORITHM_HOLD"]
+    if competing_stages:
+        return _unresolved_from_candidate(
+            candidate, reason="ALGORITHM_TAXABLE_INCOME_STAGE_BASIS_AMBIGUITY",
+            evidence={"source_context_receipt": canonical_clone_v1(source_context),
+                      "competing_taxable_stage_populations": canonical_clone_v1(competing_stages),
+                      "classification": "ALGORITHM_SCHEMA_BASIS_OWNERSHIP_UNPROVEN_NOT_ISSUER_CONFLICT"},
+        )
     invalid_recognition = [item for item in source_context["tax_population_inventory"]
                            if item.get("recognition_expense_frontier", {}).get("status") == "ALGORITHM_HOLD"
                            or item.get("recognition_rate_effect_control", {}).get("status") == "ALGORITHM_HOLD"]
