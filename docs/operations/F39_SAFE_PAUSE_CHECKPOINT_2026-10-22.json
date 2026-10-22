@@ -1,0 +1,251 @@
+{
+  "schema": "bctc-ai-f39-safe-pause-checkpoint-v1",
+  "checkpoint_date_utc": "2026-10-22",
+  "status": "SAFE_PAUSE_NONTERMINAL_CHECKPOINT_NOT_FAMILY_ACCEPTANCE",
+  "user_requested_pause": true,
+  "git": {
+    "branch": "codex/f39-income-tax-laptop",
+    "parent_commit": "bd81a42f06251e5630cad63f910adac80e2bf39c",
+    "migration_base_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+    "checkpoint_commit": "THE_DESCENDANT_COMMIT_CONTAINING_THIS_FILE",
+    "common_branch_push_allowed": false
+  },
+  "scope": {
+    "family": "F39_INCOME_TAX",
+    "report_year_from": 2025,
+    "through": "current",
+    "standalone_2024_production_and_provider_queue_allowed": false,
+    "printed_2024_comparatives_inside_2025_plus_reports_allowed": true,
+    "claude_owns_primary_statements": true,
+    "codex_owns_notes": true,
+    "next_family_order": [
+      "F39",
+      "F36",
+      "F37"
+    ],
+    "family_41_open": false,
+    "provider_calls_performed": false,
+    "source_database_json_or_pdf_modified": false,
+    "shared_files_modified": false
+  },
+  "completed_in_this_checkpoint": [
+    "Recognize complete source-visible immediate-ancestor recognition/adjustment ownership without inventing a missing GROUP row; retain existing scope, period, unit, sign, finite coverage and observed-value gates.",
+    "Retain existing four test node IDs while changing only their obsolete mandatory-GROUP expectation to positive complete-ancestry assertions. All malformed/incomplete/conflicting-source negatives remain fail-closed.",
+    "Add a pure declaration-only section-caption clone/replay core and separate PDF pixel/local VersionId-lineage authenticator. Neither grants acceptance, export, period, scope, unit or source-value authority.",
+    "Independently verify the one caption registry candidate, actual original database records, fresh PDF pixels, unchanged monetary cells, successful original-source context exit and post-exit byte barriers."
+  ],
+  "safe_pause_action": {
+    "unrun_caption_evaluator_integration_reversed_exactly": true,
+    "evaluator_restored_to_tested_ancestry_sha256": "3b3d5a105e8ef61e8e539ca31f0baa28537e3dd52ad1b055040a69c380663bbb",
+    "runner_unchanged_sha256": "ab72fb733eefc0a4102766c7c1b6382226529a9936b3d91479be4e70e775b577",
+    "existing_cache_test_restored_exactly_to_parent": true,
+    "new_unrun_integration_test_working_copy_removed_but_recoverable_from_v2_patch": true,
+    "caption_runtime_activation": false,
+    "caption_evaluator_and_runner_reference_search": "NO_SECTION_CAPTION_OR_CAPTION_AUTH_ENVELOPE_REFERENCE_IN_ACTIVE_EVALUATOR_OR_RUNNER",
+    "old_artifacts_deleted": false,
+    "subagents_completed_and_no_worker_jobs_left": true
+  },
+  "final_targeted_tests": {
+    "status": "PASS",
+    "pytest_exit_code": 0,
+    "python": "WSL Python 3.12 -B",
+    "pytest_plugin_autoload_disabled": true,
+    "pytest_cache_disabled": true,
+    "suite_count": 5,
+    "collected_test_nodes_passed": 363,
+    "unittest_subtests_passed": 50,
+    "junit_report_count": 413,
+    "duration_seconds": 92.88,
+    "junit": {
+      "path": "/srv/bctc-receipts/f39-safe-pause-focused-retry-1792647221575-2a0ce4/focused.xml",
+      "sha256": "18a3c4e088336738af6223af99a9e9130b0ef36567ec8e9a28597202bd636f38",
+      "size_bytes": 73923,
+      "counts": {
+        "tests": 413,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "scope": "ANCESTRY_FRONTIER, EXISTING_RECOGNITION_FRONTIER, EXISTING_RATE_EFFECT, PURE_CAPTION_CORE, CAPTION_PDF_AUTH_PROTOCOL",
+    "not_full_family_regression": true,
+    "not_corpus_acceptance": true,
+    "nine_changed_code_config_hashes_match_pre_retry_pins": true,
+    "nineteen_retained_pins_rechecked_stable_during_and_after_tests": true,
+    "whole_worktree_freeze_witness_claimed": false,
+    "ruff_eight_changed_python_files": "PASS",
+    "git_diff_check": "PASS",
+    "preserved_initial_pause_test_attempt": {
+      "path": "/srv/bctc-receipts/f39-safe-pause-focused-1792647108443-b3e02d/focused.xml",
+      "sha256": "e0ccc5086ea120fd4aa00fd82360b99a0a9fa69b691b76ec36b6088f3b2e7aa9",
+      "size_bytes": 124184,
+      "counts": {
+        "tests": 413,
+        "failures": 0,
+        "errors": 70,
+        "skipped": 0
+      },
+      "pytest_exit_code": 1,
+      "passed_collected_nodes": 293,
+      "passed_unittest_subtests": 50,
+      "setup_errors": 70,
+      "classification": "TEST_LAUNCHER_OUTPUT_PARENT_NOT_CREATED_BEFORE_PYTEST_BASETEMP",
+      "production_code_changed_to_fix_this_attempt": false,
+      "correction": "RETRY_IN_NEW_OUTPUT_DIRECTORY_CREATED_EXCLUSIVELY_BEFORE_PYTEST"
+    }
+  },
+  "actual_caption_source_proof": {
+    "status": "PASS_ACTUAL_ORIGINAL_SOURCE_AND_REGISTERED_CAPTION_PIXELS_NOT_FAMILY_ACCEPTANCE",
+    "receipt_ref": {
+      "path": "/srv/bctc-receipts/f39-caption-actual-source-1792646225723-5d6c30/F39_REGISTERED_CAPTION_ACTUAL_ORIGINAL_SOURCE_WITNESS_V1.json",
+      "sha256": "4c8a03fe2d4e29e9518247adb2fcc166cfff666b62c2436fd30b65c0c727e46a",
+      "size_bytes": 56163
+    },
+    "source_context_successfully_exited": true,
+    "post_context_auth_recheck_passed": true,
+    "post_context_database_path_sha256_rechecked": true,
+    "scoped_input_bytes_unchanged": true,
+    "fresh_pdf_pixel_authentication_performed": true,
+    "original_bundle_unchanged": true,
+    "compiled_input_unchanged": true,
+    "official_original_load_calls": 1,
+    "source_corpus_ordinal": 66,
+    "actual_run_ordinal": 14,
+    "family_evaluation_or_activation_performed": false,
+    "fresh_s3_get_performed": false,
+    "sqlite_integrity_pragmas_performed_by_this_proof": false
+  },
+  "actual_ancestry_source_probe": {
+    "receipt_ref": {
+      "path": "/srv/bctc-receipts/f39-ssb180-ancestry-source-1792646569998-7442ae/income-tax-bounded-diagnostic.json",
+      "sha256": "b4743d8a63f7782533a9c7b288496e43b8e4a5e45bc8d06b78a2356941a6fc00",
+      "size_bytes": 1739094
+    },
+    "source_corpus_ordinal": 180,
+    "actual_run_ordinal": 1,
+    "selected_pages": 60,
+    "exact_original_source_json_pages": 60,
+    "ancestry_route_recognized": true,
+    "final_status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+    "final_mapping_count": 0,
+    "reasons": [
+      "ORIGINAL_NOTE_INDEPENDENT_POPULATION_PERIOD_OR_SCOPE_CONFLICT",
+      "ORIGINAL_NOTE_INDIVIDUAL_SOURCE_DURATION_NOT_PROVEN"
+    ],
+    "diagnostic_not_cold_replay_or_persistence": true,
+    "next_readonly_audit": "All three individual/pair receipts are held by SOURCE_PERIOD_COMPETING_PRINTED_FLOW_POLICY_NOT_RECOGNIZED. The independently owned note policy uses a nine-month comparative sentence without the reviewed suffix required by the existing finite grammar. No actual code fix or readiness claim has been made."
+  },
+  "retained_file_refs": [
+    {
+      "path": "bctc-ai-2025-current/src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
+      "sha256": "3b3d5a105e8ef61e8e539ca31f0baa28537e3dd52ad1b055040a69c380663bbb",
+      "size_bytes": 544826
+    },
+    {
+      "path": "bctc-ai-2025-current/tests/unit/test_gemini_json_income_tax_recognition_frontier_v1.py",
+      "sha256": "0b9a09eebd4cdd4a8301f501fc642fda684b7d19b493db7a794965ada4123305",
+      "size_bytes": 23163
+    },
+    {
+      "path": "bctc-ai-2025-current/tests/unit/test_gemini_json_income_tax_recognition_rate_effect_v1.py",
+      "sha256": "9ec9de9aa4bed7430a2e719c35f044bfceb8ca138b45a2a057c3ba998a6212eb",
+      "size_bytes": 27343
+    },
+    {
+      "path": "bctc-ai-2025-current/src/bctc_ai/evaluation/gemini_json_income_tax_section_caption_repair_v1.py",
+      "sha256": "13395179d0ec6e48bea94f0adb02f05c1972defd4fa6633a597596e3a2425ccc",
+      "size_bytes": 18789
+    },
+    {
+      "path": "bctc-ai-2025-current/tests/unit/test_gemini_json_income_tax_section_caption_repair_v1.py",
+      "sha256": "606b366aba0e4153867eea2b3274aaa3ebb0dae5c6d9358c5512ed7640895e35",
+      "size_bytes": 24482
+    },
+    {
+      "path": "bctc-ai-2025-current/tests/unit/test_gemini_json_income_tax_ancestry_recognition_frontier_v1.py",
+      "sha256": "489a25960765a065c5716480a75bf59303660d653cb80ed018b478942ba9218b",
+      "size_bytes": 18258
+    },
+    {
+      "path": "bctc-ai-2025-current/scripts/experiments/f39_registered_section_caption_pdf_auth_v1.py",
+      "sha256": "2af7a470c968daf5332f03cce50bd5c7506fba62237903d8c07d455a246717a9",
+      "size_bytes": 35439
+    },
+    {
+      "path": "bctc-ai-2025-current/tests/unit/test_f39_registered_section_caption_pdf_auth_v1.py",
+      "sha256": "dd27f268e10330cc717109a73c5146bc5a876c49d6806eeaa962238ae20632ef",
+      "size_bytes": 25163
+    },
+    {
+      "path": "bctc-ai-2025-current/config/families/tm-income-tax-section-caption-repair-auth-v1.json",
+      "sha256": "a83466facb7032a2e71f1f9176316f35d9acc783ea3da924807e718f0293e860",
+      "size_bytes": 6301
+    },
+    {
+      "path": "bctc-ai-2025-current/src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py",
+      "sha256": "bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2",
+      "size_bytes": 608721
+    },
+    {
+      "path": "bctc-ai-2025-current/scripts/experiments/run_gemini_json_multitable_hierarchical_accounting_family_v1.py",
+      "sha256": "d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5",
+      "size_bytes": 149733
+    },
+    {
+      "path": "bctc-ai-2025-current/config/families/tm-income-tax-source-repair-v1.json",
+      "sha256": "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4",
+      "size_bytes": 22707
+    },
+    {
+      "path": "bctc-ai-2025-current/config/families/tm-income-tax-part-period-contexts-v1.json",
+      "sha256": "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b",
+      "size_bytes": 50015
+    },
+    {
+      "path": "bctc-ai-2025-current/scripts/experiments/run_gemini_json_income_tax_accounting_family_v1.py",
+      "sha256": "ab72fb733eefc0a4102766c7c1b6382226529a9936b3d91479be4e70e775b577",
+      "size_bytes": 63722
+    },
+    {
+      "path": "restore-tools/drafts/f39_section_caption_evaluator_integration_v2.patch",
+      "sha256": "8919c67d387a500d75feac38d7d05978a812827095e5c9e307f2c4003a7f583d",
+      "size_bytes": 51830
+    },
+    {
+      "path": "restore-tools/drafts/f39_registered_caption_runner_tests_proposal_v3.patch",
+      "sha256": "5a0bf29a37c09fb0eb7677677853ef55da7dbc9cc084d853066415a2673cae69",
+      "size_bytes": 28391
+    },
+    {
+      "path": "restore-tools/drafts/f39_registered_caption_runner_proposed_v1.py",
+      "sha256": "834f7b7020a76a4f6033c5be0a3247f4126bef30194d60848ae2a310147e8fdd",
+      "size_bytes": 78470
+    },
+    {
+      "path": "restore-tools/run_f39_ancestry_caption_focused_v1.py",
+      "sha256": "9a76b78a9f4a375561c93396abe79867300ad8c841e6ee82204528930bda7145",
+      "size_bytes": 16456
+    },
+    {
+      "path": "restore-tools/verify_f39_registered_caption_actual_source_v1.py",
+      "sha256": "b1281051351609f352b10eda57d9d70009ef2dfe2e767c337153b84044872876",
+      "size_bytes": 19081
+    }
+  ],
+  "deferred_work": [
+    "Review and apply inactive evaluator integration V2 and proposed runner plus runner tests V3 together; never activate the caption repair through the evaluator without fresh warm AND independent cold PDF authentication.",
+    "Use full exact pure-clone/auth receipt comparison, complete applicable and empty axes, all-selected-document SQLite source joins, separate-connection BLOB reload, and post-render source/code/authority exit barriers.",
+    "Run the new 25-suite focused helper retaining every 2450 baseline node ID. The new integration test file is intentionally absent while the integration remains inactive.",
+    "Add the smallest source-visible finite nine-month comparative-policy grammar without a review suffix; retain the existing rule and all negative conflict/unsupported-suffix tests. Prove the actual source180 outcome by fresh replay, not by prediction.",
+    "Run fresh bounded and authoritative full271/common204 source/cold/persistence/reload, observation, SQLite integrity, PDF/residual and ledger gates before any F39 terminal claim.",
+    "Continue F36 then F37 only after F39 terminal; do not open F41 early."
+  ],
+  "backup_boundary": {
+    "git_code_and_this_ledger_to_be_pushed_to_own_branch": true,
+    "new_external_receipts_and_drafts_are_retained_locally": true,
+    "new_external_evidence_s3_backup_complete": false,
+    "existing_versioned_s3_authorities_unchanged": true,
+    "no_pdf_or_database_duplicate_archive_created": true
+  },
+  "resume_instructions": "Read this checkpoint and AGENTS/directive/current Git status; verify its code pins and retained local draft/evidence hashes before mutation. Do not rerun providers or reinterpret any HOLD as genuine source absence."
+}

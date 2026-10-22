@@ -26,7 +26,6 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
 )
 
-
 CURRENT = "Chi phí thuế TNDN - hiện hành"
 DEFERRED = "Thu nhập thuế TNDN - hoãn lại"
 ROOT = "Chi phí thuế TNDN"
@@ -193,8 +192,21 @@ def test_recognition_rate_effect_control_holds_incomplete_unknown_or_conflicting
         rows[-1]["label_exact"] = label
         rows[-1]["hierarchy_path_exact"] = [label]
     control = _control(section, table)
-    assert control["status"] == "ALGORITHM_HOLD", (mutation, control)
-    assert control["reasons"]
+    if mutation == "missing_adjustment_group":
+        # Historical node ID retained; complete repeated ancestry is no
+        # longer missing ownership, and must not manufacture an owner row.
+        assert control["status"] == "PASS", control["reasons"]
+        assert control["adjustment_group_source_row"] is None
+        assert control["adjustment_owner_receipt"]["owner_source_row"] is None
+        assert [item["row_ordinal"] for item in control["adjustment_owner_receipt"]["owner_occurrences"]] == [3, 4]
+        assert control["source_table_rows_exact"] == table["rows"]
+        assert control["schema_mapping_authority"] is False
+        assert control["profit_times_rate_used"] is False
+        assert all(item["residual"] == item["calculation_current_residual"] == 0
+                   for item in control["lane_equations"])
+    else:
+        assert control["status"] == "ALGORITHM_HOLD", (mutation, control)
+        assert control["reasons"]
 
 
 def _generic_candidate_and_context():
@@ -472,7 +484,19 @@ def test_recognition_rate_public_malformed_prefix_cannot_fallback_after_generic_
         )
         assert generic_candidate["status"] == READY, generic_candidate["reasons"]
     cluster, query = _public_query(records, compiled)
-    if query is None:
+    if mutation == "missing_adjustment_group":
+        assert cluster["status"] == READY, cluster["reasons"]
+        assert query is not None
+        candidate = _public_evaluate(records, compiled, cluster, query)
+        assert candidate["status"] == READY, candidate["reasons"]
+        control = next(item["recognition_rate_effect_control"]
+                       for item in query["source_context_receipt"]["tax_population_inventory"]
+                       if item["recognition_rate_effect_control"]["status"] == "PASS")
+        assert control["adjustment_group_source_row"] is None
+        assert control["adjustment_owner_receipt"]["owner_source_row"] is None
+        assert control["source_table_rows_exact"] == table["rows"]
+        assert not EFFECT_ROLES & {item["role"] for item in candidate["mappings"]}
+    elif query is None:
         assert cluster["status"] == UNRESOLVED
     else:
         candidate = _public_evaluate(records, compiled, cluster, query)

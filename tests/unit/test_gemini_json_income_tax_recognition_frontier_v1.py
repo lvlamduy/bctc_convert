@@ -29,7 +29,6 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
-
 CURRENT = "Chi phí thuế TNDN - hiện hành"
 DEFERRED = "Thu nhập thuế TNDN - hoãn lại"
 ROOT = "Chi phí thuế TNDN"
@@ -255,7 +254,19 @@ def test_recognition_frontier_marked_root_cannot_borrow_or_loosen_annotation_aut
 def test_recognition_frontier_child_paths_cannot_invent_a_missing_actual_group():
     section, table = _recognition_fixture()
     table["rows"].pop(0)
-    assert _check(section, table)["status"] == "ALGORITHM_HOLD"
+    # Retain the historical node ID: the new representation proves the two
+    # actual ancestor occurrences, not an invented blank GROUP row.
+    before = deepcopy(section)
+    frontier = _check(section, table)
+    assert frontier["status"] == "PASS", frontier["reasons"]
+    assert frontier["group_source_row"] is None
+    assert frontier["group_created"] is False
+    owner = frontier["owner_receipt"]
+    assert owner["owner_source_row"] is None
+    assert [item["row_ordinal"] for item in owner["owner_occurrences"]] == [1, 2]
+    assert owner["scope_unit_period_or_amount_authority"] is False
+    assert all(row["row_kind"] != "GROUP" for row in table["rows"])
+    assert section == before
 
 
 def test_recognition_frontier_cannot_ignore_an_unknown_group_descendant_after_the_root():
@@ -392,7 +403,20 @@ def test_recognition_malformed_source_cannot_be_hidden_by_generic_consumed_row_s
     original = deepcopy(records)
     compiled = _adapter_compiled()
     cluster, query = _public_query(records, compiled)
-    if query is None:
+    if mutation == "missing_group_retained_paths":
+        # Exact complete ancestry is a distinct positive representation.
+        # Malformed present GROUPs and incomplete ancestries remain negative.
+        assert cluster["status"] == READY, cluster["reasons"]
+        assert query is not None
+        candidate = _public_evaluate(records, compiled, cluster, query)
+        assert candidate["status"] == READY, candidate["reasons"]
+        frontier = next(item["recognition_expense_frontier"]
+                        for item in query["source_context_receipt"]["tax_population_inventory"]
+                        if item["recognition_expense_frontier"]["status"] == "PASS")
+        assert frontier["group_source_row"] is None
+        assert frontier["owner_receipt"]["owner_source_row"] is None
+        assert frontier["group_created"] is False
+    elif query is None:
         assert cluster["status"] == UNRESOLVED
     else:
         candidate = _public_evaluate(records, compiled, cluster, query)

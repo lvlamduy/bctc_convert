@@ -314,6 +314,8 @@ def _period_inventory_callable_fence_v1():
         _registered_part_period_receipt, _owned_flow_report_quarter_constraint,
         _owned_note_report_quarter_constraint_v1,
         _cash_flow_partial_current_header_assertion_v1, _cash_flow_printed_period_control_v1,
+        _recognition_immediate_ancestor_owner_v1, _recognition_expense_source_frontier,
+        _recognition_rate_effect_forward_control,
     )
 
 
@@ -2080,6 +2082,14 @@ def _supplemental_presentations(
                     if issues is not None:
                         issues.append("SUPPLEMENTAL_RECOGNITION_SOURCE_FRONTIER_INCOMPLETE")
                     continue
+                recognition_rate = _recognition_rate_effect_forward_control(section, table, compiled_specs=compiled_specs)
+                ancestry_rate = (recognition_rate["status"] == "PASS" and (
+                    recognition.get("owner_representation") == "REPEATED_EXACT_IMMEDIATE_ANCESTOR_NOT_A_ROW"
+                    or recognition_rate.get("adjustment_owner_receipt") is not None))
+                if recognition_rate["status"] == "ALGORITHM_HOLD" and recognition.get("owner_representation"):
+                    if issues is not None:
+                        issues.append("SUPPLEMENTAL_RECOGNITION_RATE_SOURCE_FRONTIER_INCOMPLETE")
+                    continue
                 # A generic note may already have claimed the row.  That is
                 # never authority to bypass a contradictory source boundary.
                 if consumed_source_rows and not any(
@@ -2122,7 +2132,25 @@ def _supplemental_presentations(
                             issues.append("SUPPLEMENTAL_RECOGNITION_PRIVATE_PROJECTION_INCOMPLETE")
                     else:
                         descriptors.append(descriptor)
-                        claimed.update(item["row_ordinal"] for item in (recognition["group_source_row"], current, deferred))
+                        claimed.update(item["row_ordinal"] for item in (recognition["group_source_row"], current, deferred)
+                                       if item is not None)
+                    if ancestry_rate:
+                        profit = recognition_rate["profit_source_row"]
+                        descriptor = _finalize_supplemental_descriptor(
+                            record=record, page=page, section_ordinal=section_ordinal, table_ordinal=table_ordinal,
+                            table=table, money_column_ordinals=money_ordinals, canonical_unit=canonical_unit,
+                            unit_evidence=unit_evidence, unit_receipt=unit_receipt, source_rows=all_source_rows,
+                            rows=[_projected_source_row(profit, role="PROFIT_BEFORE_TAX", projected_row_kind="ITEM")],
+                            presentation_kind="ANCESTRY_RECOGNITION_RATE_OBSERVED_PROFIT_NOT_TAX_EFFECT_INCOME",
+                            equation_receipts=[], compiled_specs=compiled_specs, source_population_receipt=recognition_rate,
+                        )
+                        if descriptor is None:
+                            if issues is not None:
+                                issues.append("SUPPLEMENTAL_RECOGNITION_RATE_PRIVATE_PROJECTION_INCOMPLETE")
+                        else:
+                            descriptors.append(descriptor)
+                            claimed.update(item["row_ordinal"] for item in all_source_rows
+                                           if item["row_ordinal"] < recognition["current_source_row"]["row_ordinal"])
 
                 deferred_frontier = _deferred_net_source_frontier(source_rows)
                 if deferred_frontier is not None:
@@ -2321,7 +2349,8 @@ def _supplemental_presentations(
                     for item in source_rows
                     if item["matched_role"] in {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"}
                 ]
-                rate_handled = (record["page_json_version_id"], f"s{section_ordinal}", f"t{table_ordinal}") in authenticated_rate_table_axis
+                rate_handled = ancestry_rate or (
+                    record["page_json_version_id"], f"s{section_ordinal}", f"t{table_ordinal}") in authenticated_rate_table_axis
                 if not rate_handled and len(rate_rows) > 1 and issues is not None:
                     issues.append("SUPPLEMENTAL_CURRENT_TAX_RATE_AXIS_NOT_UNIQUE")
                 if not rate_handled and len(rate_rows) == 1:
@@ -3418,6 +3447,73 @@ def _recognition_printed_text(value: Any) -> str | None:
     return " ".join(folded.lower().split())
 
 
+def _recognition_immediate_ancestor_owner_v1(
+    rows: Sequence[Mapping[str, Any]], components: Sequence[Mapping[str, Any]], *,
+    owner_pattern: str, relevance_pattern: str, allow_first_compound_label: bool = False,
+) -> dict[str, Any] | None:
+    """Prove a repeated printed owner without inventing a GROUP occurrence.
+
+    The entire actual row axis is censused. A present owner row, another raw
+    spelling, a deeper path, or a late descendant cannot be rescued by this
+    representation. Layout equivalence applies only to the whole first
+    owner/newline/leaf label; every original label/path/value is retained.
+    """
+    if len(components) < 2:
+        return None
+    first_path = components[0].get("hierarchy_path_exact")
+    if type(first_path) is not list or len(first_path) != 2:
+        return None
+    owner = first_path[0]
+    if type(owner) is not str or re.fullmatch(owner_pattern, _recognition_printed_text(owner) or "") is None:
+        return None
+    ordinals = [item["row_ordinal"] for item in components]
+    if ordinals != list(range(ordinals[0], ordinals[0] + len(components))):
+        return None
+    occurrences, leaves = [], []
+    for item in rows:
+        label, path = item.get("label_exact"), item.get("hierarchy_path_exact")
+        if _normalized(label) == _normalized(owner):
+            return None
+        if type(path) is not list:
+            return None
+        for path_ordinal, value in enumerate(path, 1):
+            if re.search(relevance_pattern, _normalized(value)):
+                if (item["row_ordinal"] not in ordinals or path_ordinal != 1
+                        or len(path) != 2 or value != owner):
+                    return None
+                occurrences.append({"row_ordinal": item["row_ordinal"], "hierarchy_path_ordinal": path_ordinal,
+                                    "source_exact": value, "source_sha256": canonical_json_sha256_v1(value),
+                                    "source_row_exact": canonical_clone_v1(item)})
+    if [item["row_ordinal"] for item in occurrences] != ordinals:
+        return None
+    for index, item in enumerate(components):
+        path, label = item["hierarchy_path_exact"], item["label_exact"]
+        if (item["row_kind"] != "ITEM" or len(path) != 2 or path[0] != owner
+                or type(path[1]) is not str or not path[1] or _recognition_printed_text(path[1]) is None):
+            return None
+        compound = False
+        if label != path[1]:
+            if not allow_first_compound_label or index != 0 or type(label) is not str:
+                return None
+            lines = label.replace("\\n", "\n").split("\n")
+            if (len(lines) != 2 or _recognition_printed_text(lines[0]) != _recognition_printed_text(owner)
+                    or _recognition_printed_text(lines[1]) != _recognition_printed_text(path[1])):
+                return None
+            compound = True
+        leaves.append({"row_ordinal": item["row_ordinal"], "label_exact": label,
+                       "path_leaf_exact": path[1], "whole_owner_newline_leaf_label": compound})
+    material = {
+        "owner_representation": "REPEATED_EXACT_IMMEDIATE_ANCESTOR_NOT_A_ROW",
+        "owner_source_row": None, "owner_exact": owner, "owner_occurrences": occurrences,
+        "component_source_row_ordinals": ordinals, "raw_leaf_evidence": leaves,
+        "source_table_row_axis_sha256": canonical_json_sha256_v1(list(rows)),
+        "group_created": False, "source_values_changed": False,
+        "scope_unit_period_or_amount_authority": False,
+        "rule": "WHOLE_ACTUAL_AXIS_EXACT_REPEATED_IMMEDIATE_OWNER_AND_COMPLETE_CONSECUTIVE_CHILDREN",
+    }
+    return {**material, "receipt_id": "gjitfav1:recognition-ancestor-owner:" + canonical_json_sha256_v1(material)}
+
+
 def _recognition_expense_source_frontier(
     section: Mapping[str, Any], table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -3459,7 +3555,8 @@ def _recognition_expense_source_frontier(
 
     if not surfaces and not ancestry_surfaces:
         return finish("NOT_APPLICABLE")
-    if (len(surfaces) != 1 or section.get("content_kind") != "FINANCIAL_NOTE"
+    ancestry_only = not surfaces and bool(ancestry_surfaces)
+    if ((not ancestry_only and len(surfaces) != 1) or section.get("content_kind") != "FINANCIAL_NOTE"
             or not _supplemental_owner_matches(section, table, compiled_specs=compiled_specs)):
         reasons.append("RECOGNITION_GROUP_OR_POSITIVE_NOTE_OWNER_NOT_UNIQUE")
         return finish("ALGORITHM_HOLD")
@@ -3473,33 +3570,56 @@ def _recognition_expense_source_frontier(
     rows = _supplemental_source_rows(table, money_column_ordinals=money,
                                     role_alias_axis=_supplemental_role_alias_axis(compiled_specs))
     material["source_table_row_axis"] = rows
-    start = surfaces[0]
-    if start + 3 > len(rows):
+    start = ancestry_surfaces[0] if ancestry_only else surfaces[0]
+    if start + (2 if ancestry_only else 3) > len(rows):
         reasons.append("RECOGNITION_CONTIGUOUS_FOUR_ROW_AXIS_ABSENT")
         return finish("ALGORITHM_HOLD")
-    group, current, deferred, root = rows[start - 1:start + 3]
+    owner_receipt = None
+    if ancestry_only:
+        current, deferred, root = rows[start - 1:start + 2]
+        group = None
+        owner_receipt = _recognition_immediate_ancestor_owner_v1(
+            rows, [current, deferred],
+            owner_pattern=(r"chi phi thue (?:tndn|thu nhap doanh nghiep) ghi nhan trong bao cao ket qua hoat dong "
+                           r"(?:rieng|hop nhat)(?: giua nien do)?\s*:?"),
+            relevance_pattern=r"chi phi thue (?:tndn|thu nhap doanh nghiep) ghi nhan trong bao cao ket qua hoat dong",
+        )
+        owner_exact = None if owner_receipt is None else owner_receipt["owner_exact"]
+        if owner_receipt is None or ancestry_surfaces != [current["row_ordinal"], deferred["row_ordinal"]]:
+            reasons.append("RECOGNITION_COMPLETE_REPEATED_IMMEDIATE_ANCESTOR_OWNER_UNPROVEN")
+        material.update({
+            "owner_representation": "REPEATED_EXACT_IMMEDIATE_ANCESTOR_NOT_A_ROW",
+            "owner_receipt": owner_receipt, "frontier_start_source_row_ordinal": start,
+            "group_created": False,
+            "rule": "EXACT_REPEATED_IMMEDIATE_ANCESTOR_CURRENT_AND_OBSERVED_ZERO_DEFERRED_FIRST_STANDALONE_ROOT",
+        })
+    else:
+        group, current, deferred, root = rows[start - 1:start + 3]
+        owner_exact = group["label_exact"]
+    scope_rows = [current, deferred, root] if group is None else [group, current, deferred, root]
     material.update({"group_source_row": group, "current_source_row": current,
                      "deferred_source_row": deferred, "parent_source_row": root,
                      "component_source_rows": [current, deferred],
                      "printed_scope_source_paths_exact": [item["hierarchy_path_exact"]
-                                                            for item in (group, current, deferred, root)]})
-    group_text = _recognition_printed_text(group["label_exact"])
+                                                            for item in scope_rows]})
+    group_text = _recognition_printed_text(owner_exact)
     match = re.fullmatch(
         r"chi phi thue (?:tndn|thu nhap doanh nghiep) ghi nhan trong bao cao ket qua hoat dong "
         r"(?P<scope>rieng|hop nhat)(?: giua nien do)?\s*:?", group_text or "",
     )
-    if (match is None or group["row_kind"] != "GROUP"
+    if (match is None or (group is not None and (
+            group["row_kind"] != "GROUP"
             or group["hierarchy_path_exact"] != [group["label_exact"]]
-            or any(value is not None for value in group["source_values_exact"])):
+            or any(value is not None for value in group["source_values_exact"])))):
         reasons.append("RECOGNITION_ACTUAL_BLANK_SELF_OWNED_GROUP_UNPROVEN")
     for item, pattern in ((current, r"chi phi thue tndn\s*-\s*hien hanh"),
                           (deferred, r"thu nhap thue tndn\s*-\s*hoan lai")):
         if (item["row_kind"] != "ITEM"
                 or re.fullmatch(pattern, _recognition_printed_text(item["label_exact"]) or "") is None
-                or item["hierarchy_path_exact"] != [group["label_exact"], item["label_exact"]]):
+                or item["hierarchy_path_exact"] != [owner_exact, item["label_exact"]]):
             reasons.append("RECOGNITION_EXACT_ORDERED_DIRECT_CHILDREN_UNPROVEN")
     descendants = [item["row_ordinal"] for item in rows if type(item["hierarchy_path_exact"]) is list
-                   and group["label_exact"] in item["hierarchy_path_exact"][:-1]]
+                   and owner_exact in item["hierarchy_path_exact"][:-1]]
     if descendants != [current["row_ordinal"], deferred["row_ordinal"]]:
         reasons.append("RECOGNITION_COMPLETE_GROUP_DESCENDANT_AXIS_UNPROVEN")
     # A later convenient root, a duplicate role, or a differently annotated
@@ -3540,7 +3660,7 @@ def _recognition_expense_source_frontier(
         section.get("title_exact"), table.get("title_exact"),
         *[value for column in table.get("columns") or [] for value in column.get("header_path_exact") or []],
         *[item["source_exact"] for item in _owned_statement_scope_narratives(section)],
-        *[value for item in (group, current, deferred, root)
+        *[value for item in scope_rows
           for value in (item["hierarchy_path_exact"] or [])],
     ])
     expected_scope = None if match is None else {"rieng": "SEPARATE", "hop nhat": "CONSOLIDATED"}[match["scope"]]
@@ -3610,15 +3730,30 @@ def _recognition_rate_effect_forward_control(
         reasons.append("RECOGNITION_RATE_REQUIRES_COMPLETE_AUTHENTICATED_RECOGNITION_FRONTIER")
         return finish("ALGORITHM_HOLD")
     rows = recognition["source_table_row_axis"]
-    group_ordinal = recognition["group_source_row"]["row_ordinal"]
+    recognition_group = recognition["group_source_row"]
+    group_ordinal = (recognition_group["row_ordinal"] if recognition_group is not None
+                     else recognition["frontier_start_source_row_ordinal"])
     # Every row belongs to this finite source layout.  A later convenient
     # result, extra population or unknown trailing row cannot disappear.
-    if group_ordinal < 7 or recognition["parent_source_row"]["row_ordinal"] != len(rows):
+    if group_ordinal < 6 or recognition["parent_source_row"]["row_ordinal"] != len(rows):
         reasons.append("RECOGNITION_RATE_COMPLETE_ORDERED_TABLE_FRONTIER_UNPROVEN")
         return finish("ALGORITHM_HOLD")
-    profit, rate, group = rows[:3]
+    profit, rate = rows[:2]
     calculation = rows[group_ordinal - 2]
-    adjustments = rows[3:group_ordinal - 2]
+    actual_adjustment_owner = _normalized(rows[2]["label_exact"]) == "dieu chinh"
+    group = rows[2] if actual_adjustment_owner else None
+    adjustments = rows[3 if actual_adjustment_owner else 2:group_ordinal - 2]
+    adjustment_owner = None
+    if group is None:
+        adjustment_owner = _recognition_immediate_ancestor_owner_v1(
+            rows, adjustments, owner_pattern=r"dieu chinh:", relevance_pattern=r"^dieu chinh\s*:?$",
+            allow_first_compound_label=True,
+        )
+        material["adjustment_owner_receipt"] = adjustment_owner
+        if adjustment_owner is None:
+            reasons.append("RECOGNITION_RATE_COMPLETE_REPEATED_IMMEDIATE_ADJUSTMENT_OWNER_UNPROVEN")
+    adjustment_owner_exact = group["label_exact"] if group is not None else (
+        None if adjustment_owner is None else adjustment_owner["owner_exact"])
     material.update({"profit_source_row": canonical_clone_v1(profit),
                      "rate_source_row": canonical_clone_v1(rate),
                      "adjustment_group_source_row": canonical_clone_v1(group),
@@ -3629,7 +3764,7 @@ def _recognition_rate_effect_forward_control(
         if (item["row_kind"] != "ITEM" or _recognition_printed_text(item["label_exact"]) != text
                 or item["hierarchy_path_exact"] != [item["label_exact"]]):
             reasons.append("RECOGNITION_RATE_EXACT_PROFIT_OR_MONETARY_RATE_SOURCE_UNPROVEN")
-    if (group["row_kind"] != "GROUP" or _recognition_printed_text(group["label_exact"]) != "dieu chinh:"
+    if group is not None and (group["row_kind"] != "GROUP" or _recognition_printed_text(group["label_exact"]) != "dieu chinh:"
             or group["hierarchy_path_exact"] != [group["label_exact"]]
             or any(value is not None for value in group["source_values_exact"])):
         reasons.append("RECOGNITION_RATE_ACTUAL_BLANK_ADJUSTMENT_GROUP_UNPROVEN")
@@ -3640,15 +3775,25 @@ def _recognition_rate_effect_forward_control(
         "dieu chinh loi nhuan do hop nhat": 4,
         "khac": 5,
     }
-    adjustment_labels = [_recognition_printed_text(item["label_exact"]) for item in adjustments]
+    adjustment_labels = [
+        _recognition_printed_text(item["hierarchy_path_exact"][-1])
+        if group is None and adjustment_owner is not None else _recognition_printed_text(item["label_exact"])
+        for item in adjustments
+    ]
     ranks = [labels.get(label, 0) for label in adjustment_labels]
     if (not adjustments or adjustment_labels[:2] != ["thu nhap khong chiu thue", "chi phi khong duoc khau tru"]
             or any(rank == 0 for rank in ranks) or len(set(adjustment_labels)) != len(adjustment_labels)
             or ranks != sorted(ranks)
             or any(item["row_kind"] != "ITEM"
-                   or item["hierarchy_path_exact"] != [group["label_exact"], item["label_exact"]]
+                   or item["hierarchy_path_exact"] != [adjustment_owner_exact,
+                       item["hierarchy_path_exact"][-1] if group is None and adjustment_owner is not None else item["label_exact"]]
                    for item in adjustments)):
         reasons.append("RECOGNITION_RATE_FINITE_UNIQUE_ORDERED_SIGNED_DESCENDANTS_UNPROVEN")
+    if group is not None:
+        descendants = [item["row_ordinal"] for item in rows
+                       if group["label_exact"] in (item["hierarchy_path_exact"] or [])[:-1]]
+        if descendants != [item["row_ordinal"] for item in adjustments]:
+            reasons.append("RECOGNITION_RATE_COMPLETE_ADJUSTMENT_DESCENDANT_AXIS_UNPROVEN")
     calculation_text = "chi phi thue tndn tinh tren thu nhap chiu thue ky hien hanh"
     if (calculation["row_kind"] not in {"SUBTOTAL", "TOTAL"}
             or _recognition_printed_text(calculation["label_exact"]) != calculation_text
@@ -3812,10 +3957,23 @@ def _original_note_population_ancestry(
         recognition["parent_source_row"]["row_ordinal"],
     }:
         material = {
-            "rule": "AUTHENTICATED_PRINTED_RECOGNITION_GROUP_NOT_ENTITY_ANCESTRY_SCOPE_RETAINED",
+            "rule": ("AUTHENTICATED_REPEATED_RECOGNITION_ANCESTOR_NOT_ENTITY_ANCESTRY_SCOPE_RETAINED"
+                     if recognition.get("owner_representation") else
+                     "AUTHENTICATED_PRINTED_RECOGNITION_GROUP_NOT_ENTITY_ANCESTRY_SCOPE_RETAINED"),
             "common_population_ancestry_exact": [], "source_rows": [rows[row_ordinal - 1]],
             "printed_scope_source_paths_exact": recognition["printed_scope_source_paths_exact"],
             "recognition_expense_frontier_receipt": recognition,
+            "original_table_json_sha256": canonical_json_sha256_v1(table),
+        }
+        return {**material, "receipt_id": "gjitfav1:note-population:" + canonical_json_sha256_v1(material)}
+    recognition_rate = _recognition_rate_effect_forward_control(section, table, compiled_specs=compiled_specs)
+    if (recognition_rate["status"] == "PASS" and recognition_rate.get("adjustment_owner_receipt") is not None
+            and row_ordinal in [item["row_ordinal"] for item in recognition_rate["adjustment_source_rows"]]):
+        material = {
+            "rule": "AUTHENTICATED_REPEATED_ADJUSTMENT_ANCESTOR_TAX_EFFECT_CONTROL_NOT_ENTITY_OR_INCOME_BASIS",
+            "common_population_ancestry_exact": [], "source_rows": [rows[row_ordinal - 1]],
+            "printed_scope_source_paths_exact": recognition["printed_scope_source_paths_exact"],
+            "recognition_rate_effect_control": recognition_rate,
             "original_table_json_sha256": canonical_json_sha256_v1(table),
         }
         return {**material, "receipt_id": "gjitfav1:note-population:" + canonical_json_sha256_v1(material)}
@@ -4271,10 +4429,24 @@ def _build_original_note_adapter_bundle(
         return None
     pages = {item["page_json_version_id"]: item["page_json"] for item in page_records}
     basis_receipts, has_rate = [], False
+    ancestry_rate_controls = []
     for region in carrier["component_regions"]:
         section, table = _source_table(pages[region["page_json_version_id"]], section_id=region["section_id"], table_id=region["table_id"])
         if section.get("content_kind") != "FINANCIAL_NOTE":
             continue
+        recognition_rate = _recognition_rate_effect_forward_control(section, table, compiled_specs=compiled_specs)
+        if recognition_rate["status"] == "PASS":
+            recognition = _recognition_expense_source_frontier(section, table, compiled_specs=compiled_specs)
+            if (recognition.get("owner_representation") == "REPEATED_EXACT_IMMEDIATE_ANCESTOR_NOT_A_ROW"
+                    or recognition_rate.get("adjustment_owner_receipt") is not None):
+                # This whole finite prefix has its own observed forward proof.
+                # It is not a private RATE/INCOME basis receipt, and its tax
+                # effects must never acquire income-basis schema meanings.
+                ancestry_rate_controls.append({"locator": canonical_clone_v1(region),
+                                               "recognition_frontier": recognition,
+                                               "forward_control": recognition_rate})
+                has_rate = True
+                continue
         classification = classify_gemini_json_multitable_hierarchical_table_v1(
             pages[region["page_json_version_id"]], section, table, compiled_specs=compiled_specs["income_tax_original_rate_specs"],
         )
@@ -4314,6 +4486,8 @@ def _build_original_note_adapter_bundle(
     issues = []
     parts = []
     authenticated_rate_axis = set()
+    authenticated_rate_axis.update(tuple(item["locator"][key] for key in ("page_json_version_id", "section_id", "table_id"))
+                                   for item in ancestry_rate_controls)
     coverage_completions = []
     forward_controls = [_original_rate_business_transfer_forward_control(receipt, compiled_specs=compiled_specs)
                         for receipt in basis_receipts if receipt["basis"] == "RATE"]
@@ -4408,6 +4582,22 @@ def _build_original_note_adapter_bundle(
         if section.get("content_kind") != "FINANCIAL_NOTE":
             issues.append("ORIGINAL_NOTE_CARRIER_CONTAINS_NON_NOTE_REGION")
             continue
+        ancestry_controls = [item for item in ancestry_rate_controls
+                             if tuple(item["locator"][key] for key in ("page_json_version_id", "section_id", "table_id")) == locator_key]
+        if ancestry_controls:
+            if len(ancestry_controls) != 1:
+                raise _error("income-tax repeated ancestry forward control is not unique")
+            control = ancestry_controls[0]
+            coverage.append({"region": canonical_clone_v1(region), "original_table_json_sha256": canonical_json_sha256_v1(table),
+                             "basis_receipt_ids": [], "supplemental_claimed_ordinals": sorted({
+                                 row["row_ordinal"] for descriptor in supplemental
+                                 if tuple(descriptor["locator"][key] for key in ("page_json_version_id", "section_id", "table_id")) == locator_key
+                                 for row in descriptor["rows"]}),
+                             "unaccounted_quantitative_row_ordinals": [],
+                             "source_rows_exact": canonical_clone_v1(table["rows"]),
+                             "source_only_table_control": canonical_clone_v1(control),
+                             "rule": "COMPLETE_FINITE_RECOGNITION_AND_RATE_EFFECT_FORWARD_CONTROLS_NOT_PRIVATE_BASIS_WAIVER"})
+            continue
         movement_control = _temporary_difference_rollforward_control(
             page=pages[locator_key[0]], section=section, table=table, region=region, compiled_specs=compiled_specs,
         )
@@ -4453,6 +4643,8 @@ def _build_original_note_adapter_bundle(
         "source_population_coverage": coverage, "independent_population_receipt": population_proof,
         "reasons": sorted(set(issues)),
     }
+    if ancestry_rate_controls:
+        material["ancestry_recognition_rate_source_controls"] = canonical_clone_v1(ancestry_rate_controls)
     if "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_UNIT" in primary_reasons:
         material["primary_selection_conflict_receipt"] = _primary_selection_conflict_receipt(
             page_records, reasons=primary_reasons, repair_receipts=repair_receipts, compiled_specs=compiled_specs,
@@ -8683,7 +8875,7 @@ def _seal_income_tax_source_controls(
                 note_section, note_table,
                 source_paths=[item["hierarchy_path_exact"] for item in [
                     boundary["group_source_row"], *boundary["component_source_rows"], boundary["parent_source_row"],
-                ]], document_scope=document_scope,
+                ] if item is not None], document_scope=document_scope,
             )
             note_scope = ([scope_receipt["report_scope"]] if scope_receipt["report_scope"] is not None
                           else scope_receipt["local_qualifiers"])
