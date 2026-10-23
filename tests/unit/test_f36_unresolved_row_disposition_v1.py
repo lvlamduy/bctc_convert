@@ -242,6 +242,14 @@ def test_fresh_qualified_literal_guard_is_not_absorbed_by_an_incomplete_frontier
             "6. Trích lập/(hoàn nhập) dự phòng giảm giá đầu tư tài chính dài hạn "
             "(Thuyết minh 11)" + suffix)
         row["hierarchy_path_exact"] = [row["label_exact"]]
+    # Rebuild actual public query/coalesced roles after changing a source role;
+    # the pre-mutation cluster is not authority for the new printed literal.
+    indexed, trials, pages, compiled = _source_row_coverage_inputs(copy.deepcopy(page))
+    kw.update(indexed_query_evidence=indexed, trials=trials,
+              page_json_by_document=pages, compiled_specs=compiled)
+    page = pages[1][VERSION_ID]
+    table = page["sections"][0]["tables"][0]
+    row = table["rows"][-2]
     cluster = kw["indexed_query_evidence"]["candidate_dispositions"][0]["cluster"]
     region = cluster["component_regions"][0]
     receipts = family._qualified_provision_literal_receipts_v1(
