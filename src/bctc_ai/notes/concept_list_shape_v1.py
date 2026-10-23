@@ -136,6 +136,7 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             roles.append(RowRole(index, None, "HEADING", "NO_VALUES"))
             continue
         matches = family.axis.match(key) if key else []
+        direct = list(matches)  # competing DIRECT axis matches, before any owner/not_within filtering
         scoped = [m for m, spec in members.items() if spec.get("scoped") and key and _scoped_match(spec, key)]
         owned = [m for m in matches if members.get(m, {}).get("owner")]
         blocked: list[str] = []
@@ -153,6 +154,12 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             added = [m for m in scoped if parent_line in members[m]["scoped"]["within"] and m not in matches]
             matches += added
             by_parent |= set(added)
+            if blocked and len(direct) > 1:
+                # A label matching several lines DIRECTLY stays ambiguous: a missing owner (or not_within) is not
+                # evidence selecting the remaining direct meaning (Codex 0151/0152: payroll + uniform composite).
+                # Scoped phrases are not counted here; they still need their own proven parent.
+                roles.append(RowRole(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES", direct))
+                continue
             if blocked and not matches:
                 why = parent_reason if parent_line is None else "PARENT_LINE_" + parent_line
                 roles.append(RowRole(index, None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:" + why, blocked))

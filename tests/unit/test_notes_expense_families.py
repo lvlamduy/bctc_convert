@@ -228,3 +228,31 @@ def test_fully_qualified_general_and_specific_labels_read_without_a_parent(confi
     link(dup, 1, 0)
     roles = _roles(dup, family)
     assert roles[0][1] == roles[2][1] == "AMBIGUOUS" and roles[1][:2] == ("CUSTOMER_GENERAL", "MEMBER")
+
+
+def test_composite_label_matching_several_lines_stays_ambiguous_with_or_without_owner(config):
+    # Codex 0151/0152: a missing owner is not evidence selecting the remaining direct meaning.
+    family = config.families["OPERATING_EXPENSE"]
+    headers, title = [("Năm 2025",), ("Năm 2024",)], "30. Chi phí hoạt động"
+    composite = "- Các khoản chi đóng góp theo lương, chi trang phục giao dịch, phương tiện bảo hộ lao động"
+    expected = {"PAYROLL_CONTRIBUTIONS", "UNIFORM_EXPENSE"}
+    without_owner = make_table([("Chi phí cho nhân viên", ["100", "90"]), (composite, ["15", "14"])], headers, title=title)
+    with_owner = make_table([("Chi phí cho nhân viên", ["100", "90"]), (composite, ["15", "14"])], headers, title=title)
+    link(with_owner, 1, 0)
+    for table in (without_owner, with_owner):
+        role = assign_lines_v1(table, family)[1]
+        assert (role.role, role.disposition, role.reason) == (None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES")
+        assert set(role.candidates) == expected
+    # Single-label controls keep their behaviour: uniform reads on its own, payroll still needs its owner.
+    single = make_table([("Chi phí cho nhân viên", ["100", "90"]), ("Chi trang phục giao dịch", ["3", "2"]),
+                         ("Các khoản chi đóng góp theo lương", ["15", "14"])], headers, title=title)
+    roles = _roles(single, family)
+    assert roles[1][:2] == ("UNIFORM_EXPENSE", "MEMBER")
+    assert roles[2] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:NO_PRINTED_PARENT")
+    link(single, 2, 0)
+    assert _roles(single, family)[2][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")
+    # Scoped-parent control: a bare "Chi khác" still chooses its scoped meaning only under a proven owner.
+    scoped = make_table([("Chi phí cho nhân viên", ["100", "90"]), ("Chi khác", ["5", "6"])], headers, title=title)
+    assert _roles(scoped, family)[1][:2] == (None, "SOURCE_ONLY")
+    link(scoped, 1, 0)
+    assert _roles(scoped, family)[1][:2] == ("OTHER_EMPLOYEE_EXPENSE", "MEMBER")
