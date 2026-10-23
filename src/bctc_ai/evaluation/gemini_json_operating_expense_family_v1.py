@@ -20,6 +20,7 @@ from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import (
     _document_unit_context_axis,
 )
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+    _match_value_forms_v1,
     _normalized,
     _without_leading_ordinal,
 )
@@ -106,6 +107,13 @@ _MAPPING_MAX_ADMIN_DIRECT_OTHER_LABELS = frozenset(
         "chi phi hoat dong khac",
         "chi khac",
     }
+)
+_QUALIFIED_PROVISION_LITERALS = (
+    (
+        "LONG_TERM_BAD_DEBT_PROVISION",
+        "Trích lập/(hoàn nhập) dự phòng giảm giá đầu tư tài chính dài hạn (Thuyết minh 11)",
+    ),
+    ("OTHER_ASSET_PROVISION", "Dự phòng rủi ro tài sản khác (Thuyết minh 14)"),
 )
 _EXACT_SOURCE_REF_DEDUPLICATION_STATES = frozenset(
     {
@@ -411,6 +419,12 @@ def compile_gemini_json_operating_expense_family_specs_v1(
             raise _error("operating-expense PRIMARY witness spec is invalid") from exc
         compiled[PRIMARY_WITNESS_SPEC_KEY] = checked_witness
         compiled[PRIMARY_WITNESS_HASH_KEY] = canonical_json_sha256_v1(checked_witness)
+    literal_policy = _qualified_provision_literal_policy_v1(compiled)
+    if literal_policy is not None:
+        compiled["operating_expense_qualified_provision_literal_policy"] = literal_policy
+        compiled["operating_expense_qualified_provision_literal_policy_sha256"] = (
+            canonical_json_sha256_v1(literal_policy)
+        )
     return compiled
 
 
@@ -4835,6 +4849,119 @@ def _source_root_authority_veto(
     }]
 
 
+def _qualified_provision_literal_policy_v1(compiled_specs):
+    """Derive the finite surface restriction; caller metadata cannot waive it."""
+    declarations = []
+    for role, literal in _QUALIFIED_PROVISION_LITERALS:
+        aliases = {
+            _normalized(alias)
+            for child in compiled_specs["topology"]["children"] if child["role"] == role
+            for matcher in child["matchers"] if matcher["within_role"] is None
+            for alias in matcher["aliases"]
+        }
+        if _normalized(literal) in aliases:
+            declarations.append({"role": role, "source_literal_exact": literal})
+    if not declarations:
+        if any(field in compiled_specs for field in (
+            "operating_expense_qualified_provision_literal_policy",
+            "operating_expense_qualified_provision_literal_policy_sha256",
+        )):
+            raise _error("operating-expense qualified provision literal policy has no declarations")
+        return None
+    policy = {
+        "declarations": declarations,
+        "rule": "WHOLE_EXISTING_NORMALIZED_SELF_LABEL_FORMS_NO_ADDITIONAL_SUFFIX",
+        "parent_scope_granted": False,
+        "unit_period_value_or_mapping_permission_granted": False,
+    }
+    expected_hash = canonical_json_sha256_v1(policy)
+    for field, expected in (
+        ("operating_expense_qualified_provision_literal_policy", policy),
+        ("operating_expense_qualified_provision_literal_policy_sha256", expected_hash),
+    ):
+        if field in compiled_specs and not same_typed_json_v1(compiled_specs[field], expected):
+            raise _error("operating-expense qualified provision literal policy drifted")
+    return policy
+
+
+def _qualified_provision_literal_receipts_v1(
+    *, table, original_table, locator, compiled_specs,
+):
+    policy = _qualified_provision_literal_policy_v1(compiled_specs)
+    if policy is None:
+        return []
+    receipts = []
+    for number, row in enumerate(table.get("rows", []), 1):
+        if type(row) is not dict:
+            continue
+        forms = _match_value_forms_v1(row.get("label_exact"))
+        for declaration in policy["declarations"]:
+            literal = _normalized(declaration["source_literal_exact"])
+            if not any(form == literal or form.startswith(literal + " ") for form in forms):
+                continue
+            original_rows = original_table.get("rows")
+            if type(original_rows) is not list or number > len(original_rows):
+                raise _error("operating-expense qualified provision original row is absent")
+            original_row = original_rows[number - 1]
+            complete = literal in forms
+            material = {
+                "complete": complete,
+                "reasons": [] if complete else ["QUALIFIED_LITERAL_HAS_UNREVIEWED_SUFFIX"],
+                "role": declaration["role"],
+                "admitted_role": declaration["role"] if complete else None,
+                "proposal_disposition": "WHOLE_LITERAL_SURFACE_ONLY" if complete else "REJECTED_PROPOSAL",
+                "locator": {key: locator[key] for key in (
+                    "document_id", "document_ordinal", "source_logical_name", "source_sha256",
+                    "page_json_version_id", "physical_page", "selected_page_ordinal", "section_id", "table_id",
+                )},
+                "row_ordinal": number,
+                "original_row_exact": canonical_clone_v1(original_row),
+                "evaluation_row_exact": canonical_clone_v1(row),
+                "original_columns_exact": canonical_clone_v1(original_table.get("columns")),
+                "evaluation_columns_exact": canonical_clone_v1(table.get("columns")),
+                "original_row_object_sha256": canonical_json_sha256_v1(original_row),
+                "evaluation_row_object_sha256": canonical_json_sha256_v1(row),
+                "original_table_object_sha256": canonical_json_sha256_v1(original_table),
+                "evaluation_table_object_sha256": canonical_json_sha256_v1(table),
+                "policy": canonical_clone_v1(policy),
+                "policy_sha256": canonical_json_sha256_v1(policy),
+                "source_modified": False,
+                "parent_unit_period_value_or_mapping_permission_granted": False,
+            }
+            receipts.append({
+                **material,
+                "receipt_id": "gjoefav1:qualified-provision-literal:" + canonical_json_sha256_v1(material),
+            })
+    return receipts
+
+
+def _qualified_provision_literal_veto_v1(
+    candidate, *, pages, original_pages, regions, compiled_specs,
+):
+    receipts = []
+    for region in regions:
+        version = region["page_json_version_id"]
+        _section, table = _source_table(
+            pages[version], section_id=region["section_id"], table_id=region["table_id"],
+        )
+        _original_section, original_table = _source_table(
+            original_pages[version], section_id=region["section_id"], table_id=region["table_id"],
+        )
+        receipts.extend(_qualified_provision_literal_receipts_v1(
+            table=table, original_table=original_table, locator=region, compiled_specs=compiled_specs,
+        ))
+    if any(not item["complete"] for item in receipts):
+        candidate["status"] = UNRESOLVED
+        candidate["mappings"] = []
+        structural_root = candidate.get("closure_receipt", {}).get("structural_root_receipt")
+        if type(structural_root) is dict:
+            structural_root["emitted_mapping"] = False
+        candidate["reasons"] = sorted({
+            *candidate["reasons"], "OPERATING_EXPENSE_QUALIFIED_PROVISION_LITERAL_NOT_EXACT",
+        })
+    return receipts
+
+
 def _literal_payroll_scope_receipts_v1(
     *, table: Mapping[str, Any], original_table: Mapping[str, Any],
     locator: Mapping[str, Any], compiled_specs: Mapping[str, Any],
@@ -4973,6 +5100,7 @@ def _reseal_candidate(
     source_repair_receipts: Sequence[Mapping[str, Any]],
     unit_receipts: Sequence[Mapping[str, Any]],
     literal_payroll_scope_receipts: Sequence[Mapping[str, Any]] = (),
+    qualified_provision_literal_receipts: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     source_ref_deduplication_receipts = _deduplicate_exact_mapping_source_refs(candidate)
     material = {
@@ -5003,6 +5131,10 @@ def _reseal_candidate(
     if literal_payroll_scope_receipts:
         material["literal_payroll_scope_receipts"] = canonical_clone_v1(
             list(literal_payroll_scope_receipts)
+        )
+    if qualified_provision_literal_receipts:
+        material["qualified_provision_literal_receipts"] = canonical_clone_v1(
+            list(qualified_provision_literal_receipts)
         )
     if source_ref_deduplication_receipts:
         material["source_ref_deduplication_receipts"] = canonical_clone_v1(
@@ -5193,6 +5325,10 @@ def _without_witness_evaluate_gemini_json_operating_expense_family_cluster_v1(
         candidate, pages=pages, original_pages=source_ordered_pages,
         regions=region_axis, compiled_specs=compiled_specs,
     )
+    qualified_provision_literal_receipts = _qualified_provision_literal_veto_v1(
+        candidate, pages=pages, original_pages=source_ordered_pages,
+        regions=region_axis, compiled_specs=compiled_specs,
+    )
     return _reseal_candidate(
         candidate,
         all_blank_validation_role_omission_receipts=all_blank_receipts,
@@ -5205,6 +5341,7 @@ def _without_witness_evaluate_gemini_json_operating_expense_family_cluster_v1(
         source_root_authority_veto_receipts=source_root_authority_veto_receipts,
         unit_receipts=unit_receipts,
         literal_payroll_scope_receipts=literal_payroll_scope_receipts,
+        qualified_provision_literal_receipts=qualified_provision_literal_receipts,
     )
 
 
@@ -5813,6 +5950,7 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
                     if type(rows) is not list:
                         continue
                     scope_by_row = {}
+                    literal_by_row = {}
                     if table_selected:
                         _original_section, original_table = _source_table(
                             source_pages[page_json_version_id], section_id=section_id, table_id=table_id,
@@ -5820,6 +5958,14 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
                         scope_by_row = {
                             item["row_ordinal"]: item
                             for item in _literal_payroll_scope_receipts_v1(
+                                table=table, original_table=original_table,
+                                locator={**page_axis, "section_id": section_id, "table_id": table_id},
+                                compiled_specs=compiled_specs,
+                            )
+                        }
+                        literal_by_row = {
+                            item["row_ordinal"]: item
+                            for item in _qualified_provision_literal_receipts_v1(
                                 table=table, original_table=original_table,
                                 locator={**page_axis, "section_id": section_id, "table_id": table_id},
                                 compiled_specs=compiled_specs,
@@ -5886,9 +6032,17 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
                         blocked_payroll = (
                             type(scope_receipt) is dict and not scope_receipt["complete"]
                         )
+                        literal_receipt = literal_by_row.get(row_ordinal)
+                        blocked_literal = (
+                            type(literal_receipt) is dict and not literal_receipt["complete"]
+                        )
+                        if blocked_literal:
+                            roles.add(literal_receipt["role"])
                         for role in sorted(roles):
                             report_norm_id = bindings.get(role)
-                            if blocked_payroll and role == "PAYROLL_CONTRIBUTIONS":
+                            if blocked_literal and role == literal_receipt["role"]:
+                                coverage = "VIOLATION_UNMAPPED_SELECTED_SCHEMA_ROLE_ROW"
+                            elif blocked_payroll and role == "PAYROLL_CONTRIBUTIONS":
                                 coverage = "VIOLATION_UNMAPPED_SELECTED_SCHEMA_ROLE_ROW"
                             elif (*identity, role) in mapped_role_rows:
                                 coverage = "MAPPED_EXACT_SOURCE_ROLE_ROW"
@@ -5933,6 +6087,17 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
                                 role=role,
                                 report_norm_id=report_norm_id,
                                 evidence={
+                                    **(
+                                        {
+                                            "rejected_literal_proposal": canonical_clone_v1(literal_receipt),
+                                            "raw_classification_role_hits": canonical_clone_v1([
+                                                hit for hit in classification.get("role_hits", [])
+                                                if hit.get("row_ordinal") == row_ordinal
+                                            ]),
+                                            "admitted_family_role": None,
+                                        }
+                                        if blocked_literal and role == literal_receipt["role"] else {}
+                                    ),
                                     **(
                                         {"rejected_scope_proposal": canonical_clone_v1(scope_receipt)}
                                         if blocked_payroll and role == "PAYROLL_CONTRIBUTIONS" else {}

@@ -3,6 +3,12 @@
 The two declarations retain their printed note annotations. They use the existing
 unscoped provision matchers, not a newly invented structural provision parent.
 The publication disclosure remains unclassified by this change.
+
+The first config-only run is retained at
+/srv/bctc-receipts/f36-stb-qualified-aliases-focused-20261023T183200Z/focused.xml:
+21 PASS / 7 FAIL. Six compound tails and one other-asset annotation remained raw
+frozen-classifier proposals. These tests now distinguish that unchanged proposal
+surface from mandatory family rejection; none of those seven labels is removed.
 """
 
 from __future__ import annotations
@@ -95,6 +101,10 @@ def test_real_config_adds_only_whole_literals_to_existing_unscoped_matchers():
         alias for child in topology["children"]
         for matcher in child["matchers"] for alias in matcher["aliases"]
     }
+    policy = compiled["operating_expense_qualified_provision_literal_policy"]
+    assert policy["parent_scope_granted"] is False
+    assert policy["unit_period_value_or_mapping_permission_granted"] is False
+    assert compiled["operating_expense_qualified_provision_literal_policy_sha256"] == canonical_json_sha256_v1(policy)
 
 
 @pytest.mark.parametrize("label,role,_report_norm_id", DECLARATIONS)
@@ -146,7 +156,47 @@ def test_public_flat_literals_keep_signed_values_units_source_refs_and_replay():
         page_json_by_document=pages, compiled_specs=compiled,
     )
     assert coverage["violation_count"] == 0
+    literal_receipts = trial["candidates"][0]["closure_receipt"][
+        "operating_expense_adapter_receipt"
+    ]["qualified_provision_literal_receipts"]
+    assert {item["admitted_role"] for item in literal_receipts} == {entry[1] for entry in DECLARATIONS}
+    assert all(item["complete"] for item in literal_receipts)
+    assert all(not item["parent_unit_period_value_or_mapping_permission_granted"] for item in literal_receipts)
     assert page == before
+
+
+def _assert_rejected_literal(page, role, row_ordinal):
+    before = copy.deepcopy(page)
+    indexed, trial, pages, compiled = _public(page)
+    assert trial["status"] != READY
+    assert trial["mappings"] == []
+    assert "OPERATING_EXPENSE_QUALIFIED_PROVISION_LITERAL_NOT_EXACT" in trial["reasons"]
+    receipts = trial["candidates"][0]["closure_receipt"][
+        "operating_expense_adapter_receipt"
+    ]["qualified_provision_literal_receipts"]
+    rejected = next(item for item in receipts if item["row_ordinal"] == row_ordinal)
+    assert rejected["complete"] is False
+    assert rejected["role"] == role
+    assert rejected["admitted_role"] is None
+    assert rejected["proposal_disposition"] == "REJECTED_PROPOSAL"
+    assert rejected["original_row_exact"] == before["sections"][0]["tables"][0]["rows"][row_ordinal - 1]
+    assert rejected["original_row_object_sha256"] == canonical_json_sha256_v1(rejected["original_row_exact"])
+    assert rejected["locator"]["page_json_version_id"] == fixture.VERSION_ID
+    coverage = family.build_operating_expense_source_row_coverage_receipt_v1(
+        indexed_query_evidence=indexed, trials=[trial],
+        page_json_by_document=pages, compiled_specs=compiled,
+    )
+    violations = [
+        item for item in coverage["violation_axis"]
+        if item["row_ordinal"] == row_ordinal and item.get("role") == role
+    ]
+    assert violations
+    evidence = violations[0]["evidence"]
+    assert evidence["admitted_family_role"] is None
+    assert evidence["rejected_literal_proposal"] == rejected
+    assert any(hit["role"] == role for hit in evidence["raw_classification_role_hits"])
+    assert page == before
+    return indexed, trial, pages, compiled
 
 
 @pytest.mark.parametrize("owner", [
@@ -170,18 +220,15 @@ def test_foreign_note_owner_does_not_gain_provision_mappings(owner):
 def test_compound_population_tail_cannot_use_qualified_alias_prefix(
     label, role, _report_norm_id, tail,
 ):
-    # A failing assertion exposes existing prefix-policy behavior; do not relax
-    # this negative or relabel a mixed population as the reviewed literal.
+    # Frozen raw proposals are retained, but cannot become family authority.
     changed = label + tail
     page = _page(investment=changed) if role == DECLARATIONS[0][1] else _page(other_asset=changed)
     classification = _classification(page)
-    assert role not in {
+    assert role in {
         hit["role"] for hit in classification["role_hits"]
         if hit["row_ordinal"] == (5 if role == DECLARATIONS[0][1] else 6)
     }
-    _indexed, trial, _pages, _compiled = _public(page)
-    assert trial["status"] != READY
-    assert trial["mappings"] == []
+    _assert_rejected_literal(page, role, 5 if role == DECLARATIONS[0][1] else 6)
 
 
 @pytest.mark.parametrize("label,role,_report_norm_id", DECLARATIONS)
@@ -198,7 +245,12 @@ def test_nearby_unreviewed_whole_labels_do_not_gain_the_target_role(
     else:
         changed = label.replace(")", "; điều chỉnh)")
     page = fixture._operating_page([fixture._row(changed, "5", "7")])
-    assert role not in {hit["role"] for hit in _classification(page)["role_hits"]}
+    raw_roles = {hit["role"] for hit in _classification(page)["role_hits"]}
+    if role == "OTHER_ASSET_PROVISION" and change == "EXTRA_ANNOTATION":
+        assert role in raw_roles
+        _assert_rejected_literal(_page(other_asset=changed), role, 6)
+    else:
+        assert role not in raw_roles
 
 
 @pytest.mark.parametrize("conflict", ["UNIT", "PERIOD"])
@@ -230,3 +282,71 @@ def test_resealed_trial_cannot_redirect_a_new_literal_mapping_to_its_neighbor():
             indexed_query_evidence=indexed, trials=[attacked],
             page_json_by_document=pages, compiled_specs=compiled,
         )
+
+
+@pytest.mark.parametrize("label,role,_report_norm_id", DECLARATIONS)
+@pytest.mark.parametrize("tail", [" 1", " IV", " (Thuyết minh 15)"])
+def test_existing_exact_match_suffixes_are_still_rejected_for_the_new_literals(
+    label, role, _report_norm_id, tail,
+):
+    page = _page(investment=label + tail) if role == DECLARATIONS[0][1] else _page(other_asset=label + tail)
+    assert role in {hit["role"] for hit in _classification(page)["role_hits"]}
+    _assert_rejected_literal(page, role, 5 if role == DECLARATIONS[0][1] else 6)
+
+
+def test_resealed_literal_guard_cannot_claim_a_compound_proposal_is_admitted():
+    page = _page(other_asset=OTHER_ASSET + " và dự phòng rủi ro tín dụng")
+    indexed, trial, pages, compiled = _assert_rejected_literal(page, "OTHER_ASSET_PROVISION", 6)
+    attacked = copy.deepcopy(trial)
+    candidate = attacked["candidates"][0]
+    adapter = candidate["closure_receipt"]["operating_expense_adapter_receipt"]
+    rejected = next(item for item in adapter["qualified_provision_literal_receipts"] if not item["complete"])
+    rejected.update(complete=True, reasons=[], admitted_role="OTHER_ASSET_PROVISION", proposal_disposition="WHOLE_LITERAL_SURFACE_ONLY")
+    rejected["receipt_id"] = "gjoefav1:qualified-provision-literal:" + canonical_json_sha256_v1({
+        key: value for key, value in rejected.items() if key != "receipt_id"
+    })
+    adapter["adapter_receipt_id"] = "gjoefav1:receipt:" + canonical_json_sha256_v1({
+        key: value for key, value in adapter.items() if key != "adapter_receipt_id"
+    })
+    candidate["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1({
+        key: value for key, value in candidate.items() if key != "candidate_id"
+    })
+    with pytest.raises(family.GeminiJsonOperatingExpenseFamilyV1Error, match="replay drifted"):
+        family.validate_gemini_json_operating_expense_replay_v1(
+            indexed_query_evidence=indexed, trials=[attacked],
+            page_json_by_document=pages, compiled_specs=compiled,
+        )
+
+
+def test_no_new_policy_or_receipt_fields_when_the_two_aliases_are_absent():
+    topology = fixture._json("tm-operating-expense-topology-v1.json")
+    for child in topology["children"]:
+        for matcher in child["matchers"]:
+            matcher["aliases"] = [alias for alias in matcher["aliases"] if alias not in {INVESTMENT, OTHER_ASSET}]
+    compiled = family.compile_gemini_json_operating_expense_family_specs_v1(
+        topology, fixture._json("tm-operating-expense-evaluation-v1.json"),
+        fixture._json("tm-operating-expense-schema-binding-v1.json"),
+    )
+    assert "operating_expense_qualified_provision_literal_policy" not in compiled
+    assert "operating_expense_qualified_provision_literal_policy_sha256" not in compiled
+    assert family._qualified_provision_literal_policy_v1(compiled) is None
+    assert family._qualified_provision_literal_receipts_v1(
+        table={}, original_table={}, locator={}, compiled_specs=compiled,
+    ) == []
+
+
+def test_ordinary_existing_alias_prefix_proposals_and_unrelated_receipts_are_unchanged():
+    label = "Trích lập dự phòng giảm giá đầu tư dài hạn tại công ty ví dụ"
+    page = fixture._operating_page([fixture._row(label, "5", "7")])
+    assert "LONG_TERM_BAD_DEBT_PROVISION" in {hit["role"] for hit in _classification(page)["role_hits"]}
+    page = fixture._operating_page()
+    candidate, _cluster, _receipt = fixture._evaluate_adapter(page)
+    assert candidate["status"] == READY
+    assert "qualified_provision_literal_receipts" not in candidate["closure_receipt"]["operating_expense_adapter_receipt"]
+
+
+def test_compiled_literal_policy_cannot_be_changed_to_allow_suffixes():
+    compiled = fixture._adapter_compiled()
+    compiled["operating_expense_qualified_provision_literal_policy"]["rule"] = "ALLOW_SUFFIX"
+    with pytest.raises(family.GeminiJsonOperatingExpenseFamilyV1Error, match="literal policy drifted"):
+        family._qualified_provision_literal_policy_v1(compiled)
