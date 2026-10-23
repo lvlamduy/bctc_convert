@@ -182,9 +182,17 @@ def _assert_rejected_literal(page, role, row_ordinal):
     assert rejected["original_row_exact"] == before["sections"][0]["tables"][0]["rows"][row_ordinal - 1]
     assert rejected["original_row_object_sha256"] == canonical_json_sha256_v1(rejected["original_row_exact"])
     assert rejected["locator"]["page_json_version_id"] == fixture.VERSION_ID
+    with pytest.raises(
+        family.GeminiJsonOperatingExpenseFamilyV1Error,
+        match="operating-expense source-row coverage has",
+    ):
+        family.build_operating_expense_source_row_coverage_receipt_v1(
+            indexed_query_evidence=indexed, trials=[trial],
+            page_json_by_document=pages, compiled_specs=compiled,
+        )
     coverage = family.build_operating_expense_source_row_coverage_receipt_v1(
         indexed_query_evidence=indexed, trials=[trial],
-        page_json_by_document=pages, compiled_specs=compiled,
+        page_json_by_document=pages, compiled_specs=compiled, fail_on_violation=False,
     )
     violations = [
         item for item in coverage["violation_axis"]
