@@ -84,6 +84,12 @@ at `/srv/bctc-receipts/f36-full271-existing-producer-v3-20261023T221542Z/`.
 Check its terminal execution-result before another project runtime job. This
 backup/diagnostic does not seal F36 or cover the whole project.
 
+Read `docs/operations/NOTES_OUTPUT_READBACK_GAPS_AND_F36_RUNTIME_CHECKPOINT_2026-10-24.md`
+for concrete unpromoted notes workbook/store verification gaps, the finite next
+test batch and the clarification that file/snapshot hashes do not establish
+fresh SQL PRAGMA integrity. The legacy FULL271 runtime still owns execution;
+poll its actual handle/terminal before another project runtime job.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
