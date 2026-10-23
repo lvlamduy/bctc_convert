@@ -160,6 +160,45 @@ def _reseal(audit: dict) -> None:
     audit["audit_id"] = "gjoefauditv1:audit:" + canonical_json_sha256_v1(material)
 
 
+def _with_primary_application(audit):
+    """Metadata-only fixture: no pixel or financial acceptance claim."""
+    audit["spec_refs"]["primary_witness"] = {"path": "witness.json", "sha256": "8" * 64, "size_bytes": 1}
+    audit["indexed_query_receipt"]["selected_document_count"] = 1
+    material = {"rule": "EACH_SELECTED_WITNESS_ON_ONE_DOCUMENT_CLUSTER_INCLUDING_ALL_R_U_N",
+                "spec_sha256": "8" * 64, "expected_witness_ids": ["w1"], "applied_witness_ids": ["w1"],
+                "document_axis_receipt_ids": ["doc1"], "logical_document_application_count": 1}
+    audit["primary_witness_application_receipt"] = {
+        **material, "receipt_id": "gjoepwa1:application:" + canonical_json_sha256_v1(material)}
+    _reseal(audit)
+    return audit
+
+
+def test_audit_pairs_optional_primary_ref_with_exact_application_packet():
+    value = _with_primary_application(_audit())
+    assert runner.validate_operating_expense_experimental_audit_v1(value) == value
+
+
+@pytest.mark.parametrize("attack", ["missing-ref", "missing-application", "wrong-pin", "missing-document", "extra-ref"])
+def test_audit_rejects_unpaired_or_resealed_primary_application(attack):
+    value = _with_primary_application(_audit())
+    if attack == "missing-ref":
+        del value["spec_refs"]["primary_witness"]
+    elif attack == "missing-application":
+        del value["primary_witness_application_receipt"]
+    elif attack == "wrong-pin":
+        value["spec_refs"]["primary_witness"]["sha256"] = "7" * 64
+    elif attack == "missing-document":
+        application = value["primary_witness_application_receipt"]
+        application["document_axis_receipt_ids"] = []
+        application["receipt_id"] = "gjoepwa1:application:" + canonical_json_sha256_v1(
+            {k: v for k, v in application.items() if k != "receipt_id"})
+    else:
+        value["spec_refs"]["unapproved"] = value["spec_refs"]["primary_witness"].copy()
+    _reseal(value)
+    with pytest.raises(ValueError):
+        runner.validate_operating_expense_experimental_audit_v1(value)
+
+
 def test_runner_pins_shared_engine_and_runner() -> None:
     runner._assert_shared_pins_v1()
 

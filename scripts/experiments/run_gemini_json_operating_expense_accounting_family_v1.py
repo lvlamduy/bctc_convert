@@ -5,9 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import sqlite3
 import sys
 from collections.abc import Mapping, Sequence
+from contextlib import closing
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -24,6 +27,9 @@ if str(ROOT / "scripts/experiments") not in sys.path:
 
 import run_gemini_json_multitable_hierarchical_accounting_family_v1 as generic  # noqa: E402
 
+from bctc_ai.evaluation import (  # noqa: E402
+    gemini_json_operating_expense_unresolved_rows_v1 as unresolved_rows,
+)
 from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
     render_full_pdf_page_v1,
 )
@@ -180,6 +186,148 @@ def _primary_witness_options_v1(args):
     if not Path(path).is_absolute() or type(pin) is not str or re.fullmatch(r"[0-9a-f]{64}", pin) is None:
         raise _error("Family-36 witness authority requires an absolute path and exact SHA")
     return Path(path), pin
+
+
+def _unresolved_row_options_v1(args):
+    return _primary_witness_options_v1(argparse.Namespace(
+        primary_witness_spec=getattr(args, "unresolved_row_disposition_spec", None),
+        expected_primary_witness_sha256=getattr(args, "expected_unresolved_row_disposition_sha256", None)))
+
+
+def _row_read_v1(path, refs, *, pin=None):
+    # Reuse the existing family-local path/FD/hash reader, not a caller token.
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import _read
+    payload, actual = _read(path)
+    if pin is not None and actual["sha256"] != pin:
+        raise _error("Family-36 row-disposition independently pinned input drifted")
+    prior = refs.setdefault(str(path), actual)
+    if prior != actual:
+        raise _error("Family-36 row-disposition input identity drifted")
+    return payload
+
+
+def _row_json_v1(path, refs, *, pin=None):
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise _error("Family-36 duplicate row-disposition/review JSON key")
+            result[key] = value
+        return result
+    if Path(path).stat().st_size > 2 * 1024**2:
+        raise _error("Family-36 row-disposition/review JSON exceeds bounded scope")
+    return json.loads(_row_read_v1(path, refs, pin=pin), object_pairs_hook=pairs,
+        parse_constant=lambda _: (_ for _ in ()).throw(_error("nonfinite row review JSON")))
+
+
+def _recheck_row_inputs_v1(refs):
+    fresh = {}
+    for path, expected in refs.items():
+        _row_read_v1(Path(path), fresh, pin=expected["sha256"])
+        if fresh[path] != expected:
+            raise _error("Family-36 row-disposition late input barrier drifted")
+
+
+def _row_original_blob_refs_v1(database, indexed, pages, declaration):
+    """Read only reviewed selected VIDs from the existing authenticated snapshot.
+
+    No validator output is declared ORIGINAL unless it exactly matches the
+    stored two-LF canonical BLOB. Transform/crosswalk cases stay unsupported.
+    """
+    result = {}
+    def identity(st):
+        return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+    before = identity(database.stat())
+    if any(os.path.lexists(str(database) + suffix) for suffix in ("-wal", "-shm", "-journal")):
+        raise _error("Family-36 reviewed source SQLite has sidecars")
+    with closing(sqlite3.connect(database.as_uri() + "?mode=ro&immutable=1", uri=True)) as connection:
+        connection.execute("PRAGMA query_only=ON")
+        connection.execute("PRAGMA cache_size=-1024")
+        for review in declaration["reviews"]:
+            ordinal = review["document"]["document_ordinal"]
+            version = review["printed_frontier"]["locator"]["page_json_version_id"]
+            axis = [p for p in indexed["selected_page_axis"] if p["document_ordinal"] == ordinal and p["page_json_version_id"] == version]
+            if len(axis) != 1:
+                raise _error("Family-36 reviewed original VID not uniquely selected")
+            size = connection.execute("SELECT length(canonical_json_bytes) FROM page_json_version WHERE page_json_version_id=?", (version,)).fetchone()
+            if size is None or type(size[0]) is not int or not 0 < size[0] <= 4 * 1024**2:
+                raise _error("Family-36 reviewed original BLOB absent/oversized")
+            blob, stored_sha = connection.execute("SELECT canonical_json_bytes,canonical_json_sha256 FROM page_json_version WHERE page_json_version_id=?", (version,)).fetchone()
+            page = pages[ordinal][version]
+            if type(blob) is not bytes or sha256(blob).hexdigest() != stored_sha or canonical_json_bytes_v1(page) + b"\n" != blob:
+                raise _error("Family-36 reviewed source BLOB/object validation domain differs")
+            result[version] = {"page_json_version_id": version, "stored_blob_sha256": stored_sha,
+                               "stored_blob_size_bytes": len(blob), "original_object_sha256": canonical_json_sha256_v1(page)}
+    if identity(database.stat()) != before or any(os.path.lexists(str(database) + suffix) for suffix in ("-wal", "-shm", "-journal")):
+        raise _error("Family-36 reviewed source SQLite changed")
+    return result
+
+
+def _authenticate_unresolved_rows_v1(*, path, pin, residual_spec_path, index, indexed, trials, pages, source_page_database,
+                                     compiled, coverage, pdf_residuals, source_pdf_root):
+    refs = {}
+    declaration = unresolved_rows.validate_declaration_v1(_row_json_v1(path, refs, pin=pin))
+    if len(index["documents"]) != len(indexed["selected_document_axis"]):
+        raise _error("Family-36 row disposition corpus denominator drifted")
+    residual_payload = _row_read_v1(residual_spec_path, refs)
+    expected_residual_ref = {k: refs[str(residual_spec_path)][k] for k in ("path", "sha256", "size_bytes")}
+    if declaration["pdf_residual_spec_ref"] != expected_residual_ref:
+        raise _error("Family-36 reviewed declaration binds another PDF residual spec")
+    if _validate_pdf_residual_spec_v1(json.loads(residual_payload))["corpus_manifest_index_id"] != index["corpus_manifest_index_id"]:
+        raise _error("Family-36 row disposition binds another corpus")
+    declaration_ref = {k: refs[str(path)][k] for k in ("path", "sha256", "size_bytes")}
+    reconciliation = unresolved_rows.reconcile_unresolved_rows_v1(
+        corpus_manifest_index_id=index["corpus_manifest_index_id"], raw_coverage=coverage,
+        indexed_query_evidence=indexed, trials=trials, page_json_by_document=pages, compiled_specs=compiled,
+        declaration=declaration, declaration_ref=declaration_ref, authenticated_pdf_residuals=pdf_residuals,
+        source_page_blob_refs=_row_original_blob_refs_v1(source_page_database, indexed, pages, declaration))
+    for review in declaration["reviews"]:
+        ref, doc, frontier = review["manual_review_ref"], review["document"], review["printed_frontier"]
+        manual = _row_json_v1(Path(ref["path"]), refs, pin=ref["sha256"])
+        if refs[ref["path"]]["size_bytes"] != ref["size_bytes"]:
+            raise _error("Family-36 visual review size mismatch")
+        finding, scope, source, reviewer = manual.get("finding", {}), manual.get("scope", {}), manual.get("source_pdf", {}), manual.get("reviewer", {})
+        if (finding.get("id") != review["manual_finding_id"] or finding.get("kind") != review["finding_kind"]
+                or scope.get("source_logical_name") != doc["source_logical_name"]
+                or type(scope.get("physical_page")) is not int or scope["physical_page"] != frontier["locator"]["physical_page"]
+                or source.get("sha256") != doc["source_sha256"] or source.get("size_bytes") != review["source_size_bytes"]
+                or reviewer.get("kind") not in {"AGENT_VISUAL", "HUMAN_VISUAL"}
+                or not reviewer.get("id") or not reviewer.get("method")
+                or finding.get("blank_is_numeric_zero") is not False or finding.get("missing_value_backsolved") is not False):
+            raise _error("Family-36 actual visual finding/source identity mismatch")
+        incomplete = review["finding_kind"] == "INCOMPLETE_PRINTED_FRONTIER"
+        if (finding.get("complete_numeric_frontier_proven") is not (not incomplete)
+                or finding.get("printed_contradiction_claimed") is not (not incomplete)):
+            raise _error("Family-36 visual finding conflates incompleteness/contradiction")
+        shown = manual.get("printed_top_level_frontier")
+        if type(shown) is not list or len(shown) != len(frontier["operand_row_ordinals"]):
+            raise _error("Family-36 visual operand frontier is incomplete")
+        for ordinal, visible in zip(frontier["operand_row_ordinals"], shown, strict=True):
+            row = frontier["rows_exact"][ordinal - 1]
+            values = [row["values_exact"][c - 1] for c in frontier["money_column_ordinals"]]
+            if visible.get("label") != row["label_exact"]:
+                raise _error("Family-36 visual/source label join is not exact")
+            if any(v is None for v in values):
+                if (values != [None, None] or visible.get("numeric_values") != values
+                        or visible.get("visible_value_states") != ["PRINTED_BLANK_UNKNOWN", "PRINTED_BLANK_UNKNOWN"]):
+                    raise _error("Family-36 visual NULL mask does not confirm literal PDF blanks")
+            elif not same_typed_json_v1(visible.get("source_texts"), values):
+                raise _error("Family-36 visual/source numeric observations differ")
+        result_row = frontier["rows_exact"][frontier["result_row_ordinal"] - 1]
+        if not same_typed_json_v1(manual.get("printed_result", {}).get("source_texts"),
+                [result_row["values_exact"][c - 1] for c in frontier["money_column_ordinals"]]):
+            raise _error("Family-36 visual printed result differs")
+        image = manual.get("viewed_image", {})
+        payload = _row_read_v1(Path(image["path"]), refs, pin=image["sha256"])
+        with Image.open(BytesIO(payload)) as png:
+            if len(payload) != image["size_bytes"] or png.format != "PNG" or png.size != (image["width"], image["height"]):
+                raise _error("Family-36 inspected image byte/dimension binding differs")
+        pdf_path = _source_path(source_pdf_root, doc["source_logical_name"])
+        _row_read_v1(pdf_path, refs, pin=doc["source_sha256"])
+        if refs[str(pdf_path)]["size_bytes"] != review["source_size_bytes"]:
+            raise _error("Family-36 reviewed PDF size drifted")
+    _recheck_row_inputs_v1(refs)
+    return reconciliation, refs
 
 
 def _load_primary_witness_spec_v1(path, expected_sha256):
@@ -707,8 +855,10 @@ def _pdf_visible_audit_row_v1(
 
 
 def _expected_pdf_visible_audit_rows_v1(
-    coverage: Mapping[str, Any],
+    coverage: Mapping[str, Any], *, reconciliation=None,
 ) -> list[dict[str, Any]]:
+    if reconciliation is not None:
+        _validate_source_row_coverage_receipt_v1(coverage, reconciliation=reconciliation)
     expected_fields = {
         "source_row_axis": "CLASSIFIED_SOURCE_ROW",
         "candidate_table_total_row_axis": "CANDIDATE_TABLE_TOTAL_DISPOSITION",
@@ -716,7 +866,7 @@ def _expected_pdf_visible_audit_rows_v1(
     }
     if (
         coverage.get("family_id") != FAMILY_ID
-        or coverage.get("violation_count") != 0
+        or (reconciliation is None and coverage.get("violation_count") != 0)
         or any(type(coverage.get(name)) is not list for name in expected_fields)
         or any(
             coverage.get(name + "_sha256")
@@ -732,7 +882,13 @@ def _expected_pdf_visible_audit_rows_v1(
             locator = _coverage_row_locator(item)
             if axis_name != "source_row_axis" and locator in covered_locators:
                 continue
-            rows.append(_pdf_visible_audit_row_v1(item, axis_kind=axis_kind))
+            view = item
+            if reconciliation is not None:
+                held = [h for h in reconciliation["held_row_axis"] if h["axis_name"] == axis_name
+                        and h["raw_coverage_item_sha256"] == canonical_json_sha256_v1(item)]
+                if held:
+                    view = {**item, "coverage": held[0]["disposition"] + "__" + held[0]["finding_kind"]}
+            rows.append(_pdf_visible_audit_row_v1(view, axis_kind=axis_kind))
         covered_locators.update(
             _coverage_row_locator(item) for item in coverage[axis_name]
         )
@@ -799,6 +955,7 @@ def _authenticate_pdf_visible_source_row_audit_v1(
     selected_page_axis: Sequence[Mapping[str, Any]],
     source_row_coverage: Mapping[str, Any],
     source_pdf_root: Path,
+    reconciliation=None,
 ) -> dict[str, Any]:
     fields = {
         "audit_id",
@@ -813,6 +970,10 @@ def _authenticate_pdf_visible_source_row_audit_v1(
         "source_pdf_authentication_axis",
         "source_pdf_authentication_axis_sha256",
     }
+    if reconciliation is not None:
+        fields.add("row_disposition_reconciliation_id")
+        if value.get("row_disposition_reconciliation_id") != reconciliation["receipt_id"]:
+            raise _error("Family-36 PDF-visible held-row reconciliation differs")
     if (
         type(value) is not dict
         or set(value) != fields
@@ -849,7 +1010,7 @@ def _authenticate_pdf_visible_source_row_audit_v1(
         != canonical_json_sha256_v1(expected_source_axis)
     ):
         raise _error("Family-36 PDF-visible source PDF axis drifted")
-    expected_rows = _expected_pdf_visible_audit_rows_v1(source_row_coverage)
+    expected_rows = _expected_pdf_visible_audit_rows_v1(source_row_coverage, reconciliation=reconciliation)
     expected_grouped: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
     for row in expected_rows:
         key = (
@@ -990,11 +1151,12 @@ def _authenticate_pdf_visible_source_row_audit_v1(
             "source_pdf_authentication_axis_sha256"
         ],
         "uncovered_source_row_count": 0,
+        **({"row_disposition_reconciliation_id": reconciliation["receipt_id"]} if reconciliation is not None else {}),
     }
 
 
 def _validate_pdf_visible_source_row_audit_receipt_v1(
-    value: Any, *, source_row_coverage: Mapping[str, Any]
+    value: Any, *, source_row_coverage: Mapping[str, Any], reconciliation=None,
 ) -> dict[str, Any]:
     fields = {
         "audit_id",
@@ -1007,7 +1169,11 @@ def _validate_pdf_visible_source_row_audit_receipt_v1(
         "uncovered_source_row_count",
     }
     counts = value.get("counts") if type(value) is dict else None
-    expected_rows = _expected_pdf_visible_audit_rows_v1(source_row_coverage)
+    expected_rows = _expected_pdf_visible_audit_rows_v1(source_row_coverage, reconciliation=reconciliation)
+    if reconciliation is not None:
+        fields.add("row_disposition_reconciliation_id")
+        if value.get("row_disposition_reconciliation_id") != reconciliation["receipt_id"]:
+            raise _error("Family-36 PDF-visible held-row reconciliation differs")
     if (
         type(value) is not dict
         or set(value) != fields
@@ -1097,7 +1263,12 @@ def _historical_policy_receipt_v1(
     )
 
 
-def _validate_source_row_coverage_receipt_v1(value: Any) -> dict[str, Any]:
+def _validate_source_row_coverage_receipt_v1(value: Any, *, reconciliation=None) -> dict[str, Any]:
+    if reconciliation is not None:
+        checked = unresolved_rows.validate_reconciliation_v1(value, reconciliation)
+        if checked["unjoined_violation_count"] != 0:
+            raise _error("Family-36 unjoined source-row violations remain")
+        return unresolved_rows.validate_raw_coverage_v1(value)
     fields = {
         "candidate_table_total_disposition_counts",
         "candidate_table_total_row_axis",
@@ -1307,8 +1478,9 @@ def build_operating_expense_experimental_audit_v1(
     pdf_residuals: Sequence[Mapping[str, Any]],
     selected_ids: Sequence[str],
     spec_refs: Mapping[str, Any],
+    row_disposition_reconciliation=None, primary_witness_application=None,
 ) -> dict[str, Any]:
-    coverage = _validate_source_row_coverage_receipt_v1(source_row_coverage)
+    coverage = _validate_source_row_coverage_receipt_v1(source_row_coverage, reconciliation=row_disposition_reconciliation)
     source_repair_application = _validate_source_repair_application_receipt_v1(
         source_repair_application
     )
@@ -1320,7 +1492,7 @@ def build_operating_expense_experimental_audit_v1(
     pdf_visible_source_row_audit = (
         _validate_pdf_visible_source_row_audit_receipt_v1(
             pdf_visible_source_row_audit,
-            source_row_coverage=coverage,
+            source_row_coverage=coverage, reconciliation=row_disposition_reconciliation,
         )
     )
     axes = _audit_axes(
@@ -1372,6 +1544,10 @@ def build_operating_expense_experimental_audit_v1(
             "sweep_id": sweep["sweep_id"],
         },
     }
+    if row_disposition_reconciliation is not None:
+        material["unresolved_row_disposition_receipt"] = canonical_clone_v1(row_disposition_reconciliation)
+    if primary_witness_application is not None:
+        material["primary_witness_application_receipt"] = canonical_clone_v1(primary_witness_application)
     return {
         **material,
         "audit_id": "gjoefauditv1:audit:" + canonical_json_sha256_v1(material),
@@ -1403,6 +1579,12 @@ def validate_operating_expense_experimental_audit_v1(
         "sweep_output",
         "sweep_ref",
     }
+    reconciliation = value.get("unresolved_row_disposition_receipt") if type(value) is dict else None
+    primary_application = value.get("primary_witness_application_receipt") if type(value) is dict else None
+    if reconciliation is not None:
+        expected_fields.add("unresolved_row_disposition_receipt")
+    if primary_application is not None:
+        expected_fields.add("primary_witness_application_receipt")
     axes = value.get("axes", {}) if type(value) is dict else {}
     sweep_ref = value.get("sweep_ref", {}) if type(value) is dict else {}
     source_auth_value = (
@@ -1470,7 +1652,7 @@ def validate_operating_expense_experimental_audit_v1(
         or pdf_visible.get("uncovered_source_row_count") != 0
         or pdf_visible.get("coverage_receipt_id") != coverage.get("receipt_id")
         or set(pdf_visible)
-        != {
+        != ({
             "audit_id",
             "authenticated",
             "counts",
@@ -1479,7 +1661,7 @@ def validate_operating_expense_experimental_audit_v1(
             "pdf_page_render_axis_sha256",
             "source_pdf_authentication_axis_sha256",
             "uncovered_source_row_count",
-        }
+        } | ({"row_disposition_reconciliation_id"} if reconciliation is not None else set()))
         or any(
             _SHA256.fullmatch(pdf_visible.get(name, "")) is None
             for name in (
@@ -1492,14 +1674,15 @@ def validate_operating_expense_experimental_audit_v1(
         or not value["indexed_query_receipt"]
         or type(spec_refs) is not dict
         or set(spec_refs)
-        != {
+        != ({
             "evaluation",
             "pdf_residual_audit",
             "pdf_visible_source_row_audit",
             "schema_binding",
             "source_repair",
             "topology",
-        }
+        } | ({"primary_witness"} if primary_application is not None else set())
+          | ({"unresolved_row_disposition"} if reconciliation is not None else set()))
         or any(
             type(reference) is not dict
             or set(reference) != {"path", "sha256", "size_bytes"}
@@ -1565,12 +1748,28 @@ def validate_operating_expense_experimental_audit_v1(
         or sweep_ref.get("sweep_id") != value.get("sweep_id")
     ):
         raise _error("Family-36 experimental audit content is invalid")
+    if primary_application is not None:
+        material = {k: v for k, v in primary_application.items() if k != "receipt_id"}
+        if (set(primary_application) != {"rule", "spec_sha256", "expected_witness_ids", "applied_witness_ids",
+                "document_axis_receipt_ids", "logical_document_application_count", "receipt_id"}
+                or primary_application.get("spec_sha256") != spec_refs["primary_witness"]["sha256"]
+                or primary_application.get("receipt_id") != "gjoepwa1:application:" + canonical_json_sha256_v1(material)
+                or sorted(primary_application.get("expected_witness_ids", [])) != sorted(primary_application.get("applied_witness_ids", []))
+                or primary_application.get("rule") != "EACH_SELECTED_WITNESS_ON_ONE_DOCUMENT_CLUSTER_INCLUDING_ALL_R_U_N"
+                or type(value["indexed_query_receipt"].get("selected_document_count")) is not int
+                or len(primary_application.get("document_axis_receipt_ids", [])) != value["indexed_query_receipt"]["selected_document_count"]
+                or type(primary_application.get("logical_document_application_count")) is not int
+                or not 0 <= primary_application["logical_document_application_count"] <= value["indexed_query_receipt"]["selected_document_count"]
+                or len(set(primary_application.get("applied_witness_ids", []))) != len(primary_application.get("applied_witness_ids", []))):
+            raise _error("Family-36 witness spec/application audit binding drifted")
+    if reconciliation is not None and not same_typed_json_v1(reconciliation.get("declaration_ref"), spec_refs["unresolved_row_disposition"]):
+        raise _error("Family-36 audit row declaration/reconciliation reference differs")
     _validate_source_repair_application_receipt_v1(source_application)
     _validate_source_repair_authentication_receipt_v1(source_auth)
-    _validate_source_row_coverage_receipt_v1(coverage)
+    _validate_source_row_coverage_receipt_v1(coverage, reconciliation=reconciliation)
     _validate_pdf_visible_source_row_audit_receipt_v1(
         pdf_visible,
-        source_row_coverage=coverage,
+        source_row_coverage=coverage, reconciliation=reconciliation,
     )
     _validate_pdf_residual_spec_v1(
         {
@@ -1699,6 +1898,7 @@ def replay_operating_expense_trials_from_source_v1(
     expected_primary_witness_sha256: str | None = None,
     primary_witness_index: Mapping[str, Any] | None = None,
     primary_witness_pdf_root: Path | None = None,
+    unresolved_row_disposition_context: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Re-query and replay every candidate through the byte-bound adapter."""
 
@@ -1749,12 +1949,36 @@ def replay_operating_expense_trials_from_source_v1(
             raise _error("Family-36 source replay rebuilt different query evidence")
         if admission is not None:
             _primary_witness_application_receipt_v1(indexed=indexed, compiled=family_compiled)
-        return build_gemini_json_operating_expense_trials_v1(
+        replayed = build_gemini_json_operating_expense_trials_v1(
             indexed_query_evidence=indexed,
             page_json_by_document=pages,
             compiled_specs=family_compiled,
             **({"primary_witness_admission": admission} if admission is not None else {}),
         )
+        if unresolved_row_disposition_context is not None:
+            context = unresolved_row_disposition_context
+            refs = {}
+            fresh_index = validate_current_corpus_manifest_index_v1(_row_json_v1(
+                context["index_path"], refs, pin=context["index_ref"]["sha256"]))
+            residual_spec = _row_json_v1(context["residual_spec_path"], refs,
+                pin=context["residual_spec_ref"]["sha256"])
+            residuals = _authenticate_pdf_residuals_v1(spec=residual_spec, index=fresh_index,
+                selected_page_axis=base["selected_page_axis"], page_json_by_document=pages,
+                trials=replayed, source_pdf_root=context["source_pdf_root"])
+            _authenticate_source_repairs_v1(compiled_specs=family_compiled, index=fresh_index,
+                selected_page_axis=base["selected_page_axis"], source_pdf_root=context["source_pdf_root"])
+            raw = build_operating_expense_source_row_coverage_receipt_v1(indexed_query_evidence=indexed,
+                trials=replayed, page_json_by_document=dict(pages), compiled_specs=family_compiled,
+                fail_on_violation=False, **({"primary_witness_admission": admission} if admission is not None else {}))
+            fresh, row_refs = _authenticate_unresolved_rows_v1(path=context["path"], pin=context["pin"],
+                residual_spec_path=context["residual_spec_path"], index=fresh_index, indexed=indexed,
+                trials=replayed, pages=dict(pages), compiled=family_compiled, coverage=raw,
+                pdf_residuals=residuals, source_pdf_root=context["source_pdf_root"], source_page_database=source_page_database)
+            _validate_source_row_coverage_receipt_v1(raw, reconciliation=fresh)
+            if not same_typed_json_v1(fresh, context["expected_reconciliation"]):
+                raise _error("Family-36 cold reconciliation differs from warm source-bound result")
+            _recheck_row_inputs_v1({**refs, **row_refs})
+        return replayed
     finally:
         if admission is not None:
             admission.close()
@@ -1769,6 +1993,7 @@ def _implementation_refs(
     primary_witness_spec: Path | None = None,
     pdf_residual_audit_spec: Path,
     pdf_visible_source_row_audit: Path,
+    row_disposition_refs: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     paths = (
         ROOT
@@ -1796,6 +2021,9 @@ def _implementation_refs(
             ROOT / "src/bctc_ai/evaluation/gemini_json_operating_expense_primary_witness_admission_v1.py",
             primary_witness_spec,
         )
+    if row_disposition_refs is not None:
+        paths += (ROOT / "src/bctc_ai/evaluation/gemini_json_operating_expense_unresolved_rows_v1.py",)
+        paths += tuple(Path(path) for path in row_disposition_refs if Path(path) not in paths)
     root = ROOT.resolve()
     return [
         generic._file_ref(
@@ -1830,6 +2058,8 @@ def _run_with_database(
         selected_page_axis=base["selected_page_axis"],
     )
     witness_path, witness_pin = _primary_witness_options_v1(args)
+    row_path, row_pin = _unresolved_row_options_v1(args)
+    row_reconciliation, row_refs, pdf_residuals = None, {}, None
     admission = None
     if witness_path is not None:
         admission = _authenticate_primary_witness_admission_v1(
@@ -1894,11 +2124,20 @@ def _run_with_database(
             page_json_by_document=dict(pages),
             compiled_specs=compiled,
             **({"primary_witness_admission": admission} if admission is not None else {}),
-            fail_on_violation=True,
+            fail_on_violation=row_path is None,
         )
-        source_row_coverage = _validate_source_row_coverage_receipt_v1(
-            source_row_coverage
-        )
+        if row_path is not None:
+            pdf_residuals = _authenticate_pdf_residuals_v1(
+                spec=generic._json(args.pdf_residual_audit_spec), index=index,
+                selected_page_axis=base["selected_page_axis"], page_json_by_document=pages,
+                trials=trials, source_pdf_root=args.source_pdf_root)
+            row_reconciliation, row_refs = _authenticate_unresolved_rows_v1(
+                path=row_path, pin=row_pin, residual_spec_path=args.pdf_residual_audit_spec,
+                index=index, indexed=indexed, trials=trials, pages=dict(pages), compiled=compiled,
+                coverage=source_row_coverage, pdf_residuals=pdf_residuals, source_pdf_root=args.source_pdf_root, source_page_database=database)
+            _validate_source_row_coverage_receipt_v1(source_row_coverage, reconciliation=row_reconciliation)
+        else:
+            _validate_source_row_coverage_receipt_v1(source_row_coverage)
         source_repair_authentication = _authenticate_source_repairs_v1(
             compiled_specs=compiled,
             index=index,
@@ -1914,15 +2153,17 @@ def _run_with_database(
             selected_page_axis=base["selected_page_axis"],
             source_row_coverage=source_row_coverage,
             source_pdf_root=args.source_pdf_root,
+            **({"reconciliation": row_reconciliation} if row_reconciliation is not None else {}),
         )
-        pdf_residuals = _authenticate_pdf_residuals_v1(
-            spec=generic._json(args.pdf_residual_audit_spec),
-            index=index,
-            selected_page_axis=base["selected_page_axis"],
-            page_json_by_document=pages,
-            trials=trials,
-            source_pdf_root=args.source_pdf_root,
-        )
+        if pdf_residuals is None:
+            pdf_residuals = _authenticate_pdf_residuals_v1(
+                spec=generic._json(args.pdf_residual_audit_spec),
+                index=index,
+                selected_page_axis=base["selected_page_axis"],
+                page_json_by_document=pages,
+                trials=trials,
+                source_pdf_root=args.source_pdf_root,
+            )
         historical_receipt = _historical_policy_receipt_v1(
             index=index,
             selected_ids=selected_ids,
@@ -1944,10 +2185,13 @@ def _run_with_database(
             pdf_residuals=pdf_residuals,
             selected_ids=selected_ids,
             spec_refs=spec_refs,
+            **({"row_disposition_reconciliation": row_reconciliation} if row_reconciliation is not None else {}),
+            **({"primary_witness_application": witness_application} if witness_application is not None else {}),
         )
         validate_operating_expense_experimental_audit_v1(audit)
         if admission is not None:
             admission.recheck()
+        _recheck_row_inputs_v1(row_refs)
         database_guard.validate()
         generic._write_once(args.output, sweep)
         audit_output = args.output.with_suffix(".audit.json")
@@ -1962,6 +2206,17 @@ def _run_with_database(
             source_adapter = _make_primary_witness_source_replay_adapter_v1(
                 path=witness_path, expected_sha256=witness_pin, index=index,
                 source_pdf_root=args.source_pdf_root)
+        if row_reconciliation is not None:
+            context = {"path": row_path, "pin": row_pin, "source_pdf_root": args.source_pdf_root,
+                       "index_path": args.corpus_index, "index_ref": generic._file_ref(args.corpus_index),
+                       "residual_spec_path": args.pdf_residual_audit_spec,
+                       "residual_spec_ref": generic._file_ref(args.pdf_residual_audit_spec),
+                       "expected_reconciliation": canonical_clone_v1(row_reconciliation)}
+            def source_adapter(*, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence):
+                return replay_operating_expense_trials_from_source_v1(
+                    source_page_database=source_page_database, selected_page_json_version_ids=selected_page_json_version_ids,
+                    compiled_specs=compiled_specs, indexed_query_evidence=indexed_query_evidence,
+                    **witness_replay_kwargs, unresolved_row_disposition_context=context)
         stored = ingest_gemini_accounting_family_sweep_v1(
             args.results_database,
             sweep=sweep,
@@ -1974,6 +2229,7 @@ def _run_with_database(
                 source_repair_spec=args.source_repair_spec,
                 pdf_residual_audit_spec=args.pdf_residual_audit_spec,
                 pdf_visible_source_row_audit=args.pdf_visible_source_row_audit,
+                **({"row_disposition_refs": row_refs} if row_reconciliation is not None else {}),
             ),
             run_kind="EXPERIMENTAL",
             source_page_database=database,
@@ -1994,6 +2250,7 @@ def _run_with_database(
             output_path=args.output,
         )
         database_guard.validate()
+        _recheck_row_inputs_v1(row_refs)
         result = {
             "audit_id": audit["audit_id"],
             "audit_output": str(audit_output),
@@ -2016,10 +2273,15 @@ def _run_with_database(
         }
         if witness_application is not None:
             result["primary_witness_application_receipt"] = witness_application
+        if row_reconciliation is not None:
+            result["unresolved_row_disposition_receipt"] = row_reconciliation
         return result
     finally:
-        if admission is not None:
-            admission.close()
+        try:
+            _recheck_row_inputs_v1(row_refs)
+        finally:
+            if admission is not None:
+                admission.close()
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -2076,6 +2338,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if witness_path is not None:
         spec_refs["primary_witness"] = generic._file_ref(
             witness_path, root=ROOT if witness_path.is_relative_to(ROOT) else None)
+    row_path, _row_pin = _unresolved_row_options_v1(args)
+    if row_path is not None:
+        spec_refs["unresolved_row_disposition"] = generic._file_ref(row_path)
     with generic._authenticated_sqlite_snapshot(
         database, reference=index["database_ref"]
     ) as database_guard:
@@ -2106,6 +2371,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--primary-witness-spec", type=Path)
     parser.add_argument("--expected-primary-witness-sha256")
+    parser.add_argument("--unresolved-row-disposition-spec", type=Path)
+    parser.add_argument("--expected-unresolved-row-disposition-sha256")
     parser.add_argument("--pdf-residual-audit-spec", type=Path, required=True)
     parser.add_argument("--pdf-visible-source-row-audit", type=Path, required=True)
     parser.add_argument("--source-pdf-root", type=Path, required=True)
