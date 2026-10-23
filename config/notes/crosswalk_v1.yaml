@@ -1,0 +1,19 @@
+# (concept, axis, member) -> legacy ReportNormId in Bank_TM_ReportNormId.v2.xlsx
+# (UNIVERSAL_BANK_BCTC_SCHEMA@6076). Lets the dimensional results fill the
+# existing template. Adding a member or a concept adds rows here only.
+# A cell without a legacy ID is still stored and comparable by (concept,
+# axis, member); it simply has no column in the legacy template.
+format_version: NOTES_CROSSWALK_V1
+schema_revision: UNIVERSAL_BANK_BCTC_SCHEMA@6076
+
+entries:
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G1, report_norm_id: 747}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G2, report_norm_id: 748}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G3, report_norm_id: 749}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G4, report_norm_id: 750}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G5, report_norm_id: 751}
+  # 746 is the analysed total: the grand total when the table prints margin
+  # lending / pending items beside the five groups (= gross loans), else the
+  # five-group total.
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, members_in_preference: [GRAND_TOTAL, TOTAL_FIVE_GROUPS], report_norm_id: 746}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: MARGIN_AND_SECURITIES_ADVANCE, report_norm_id: 1944}

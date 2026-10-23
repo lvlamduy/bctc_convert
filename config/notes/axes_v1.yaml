@@ -1,0 +1,35 @@
+# Dimension axes for notes (thuyết minh). An axis is a closed list of members
+# shared by every concept that is broken down along it, so "Nhóm 2" of loans,
+# of debt securities and of purchased debt are the same member. Aliases are
+# matched on PRIMARY_LABEL_KEY_V1 keys (accents folded, enumerators/bullets
+# removed); a row matches a member only when exactly one member accepts it.
+# Adding a member never changes other members or other axes.
+format_version: NOTES_AXES_V1
+
+axes:
+  CREDIT_QUALITY_GROUP:
+    description: Phân loại nợ theo 5 nhóm (TT11/2021, TT31/2024)
+    members:
+      G1:
+        name: Nhóm 1 - Nợ đủ tiêu chuẩn
+        aliases: [nhom 1, no du tieu chuan, nhom 1 no du tieu chuan, du tieu chuan]
+      G2:
+        name: Nhóm 2 - Nợ cần chú ý
+        aliases: [nhom 2, no can chu y, nhom 2 no can chu y, can chu y]
+      G3:
+        name: Nhóm 3 - Nợ dưới tiêu chuẩn
+        aliases: [nhom 3, no duoi tieu chuan, nhom 3 no duoi tieu chuan, duoi tieu chuan]
+      G4:
+        name: Nhóm 4 - Nợ nghi ngờ
+        aliases: [nhom 4, no nghi ngo, nhom 4 no nghi ngo, nghi ngo]
+      G5:
+        name: Nhóm 5 - Nợ có khả năng mất vốn
+        aliases: [nhom 5, no co kha nang mat von, nhom 5 no co kha nang mat von, co kha nang mat von]
+    # Printed alongside the five groups by some banks; outside the 5-group sum.
+    outside_members:
+      PENDING_WITH_FORECLOSED_COLLATERAL:
+        name: Nợ chờ xử lý đã có tài sản gán, xiết nợ
+        contains_all: [[cho xu ly, gan], [cho xu ly, xiet]]
+      MARGIN_AND_SECURITIES_ADVANCE:
+        name: Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán
+        contains_all: [[ky quy], [ung truoc tien ban chung khoan]]
