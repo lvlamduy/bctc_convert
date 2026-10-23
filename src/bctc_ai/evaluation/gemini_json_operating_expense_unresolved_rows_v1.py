@@ -268,11 +268,13 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
             need(printed is not None and printed[1] == str(len(operands) + 1), "top-level source numbering is not contiguous ASCII1..N")
             role = next(iter(roles[ordinal]))
             need(role not in operand_roles, "top-level operand role is not unique")
-            if role not in compiled_specs["root_component_roles"]:
+            if role == "GENERIC_PROVISION_SOURCE_ONLY":
                 null_generic.append(_null_generic_proof_v1(family, role=role,
                     row=original_table["rows"][ordinal - 1], ordinal=ordinal, printed=printed,
                     source_only_rows=extracted["source_only_rows"], locator={k: region[k] for k in LOCATOR},
                     cols=cols, compiled_specs=compiled_specs))
+            else:
+                need(role in compiled_specs["root_component_roles"], "noncanonical frontier role is unsupported")
             need(label not in parent_labels, "duplicate top-level operand")
             operands.append(ordinal)
             operand_roles.append(role)
@@ -285,7 +287,7 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
     for equation in compiled_specs["evaluation"].get("derived_role_equations", []):
         need(not (equation["result_role"] in operand_roles and set(equation["component_roles"]) & set(operand_roles)),
              "aggregate and its flat detail cannot both be root operands")
-    need(sum(role in compiled_specs["root_component_roles"] for role in operand_roles)
+    need(len(operands) - len(null_generic)
          >= compiled_specs["evaluation"]["minimum_source_visible_root_component_count"], "incomplete source frontier")
     unknown, numbers = [], []
     locator = {k: region[k] for k in LOCATOR}
