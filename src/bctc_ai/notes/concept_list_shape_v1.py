@@ -115,23 +115,38 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
     return roles
 
 
-def _printed_under_member(table: NoteTable, roles: list[RowRole], index: int) -> bool:
-    """An unread row printed (parent_row_id chain) under a read line is that line's detail, not a missing term.
+def detail_parent_line_v1(table: NoteTable, roles: list[RowRole], index: int) -> tuple[str | None, str]:
+    """The read line an unread row is printed detail of, or (None, reason).
 
-    Only printed nesting counts, never position. Such a row does not open an
-    equation span: the line it details is already a term (or not) as a whole.
+    Finite policy: only the IMMEDIATE parent (no walk through intermediate
+    rows); row ids unique in the table; no self-parent; the parent row exists
+    and is a MEMBER (never AMBIGUOUS/SOURCE_ONLY/HEADING); and the link is
+    re-proven from the raw ``hierarchy_path_exact`` fields: the child's path
+    minus its own last element equals the parent's path, whose last element is
+    the parent's printed label. ``parent_row_id`` alone (an ETL-derived link)
+    is not accepted as proof.
     """
 
-    members = {role.row_index for role in roles if role.disposition == "MEMBER"}
-    position = {row.row_id: i for i, row in enumerate(table.rows)}
-    row, seen = table.rows[index], set()
-    while row.parent_row_id and row.parent_row_id in position and row.parent_row_id not in seen:
-        seen.add(row.parent_row_id)
-        parent = position[row.parent_row_id]
-        if parent in members:
-            return True
-        row = table.rows[parent]
-    return False
+    ids = [row.row_id for row in table.rows]
+    if len(set(ids)) != len(ids):
+        return None, "DUPLICATE_ROW_IDS"
+    row = table.rows[index]
+    if not row.parent_row_id:
+        return None, "NO_PRINTED_PARENT"
+    if row.parent_row_id == row.row_id:
+        return None, "SELF_PARENT"
+    if row.parent_row_id not in ids:
+        return None, "PARENT_NOT_IN_TABLE"
+    parent_index = ids.index(row.parent_row_id)
+    parent = table.rows[parent_index]
+    role = next((r for r in roles if r.row_index == parent_index), None)
+    if role is None or role.disposition != "MEMBER":
+        return None, "PARENT_NOT_A_READ_LINE"
+    child_path, parent_path = list(row.hierarchy), list(parent.hierarchy)
+    if (len(child_path) < 2 or child_path[-1] != row.label or child_path[:-1] != parent_path
+            or not parent_path or parent_path[-1] != parent.label):
+        return None, "RAW_HIERARCHY_PATH_DOES_NOT_PROVE_PARENT"
+    return role.role, "PRINTED_DETAIL_OF_READ_LINE"
 
 
 def _number(parsed) -> Decimal | None:
@@ -150,11 +165,14 @@ def _first_present(groups: list[list[str]], values: dict[str, Any]) -> list[str]
 
 
 def evaluate_equations_v1(family: Family, values: dict[str, Any], unit: str | None, lane_id: str,
-                          line_rows: dict[str, int] | None = None, unmatched_rows: list[int] | None = None) -> list[dict[str, Any]]:
+                          line_rows: dict[str, int] | None = None,
+                          unread_rows: list[tuple[int, str | None]] | None = None) -> list[dict[str, Any]]:
     """Note arithmetic with a fixed structure per family (see ``equations``); proof or hold, never membership.
 
     An equation whose printed span (first to last involved row) contains a
-    valued row that no line rule reads is INCOMPLETE: no proof and no hold.
+    valued unread row is INCOMPLETE: no proof and no hold - unless that row is
+    proven printed detail (``detail_parent_line_v1``) of a line that is itself
+    this equation's target or one of its terms; excused rows are recorded.
     """
 
     results = []
@@ -172,10 +190,15 @@ def evaluate_equations_v1(family: Family, values: dict[str, Any], unit: str | No
             continue
         record = {"name": equation["name"], "lane": lane_id, "equals": equation["equals"], "terms": terms}
         if line_rows:
-            span = [line_rows[line] for line in [equation["equals"], *terms] if line in line_rows]
-            inside = [i for i in unmatched_rows or [] if min(span) < i < max(span)]
-            if inside:
-                results.append({**record, "status": "INCOMPLETE_UNREAD_ROWS_IN_SPAN", "rows": inside})
+            lines = {equation["equals"], *terms}
+            span = [line_rows[line] for line in lines if line in line_rows]
+            inside = [(i, parent) for i, parent in unread_rows or [] if min(span) < i < max(span)]
+            excused = [i for i, parent in inside if parent in lines]
+            blocking = [i for i, parent in inside if parent not in lines]
+            if excused:
+                record["excused_detail_rows"] = excused
+            if blocking:
+                results.append({**record, "status": "INCOMPLETE_UNREAD_ROWS_IN_SPAN", "rows": blocking})
                 continue
         involved = [values[line] for line in [equation["equals"], *terms]]
         if any(p.state not in NUMERIC for p in involved):
@@ -261,11 +284,20 @@ def evaluate_concept_table_v1(
         values = {role.role: parse_cell_v1(table, table.rows[role.row_index], lane.column, separators, document.separator_roles)
                   for role in roles if role.disposition == "MEMBER"}
         line_rows = {role.role: role.row_index for role in roles if role.disposition == "MEMBER"}
-        unmatched = [role.row_index for role in roles
-                     if (role.disposition == "AMBIGUOUS"
-                         or (role.disposition == "SOURCE_ONLY" and not _printed_under_member(table, roles, role.row_index)))
-                     and table.cells.get((table.rows[role.row_index].row_id, lane.column.column_id), (None, "BLANK"))[1] != "BLANK"]
-        equations = evaluate_equations_v1(family, values, lane.unit, lane.column.column_id, line_rows, unmatched)
+        unread = []
+        for role in roles:
+            if role.disposition not in {"SOURCE_ONLY", "AMBIGUOUS"}:
+                continue
+            if table.cells.get((table.rows[role.row_index].row_id, lane.column.column_id), (None, "BLANK"))[1] == "BLANK":
+                continue
+            parent = None
+            if role.disposition == "SOURCE_ONLY":
+                parent, _reason = detail_parent_line_v1(table, roles, role.row_index)
+                # The parent must itself carry a parsed amount in this lane to contain its detail.
+                if parent is not None and (parent not in values or values[parent].state not in NUMERIC):
+                    parent = None
+            unread.append((role.row_index, parent))
+        equations = evaluate_equations_v1(family, values, lane.unit, lane.column.column_id, line_rows, unread)
         evaluation.equations += equations
         checks = anchor_checks_v1(family, document, values, lane.unit, lane.period_key) if lane.period_key else []
         evaluation.corroboration += [{**c, "lane": lane.column.column_id} for c in checks]

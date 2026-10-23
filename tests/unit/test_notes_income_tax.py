@@ -385,15 +385,50 @@ def test_raw_guard_runs_before_the_owned_context_parser():
     assert lanes[1].period_key == "DURATION:MONTHS_ENDED:9:2025-09-30"  # accented words stay valid
 
 
-def test_unread_row_printed_under_a_read_line_does_not_open_the_equation(family):
-    rows = [("Lợi nhuận trước thuế", ["100", "90"]), ("Chi phí không được khấu trừ", ["5", "5"]),
-            ("Chi phí tiếp khách vượt định mức", ["5", "5"]), ("Thu nhập chịu thuế", ["105", "95"])]
+def nested_table(parent_label="Chi phí không được khấu trừ", parent_values=("5", "5"), child_parent="r1",
+                 child_path=None, parent_path=None, extra_rows=()):
+    rows = [("Lợi nhuận trước thuế", ["100", "90"]), (parent_label, list(parent_values)),
+            ("Chi phí tiếp khách vượt định mức", ["5", "5"]), *extra_rows, ("Thu nhập chịu thuế", ["105", "95"])]
     table = make_table(rows, [("Năm 2025",), ("Năm 2024",)])
-    row = table.rows[2]
-    table.rows[2] = NoteRow(row.row_id, row.order, row.label, row.kind, row.hierarchy, "r1")  # printed child of r1
+    parent_path = (parent_label,) if parent_path is None else parent_path
+    child_path = (parent_label, "Chi phí tiếp khách vượt định mức") if child_path is None else child_path
+    p, c = table.rows[1], table.rows[2]
+    table.rows[1] = NoteRow(p.row_id, p.order, p.label, p.kind, parent_path, None)
+    table.rows[2] = NoteRow(c.row_id, c.order, c.label, c.kind, child_path, child_parent)
+    return table
+
+
+def taxable_status(family, table, lane="c1"):
     evaluations = evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), [])
-    assert {e["status"] for e in evaluations[0].equations if e["name"] == "TAXABLE_FROM_PROFIT"} == {"PASS"}
-    # Without printed nesting the same row is an unread term: incomplete, lines held.
-    flat = make_table(rows, [("Năm 2025",), ("Năm 2024",)])
-    flat_eval = evaluate_concept_table_v1(flat, family, document(quarter=4), context_of(flat), [])
-    assert {e["status"] for e in flat_eval[0].equations if e["name"] == "TAXABLE_FROM_PROFIT"} == {"INCOMPLETE_UNREAD_ROWS_IN_SPAN"}
+    return {e["status"] for e in evaluations[0].equations if e["name"] == "TAXABLE_FROM_PROFIT" and e["lane"] == lane}
+
+
+def test_unread_row_proven_as_printed_detail_of_a_term_does_not_open_the_equation(family):
+    assert taxable_status(family, nested_table()) == {"PASS"}
+    flat = make_table([("Lợi nhuận trước thuế", ["100", "90"]), ("Chi phí không được khấu trừ", ["5", "5"]),
+                       ("Chi phí tiếp khách vượt định mức", ["5", "5"]), ("Thu nhập chịu thuế", ["105", "95"])],
+                      [("Năm 2025",), ("Năm 2024",)])
+    assert taxable_status(family, flat) == {"INCOMPLETE_UNREAD_ROWS_IN_SPAN"}
+
+
+@pytest.mark.parametrize("case", ["raw_path_disagrees", "self_parent", "parent_missing", "parent_ambiguous",
+                                  "parent_blank_in_lane", "parent_not_in_equation", "duplicate_row_ids"])
+def test_unread_detail_is_never_excused_without_full_printed_proof(family, case):
+    if case == "raw_path_disagrees":
+        table = nested_table(child_path=("Khác", "Chi phí tiếp khách vượt định mức"))
+    elif case == "self_parent":
+        table = nested_table(child_parent="r2")
+    elif case == "parent_missing":
+        table = nested_table(child_parent="r99")
+    elif case == "parent_ambiguous":
+        # The parent's line is printed twice, so the parent is AMBIGUOUS: it never contains detail.
+        table = nested_table(extra_rows=[("Chi phí không được khấu trừ", ["1", "1"])])
+    elif case == "parent_blank_in_lane":
+        table = nested_table(parent_values=(None, "5"))
+    elif case == "parent_not_in_equation":
+        table = nested_table(parent_label="Thuế TNDN đã nộp trong kỳ")
+    else:
+        table = nested_table()
+        dup = table.rows[3]
+        table.rows[3] = NoteRow("r1", dup.order, dup.label, dup.kind, dup.hierarchy, dup.parent_row_id)
+    assert "PASS" not in taxable_status(family, table)
