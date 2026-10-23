@@ -2,6 +2,11 @@
 
 Run only in a root-reviewed isolated checkout after applying that proposal and
 obtaining the runtime lease. No source DB/PDF/corpus fixtures or producer mocks.
+V1 actual root smoke retained 15PASS/5FAIL, including the two positive source
+cases: trace b84aace96c4e5bcbb8b40ed2bb80fbdc223e4d096977b35fedbb99e05e6f4574
+isolated exact duplicated record refs versus unique pre-retry refs. V2 uses only
+the existing exact-typed deduper on private comparison copies; no source guard
+or positive precondition is relaxed. These V2 tests remain unexecuted.
 The positive explicitly requires the frozen shared engine to be READY-derived
 on the SAME source/specs; a failed precondition is a failing draft, not a reason
 to fabricate that state. Actual corpus applicability remains NOT_INSPECTED.
@@ -106,6 +111,9 @@ def test_same_source_shared_ready_derived_becomes_fresh_printed_root_and_replays
     assert actual["status"] == READY and actual["reasons"] == []
     root = _root(actual)
     assert root["state"] == PRINTED
+    assert [item for item in actual["mappings"] if item["role"] != "FAMILY_ROOT_TOTAL"] == [
+        item for item in shared["mappings"] if item["role"] != "FAMILY_ROOT_TOTAL"
+    ]
     assert root["row_id"] == "r5"
     assert len(root["source_refs"]) == 1
     assert root["source_refs"][0]["row_ordinal"] == 5
@@ -119,6 +127,12 @@ def test_same_source_shared_ready_derived_becomes_fresh_printed_root_and_replays
     assert prior["original_status"] == READY and prior["original_reasons"] == []
     assert prior["superseded_root_mapping"] == _root(shared)
     assert prior["equation_authority"] == "FRESH_TABLE_LOCAL_SOURCE_EXTRACTION"
+    comparison = prior["nonroot_comparison"]
+    assert comparison["prior_deduplication_receipts"] == []
+    rebuilt_dedup = comparison["reconstructed_deduplication_receipts"]
+    assert len(rebuilt_dedup) == 4
+    assert all(item["before_source_ref_count"] == 2 and item["after_source_ref_count"] == 1 for item in rebuilt_dedup)
+    assert [item for item in adapter["source_ref_deduplication_receipts"] if item["role"] != "FAMILY_ROOT_TOTAL"] == rebuilt_dedup
     assert proof["original_reasons"] == []
     assert proof["equation"]["status"] == "EXACT"
     for row in actual["closure_receipt"]["source_only_unmapped_rows"]:
@@ -165,7 +179,7 @@ def test_public_missing_invalid_or_open_source_never_gains_printed_root(attack):
     assert canonical_json_bytes_v1([pages, compiled]) == before
 
 
-@pytest.mark.parametrize("attack", ["optional", "reasons", "nonroot_change", "nonroot_drop", "alias_collision", "wrong_owner"])
+@pytest.mark.parametrize("attack", ["optional", "reasons", "nonroot_change", "nonroot_drop", "distinct_ref", "alias_collision", "wrong_owner"])
 def test_narrow_retry_failure_preserves_candidate_and_never_grants_other_authority(attack):
     pages, regions, _query, _compiled, private_specs, shared = _inputs(_page())
     _assert_seed(shared)
@@ -177,6 +191,17 @@ def test_narrow_retry_failure_preserves_candidate_and_never_grants_other_authori
         next(item for item in shared["mappings"] if item["role"] != "FAMILY_ROOT_TOTAL")["unit"] = "VND"
     elif attack == "nonroot_drop":
         shared["mappings"] = [item for item in shared["mappings"] if item["role"] != "TAX_FEES"]
+    elif attack == "distinct_ref":
+        mapping = next(item for item in shared["mappings"] if item["role"] == "TAX_FEES")
+        distinct = copy.deepcopy(mapping["source_refs"][0])
+        distinct["row_ordinal"] += 1
+        distinct["row_id"] = "r2"
+        mapping["source_refs"].append(distinct)
+        mapping["row_id"] = "corroborated:" + mapping["role"]
+        body = {key: value for key, value in mapping.items() if key != "item_mapping_id"}
+        mapping["item_mapping_id"] = "gjmthfmv1:item:" + canonical_json_sha256_v1(body)
+        body = {key: value for key, value in shared.items() if key != "candidate_id"}
+        shared["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(body)
     elif attack == "alias_collision":
         rows = pages[fixture.VERSION_ID]["sections"][0]["tables"][0]["rows"]
         rows.insert(-1, fixture._row("Chi phí quản lý chung", "-", "-"))

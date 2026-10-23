@@ -3786,13 +3786,29 @@ def _operating_expense_root_closure_retry(
             }
         )
 
-    if prior_derived_root is not None and not same_typed_json_v1(
-        [item for item in candidate["mappings"] if item["role"] != "FAMILY_ROOT_TOTAL"],
-        [item for item in mappings if item["role"] != "FAMILY_ROOT_TOTAL"],
-    ):
-        # This route replaces only a derived root. It cannot silently remove,
-        # rebind or reconstruct a different nonroot proposal/derived parent.
-        return None, [], []
+    nonroot_comparison = None
+    if prior_derived_root is not None:
+        prior_nonroot = {"mappings": canonical_clone_v1([
+            item for item in candidate["mappings"] if item["role"] != "FAMILY_ROOT_TOTAL"
+        ])}
+        rebuilt_nonroot = {"mappings": canonical_clone_v1([
+            item for item in mappings if item["role"] != "FAMILY_ROOT_TOTAL"
+        ])}
+        prior_dedup = _deduplicate_exact_mapping_source_refs(prior_nonroot)
+        rebuilt_dedup = _deduplicate_exact_mapping_source_refs(rebuilt_nonroot)
+        if not same_typed_json_v1(prior_nonroot["mappings"], rebuilt_nonroot["mappings"]):
+            return None, [], []
+        # Normalize only exact typed duplicate refs on private comparison
+        # clones. Actual rebuilt mappings still reach the final normalizer.
+        nonroot_comparison = {
+            "prior_deduplication_receipts": prior_dedup,
+            "reconstructed_deduplication_receipts": rebuilt_dedup,
+            "rule": (
+                "PRIVATE_COMPARISON_ONLY_EXISTING_EXACT_TYPED_SOURCE_REF_DEDUP_"
+                "THEN_FULL_TYPED_ORDERED_MAPPING_EQUALITY_NO_DISTINCT_REF_VALUE_"
+                "STATE_UNIT_ROLE_OR_COORDINATE_NORMALIZATION"
+            ),
+        }
 
     retried = canonical_clone_v1(candidate)
     retried["mappings"] = mappings
@@ -3851,6 +3867,7 @@ def _operating_expense_root_closure_retry(
             "original_reasons": [],
             "superseded_root_mapping": canonical_clone_v1(prior_derived_root),
             "equation_authority": "FRESH_TABLE_LOCAL_SOURCE_EXTRACTION",
+            "nonroot_comparison": nonroot_comparison,
             "rule": (
                 "REQUIRED_PRINTED_ROOT_REPLACES_ONLY_ONE_READY_DERIVED_ROOT_"
                 "AFTER_UNIQUE_CLOSED_TERMINAL_SOURCE_FRONTIER_PROOF_"
