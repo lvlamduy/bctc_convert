@@ -208,7 +208,10 @@ axes:
       SALARY_ALLOWANCE: {name: Chi lương và phụ cấp, all_of: [[luong, phu cap], [chi luong], [tien luong], [luong va thuong]],
                          none_of: [[dong gop], [theo luong]]}
       PAYROLL_CONTRIBUTIONS: {name: "Các khoản chi đóng góp theo lương (BHXH, BHYT, KPCĐ)",
-                              all_of: [[dong gop theo luong], [dong theo luong], [bao hiem xa hoi], [kinh phi cong doan]]}
+                              all_of: [[dong gop theo luong], [dong theo luong], [bao hiem xa hoi], [kinh phi cong doan]],
+                              # Read only under its proven printed owner line (Codex 0122): never top-level,
+                              # under ASSET, an unknown/ambiguous parent, or an owner printed after it.
+                              owner: [EMPLOYEE_EXPENSE]}
       EMPLOYEE_BENEFIT: {name: Chi trợ cấp, all_of: [[tro cap]]}
       UNIFORM_EXPENSE: {name: "Chi trang phục giao dịch, bảo hộ lao động", all_of: [[trang phuc], [bao ho lao dong]]}
       OTHER_EMPLOYEE_EXPENSE: {name: Chi khác cho nhân viên, all_of: [[chi khac cho nhan vien], [chi phi khac cho nhan vien]],

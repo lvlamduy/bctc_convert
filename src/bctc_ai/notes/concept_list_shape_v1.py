@@ -8,7 +8,8 @@ The shape never chooses between competing readings:
 
 * a row matching two lines, or a line printed twice (whatever the values),
   is held; a parent-scoped rule ("Chi khác" under "Chi phí cho nhân viên")
-  applies only under a printed parent (parent_row_id or hierarchy path);
+  applies only under a proven printed parent (parent_row_id re-proven by the
+  raw hierarchy paths, printed before the row; no hierarchy-component fallback);
 * a lane's period comes from printed evidence only (kernel
   ``resolve_duration_lanes_v1``); a header leaving "quarter or year-to-date"
   open keeps both candidates and the lane is held — the income statement
@@ -47,24 +48,56 @@ from bctc_ai.notes.list_shape_v1 import (
     owned_date_texts_v1,
     resolve_subject_v1,
 )
-from bctc_ai.primary_statements.text_v1 import fold_vietnamese, label_key_v1
+from bctc_ai.primary_statements.text_v1 import fold_vietnamese
 from bctc_ai.primary_statements.units_v1 import SCALE
 
 NUMERIC = {"VALUE", "PRINTED_ZERO"}
 
 
-def _printed_parent_key(table: NoteTable, index: int) -> str | None:
-    """The label key of the row's printed parent (parent_row_id, else hierarchy path), never a position."""
+def proven_parent_index_v1(table: NoteTable, index: int) -> tuple[int | None, str]:
+    """The row's printed parent, proven, else (None, reason).
 
+    ``parent_row_id`` must name a unique row of this table printed BEFORE the row, and the raw
+    hierarchy paths must agree: the child's path minus its own label equals the parent's path, which
+    ends in the parent's printed label. No fallback to a hierarchy component, a position or an amount.
+    """
+
+    ids = [row.row_id for row in table.rows]
+    if len(set(ids)) != len(ids):
+        return None, "DUPLICATE_ROW_IDS"
     row = table.rows[index]
-    if row.parent_row_id:
-        parent = next((r for r in table.rows if r.row_id == row.parent_row_id), None)
-        if parent is not None and parent.label:
-            return parent.key
-    path = [part for part in row.hierarchy if part]
-    if path and path[-1] == row.label:
-        path = path[:-1]
-    return label_key_v1(path[-1]).key if path else None
+    if not row.parent_row_id:
+        return None, "NO_PRINTED_PARENT"
+    if row.parent_row_id == row.row_id:
+        return None, "SELF_PARENT"
+    if row.parent_row_id not in ids:
+        return None, "PARENT_NOT_IN_TABLE"
+    parent_index = ids.index(row.parent_row_id)
+    if parent_index >= index:
+        return None, "PARENT_PRINTED_AFTER_CHILD"
+    parent = table.rows[parent_index]
+    child_path, parent_path = list(row.hierarchy), list(parent.hierarchy)
+    if (len(child_path) < 2 or child_path[-1] != row.label or child_path[:-1] != parent_path
+            or not parent_path or parent_path[-1] != parent.label):
+        return None, "RAW_HIERARCHY_PATH_DOES_NOT_PROVE_PARENT"
+    return parent_index, "PROVEN_PRINTED_PARENT"
+
+
+def _proven_parent_line(table: NoteTable, index: int, family: Family) -> tuple[str | None, str]:
+    """The single axis line of the row's proven printed parent, else (None, reason)."""
+
+    parent_index, reason = proven_parent_index_v1(table, index)
+    if parent_index is None:
+        return None, reason
+    parent = table.rows[parent_index]
+    lines = family.axis.match(parent.key) if parent.key else []
+    if len(lines) != 1:
+        return None, "PARENT_LINE_AMBIGUOUS" if lines else "PARENT_IS_NOT_A_LINE"
+    return lines[0], "PROVEN_PARENT_LINE"
+
+
+def _claims_parent(row) -> bool:
+    return bool(row.parent_row_id) or len([part for part in row.hierarchy if part]) > 1
 
 
 def _scoped_match(spec: dict[str, Any], key: str) -> bool:
@@ -78,8 +111,11 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
     """One line per valued row, or an explicit reason why not.
 
     A member's ``scoped`` rule (bare "Chi khác", "Dự phòng chung") matches
-    only under a printed parent of one of ``scoped.within``; without a printed
-    parent it never matches. ``not_within`` excludes a member under those parents.
+    only under a PROVEN printed parent (``proven_parent_index_v1``) of one of
+    ``scoped.within``; without one it never matches. ``owner`` binds a line to
+    its proven printed owner (e.g. payroll contributions under the employee
+    expense line); ``not_within`` excludes a member under those parents and
+    also when the row claims a parent that cannot be proven.
     """
 
     members = family.axis.members
@@ -91,12 +127,20 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             continue
         matches = family.axis.match(key) if key else []
         scoped = [m for m, spec in members.items() if spec.get("scoped") and key and _scoped_match(spec, key)]
-        if scoped or any(members.get(m, {}).get("not_within") for m in matches):
-            parent_key = _printed_parent_key(table, index)
-            parents = family.axis.match(parent_key) if parent_key else []
-            parent_line = parents[0] if len(parents) == 1 else None
-            matches = [m for m in matches if not (parent_line and parent_line in members.get(m, {}).get("not_within", []))]
+        owned = [m for m in matches if members.get(m, {}).get("owner")]
+        blocked: list[str] = []
+        if scoped or owned or any(members.get(m, {}).get("not_within") for m in matches):
+            parent_line, parent_reason = _proven_parent_line(table, index, family)
+            excluded = [m for m in matches if members.get(m, {}).get("not_within")
+                        and (parent_line in members[m]["not_within"] or (parent_line is None and _claims_parent(row)))]
+            # An owner-bound line is read only under its proven printed owner (never by amount or position).
+            blocked = [m for m in owned if parent_line not in members[m]["owner"]] + excluded
+            matches = [m for m in matches if m not in blocked]
             matches += [m for m in scoped if parent_line in members[m]["scoped"]["within"] and m not in matches]
+            if blocked and not matches:
+                why = parent_reason if parent_line is None else "PARENT_LINE_" + parent_line
+                roles.append(RowRole(index, None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:" + why, blocked))
+                continue
         if len(matches) > 1:
             roles.append(RowRole(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES", matches))
         elif matches:

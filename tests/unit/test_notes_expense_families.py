@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,16 @@ def config():
     return load_notes_config_v1(ROOT)
 
 
+def link(table, child, parent):
+    """Print ``child`` under ``parent`` as the source does: parent_row_id plus the raw hierarchy path."""
+
+    owner = table.rows[parent]
+    if not owner.hierarchy:
+        owner = table.rows[parent] = replace(owner, hierarchy=(owner.label,))
+    row = table.rows[child]
+    table.rows[child] = replace(row, hierarchy=(*owner.hierarchy, row.label), parent_row_id=owner.row_id)
+
+
 def opex_table():
     rows = [
         ("Chi nộp thuế và các khoản phí, lệ phí", ["10", "9"]),
@@ -42,8 +53,7 @@ def opex_table():
     table = make_table(rows, [("Năm 2025",), ("Năm 2024",)], title="30. Chi phí hoạt động")
     parents = {2: 1, 3: 1, 4: 1, 6: 5, 7: 5, 9: 8, 10: 8}  # child row -> printed parent row
     for child, parent in parents.items():
-        row = table.rows[child]
-        table.rows[child] = NoteRow(row.row_id, row.order, row.label, row.kind, row.hierarchy, f"r{parent}")
+        link(table, child, parent)
     return table
 
 
@@ -83,8 +93,7 @@ def test_credit_provision_general_and_specific_need_a_printed_subject_parent(con
             ("Hoàn nhập dự phòng rủi ro cho các cam kết ngoại bảng", ["(5)", "(2)"]), ("Tổng cộng", ["335", "298"])]
     table = make_table(rows, [("Năm 2025",), ("Năm 2024",)], title="29. Chi phí dự phòng rủi ro tín dụng")
     for child in (1, 2):
-        row = table.rows[child]
-        table.rows[child] = NoteRow(row.row_id, row.order, row.label, row.kind, row.hierarchy, "r0")
+        link(table, child, 0)
     lines = [r.role for r in assign_lines_v1(table, family)]
     assert lines == ["CUSTOMER_PROVISION", "CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC", "VAMC_PROVISION",
                      "OFF_BALANCE_PROVISION", "TOTAL_CREDIT_PROVISION"]
@@ -107,3 +116,58 @@ def test_dispositions_keep_rejected_tables_and_unread_rows():
     assert records[1]["reasons"] and records[1]["rows"] == []
     assert {row["disposition"] for row in records[0]["rows"]} >= {"MEMBER"}
     assert all({"row_id", "label_exact", "parent_row_id", "line", "disposition", "reason"} <= set(row) for row in records[0]["rows"])
+
+
+def _roles(table, family):
+    return [(r.role, r.disposition, r.reason) for r in assign_lines_v1(table, family)]
+
+
+def test_payroll_contributions_need_their_proven_employee_owner(config):
+    family = config.families["OPERATING_EXPENSE"]
+    assert _roles(opex_table(), family)[3][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")
+    payroll = "Các khoản chi đóng góp theo lương"
+    # Missing owner (top level), owner claimed but not proven by the raw path, owner printed after it.
+    top = opex_table()
+    top.rows[3] = replace(top.rows[3], hierarchy=(), parent_row_id=None)
+    unproven = opex_table()
+    unproven.rows[3] = replace(unproven.rows[3], hierarchy=())
+    later = make_table([(payroll, ["15", "14"]), ("Chi phí cho nhân viên", ["100", "90"])], [("Năm 2025",), ("Năm 2024",)],
+                       title="30. Chi phí hoạt động")
+    later.rows[1] = replace(later.rows[1], hierarchy=("Chi phí cho nhân viên",))
+    later.rows[0] = replace(later.rows[0], hierarchy=("Chi phí cho nhân viên", payroll), parent_row_id="r1")
+    for table, index, reason in ((top, 3, "NO_PRINTED_PARENT"), (unproven, 3, "RAW_HIERARCHY_PATH_DOES_NOT_PROVE_PARENT"),
+                                 (later, 0, "PARENT_PRINTED_AFTER_CHILD")):
+        assert _roles(table, family)[index] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:" + reason)
+    # Wrong, ambiguous or unknown owner line.
+    for owner, reason in (("Chi về tài sản", "PARENT_LINE_ASSET_EXPENSE"),
+                          ("Chi phí cho nhân viên và chi về tài sản", "PARENT_LINE_AMBIGUOUS"),
+                          ("Nội dung khác nhau", "PARENT_IS_NOT_A_LINE")):
+        table = make_table([(owner, ["50", "40"]), (payroll, ["15", "14"])], [("Năm 2025",), ("Năm 2024",)],
+                           title="30. Chi phí hoạt động")
+        link(table, 1, 0)
+        assert _roles(table, family)[1] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:" + reason)
+    # An income-statement total equal to the printed values cannot grant the role.
+    evaluations = evaluate_concept_table_v1(top, family, document(quarter=4, primary=kqkd({YEAR: {"OPEX": "208"}})),
+                                            context_of(top), [])
+    assert not [c for e in evaluations for c in e.cells if c["member"] == "PAYROLL_CONTRIBUTIONS"]
+
+
+def test_credit_provision_general_and_specific_reject_missing_ambiguous_or_crossed_parents(config):
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    headers, title = [("Năm 2025",), ("Năm 2024",)], "29. Chi phí dự phòng rủi ro tín dụng"
+    missing = make_table([("Chi phí dự phòng rủi ro cho vay khách hàng", ["300", "250"]), ("Dự phòng chung", ["20", "10"])],
+                         headers, title=title)
+    assert _roles(missing, family)[1][:2] == (None, "SOURCE_ONLY")  # no printed parent: never by position
+    for owner, expected in (("Dự phòng cho vay khách hàng và cam kết", None),       # ambiguous owner
+                            ("Dự phòng các cam kết ngoại bảng", None),             # crossed subject
+                            ("Dự phòng tiền gửi và cho vay các TCTD khác", "INTERBANK_GENERAL"),
+                            ("Chi phí dự phòng rủi ro cho vay khách hàng", "CUSTOMER_GENERAL")):
+        table = make_table([(owner, ["300", "250"]), ("Dự phòng chung", ["20", "10"])], headers, title=title)
+        link(table, 1, 0)
+        assert _roles(table, family)[1][0] == expected, owner
+    # A parent id without the raw hierarchy proof is not an owner either.
+    claimed = make_table([("Chi phí dự phòng rủi ro cho vay khách hàng", ["300", "250"]), ("Dự phòng chung", ["20", "10"])],
+                         headers, title=title)
+    claimed.rows[1] = replace(claimed.rows[1], parent_row_id="r0")
+    assert _roles(claimed, family)[1][:2] == (None, "SOURCE_ONLY")
+
