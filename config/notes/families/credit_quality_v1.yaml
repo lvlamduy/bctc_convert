@@ -24,6 +24,10 @@ column_measures:
   SPECIFIC_PROVISION: {aliases: [du phong cu the], concept_suffix: SPECIFIC_PROVISION}
   GENERAL_PROVISION: {aliases: [du phong chung], concept_suffix: GENERAL_PROVISION}
   TOTAL_PROVISION: {aliases: [tong so du phong, tong du phong, tong cong du phong], concept_suffix: TOTAL_PROVISION}
+  # Not the gross balance although "dư nợ" is printed (Codex 0210): the column keeps this basis and is held.
+  NET_OF_PROVISION: {aliases: [du no thuan, so du thuan, gia tri thuan, sau du phong, sau khi tru du phong, sau tru du phong],
+                     not_gross_balance: true}
+  ACCRUED_INTEREST: {aliases: [lai du thu, lai phai thu], not_gross_balance: true}
 
 # Subject concept from the printed context (table title, section title, the
 # nearest preceding note heading). Exactly one subject must match; the most

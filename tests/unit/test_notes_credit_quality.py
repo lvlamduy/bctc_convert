@@ -378,3 +378,58 @@ def test_unit_of_a_sibling_table_is_never_inherited(family):
                        section="6. CHO VAY KHÁCH HÀNG")
     result = cells(evaluate_table_v1(table, family, document(), context_of(table), ["Triệu Đồng Việt Nam"]))
     assert all("UNIT_UNRESOLVED" in c["hold_reasons"] for c in result.values())
+
+
+JUN = "INSTANT:2025-06-30"
+DEC = "INSTANT:2024-12-31"
+
+
+def test_a_blank_operand_never_proves_another_components_dash_zero(family):
+    # Codex 0209: G1..G5 = 900, 50, 30, "-", blank with total 980 looks closed only by ignoring the unknown G5.
+    rows = [("Nhóm 1 - Nợ đủ tiêu chuẩn", ["900", "800"]), ("Nhóm 2 - Nợ cần chú ý", ["50", "40"]),
+            ("Nhóm 3 - Nợ dưới tiêu chuẩn", ["30", "10"]), ("Nhóm 4 - Nợ nghi ngờ", ["-", "-"]),
+            ("Nhóm 5 - Nợ có khả năng mất vốn", [None, "20"]), ("Tổng", ["980", "870"])]
+    for primary in ({}, {("CDKT", 4348, JUN): (Decimal("980"), "MILLION_VND")}):  # without and with an exact total anchor
+        table = make_table(rows)
+        evaluations = evaluate_table_v1(table, family, document(primary), context_of(table), [])
+        result = cells(evaluations)
+        assert any(e["lane"] == "c1" and e["status"] == "INCOMPLETE_BLANK_OPERAND" for e in evaluations[0].equations)
+        dash = result[("G4", JUN)]
+        assert dash["observation_state"] == "DASH" and dash["value"] is None and dash["acceptance"] == "HOLD"
+        assert "DASH_WITHOUT_PROOF" in dash["hold_reasons"], primary
+        blank = result[("G5", JUN)]
+        assert blank["observation_state"] == "BLANK" and blank["value"] is None
+        # The fully observed lane closes its frontier: 800 + 40 + 10 + 0 + 20 = 870 reads the dash as zero.
+        closed = result[("G4", DEC)]
+        assert closed["observation_state"] == "DASH_ZERO" and closed["acceptance"] == "ACCEPTED"
+    assert any(c["status"].startswith("EXACT") for c in evaluations[0].corroboration)  # the anchor is exact, yet no zero
+
+
+def test_an_explicit_single_column_subject_is_never_erased_by_the_context(family):
+    # Codex 0210: one "Chứng khoán kinh doanh" column under customer-loan context is not customer loans.
+    securities = (("Chứng khoán kinh doanh", "30/06/2025", "Triệu VND"),)
+    table = make_table(FIVE, headers=securities)
+    result = cells(evaluate_table_v1(table, family, document(), context_of(table), []))
+    assert result and all(c["acceptance"] == "HOLD" and any(r.startswith("SUBJECT_CONFLICT_COLUMN_VS_OWNED_CONTEXT")
+                                                            for r in c["hold_reasons"]) for c in result.values())
+    owned = make_table(FIVE, headers=securities, title="Phân tích chất lượng chứng khoán kinh doanh", section="5. Chứng khoán kinh doanh")
+    result = cells(evaluate_table_v1(owned, family, document(), context_of(owned), []))
+    assert result[("G2", JUN)]["acceptance"] == "ACCEPTED" and result[("G2", JUN)]["concept"] == "TRADING_SECURITIES_DEBT"
+    gross = make_table(FIVE, headers=(("Dư nợ cho vay khách hàng", "30/06/2025", "Triệu VND"),))
+    result = cells(evaluate_table_v1(gross, family, document(), context_of(gross), []))
+    assert result[("G2", JUN)]["acceptance"] == "ACCEPTED" and result[("G2", JUN)]["concept"] == "LOANS_TO_CUSTOMERS"
+
+
+def test_a_net_or_interest_column_is_never_the_gross_balance(family):
+    # Codex 0210: "dư nợ" also matches "Dư nợ thuần sau dự phòng"; a balanced vector cannot choose the measure.
+    primary = {("CDKT", 4348, JUN): (Decimal("1000"), "MILLION_VND")}
+    for header, measure in (("Dư nợ thuần sau dự phòng", "NET_OF_PROVISION"), ("Lãi dự thu", "ACCRUED_INTEREST")):
+        table = make_table(FIVE, headers=((header, "30/06/2025", "Triệu VND"),))
+        evaluations = evaluate_table_v1(table, family, document(primary), context_of(table), [])
+        result = cells(evaluations)
+        assert result and all(c["acceptance"] == "HOLD" and c["measure"] == measure
+                              and "COLUMN_MEASURE_NOT_GROSS_BALANCE:" + measure in c["hold_reasons"] for c in result.values())
+        assert not evaluations[0].corroboration  # never compared with the gross loan balance
+    plain = make_table(FIVE, headers=(("Dư nợ", "30/06/2025", "Triệu VND"),))
+    result = cells(evaluate_table_v1(plain, family, document(primary), context_of(plain), []))
+    assert result[("G2", JUN)]["acceptance"] == "ACCEPTED" and result[("G2", JUN)]["measure"] == "BALANCE"

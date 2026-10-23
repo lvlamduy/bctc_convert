@@ -181,3 +181,17 @@ def test_a_provision_column_is_never_a_gross_balance(config):
     cells, _ = run(config, "BY_CUSTOMER_ENTITY_TYPE", rows, primary=primary_balance(4348, "60", "57"),
                    title=LOANS_TITLE, headers=(("30/06/2025", "Triệu VND"),))
     assert cells[("TOTAL", JUN)]["acceptance"] == "ACCEPTED" and cells[("TOTAL", JUN)]["measure"] is None
+
+
+def test_a_blank_child_never_proves_a_sibling_dash_zero(config):
+    # Codex 0209: DEMAND 100 + TERM "-" + MARGIN blank = 100 looks closed only by ignoring the unknown MARGIN.
+    rows = [("Tiền gửi không kỳ hạn", ["100", "90"]), ("Tiền gửi có kỳ hạn", ["-", "-"]), ("Tiền ký quỹ", [None, "30"]),
+            ("Tổng", ["100", "120"])]
+    for primary in (None, primary_balance(4320, "100", "120")):  # without and with an exact total anchor
+        cells, evaluations = run(config, "DEPOSITS_BY_TYPE", rows, primary=primary)
+        assert any(e["lane"] == "c1" and e["status"] == "INCOMPLETE_BLANK_OPERAND" for e in evaluations[0].equations)
+        dash = cells[("DEPOSIT_TYPE=TERM", JUN)]
+        assert dash["observation_state"] == "DASH" and dash["value"] is None and dash["acceptance"] == "HOLD"
+        assert cells[("DEPOSIT_TYPE=MARGIN", JUN)]["value"] is None
+        closed = cells[("DEPOSIT_TYPE=TERM", DEC)]  # 90 + 0 + 30 = 120, every child observed
+        assert closed["observation_state"] == "DASH_ZERO" and closed["acceptance"] == "ACCEPTED"

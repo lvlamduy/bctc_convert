@@ -292,6 +292,13 @@ def _check(evaluation, lane, block, parent_key, children, block_values, proven, 
         evaluation.equations.append({"lane": lane.column.column_id, "block": block, "parent": parent_key, "children": children,
                                      "status": "NOT_EVALUABLE", "reason": "TOTAL_OR_ALL_TERMS_BLANK"})
         return
+    if any(t.state == "BLANK" for t in terms):
+        # A printed coordinate with an unknown (blank) cell leaves the frontier open: no proof, and never another
+        # child's dash read as zero (Codex 0209).
+        evaluation.equations.append({"lane": lane.column.column_id, "block": block, "parent": parent_key, "children": children,
+                                     "status": "INCOMPLETE_BLANK_OPERAND",
+                                     "blank_children": [k for k in children if block_values[k][1].state == "BLANK"]})
+        return
     summed = sum((Decimal(0) if t.state == "DASH" else t.value for t in terms if t.state == "DASH" or t.value is not None), Decimal(0))
     residual = parent_value - summed
     status = "PASS" if residual == 0 else ("PASS_WITHIN_DECLARED_ROUNDING" if abs(residual) <= _tolerance(lane.unit, len(terms)) else "FAIL")

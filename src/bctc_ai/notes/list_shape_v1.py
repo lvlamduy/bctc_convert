@@ -277,9 +277,30 @@ def _evaluate_block(
         evaluation.subject, evaluation.subject_basis = resolve_subject_v1(family, context)
     evaluation.basis = classification_basis_v1(context)
     own = owned_date_texts_v1(table, context)
-    measures = {m: [fold_vietnamese(a) for a in spec["aliases"]] for m, spec in (family.raw.get("column_measures") or {}).items()}
+    declared = family.raw.get("column_measures") or {}
+    measures = {m: [fold_vietnamese(a) for a in spec["aliases"]] for m, spec in declared.items() if not spec.get("not_gross_balance")}
     evaluation.lanes = resolve_instant_lanes_v1(table, document, page_texts, own, measures,
                                                 family.raw["retrieval"].get("explicit_title_phrases", []))
+    for lane in evaluation.lanes:
+        # A net / after-provision / interest qualifier printed in the header is a different basis than the gross balance
+        # its "dư nợ" alias names; it keeps that meaning and holds, whatever the amounts sum to (Codex 0210).
+        header = fold_vietnamese(lane.column.header_text)
+        not_gross = sorted(m for m, spec in declared.items() if spec.get("not_gross_balance")
+                           and all_phrases([[fold_vietnamese(a)] for a in spec["aliases"]], header))
+        if not_gross:
+            lane.measure = not_gross[0] if len(not_gross) == 1 else lane.measure
+            lane.reasons.append("COLUMN_MEASURE_NOT_GROSS_BALANCE:" + ",".join(not_gross))
+    if not matrix:
+        # Each explicit column subject is honored on its own (Codex 0210), not only when two or more differ; a column
+        # subject contradicting the table's owned context subject holds the table (no first-wins, no amount choice).
+        for lane in evaluation.lanes:
+            named = family.subjects_in(fold_vietnamese(lane.column.header_text))
+            if len(named) == 1:
+                lane.subject = named[0]
+        named = {lane.subject for lane in evaluation.lanes if lane.subject}
+        if named and evaluation.subject is not None and named != {evaluation.subject}:
+            for lane in evaluation.lanes:
+                lane.reasons.append("SUBJECT_CONFLICT_COLUMN_VS_OWNED_CONTEXT:" + ",".join(sorted(named | {evaluation.subject})))
     if matrix:
         kept = []
         for lane in evaluation.lanes:
@@ -303,7 +324,7 @@ def _evaluate_block(
             values[role.role] = parsed
         measure_spec = (family.raw.get("column_measures") or {}).get(lane.measure or "", {})
         corroboration = None
-        if not measure_spec.get("concept_suffix"):
+        if not measure_spec.get("concept_suffix") and not any(r.startswith("COLUMN_MEASURE_NOT_GROSS_BALANCE") for r in lane.reasons):
             corroboration = _corroborate(family, lane.subject or evaluation.subject, document, lane, values)
         if corroboration:
             evaluation.corroboration.append(corroboration)
@@ -324,13 +345,22 @@ def _evaluate_block(
                 lane_equations.append({"name": equation["name"], "lane": lane.column.column_id, "status": "NOT_EVALUABLE",
                                        "reason": "TOTAL_NOT_VALUED"})
                 continue
+            blank = [m for m in equation["sum_of"] if m in values and values[m].state == "BLANK"]
+            if blank:
+                # A printed row with an unknown (blank) cell leaves the frontier open: the equation proves nothing,
+                # in particular not another component's dash as zero (Codex 0209).
+                lane_equations.append({"name": equation["name"], "lane": lane.column.column_id,
+                                       "status": "INCOMPLETE_BLANK_OPERAND", "blank_terms": blank,
+                                       "terms": [m for m in equation["sum_of"] if m in values]})
+                continue
             summed = sum((Decimal(0) if t.state == "DASH" else t.value for t in terms if t.state == "DASH" or t.value is not None),
                          Decimal(0))
             residual = total_value - summed
             tolerance = _tolerance(lane.unit, len(terms))
             status = "PASS" if residual == 0 else ("PASS_WITHIN_DECLARED_ROUNDING" if abs(residual) <= tolerance else "FAIL")
             lane_equations.append({"name": equation["name"], "lane": lane.column.column_id, "status": status,
-                                   "residual": str(residual), "terms": [m for m in equation["sum_of"] if m in values]})
+                                   "residual": str(residual), "terms": [m for m in equation["sum_of"] if m in values],
+                                   "equals": equation["equals"]})
         evaluation.equations += lane_equations
         _emit_cells(evaluation, family, document, lane, values, lane_equations, roles_by_member)
     return evaluation
@@ -384,11 +414,15 @@ def _emit_cells(evaluation: TableEvaluation, family: Family, document: DocumentC
         reasons += lane.reasons
         failed = [e["name"] for e in lane_equations if e["status"] == "FAIL" and (member in e.get("terms", []) or member in (FIVE_TOTAL, GRAND_TOTAL))]
         reasons += ["VALIDATION_FAIL:" + name for name in failed]
-        proven = (five is not None and five["status"].startswith("PASS")) or corroborated
+        complete = five is not None and five["status"].startswith("PASS")
+        proven = complete or corroborated
         state = parsed.state
         value = parsed.value
         if state == "DASH":
-            if proven:
+            # Only a complete, passing equation the dash takes part in reads it as zero; a total-only primary
+            # agreement corroborates printed amounts but never proves an unresolved component's zero (Codex 0209).
+            if any(e["status"].startswith("PASS") and (member in e.get("terms", []) or member == e.get("equals"))
+                   for e in lane_equations):
                 state, value = "DASH_ZERO", Decimal(0)
             else:
                 reasons.append("DASH_WITHOUT_PROOF")
