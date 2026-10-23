@@ -308,8 +308,10 @@ def _authenticate_unresolved_rows_v1(*, path, pin, residual_spec_path, index, in
             if visible.get("label") != row["label_exact"]:
                 raise _error("Family-36 visual/source label join is not exact")
             if any(v is None for v in values):
-                if (values != [None, None] or visible.get("numeric_values") != values
-                        or visible.get("visible_value_states") != ["PRINTED_BLANK_UNKNOWN", "PRINTED_BLANK_UNKNOWN"]):
+                expected_states = ["PRINTED_BLANK_UNKNOWN" if value is None else "PRINTED_NUMERIC_LITERAL" for value in values]
+                observed_texts = visible.get("numeric_values") if values == [None, None] else visible.get("source_texts")
+                if (not same_typed_json_v1(observed_texts, values)
+                        or visible.get("visible_value_states") != expected_states):
                     raise _error("Family-36 visual NULL mask does not confirm literal PDF blanks")
             elif not same_typed_json_v1(visible.get("source_texts"), values):
                 raise _error("Family-36 visual/source numeric observations differ")
