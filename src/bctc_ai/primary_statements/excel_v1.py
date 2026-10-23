@@ -90,11 +90,10 @@ def _source_ref(cell: dict[str, Any]) -> str:
             f"/c{loc['column_ordinal']}@{loc['page_json_version_id']}")
 
 
-def build_workbook_v1(result: dict[str, Any], template: dict[str, list[tuple[int, str]]]) -> tuple[bytes, dict[str, Any]]:
-    workbook = openpyxl.Workbook()
-    readme = workbook.active
-    readme.title = "README"
-    for row in (
+def _sheets_v1(result: dict[str, Any], template: dict[str, list[tuple[int, str]]]) -> tuple[dict[str, list[list[Any]]], dict]:
+    """The one projection the writer and the verifier both use: every emitted cell of every sheet (Codex 0226)."""
+
+    sheets: dict[str, list[list[Any]]] = {"README": [
         ["product_label", result["product_label"]],
         ["notice", result["product_notice"]],
         ["format_version", EXCEL_FORMAT_VERSION],
@@ -102,10 +101,7 @@ def build_workbook_v1(result: dict[str, Any], template: dict[str, list[tuple[int
         ["document", json.dumps(result["document"], ensure_ascii=False, sort_keys=True)],
         ["corpus", json.dumps(result["corpus"], ensure_ascii=False, sort_keys=True)],
         ["pins", json.dumps(result["pins"], ensure_ascii=False, sort_keys=True)],
-    ):
-        readme.append([None, None])
-        for column, value in enumerate(row, 1):
-            set_literal_cell(readme.cell(readme.max_row, column), value)
+    ]}
     cells_by_key = {}
     for cell in result["cells"]:
         cells_by_key[(cell["statement"], cell["instance_key"], cell["lane"], cell["report_norm_id"])] = cell
@@ -116,14 +112,12 @@ def build_workbook_v1(result: dict[str, Any], template: dict[str, list[tuple[int
         )
     expected_values: dict[tuple[str, int, int], tuple[object, str]] = {}
     for statement in PRIMARY_STATEMENTS:
-        sheet = workbook.create_sheet(statement)
         lanes = _lane_columns(result, statement)
         header = ["DisplayOrder", "ReportNormId", "ReportNormName", "ItemStatus"]
         for lane in lanes:
             label = f"{lane['instance_key']}#L{lane['lane']}|{lane['period_key']}|{lane['scope']}"
             header += [f"VALUE|{label}", f"STATE|{label}", f"ACCEPTANCE|{label}", f"UNIT|{label}", f"SOURCE|{label}"]
-        for column, value in enumerate(header, 1):
-            set_literal_cell(sheet.cell(1, column), value)
+        rows: list[list[Any]] = [header]
         for order, (rnid, name) in enumerate(template[statement]):
             row_index = order + 2
             values: list[object] = [order, rnid, name, ";".join(status_by_key.get((statement, rnid), ["NOT_EVALUATED_NO_STATEMENT"]))]
@@ -135,97 +129,97 @@ def build_workbook_v1(result: dict[str, Any], template: dict[str, list[tuple[int
                 number, policy = excel_number_v1(cell["value"])
                 values += [number, cell["observation_state"], cell["acceptance"], cell["unit"], _source_ref(cell)]
                 expected_values[(statement, row_index, len(values) - 4)] = (number, policy)
-            for column, value in enumerate(values, 1):
-                set_literal_cell(sheet.cell(row_index, column), value)
-    provenance = workbook.create_sheet("PROVENANCE")
-    prov_header = ["statement", "scope", "report_norm_id", "period_key", "lane", "instance_key", "value_text",
+            rows.append(values)
+        sheets[statement] = rows
+    provenance = [["statement", "scope", "report_norm_id", "period_key", "lane", "instance_key", "value_text",
                    "excel_number_policy", "observation_state", "acceptance", "hold_reasons", "unit", "raw_text",
-                   "label_exact", "row_uid", "source_ref", "numeric_policy"]
-    for column, value in enumerate(prov_header, 1):
-        set_literal_cell(provenance.cell(1, column), value)
-    for index, cell in enumerate(result["cells"], 2):
+                   "label_exact", "row_uid", "source_ref", "numeric_policy"]]
+    for cell in result["cells"]:
         _, policy = excel_number_v1(cell["value"])
-        row = [cell["statement"], cell["scope"], cell["report_norm_id"], cell["period_key"], cell["lane"],
-               cell["instance_key"], cell["value"], policy, cell["observation_state"], cell["acceptance"],
-               json.dumps(cell["hold_reasons"], ensure_ascii=False), cell["unit"], cell["raw"], cell["label_exact"],
-               cell["row_uid"], _source_ref(cell), cell["numeric_policy"]]
-        for column, value in enumerate(row, 1):
-            set_literal_cell(provenance.cell(index, column), value)
-    rows_sheet = workbook.create_sheet("SOURCE_ROWS")
-    row_header = ["instance_key", "statement", "presentation_role", "row_uid", "label_exact", "disposition", "reason",
-                  "report_norm_id", "raw_cells"]
-    for column, value in enumerate(row_header, 1):
-        set_literal_cell(rows_sheet.cell(1, column), value)
-    index = 2
+        provenance.append([cell["statement"], cell["scope"], cell["report_norm_id"], cell["period_key"], cell["lane"],
+                           cell["instance_key"], cell["value"], policy, cell["observation_state"], cell["acceptance"],
+                           json.dumps(cell["hold_reasons"], ensure_ascii=False), cell["unit"], cell["raw"], cell["label_exact"],
+                           cell["row_uid"], _source_ref(cell), cell["numeric_policy"]])
+    sheets["PROVENANCE"] = provenance
+    source_rows = [["instance_key", "statement", "presentation_role", "row_uid", "label_exact", "disposition", "reason",
+                    "report_norm_id", "raw_cells"]]
     for instance in result["instances"]:
         for row in instance["source_rows"]:
-            values = [instance["instance_key"], instance["statement"], instance["presentation_role"], row["row_uid"],
-                      row["label_exact"], row["disposition"], row["reason"], row["report_norm_id"],
-                      json.dumps([cell["raw"] for cell in row["cells"]], ensure_ascii=False)]
-            for column, value in enumerate(values, 1):
-                set_literal_cell(rows_sheet.cell(index, column), value)
-            index += 1
-    checks = workbook.create_sheet("VALIDATION")
-    check_header = ["instance_key", "equation_id", "lane", "period_key", "status", "reason", "left", "right", "residual"]
-    for column, value in enumerate(check_header, 1):
-        set_literal_cell(checks.cell(1, column), value)
-    index = 2
+            source_rows.append([instance["instance_key"], instance["statement"], instance["presentation_role"], row["row_uid"],
+                                row["label_exact"], row["disposition"], row["reason"], row["report_norm_id"],
+                                json.dumps([cell["raw"] for cell in row["cells"]], ensure_ascii=False)])
+    sheets["SOURCE_ROWS"] = source_rows
+    checks = [["instance_key", "equation_id", "lane", "period_key", "status", "reason", "left", "right", "residual"]]
     for instance in result["instances"]:
         for check in instance["validations"]:
-            values = [instance["instance_key"], check["equation_id"], check["lane"], check["period_key"],
-                      check["status"], check["reason"], check["left"], check["right"], check["residual"]]
-            for column, value in enumerate(values, 1):
-                set_literal_cell(checks.cell(index, column), value)
-            index += 1
+            checks.append([instance["instance_key"], check["equation_id"], check["lane"], check["period_key"],
+                           check["status"], check["reason"], check["left"], check["right"], check["residual"]])
+    sheets["VALIDATION"] = checks
+    return sheets, expected_values
+
+
+_SHEET_ORDER = ["README", *PRIMARY_STATEMENTS, "PROVENANCE", "SOURCE_ROWS", "VALIDATION"]
+
+
+def build_workbook_v1(result: dict[str, Any], template: dict[str, list[tuple[int, str]]]) -> tuple[bytes, dict[str, Any]]:
+    workbook = openpyxl.Workbook()
+    sheets, expected_values = _sheets_v1(result, template)
+    for position, name in enumerate(_SHEET_ORDER):
+        sheet = workbook.active if position == 0 else workbook.create_sheet(name)
+        sheet.title = name
+        for r, row in enumerate(sheets[name], 1):
+            for c, value in enumerate(row, 1):
+                set_literal_cell(sheet.cell(r, c), value)  # every position, as before; text never becomes a formula
     payload = deterministic_workbook_bytes(workbook, creator=CREATOR)
     plan = {"expected_values": expected_values}
     return payload, plan
 
 
+def _as_read(value: Any) -> Any:
+    """What a written value reads back as: openpyxl writes an empty string as a value-less cell (None)."""
+
+    return None if value == "" else value
+
+
 def verify_workbook_v1(payload: bytes, result: dict[str, Any], template: dict[str, list[tuple[int, str]]]) -> dict[str, Any]:
-    """Reopen the bytes and compare every value, state, unit, period and source ref."""
+    """Every emitted cell of every sheet (README, the three statement grids with header / order / name / ItemStatus /
+    every lane column, PROVENANCE, SOURCE_ROWS, VALIDATION) reads back with its exact value AND type; any non-empty
+    cell outside that grid is extra data (Codex 0226). Cosmetic empty or styled cells are not a layout proof."""
 
     workbook = openpyxl.load_workbook(BytesIO(payload), data_only=False)
     if workbook_has_formula(workbook):
         raise PrimaryWorkbookError("workbook contains a formula")
-    if workbook.sheetnames != ["README", *PRIMARY_STATEMENTS, "PROVENANCE", "SOURCE_ROWS", "VALIDATION"]:
+    if workbook.sheetnames != _SHEET_ORDER:
         raise PrimaryWorkbookError("workbook sheet set drifted")
+    sheets, expected_values = _sheets_v1(result, template)
+    compared = 0
+    for name in _SHEET_ORDER:
+        sheet, rows = workbook[name], sheets[name]
+        for r, row in enumerate(rows, 1):
+            for c, value in enumerate(row, 1):
+                got, expected = sheet.cell(r, c).value, _as_read(value)
+                if type(got) is not type(expected) or got != expected:
+                    raise PrimaryWorkbookError(f"{name}!R{r}C{c} does not read back exactly")
+                compared += 1
+        for line in sheet.iter_rows():
+            for cell in line:
+                if cell.value is not None and (cell.row > len(rows) or cell.column > len(rows[cell.row - 1])):
+                    raise PrimaryWorkbookError(f"{name}!R{cell.row}C{cell.column} is extra data")
     cells_by_key = {(c["statement"], c["instance_key"], c["lane"], c["report_norm_id"]): c for c in result["cells"]}
     checked_values = 0
     for statement in PRIMARY_STATEMENTS:
         sheet = workbook[statement]
-        lanes = _lane_columns(result, statement)
-        ids = [sheet.cell(row, 2).value for row in range(2, sheet.max_row + 1)]
-        if ids != [rnid for rnid, _ in template[statement]]:
-            raise PrimaryWorkbookError(f"{statement} row order or ReportNormIds drifted")
-        for row in range(2, sheet.max_row + 1):
-            rnid = sheet.cell(row, 2).value
-            for position, lane in enumerate(lanes):
-                base = 5 + position * 5
+        for row_index, (rnid, _name) in enumerate(template[statement], 2):
+            for position, lane in enumerate(_lane_columns(result, statement)):
                 cell = cells_by_key.get((statement, lane["instance_key"], lane["lane"], rnid))
-                got = [sheet.cell(row, base + offset).value for offset in range(5)]
                 if cell is None:
-                    if any(value is not None for value in got):
-                        raise PrimaryWorkbookError(f"{statement}/{rnid} has an unexpected value")
                     continue
-                number, _ = excel_number_v1(cell["value"])
-                expected = [number, cell["observation_state"], cell["acceptance"], cell["unit"], _source_ref(cell)]
-                if got != expected or type(got[0]) is not type(number):
-                    raise PrimaryWorkbookError(f"{statement}/{rnid} lane {lane['lane']} does not read back exactly")
-                if cell["value"] is not None and not isinstance(got[0], str) and Decimal(repr(got[0])) != Decimal(cell["value"]):
+                got = sheet.cell(row_index, 5 + position * 5).value
+                if cell["value"] is not None and not isinstance(got, str) and Decimal(repr(got)) != Decimal(cell["value"]):
                     raise PrimaryWorkbookError(f"{statement}/{rnid} lost numeric precision")
                 checked_values += 1
-    provenance = workbook["PROVENANCE"]
-    if provenance.max_row - 1 != len(result["cells"]):
-        raise PrimaryWorkbookError("provenance row count drifted")
-    for index, cell in enumerate(result["cells"], 2):
-        got = [provenance.cell(index, column).value for column in (1, 3, 4, 7, 9, 10, 12, 15, 16)]
-        expected = [cell["statement"], cell["report_norm_id"], cell["period_key"], cell["value"],
-                    cell["observation_state"], cell["acceptance"], cell["unit"], cell["row_uid"], _source_ref(cell)]
-        if got != expected:
-            raise PrimaryWorkbookError(f"provenance row {index} does not read back exactly")
-    if workbook["README"].cell(1, 2).value != "PRIMARY_ONLY" or workbook["README"].cell(4, 2).value != result["result_id"]:
-        raise PrimaryWorkbookError("workbook README binding drifted")
+    if checked_values != len(expected_values):
+        raise PrimaryWorkbookError("statement value cells differ from the export plan")
     return {
         "format_version": EXCEL_FORMAT_VERSION,
         "workbook_sha256": hashlib.sha256(payload).hexdigest(),
@@ -233,6 +227,8 @@ def verify_workbook_v1(payload: bytes, result: dict[str, Any], template: dict[st
         "result_id": result["result_id"],
         "checked_value_cells": checked_values,
         "provenance_rows": len(result["cells"]),
+        "grid_positions_compared": compared,
+        "readback_scope": "EVERY_EMITTED_CELL_TYPED_NO_EXTRA_DATA",
         "formula_cells": 0,
         "status": "PASS_EXACT_READBACK",
     }

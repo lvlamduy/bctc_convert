@@ -6,7 +6,10 @@ id, and its cells, item statuses, source rows and checks are projected into
 typed tables. ``UNIQUE`` on the write key (document, scope, statement, period,
 ReportNormId) rejects duplicates at the database level even if equal. Reload
 re-hashes every stored document and re-derives every projection row from the
-stored JSON, so a row edited in place (and re-hashed) is detected.
+stored JSON, so a row edited in place (and re-hashed) is detected. It also
+requires the exact store schema (tables, columns, indexes), exactly one
+store_identity row, the stored document_ordinal to be the result's own
+ordinal, and every projected scalar to match with its exact type (Codex 0226).
 """
 
 from __future__ import annotations
@@ -134,6 +137,22 @@ _COLUMNS = {
 }
 
 
+def _schema_objects(connection) -> list[tuple]:
+    return connection.execute("SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name").fetchall()
+
+
+def _expected_schema_objects() -> list[tuple]:
+    with closing(sqlite3.connect(":memory:")) as connection:
+        connection.executescript(_SCHEMA)
+        return _schema_objects(connection)
+
+
+def _typed(row: tuple) -> tuple:
+    """A row compared value AND type: 1 / 1.0 / True / "1" never stand in for one another."""
+
+    return tuple((type(value).__name__, value) for value in row)
+
+
 def write_result_store_v1(path: Path, *, run_manifest: dict[str, Any], results: list[dict[str, Any]]) -> dict[str, Any]:
     if path.exists():
         raise PrimaryStoreError("result store already exists; every run writes a new store")
@@ -170,8 +189,14 @@ def reload_result_store_v1(path: Path) -> tuple[dict[str, Any], list[dict[str, A
     """Re-hash every document result and re-derive every projection row."""
 
     with closing(sqlite3.connect(f"file:{path}?mode=ro", uri=True)) as connection:
-        identity = connection.execute("SELECT format_version, run_manifest_sha256, run_manifest_json FROM store_identity").fetchone()
-        if identity is None or identity[0] != STORE_FORMAT_VERSION or hashlib.sha256(identity[2]).hexdigest() != identity[1]:
+        if _schema_objects(connection) != _expected_schema_objects():
+            raise PrimaryStoreError("result store schema differs (tables, columns or indexes)")
+        identities = connection.execute(
+            "SELECT singleton, format_version, run_manifest_sha256, run_manifest_json FROM store_identity").fetchall()
+        if len(identities) != 1 or identities[0][0] != 1 or type(identities[0][3]) is not bytes:
+            raise PrimaryStoreError("result store identity does not replay")
+        identity = identities[0][1:]
+        if identity[0] != STORE_FORMAT_VERSION or hashlib.sha256(identity[2]).hexdigest() != identity[1]:
             raise PrimaryStoreError("result store identity does not replay")
         manifest = json.loads(identity[2])
         results = []
@@ -189,16 +214,20 @@ def reload_result_store_v1(path: Path) -> tuple[dict[str, Any], list[dict[str, A
             if result["document"]["document_plan_id"] != plan or result["document"]["source_sha256"] != source_sha \
                     or result["document"]["relative_path"] != path_text:
                 raise PrimaryStoreError(f"document result binding drifted: {ordinal}")
+            stored_ordinal = result["document"].get("document_ordinal")
+            if type(ordinal) is not int or type(stored_ordinal) is not int or ordinal != stored_ordinal \
+                    or type(raw) is not bytes:
+                raise PrimaryStoreError(f"document result ordinal binding drifted: {ordinal}")
             results.append(result)
         expected: dict[str, set] = {table: set() for table in _COLUMNS}
         for result in results:
             for table, rows in _projection(result).items():
                 for row in rows:
-                    if row in expected[table]:
+                    if _typed(row) in expected[table]:
                         raise PrimaryStoreError(f"projection duplicates a row in {table}")
-                    expected[table].add(row)
+                    expected[table].add(_typed(row))
         for table in _COLUMNS:
-            stored = connection.execute(f"SELECT * FROM {table}").fetchall()
+            stored = [_typed(row) for row in connection.execute(f"SELECT * FROM {table}").fetchall()]
             if len(stored) != len(expected[table]) or set(stored) != expected[table]:
                 raise PrimaryStoreError(f"projection table {table} does not replay from stored results")
     return manifest, results

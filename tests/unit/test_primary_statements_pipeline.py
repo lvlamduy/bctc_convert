@@ -543,3 +543,85 @@ def test_loaded_page_provenance_must_be_the_selected_page(catalog, equations, wr
     assert result_of(run_doc(catalog, equations, [bs_page(balance_sheet_rows())]), catalog)["instances"]
     with pytest.raises(PrimarySourceError):
         run_doc(catalog, equations, [bs_page(balance_sheet_rows())], provenance=wrong)
+
+
+def _tampered_workbook(payload, edit):
+    workbook = openpyxl.load_workbook(io.BytesIO(payload))
+    edit(workbook)
+    stream = io.BytesIO()
+    workbook.save(stream)
+    return stream.getvalue()
+
+
+def test_excel_readback_checks_every_emitted_cell_and_axis(catalog, equations):
+    # Codex 0226: README, the statement grids (header / order / name / ItemStatus / every lane column), PROVENANCE,
+    # SOURCE_ROWS and VALIDATION are compared cell by cell with exact types; non-empty data outside the grid is rejected.
+    result = result_of(run_doc(catalog, equations, [bs_page(balance_sheet_rows())]), catalog)
+    template = template_rows_v1(ROOT, catalog)
+    payload, _ = build_workbook_v1(result, template)
+    receipt = verify_workbook_v1(payload, result, template)
+    assert receipt["status"] == "PASS_EXACT_READBACK" and receipt["readback_scope"] == "EVERY_EMITTED_CELL_TYPED_NO_EXTRA_DATA"
+    resaved = _tampered_workbook(payload, lambda workbook: None)
+    assert verify_workbook_v1(resaved, result, template)["status"] == "PASS_EXACT_READBACK"  # untampered control
+    sheet = openpyxl.load_workbook(io.BytesIO(payload))
+    cash_row = next(r[0].row for r in sheet["CDKT"].iter_rows(min_row=2) if isinstance(r[4].value, int))
+
+    def put(name, row, column, value):
+        def edit(workbook):
+            workbook[name].cell(row, column).value = value
+        return edit
+
+    tampers = {
+        "CDKT period header": put("CDKT", 1, 5, "VALUE|CDKT#L0|INSTANT:2025-03-31|CONSOLIDATED"),
+        "CDKT DisplayOrder": put("CDKT", cash_row, 1, 9999),
+        "CDKT ReportNormName": put("CDKT", cash_row, 3, "renamed"),
+        "CDKT ItemStatus": put("CDKT", cash_row, 4, "CDKT#1:NOT_OBSERVED"),
+        "CDKT value int->text": put("CDKT", cash_row, 5, str(sheet["CDKT"].cell(cash_row, 5).value)),
+        "CDKT extra column": put("CDKT", cash_row, sheet["CDKT"].max_column + 1, "x"),
+        "KQKD data in an absent lane": put("KQKD", 2, 5, 1),
+        "README notice": put("README", 2, 2, "accepted export"),
+        "README format": put("README", 3, 2, "PRIMARY_ONLY_WORKBOOK_V0"),
+        "README document": put("README", 5, 2, "{}"),
+        "README corpus": put("README", 6, 2, "{}"),
+        "README pins": put("README", 7, 2, "{}"),
+        "PROVENANCE scope": put("PROVENANCE", 2, 2, "SEPARATE_TAMPERED"),
+        "PROVENANCE lane": put("PROVENANCE", 2, 5, 7),
+        "PROVENANCE excel_number_policy": put("PROVENANCE", 2, 8, "EXACT_TEXT_DECIMAL_NOT_REPRESENTABLE"),
+        "PROVENANCE hold_reasons": put("PROVENANCE", 2, 11, '["UNIT_UNRESOLVED"]'),
+        "PROVENANCE raw_text": put("PROVENANCE", 2, 13, "-"),
+        "PROVENANCE label_exact": put("PROVENANCE", 2, 14, "renamed"),
+        "PROVENANCE numeric_policy": put("PROVENANCE", 2, 17, "OTHER_POLICY"),
+        "PROVENANCE extra row": put("PROVENANCE", len(result["cells"]) + 2, 1, "CDKT"),
+        "SOURCE_ROWS disposition": put("SOURCE_ROWS", 2, 6, "IGNORED"),
+        "SOURCE_ROWS raw_cells": put("SOURCE_ROWS", 2, 9, "[]"),
+        "VALIDATION status": put("VALIDATION", 2, 5, "TAMPERED"),
+        "VALIDATION residual": put("VALIDATION", 2, 9, "999"),
+    }
+    for name, edit in tampers.items():
+        with pytest.raises(PrimaryWorkbookError):
+            verify_workbook_v1(_tampered_workbook(payload, edit), result, template)
+        assert name
+
+
+def test_store_reload_binds_ordinal_schema_and_single_identity(catalog, equations, tmp_path):
+    # Codex 0226: the stored document_ordinal must be the result's own ordinal; the schema must be exactly the store
+    # schema; store_identity must hold exactly one row. Existing projection / id / binding checks are unchanged.
+    result = result_of(run_doc(catalog, equations, [bs_page(balance_sheet_rows())]), catalog)
+    tampers = {
+        "document_ordinal": "UPDATE document_result SET document_ordinal = document_ordinal + 5",
+        "extra column": "ALTER TABLE mapped_cell ADD COLUMN note TEXT",
+        "extra table": "CREATE TABLE side (x INTEGER) STRICT",
+        "dropped index": "DROP INDEX mapped_cell_acceptance",
+        "no identity row": "DELETE FROM store_identity",
+    }
+    for number, (name, statement) in enumerate(tampers.items()):
+        store = tmp_path / f"tamper-{number}.sqlite3"
+        write_result_store_v1(store, run_manifest={"run": 1}, results=[result])
+        assert reload_result_store_v1(store)[1][0]["result_id"] == result["result_id"]  # untampered control
+        connection = sqlite3.connect(store)
+        connection.execute(statement)
+        connection.commit()
+        connection.close()
+        with pytest.raises(PrimaryStoreError):
+            reload_result_store_v1(store)
+        assert name
