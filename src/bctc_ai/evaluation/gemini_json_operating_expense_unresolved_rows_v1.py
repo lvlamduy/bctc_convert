@@ -6,8 +6,12 @@ from hashlib import sha256
 
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1 as clone,
-    canonical_json_bytes_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
+from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_sha256_v1 as digest,
+)
+from bctc_ai.source_structure.contracts_v1 import (
     same_typed_json_v1 as same,
 )
 

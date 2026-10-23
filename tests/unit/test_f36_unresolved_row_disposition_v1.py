@@ -16,7 +16,8 @@ from test_gemini_json_operating_expense_family_v1 import (
 
 from bctc_ai.evaluation import gemini_json_operating_expense_family_v1 as family
 from bctc_ai.evaluation import gemini_json_operating_expense_unresolved_rows_v1 as held
-from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1, canonical_json_sha256_v1 as digest
+from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1 as digest
 from scripts.experiments import run_gemini_json_operating_expense_accounting_family_v1 as runner
 
 
