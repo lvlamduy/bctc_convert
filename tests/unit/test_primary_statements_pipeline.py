@@ -457,3 +457,20 @@ def test_document_scope_never_overrides_a_statement_own_scope_conflict():
     resolve_document_scope_v1([donor, item], [])
     assert item.scope is None and "SCOPE_UNRESOLVED" in item.reasons
     assert item.scope_basis.get("reason") == "SCOPE_CONFLICT"
+
+
+def test_own_scope_conflict_keeps_raw_and_accepts_nothing_despite_a_valid_donor(catalog, equations):
+    conflict_title = "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT VÀ RIÊNG\nCho kỳ sáu tháng kết thúc ngày 30 tháng 6 năm 2025"
+    headers = [["Kỳ sáu tháng kết thúc ngày 30/6/2025", "Triệu VND"]]
+    rows = [row("Thu nhập lãi và các khoản thu nhập tương tự", ["10"]), row("Chi phí lãi và các chi phí tương tự", ["(4)"]),
+            row("Thu nhập lãi thuần", ["6"]), row("Thu nhập từ hoạt động dịch vụ", ["2"]),
+            row("Chi phí hoạt động dịch vụ", ["(1)"]), row("Lãi thuần từ hoạt động dịch vụ", ["1"])]
+    pages = [bs_page(balance_sheet_rows()),
+             [section([table(rows, headers, title=conflict_title)], statement="INCOME_STATEMENT", title=conflict_title)]]
+    result = result_of(run_doc(catalog, equations, pages), catalog)
+    income = next(i for i in result["instances"] if i["statement"] == "KQKD")
+    assert income["scope"] is None and income["scope_basis"].get("reason") == "SCOPE_CONFLICT"
+    income_cells = [c for c in result["cells"] if c["statement"] == "KQKD"]
+    assert income_cells and all(c["acceptance"] == "HOLD" and c["raw"] is not None for c in income_cells)
+    balance = next(i for i in result["instances"] if i["statement"] == "CDKT")
+    assert balance["scope"] == "CONSOLIDATED"

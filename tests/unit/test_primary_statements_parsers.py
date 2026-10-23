@@ -224,3 +224,16 @@ def test_prior_period_relations_are_distinct(header, context, key, reason):
     assert descriptor.key == key
     if reason:
         assert descriptor.reason == reason
+
+
+@pytest.mark.parametrize(
+    ("header", "key"),
+    [
+        ("Quý trước\nTừ 01/04/2025 đến 30/06/2025", "DURATION:RANGE:2025-04-01..2025-06-30"),  # printed window binds
+        ("Quý trước năm trước", None),                                                          # compound relation held
+        ("Quý trước", None),
+        ("Quý này năm trước", "DURATION:QUARTER:3:PRIOR_YEAR_OF(2025)"),
+    ],
+)
+def test_previous_quarter_binds_only_a_printed_window(header, key):
+    assert _period(header, ["Báo cáo kết quả hoạt động cho Quý III năm 2025"]).key == key

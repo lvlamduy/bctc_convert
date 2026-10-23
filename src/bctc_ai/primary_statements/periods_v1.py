@@ -283,9 +283,11 @@ def duration_lane_period_v1(header: str, context: StatementPeriodContext) -> Per
     year_prior = bool(re.search(r"\bnam truoc\b|\bcung ky nam truoc\b", folded))
     if year_current and year_prior:
         return _unresolved("CURRENT_AND_PRIOR_WORDS_IN_ONE_HEADER", evidence)
-    if re.search(r"\bquy truoc\b", folded) and not year_prior:
+    printed_window = bool(_RANGE.search(folded) or printed_dates_v1(header))
+    if re.search(r"\bquy truoc\b", folded) and not printed_window:
         # "Quý trước" prints the preceding quarter, not the same quarter of the
-        # prior year; no comparative window is printed, so nothing is bound.
+        # prior year, and "Quý trước năm trước" compounds two relations; only a
+        # window printed in the column itself binds such a lane.
         return _unresolved("PREVIOUS_QUARTER_WITHOUT_PRINTED_COMPARATIVE_WINDOW", evidence)
     if re.search(r"\bky truoc\b", folded) and not year_prior and not _RANGE.search(folded) \
             and not printed_dates_v1(header) and not re.search(r"\b(?:19|20)\d{2}\b", folded):
