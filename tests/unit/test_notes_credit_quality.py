@@ -319,3 +319,62 @@ def test_signing_date_in_a_single_table_section_is_not_a_reporting_date(family):
     context = [("SECTION_TITLE", table.section_title), ("SECTION_NARRATIVE", table.narratives[0])]
     result = cells(evaluate_table_v1(table, family, document(), context, []))
     assert all(c["period_key"] is None for c in result.values())
+
+
+def test_follower_with_its_own_owner_narrative_is_not_joined():
+    head = make_table(FIVE[:3], title=None, section="6. Cho vay khách hàng", unit="Triệu đồng", page=15)
+    follower = make_table(FIVE[3:], headers=((), ()), title=None, section=None, page=16)
+    follower.narratives = ["Phân tích chất lượng dư nợ tiền gửi có kỳ hạn và cho vay các TCTD khác như sau:"]
+    source = _OutlineSource([_entry(15, "s1", "t1", None, "CONTINUES_ON_NEXT_PAGE"), _entry(16, "s1", "t1", None, "CONTINUES_FROM_PREVIOUS_PAGE")])
+    joined, receipts = assemble_continuations_v1(source, [head, follower])
+    assert len(joined) == 2 and not receipts
+
+
+def test_signed_on_date_without_comma_is_not_a_reporting_date(family):
+    table = make_table(FIVE, headers=(("Dư nợ cho vay", "Triệu đồng"), ("Dự phòng cụ thể", "Triệu đồng")), title=None,
+                       section="11.1 Dự phòng rủi ro cho vay khách hàng")
+    table.narratives = ["Báo cáo được ký ngày 25 tháng 7 năm 2025"]
+    context = [("SECTION_TITLE", table.section_title), ("SECTION_NARRATIVE", table.narratives[0])]
+    result = cells(evaluate_table_v1(table, family, document(), context, []))
+    assert all(c["period_key"] is None for c in result.values())
+
+
+class _SiblingSource(_OutlineSource):
+    def __init__(self, entries, tables):
+        super().__init__(entries)
+        self._tables = {t.key: t for t in tables}
+
+    def load_tables(self, keys):
+        return [self._tables[k] for k in keys if k in self._tables]
+
+
+def _sections(unit_first="Triệu Đồng Việt Nam", headers_second=(("30/09/2025",), ("31/12/2024",)), second_unit=None, order=(0, 1)):
+    first = make_table([("Cho vay các tổ chức kinh tế", ["10", "9"])], headers=(("30/09/2025",), ("31/12/2024",)),
+                       title=None, section="6. CHO VAY KHÁCH HÀNG", unit=unit_first, page=26)
+    second = make_table(FIVE, headers=headers_second, title="Phân tích chất lượng nợ cho vay", section="6. CHO VAY KHÁCH HÀNG",
+                        unit=second_unit, page=26)
+    first.table_id, second.table_id = "t1", "t2"
+    first.table_order, second.table_order = order
+    entries = [dict(_entry(26, "s1", "t1", None, "NONE"), version="v26"), dict(_entry(26, "s1", "t2", None, "NONE"), version="v26")]
+    return first, second, _SiblingSource(entries, [first, second])
+
+
+def test_unit_printed_once_for_the_note_is_inherited_by_an_identical_sibling(family):
+    from bctc_ai.notes.kernel_v1 import bind_sibling_units_v1
+
+    first, second, source = _sections()
+    bind_sibling_units_v1(source, [second])
+    assert second.sibling_unit["unit"] == "MILLION_VND"
+    result = cells(evaluate_table_v1(second, family, document(), context_of(second), []))
+    assert result[("G1", "INSTANT:2025-09-30")]["unit_basis"] == "SAME_SECTION_SIBLING_UNIT"
+
+
+@pytest.mark.parametrize("variant", ["different_headers", "donor_after", "no_donor_unit"])
+def test_sibling_unit_needs_same_lanes_an_earlier_donor_and_a_printed_unit(variant):
+    from bctc_ai.notes.kernel_v1 import bind_sibling_units_v1
+
+    kwargs = {"different_headers": {"headers_second": (("Cuối kỳ",), ("Đầu kỳ",))},
+              "donor_after": {"order": (1, 0)}, "no_donor_unit": {"unit_first": None}}[variant]
+    first, second, source = _sections(**kwargs)
+    bind_sibling_units_v1(source, [second])
+    assert second.sibling_unit is None
