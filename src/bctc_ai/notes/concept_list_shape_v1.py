@@ -454,17 +454,36 @@ def evaluate_concept_table_v1(
             evaluation.corroboration += [{**c, "lane": lane.column.column_id, "diagnostic_only": True}
                                          for c in anchor_checks_v1(family, document, values, lane.unit, candidate)]
         proven = any(c["status"] == "EXACT" for c in checks) or any(e["status"].startswith("PASS") for e in equations)
+        # A line that belongs to a declared equation or has a primary anchor must be proven by ITS OWN passing equation
+        # or exact anchor; it never inherits the lane's proof from unrelated arithmetic (Codex 0196).
+        own_proven = ({line for e in equations if e["status"].startswith("PASS") for line in [e["equals"], *e["terms"]]}
+                      | {c["line"] for c in checks if c["status"] == "EXACT"})
         vetoed = any(c["status"] == "DIFFERS" for c in checks)
         failed = {line for e in equations if e["status"] == "FAIL" for line in [e["equals"], *e["terms"]]}
         # Lines of an equation with unread rows in its span: population closure is not proven, so no
         # other proof (an income-statement anchor) may accept them.
         open_lines = {line for e in equations if e["status"] == "INCOMPLETE_UNREAD_ROWS_IN_SPAN" for line in [e["equals"], *e["terms"]]}
-        _emit(evaluation, family, document, lane, values, roles, proven=proven, vetoed=vetoed, failed=failed, open_lines=open_lines)
+        _emit(evaluation, family, document, lane, values, roles, proven=proven, vetoed=vetoed, failed=failed, open_lines=open_lines,
+              own_proven=own_proven)
     return [evaluation]
 
 
+def proof_bound_lines_v1(family: Family) -> set[str]:
+    """Lines whose acceptance needs their own proof: every line named by a declared equation or a primary anchor."""
+
+    bound: set[str] = set(family.raw.get("primary_anchors") or {})
+    for equation in family.raw.get("equations") or []:
+        bound.add(equation["equals"])
+        bound.update(equation.get("plus", []), equation.get("minus", []), equation.get("plus_present", []))
+        for key in ("plus_first_present", "minus_first_present"):
+            for group in equation.get(key, []):
+                bound.update(group)
+    return bound
+
+
 def _emit(evaluation: TableEvaluation, family: Family, document: DocumentContext, lane: NoteLane, values, roles,
-          *, proven: bool, vetoed: bool, failed: set[str], open_lines: set[str]) -> None:
+          *, proven: bool, vetoed: bool, failed: set[str], open_lines: set[str], own_proven: set[str]) -> None:
+    bound = proof_bound_lines_v1(family)
     table = evaluation.table
     emit = set(family.raw["emit_lines"])
     for role in roles:
@@ -485,6 +504,8 @@ def _emit(evaluation: TableEvaluation, family: Family, document: DocumentContext
             reasons.append("CELL_" + parsed.state)
         if not proven and parsed.state != "BLANK":
             reasons.append("NO_EQUATION_OR_PRIMARY_PROOF")
+        elif role.role in bound and role.role not in own_proven and parsed.state not in {"BLANK", "DASH"}:
+            reasons.append("LINE_NOT_PROVEN_BY_ITS_OWN_EQUATION_OR_ANCHOR")
         if reasons:
             acceptance = "HOLD"
         elif parsed.state == "BLANK":

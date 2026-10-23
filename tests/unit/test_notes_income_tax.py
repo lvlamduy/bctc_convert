@@ -460,6 +460,25 @@ def test_payable_or_stock_rows_are_never_the_current_tax_expense(family):
     assert (roles[3].role, roles[3].disposition) == ("CURRENT_TAX_EXPENSE", "MEMBER")
 
 
+def test_bound_line_needs_its_own_equation_or_anchor_not_the_lanes(family):
+    # A valid PBT -> taxable reconciliation proves its own lines; a current-tax row that no own equation or anchor
+    # proves is held, never accepted by that unrelated arithmetic (annual headers, Q4 document).
+    rows = [("Lợi nhuận kế toán trước thuế", ["1.000", "900"]), ("Chi phí không được khấu trừ", ["20", "10"]),
+            ("Thu nhập chịu thuế", ["1.020", "910"]), ("Chi phí thuế TNDN hiện hành", ["999", "888"])]
+    table = make_table(rows, ANNUAL)
+    result = cells(evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), []))
+    assert result[("PROFIT_BEFORE_TAX", YEAR)]["acceptance"] == "ACCEPTED"
+    assert result[("TAXABLE_INCOME", YEAR_PRIOR)]["acceptance"] == "ACCEPTED"
+    current = result[("CURRENT_TAX_EXPENSE", YEAR)]
+    assert current["acceptance"] == "HOLD" and "LINE_NOT_PROVEN_BY_ITS_OWN_EQUATION_OR_ANCHOR" in current["hold_reasons"]
+    # Genuine positive: the current-tax line proven by its own components equation (20% of 1.020 + prior-year 0).
+    proven = make_table(rows[:3] + [("Thuế TNDN tính theo thuế suất", ["204", "182"]), ("Điều chỉnh thuế TNDN năm trước", ["6", "8"]),
+                                    ("Chi phí thuế TNDN hiện hành", ["210", "190"])], ANNUAL)
+    result = cells(evaluate_concept_table_v1(proven, family, document(quarter=4), context_of(proven), []))
+    assert result[("CURRENT_TAX_EXPENSE", YEAR)]["acceptance"] == "ACCEPTED"
+    assert result[("CURRENT_TAX_EXPENSE", YEAR_PRIOR)]["acceptance"] == "ACCEPTED"
+
+
 def test_bare_current_year_label_needs_a_proven_current_tax_owner(family):
     # Codex 0196: "Năm hiện hành" is CURRENT_YEAR_PORTION only under its proven, final CURRENT_TAX_EXPENSE parent.
     def table_under(owner_label):
