@@ -356,3 +356,38 @@ def test_wrapper_needs_the_complete_original_value_axis(config):
     merged.fragments = [merged.locator(), {**merged.locator(), "physical_page": 38}]   # continuation domain
     for table in (shifted, no_bridge, partial, moved, merged):
         assert _roles(table, family)[2][:2] == held
+
+
+def test_document_coverage_separates_observed_unresolved_from_not_observed():
+    # Codex 0155/0157: metadata only - FOUND precedence, cells/roles/thresholds untouched.
+    from bctc_ai.notes.engine_v1 import COVERAGE_FORMAT, document_coverage_v1
+    from bctc_ai.notes.list_shape_v1 import RowRole, TableEvaluation
+
+    def evaluation(ordinal, status, reasons, subject=None):
+        table = replace(make_table([("Chi phí cho nhân viên", ["1", "1"])], [("Năm 2025",), ("Năm 2024",)]),
+                        document_ordinal=ordinal)
+        result = TableEvaluation(table, status, list(reasons), subject=subject)
+        result.roles = [RowRole(0, None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER", ["CUSTOMER_GENERAL"])]
+        return result
+
+    subject = "OPERATING_EXPENSE_NOTE"
+    evaluations = [evaluation(1, "REJECTED", ["ONLY_1_LINES"], subject),          # observed, lines unprovable
+                   evaluation(2, "REJECTED", ["ONLY_1_LINES"]),                   # no explicit subject
+                   evaluation(3, "REJECTED", ["NO_TITLE_AND_ONLY_1_ANCHOR_LINES"]),
+                   evaluation(3, "REJECTED", ["OWNER_CONTEXT_IS_ANOTHER_NOTE"]),
+                   evaluation(3, "REJECTED", ["PRIMARY_STATEMENT_PAGE"]),
+                   evaluation(4, "EVALUATED", [], subject), evaluation(4, "REJECTED", ["ONLY_1_LINES"], subject),
+                   evaluation(5, "REJECTED", ["ONLY_X_LINES"], subject),          # not the finite reason grammar
+                   evaluation(5, "REJECTED", ["ONLY_1_LINES", "OTHER"], subject)]
+    coverage = document_coverage_v1(evaluations, [], [1, 2, 3, 4, 5, 6], "CONCEPT_LIST")
+    assert {k: v["status"] for k, v in coverage.items()} == {
+        1: "OBSERVED_UNRESOLVED", 2: "NOT_OBSERVED_AFTER_FULL_RETRIEVAL", 3: "NOT_OBSERVED_AFTER_FULL_RETRIEVAL",
+        4: "FOUND", 5: "NOT_OBSERVED_AFTER_FULL_RETRIEVAL", 6: "NOT_OBSERVED_AFTER_FULL_RETRIEVAL"}
+    assert all(v["coverage_format"] == COVERAGE_FORMAT for v in coverage.values())
+    assert coverage[1]["unresolved_tables"][0]["reasons"] == ["ONLY_1_LINES"]
+    assert coverage[1]["unresolved_tables"][0]["subject"] == subject
+    assert coverage[1]["unresolved_row_reasons"] == {"OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER": 1}
+    assert "unresolved_tables" not in coverage[4] and coverage[4]["evaluated_tables"] == 1
+    # Other shapes are unchanged.
+    other = document_coverage_v1(evaluations, [], [1], "LIST_BY_AXIS")
+    assert other[1]["status"] == "NOT_OBSERVED_AFTER_FULL_RETRIEVAL"

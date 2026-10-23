@@ -9,6 +9,7 @@ held, whatever their values (no first/last wins).
 
 from __future__ import annotations
 
+import re
 import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -96,16 +97,7 @@ def run_family_v1(
     run.joins = joins
     hold_write_key_collisions_v1(run.cells)
     ordinals = sorted(document_ordinals if document_ordinals is not None else contexts)
-    for ordinal in ordinals:
-        evaluated = [e for e in run.evaluations if e.table.document_ordinal == ordinal and e.status == "EVALUATED"]
-        subjects = Counter(e.subject for e in evaluated)
-        accepted = Counter((c["concept"]) for c in run.cells if c["document_ordinal"] == ordinal and c["acceptance"] == "ACCEPTED")
-        run.coverage[ordinal] = {
-            "evaluated_tables": len(evaluated),
-            "subjects": {str(k): v for k, v in subjects.items()},
-            "accepted_cells_by_concept": dict(accepted),
-            "status": "FOUND" if evaluated else "NOT_OBSERVED_AFTER_FULL_RETRIEVAL",
-        }
+    run.coverage = document_coverage_v1(run.evaluations, run.cells, ordinals, family.shape)
     run.metrics = {
         "kernel_version": KERNEL_VERSION, "family_sha256": family.sha256, "config_pins": config.pins,
         "candidate_tables": len(candidates), "loaded_tables": len(tables),
@@ -115,6 +107,44 @@ def run_family_v1(
         "cells_sha256": stable_json_sha256(run.cells),
     }
     return run
+
+
+COVERAGE_FORMAT = "NOTES_COVERAGE_STATUS_V2"
+_ONLY_LINES = re.compile(r"ONLY_[0-9]+_LINES")
+
+
+def document_coverage_v1(evaluations: list[Any], cells: list[dict[str, Any]], ordinals: list[int],
+                         shape: str) -> dict[int, dict[str, Any]]:
+    """Per-document coverage status (metadata only; cells, roles and thresholds are not touched).
+
+    FOUND - at least one EVALUATED table (precedence, unchanged meaning).
+    OBSERVED_UNRESOLVED (Codex 0157) - no EVALUATED table, but a CONCEPT_LIST table that passed the page,
+      notes-start and owner checks, has an explicitly resolved printed subject, and was REJECTED with exactly
+      one reason ONLY_<n>_LINES: the note was observed, its lines are not (yet) provable.
+    NOT_OBSERVED_AFTER_FULL_RETRIEVAL - everything else (incl. NO_TITLE weak evidence, a foreign owner,
+      primary-statement pages, pages before the notes, source-bridge or PRIMARY-context rejections).
+    Every rejected table keeps its own reasons in dispositions; this only adds an auditable status split.
+    """
+
+    coverage: dict[int, dict[str, Any]] = {}
+    for ordinal in ordinals:
+        own = [e for e in evaluations if e.table.document_ordinal == ordinal]
+        evaluated = [e for e in own if e.status == "EVALUATED"]
+        unresolved = [e for e in own if shape == "CONCEPT_LIST" and e.status == "REJECTED" and e.subject is not None
+                      and len(e.reasons) == 1 and isinstance(e.reasons[0], str) and _ONLY_LINES.fullmatch(e.reasons[0])]
+        subjects = Counter(e.subject for e in evaluated)
+        accepted = Counter(c["concept"] for c in cells if c["document_ordinal"] == ordinal and c["acceptance"] == "ACCEPTED")
+        status = "FOUND" if evaluated else ("OBSERVED_UNRESOLVED" if unresolved else "NOT_OBSERVED_AFTER_FULL_RETRIEVAL")
+        entry = {"coverage_format": COVERAGE_FORMAT, "evaluated_tables": len(evaluated),
+                 "subjects": {str(k): v for k, v in subjects.items()}, "accepted_cells_by_concept": dict(accepted),
+                 "status": status}
+        if status == "OBSERVED_UNRESOLVED":
+            entry["unresolved_tables"] = [{"locator": e.table.locator(), "fragments": list(e.table.fragments),
+                                           "subject": e.subject, "reasons": list(e.reasons)} for e in unresolved]
+            entry["unresolved_row_reasons"] = dict(Counter(
+                r.reason for e in unresolved for r in e.roles if r.disposition in ("SOURCE_ONLY", "AMBIGUOUS")))
+        coverage[ordinal] = entry
+    return coverage
 
 
 def hold_write_key_collisions_v1(cells: list[dict[str, Any]]) -> None:
