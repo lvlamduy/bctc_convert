@@ -152,13 +152,18 @@ axes:
         name: Chi phí thuế TNDN hiện hành
         all_of: [[chi phi thue, hien hanh], [thue thu nhap doanh nghiep hien hanh], [thue tndn hien hanh], [thue thu nhap hien hanh],
                  [chi phi thue, trong ky], [chi phi thue, trong nam], [thue tndn, trong ky], [thue tndn, trong nam],
-                 [thue thu nhap doanh nghiep, trong ky], [thue thu nhap doanh nghiep, trong nam],
-                 [thue thu nhap doanh nghiep phai nop], [thue tndn phai nop]]
+                 [thue thu nhap doanh nghiep, trong ky], [thue thu nhap doanh nghiep, trong nam]]
+        # Positive current-EXPENSE meaning only (Codex 0196): a payable / stock row ("Số dư thuế TNDN phải nộp",
+        # "Thuế TNDN phải nộp") is not the expense and never inherits it from unrelated arithmetic.
         none_of: [[hoan lai], [dau ky], [cuoi ky], [dau nam], [cuoi nam], [da nop], [da tra], [nam truoc], [cac nam truoc], [ky truoc],
-                  [cong ty con], [chi nhanh], [nuoc ngoai], [tinh tren], [theo thue suat], [quyet toan], [bo sung]]
+                  [cong ty con], [chi nhanh], [nuoc ngoai], [tinh tren], [theo thue suat], [quyet toan], [bo sung],
+                  [so du], [phai nop], [phai tra]]
       CURRENT_YEAR_PORTION:
         name: Chi phí thuế hiện hành - năm/kỳ hiện hành
         exact: [nam hien hanh, ky hien hanh]
+        # A bare contextual label: read only under its proven, final unambiguous CURRENT_TAX_EXPENSE parent
+        # (never under TAX_PAID or another owner, never top-level) - Codex 0196.
+        owner: [CURRENT_TAX_EXPENSE]
       PRIOR_YEAR_TAX_ADJUSTMENT:
         name: Điều chỉnh thuế TNDN của các năm trước
         all_of: [[dieu chinh, nam truoc], [dieu chinh, ky truoc], [dieu chinh, quyet toan], [bo sung, nam truoc], [nop bo sung],

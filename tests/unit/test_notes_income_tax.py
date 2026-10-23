@@ -435,3 +435,48 @@ def test_unread_detail_is_never_excused_without_full_printed_proof(family, case)
         dup = table.rows[3]
         table.rows[3] = NoteRow("r1", dup.order, dup.label, dup.kind, dup.hierarchy, dup.parent_row_id)
     assert "PASS" not in taxable_status(family, table)
+
+
+def _link(table, child, parent):
+    """Print ``child`` under ``parent`` as the source does: parent_row_id plus the raw hierarchy path."""
+
+    from dataclasses import replace
+    owner = table.rows[parent]
+    if not owner.hierarchy:
+        owner = table.rows[parent] = replace(owner, hierarchy=(owner.label,))
+    row = table.rows[child]
+    table.rows[child] = replace(row, hierarchy=(*owner.hierarchy, row.label), parent_row_id=owner.row_id)
+
+
+ANNUAL = [("Năm 2025",), ("Năm 2024",)]
+
+
+def test_payable_or_stock_rows_are_never_the_current_tax_expense(family):
+    # Codex 0196: positive current-EXPENSE meaning only.
+    rows = [("Số dư thuế TNDN phải nộp", ["69.079", "6.060"]), ("Thuế TNDN phải nộp", ["50", "40"]),
+            ("Thuế thu nhập doanh nghiệp phải nộp", ["50", "40"]), ("Chi phí thuế TNDN hiện hành", ["87.808", "37.162"])]
+    roles = assign_lines_v1(make_table(rows, ANNUAL), family)
+    assert [r.role for r in roles[:3]] == [None, None, None]
+    assert (roles[3].role, roles[3].disposition) == ("CURRENT_TAX_EXPENSE", "MEMBER")
+
+
+def test_bare_current_year_label_needs_a_proven_current_tax_owner(family):
+    # Codex 0196: "Năm hiện hành" is CURRENT_YEAR_PORTION only under its proven, final CURRENT_TAX_EXPENSE parent.
+    def table_under(owner_label):
+        table = make_table([(owner_label, ["87.808", "37.162"]), ("Năm hiện hành", ["87.690", "36.347"])], ANNUAL)
+        _link(table, 1, 0)
+        return table
+
+    roles = assign_lines_v1(table_under("Chi phí thuế TNDN hiện hành"), family)
+    assert (roles[1].role, roles[1].disposition) == ("CURRENT_YEAR_PORTION", "MEMBER")
+    paid = assign_lines_v1(table_under("Thuế TNDN đã nộp trong năm"), family)[1]
+    assert (paid.role, paid.disposition, paid.reason) == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_LINE_TAX_PAID")
+    top = assign_lines_v1(make_table([("Năm hiện hành", ["87.690", "36.347"])], ANNUAL), family)[0]
+    assert (top.role, top.disposition, top.reason) == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:NO_PRINTED_PARENT")
+    # A CURRENT_TAX_EXPENSE parent made AMBIGUOUS by a second printing releases the child.
+    dup = table_under("Chi phí thuế TNDN hiện hành")
+    dup.rows.append(type(dup.rows[0])("r2", 2, "Chi phí thuế TNDN hiện hành", "ITEM", ("Chi phí thuế TNDN hiện hành",), None))
+    for column in dup.columns:
+        dup.cells[("r2", column.column_id)] = ("1", "VALUE")
+    child = assign_lines_v1(dup, family)[1]
+    assert (child.role, child.disposition, child.reason) == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER")
