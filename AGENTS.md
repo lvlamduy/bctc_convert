@@ -45,6 +45,13 @@ actual FULL243 source/cold replay and six-original-document matcher equality.
 The witness remains opt-in and no family is sealed. The guarded Claude pilot and
 derived-store comparator are terminal PASS_DIAGNOSTIC but remain unpromoted.
 
+Read `docs/operations/F36_DIAGNOSTIC_AND_UNRESOLVED_FRONTIER_CHECKPOINT_2026-10-24.md`
+for the opt-in diagnostic integration71bf8c26 and34-case gate, completed S3
+checkpoint, and the reviewed but unpromoted audited-U row-disposition proposal.
+Actual FULL253 has a blank printed component, so the finding is incomplete source,
+not a numeric contradiction or permission to fill it. Preserve raw violations and
+require exact fresh source/PDF/row joins before any held-row accounting.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address

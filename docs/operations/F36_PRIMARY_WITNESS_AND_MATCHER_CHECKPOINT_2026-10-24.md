@@ -22,8 +22,9 @@ admission. It changes only the three declared original NULL cells in a private
 projection. JSON metadata, approval flags or resealed receipts cannot substitute
 for admission. Original PDF/database bytes remain untouched. DefaultNone retains
 the previous algorithm. Public trials/replay/coverage rederive from originals;
-coverage keeps the original row denominator. Cold replay creates fresh admission
-after the warm capability has closed. The registry is not automatically enabled.
+coverage keeps the original row denominator. Source replay creates fresh admission
+from source files. The actual FULL243 diagnostic below additionally closed its
+warm capability before its cold pass. The registry is not automatically enabled.
 
 One separately reviewed performance-only change prepares immutable matching forms
 once per matcher, keeping alias/suffix predicates, precedence, financial rules
