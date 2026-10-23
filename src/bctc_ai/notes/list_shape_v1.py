@@ -37,6 +37,7 @@ class RowRole:
     disposition: str            # MEMBER | TOTAL | SOURCE_ONLY | HEADING | AMBIGUOUS
     reason: str
     candidates: list[str] = field(default_factory=list)
+    depends_on: int | None = None  # row whose proven line this row's reading relies on (owner / scoped parent)
 
 
 @dataclass

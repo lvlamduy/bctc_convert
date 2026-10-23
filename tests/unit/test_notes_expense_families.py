@@ -220,6 +220,30 @@ def test_explicit_non_credit_population_never_closes_a_credit_total(config):
     assert _roles(explicit, family)[0][:2] == ("OTHER_PROVISION", "MEMBER")
 
 
+def test_a_contextual_child_of_a_population_held_line_is_held_with_it(config):
+    # Codex 0208: bare "Dự phòng chung / cụ thể" read only under the customer line depend on its population; when a
+    # foreign row claiming that parent holds the customer line, 300 = 20 + 280 cannot keep the bare children accepted.
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    headers, title = [("Năm 2025",), ("Năm 2024",)], "29. Chi phí dự phòng rủi ro tín dụng"
+    customer, total = ("Chi phí dự phòng rủi ro cho vay khách hàng", ["300", "250"]), ("Tổng cộng", ["305", "254"])
+    general, specific = ("Dự phòng chung", ["20", "10"]), ("Dự phòng cụ thể", ["280", "240"])
+    bare = make_table([customer, general, specific, ("Chi phí dự phòng khác cho tài sản cố định", ["5", "4"]), total],
+                      headers, title=title)
+    for child in (1, 2, 3):
+        link(bare, child, 0)
+    result, _exact = _anchored(bare, family, "305", "254")
+    for line in ("CUSTOMER_PROVISION", "CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC"):
+        assert result[(line, YEAR)]["acceptance"] == "HOLD"
+        assert "POPULATION_MAY_INCLUDE_VETOED_ROW" in result[(line, YEAR)]["hold_reasons"], line
+    # The same bare children under a clean customer line keep their proof (no amount decides the dependency).
+    clean = make_table([customer, general, specific, ("Trích lập dự phòng trái phiếu đặc biệt VAMC", ["5", "4"]), total],
+                       headers, title=title)
+    for child in (1, 2):
+        link(clean, child, 0)
+    result, _exact = _anchored(clean, family, "305", "254")
+    assert all(result[(line, period)]["acceptance"] == "ACCEPTED" for line in CUSTOMER_LINES for period in (YEAR, PRIOR))
+
+
 def test_bare_other_provision_needs_the_subject_of_the_tables_own_context(config):
     # Codex 0203: bare "Dự phòng khác" prints no population; only a positively proven flow/credit owner (the family
     # subject in the table's OWN context) admits it - never arithmetic, a preceding heading or the anchor lines alone.

@@ -250,8 +250,10 @@ def assign_lines_v1(table: NoteTable, family: Family, *, owned_subject: bool = F
             roles.append(RowRole(index, matches[0], "MEMBER", reason))
             if matches[0] in by_owner and owner_index is not None:
                 depends[index] = (owner_index, owner_line)
+                roles[-1].depends_on = owner_index
             elif matches[0] in by_parent and parent_index is not None:
                 depends[index] = (parent_index, parent_line)
+                roles[-1].depends_on = parent_index
         else:
             roles.append(RowRole(index, None, "SOURCE_ONLY", "NO_LINE_RULE"))
     printed: dict[str, list[RowRole]] = {}
@@ -503,7 +505,8 @@ def foreign_population_lines_v1(table: NoteTable, family: Family, roles: list[Ro
     doubt the population); and, to a fixed point, every equation target summing a held line. An exact
     income-statement anchor or a passing equation never overrides this, and no position, amount or
     arithmetic excludes a foreign row: excluding one would need a positive source partition (not in V1).
-    Lines with their own printed population that the row does not claim (e.g. customer loans) keep their proofs.
+    Lines with their own printed population that the row does not claim (e.g. customer loans) keep their proofs;
+    a contextual child of a held line (its ``depends_on`` edge from ``assign_lines_v1``) is held with it.
     """
 
     if not foreign_rows:
@@ -526,6 +529,14 @@ def foreign_population_lines_v1(table: NoteTable, family: Family, roles: list[Ro
         for equation in family.raw.get("equations") or []:
             if equation["equals"] not in held and _equation_terms(equation) & held:
                 held.add(equation["equals"])
+                changed = True
+        for role in roles:
+            # Downward (Codex 0208): a contextual child read only because of its proven owner / scoped parent
+            # ("Dự phòng chung" under the customer line) depends on that parent's population; a fully qualified
+            # direct label has no such edge and keeps its own proof.
+            if (role.disposition == "MEMBER" and role.depends_on is not None and role.role not in held
+                    and line_of_row.get(role.depends_on) in held):
+                held.add(role.role)
                 changed = True
     return held
 
