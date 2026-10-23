@@ -209,3 +209,22 @@ def test_owner_made_ambiguous_by_a_duplicate_population_releases_its_child(confi
     for child, parent in ((1, 0), (2, 1)):
         link(single, child, parent)
     assert _roles(single, family)[2][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")
+
+
+def test_fully_qualified_general_and_specific_labels_read_without_a_parent(config):
+    # Codex 0131: a direct, fully qualified label also matching its optional scoped phrase must neither
+    # crash nor need a parent; only a member added by the scoped fallback depends on the proven parent.
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    headers, title = [("Năm 2025",), ("Năm 2024",)], "29. Chi phí dự phòng rủi ro tín dụng"
+    table = make_table([("Dự phòng chung cho vay khách hàng", ["20", "10"]),
+                        ("Dự phòng cụ thể tiền gửi và cho vay các TCTD khác", ["5", "4"]),
+                        ("Dự phòng chung", ["7", "6"])], headers, title=title)
+    roles = _roles(table, family)
+    assert roles[0][:2] == ("CUSTOMER_GENERAL", "MEMBER") and roles[1][:2] == ("INTERBANK_SPECIFIC", "MEMBER")
+    assert roles[2][:2] == (None, "SOURCE_ONLY")  # bare scoped label without a parent stays unread
+    # Printed under a parent that later becomes AMBIGUOUS, the direct qualified label still reads on its own.
+    dup = make_table([("Chi phí dự phòng rủi ro cho vay khách hàng", ["30", "20"]), ("Dự phòng chung cho vay khách hàng", ["20", "10"]),
+                      ("Chi phí dự phòng rủi ro cho vay khách hàng", ["31", "21"])], headers, title=title)
+    link(dup, 1, 0)
+    roles = _roles(dup, family)
+    assert roles[0][1] == roles[2][1] == "AMBIGUOUS" and roles[1][:2] == ("CUSTOMER_GENERAL", "MEMBER")

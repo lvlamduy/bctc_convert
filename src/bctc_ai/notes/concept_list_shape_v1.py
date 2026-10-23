@@ -139,6 +139,7 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
         scoped = [m for m, spec in members.items() if spec.get("scoped") and key and _scoped_match(spec, key)]
         owned = [m for m in matches if members.get(m, {}).get("owner")]
         blocked: list[str] = []
+        parent_index, by_parent = None, set()  # by_parent: members read only because of the proven parent
         if scoped or owned or any(members.get(m, {}).get("not_within") for m in matches):
             parent_line, parent_reason, parent_index = _proven_parent_line(table, index, family)
             excluded = [m for m in matches if members.get(m, {}).get("not_within")
@@ -146,7 +147,12 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             # An owner-bound line is read only under its proven printed owner (never by amount or position).
             blocked = [m for m in owned if parent_line not in members[m]["owner"]] + excluded
             matches = [m for m in matches if m not in blocked]
-            matches += [m for m in scoped if parent_line in members[m]["scoped"]["within"] and m not in matches]
+            # Only an explicit owner, or a member ADDED by the proven scoped fallback, depends on the parent;
+            # a fully qualified direct label (e.g. "Dự phòng chung cho vay khách hàng") reads on its own.
+            by_parent = {m for m in owned if m in matches}
+            added = [m for m in scoped if parent_line in members[m]["scoped"]["within"] and m not in matches]
+            matches += added
+            by_parent |= set(added)
             if blocked and not matches:
                 why = parent_reason if parent_line is None else "PARENT_LINE_" + parent_line
                 roles.append(RowRole(index, None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:" + why, blocked))
@@ -155,7 +161,7 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             roles.append(RowRole(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES", matches))
         elif matches:
             roles.append(RowRole(index, matches[0], "MEMBER", "LINE_RULE"))
-            if matches[0] in owned or matches[0] in scoped:
+            if matches[0] in by_parent and parent_index is not None:
                 depends[index] = (parent_index, parent_line)
         else:
             roles.append(RowRole(index, None, "SOURCE_ONLY", "NO_LINE_RULE"))
