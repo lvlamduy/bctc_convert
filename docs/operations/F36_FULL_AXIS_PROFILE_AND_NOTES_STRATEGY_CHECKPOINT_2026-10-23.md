@@ -81,7 +81,27 @@ Inactive spec SHA
 `e4f350b5de4caef7516a9f62cc109b54eaf161b6ad8c833425ab70c00de0dc4a`,6,319B.
 All three declarations validate; input closure passed. This execution accessed
 neither PDF/PNG nor database, and performed no projection or registry activation.
-Public admission integration remains a separate unrun draft pending review/tests.
+Public admission integration remains private and unpromoted. Its reviewed optional
+API uses an operation-bound live capability created only after fresh PDF/render/
+crop verification. JSON metadata, approval booleans and self-sealed receipts are
+not admission. Trials, coverage and cold replay recompute from original pages;
+default-None retains the earlier route. No actual243 registry was activated.
+
+Private candidate `72914747d14d7950b7b27b8d53342e500ddeb858` passed the coherent
+15-module832-case gate (744existing +62primitive +26public protocol), zero
+failures/errors/skips, Ruff, actual imports and final source/Git barriers:
+
+`/srv/bctc-receipts/f36-primary-witness-full-focused-20261023T160800Z/F36_PRIMARY_WITNESS_FULL_FOCUSED_V4.json`
+
+SHA `4fd03ddae336614bee42f172bcb4448d5f17cea23846f8a4cb618308d62a3cf2`,
+2,069,801B. The candidate's public protocol uses actual synthetic PDF pixels and
+SQLite ingestion/replay; it does not use corpus PDF pixels or financial mocks.
+The earlier V2 Ruff failure and V3 21-failure run remain intact: V3's21failures
+all stopped at a schema-invalid synthetic anonymous row path before admission.
+A test-only explicit legal path fix preserved its blank label and values, then
+26/26public cases passed separately before the full832rerun. No validator or
+acceptance assertion was weakened. Full real-source243 comparison is still a
+separate required gate, not implied by these synthetic tests.
 
 ## Strategy and next acceptance evidence
 
@@ -134,6 +154,25 @@ pilot has falsely accepted a particular source. Review original coordinates and 
 regressions before any production promotion. Preserve HOLD and every retrieved-row
 disposition; accepted-cell counts alone cannot establish accuracy or completeness.
 
+The finite prototype guards were subsequently implemented on Claude's separate
+notes branch, ending at `1fc78cba51e68656117e8ba0dff5171c064eb252`.
+Header-versus-table and conflicting table-owned units now veto a lane; owner/scoped
+children require a coherent final unambiguous parent; equal-valued collisions stay
+HOLD; ambiguous tax observations have no5729/5730legacy ID and expose their
+semantic state in workbookV2. A later regression preserves fully qualified direct
+F37 labels without an invented parent dependency. The known valid FULL193 NULL
+wrapper shape remains an explicit conservative coverage gap in this prototype.
+
+Its actual seven-module118-case run passed with zero failures/errors/skips:
+`/home/bctc/notes-pytest/20261023T161232Z/terminal.json`, SHA
+`0d2f46f523dba6ed1e97194e7b2e77d73661e96ee7855765a632815d110fecb0`.
+Root verified matching before/after pins
+`d6b11b0809caafd94c05e20c89efdbf2704599e1d3b4faa291249c323ca1ed53`.
+This is unit evidence only. A guarded FULL271 rerun is separately granted by
+exchange0137; verify its actual terminal release before another runtime job or
+claiming a new corpus result. Source-coordinate comparison remains a distinct
+unrun step. None of this prototype code is integrated into this checkout.
+
 F36 still requires fresh coherent full271/common204, public and cold source replay,
 observation checks, final SQLite persistence/integrity, PDF/residual audit and a
 terminal ledger. Preserve all prior artifacts and failures.
@@ -141,3 +180,5 @@ terminal ledger. Preserve all prior artifacts and failures.
 Pre-mutation coordination reviewed182exact event versions, with no new F36 owner
 conflict. Receipt SHA
 `38c0de929c888cf219a7a6c84f01d8bb5693850b9255badf07a4cb29f8720999`.
+The later coordination review again found182exact versions/no conflicting owner;
+receipt SHA `b95bac538223dc56cbb6389085d9feebf339a11de114c8c2cb1ac8ad9fe6c9bd`.
