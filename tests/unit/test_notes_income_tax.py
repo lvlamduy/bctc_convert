@@ -339,3 +339,39 @@ def test_more_specific_own_caption_is_not_a_contradiction():
     table = make_table(RECON[:1], [("Kỳ này",)], section="Thuyết minh báo cáo tài chính cho kỳ 9 tháng kết thúc ngày 30/09/2025")
     lanes = resolve_duration_lanes_v1(table, document(quarter=3), [], [table.section_title])
     assert "OWN_AND_REPORT_CONTEXT_DISAGREE" not in lanes[0].reasons
+    assert lanes[0].period_key == "DURATION:MONTHS_ENDED:9:2025-09-30"
+    assert lanes[0].period_basis == "OWN_CAPTION_BOUND:DURATION:MONTHS_ENDED:9:2025-09-30"
+
+
+def test_owned_partial_window_blocks_the_annual_fallback_even_if_primary_prints_no_start():
+    table = make_table(RECON[:1], [("31/12/2025",)], section="Thuyết minh cho giai đoạn từ ngày 01/04/2025 đến ngày 31/12/2025")
+    lanes = resolve_duration_lanes_v1(table, annual_document(), [], [table.section_title])
+    assert lanes[0].period_key is None
+
+
+@pytest.mark.parametrize("header", [
+    "31/12/2025\u0301",       # combining acute after the date
+    "\u0663\u0661/12/2025",  # Arabic-Indic day digits
+    "31/12/20\u0662\u0665",  # mixed-digit year
+])
+def test_raw_date_tokens_must_be_plain_ascii_without_stray_marks(header):
+    table = make_table(RECON[:1], [(header,)])
+    assert resolve_duration_lanes_v1(table, annual_document(), [], [table.table_title])[0].period_key is None
+    assert resolve_duration_lanes_v1(table, document(quarter=4), [], [table.table_title])[0].candidates == []
+
+
+def test_printed_year_header_is_not_relabelled_under_a_non_calendar_fiscal_year():
+    doc = annual_with("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG\nCho năm tài chính kết thúc ngày 30 tháng 06 năm 2025")
+    table = make_table(RECON[:1], [("Năm 2025",)])
+    lane = resolve_duration_lanes_v1(table, doc, [], [table.table_title])[0]
+    assert lane.period_key is None and "NON_CALENDAR_FISCAL_WINDOW_NOT_RELABELLED_AS_YEAR" in lane.reasons
+    calendar = resolve_duration_lanes_v1(table, annual_document(), [], [table.table_title])[0]
+    assert calendar.period_key == YEAR  # an independent full calendar-year header stays resolved
+
+
+def test_context_bound_year_is_not_relabelled_under_a_non_calendar_fiscal_year():
+    doc = annual_with("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG\nCho năm tài chính kết thúc ngày 30 tháng 06 năm 2025")
+    table = make_table(RECON[:1], [("Kỳ này",), ("Năm nay",)])
+    lanes = resolve_duration_lanes_v1(table, doc, [], [table.table_title])
+    assert [lane.period_key for lane in lanes] == [None, None]
+    assert all("NON_CALENDAR_FISCAL_WINDOW_NOT_RELABELLED_AS_YEAR" in lane.reasons for lane in lanes)

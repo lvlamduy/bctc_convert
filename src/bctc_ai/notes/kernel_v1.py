@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import unicodedata
 from collections import defaultdict
 from contextlib import closing
 from dataclasses import dataclass, field
@@ -739,18 +740,25 @@ def resolve_duration_lanes_v1(
             report_key = canonical_period_key_v1(report.key)
             explicit = next((d for d in (own, report) if d and d.key and d.resolution == "EXPLICIT"), None)
             year_only = re.fullmatch(r"nam\s+((?:19|20)\d{2})", _header_core(folded))
-            if explicit and canonical_period_key_v1(explicit.key):
-                lane.period_key, lane.period_basis = canonical_period_key_v1(explicit.key), "HEADER_PRINTED:" + explicit.key
+            calendar_ok = _calendar_year_compatible(own_context) and _calendar_year_compatible(report_context)
+            explicit_key = canonical_period_key_v1(explicit.key) if explicit else None
+            if explicit_key and explicit_key.startswith("DURATION:YEAR:") and not calendar_ok:
+                # "Năm 2025" under a printed non-calendar fiscal window (e.g. ending 30/06): not relabelled.
+                lane.reasons.append("NON_CALENDAR_FISCAL_WINDOW_NOT_RELABELLED_AS_YEAR")
+            elif explicit_key:
+                lane.period_key, lane.period_basis = explicit_key, "HEADER_PRINTED:" + explicit.key
             elif contexts_disagree or (own_key and report_key and own_key != report_key):
                 lane.reasons.append("OWN_AND_REPORT_CONTEXT_DISAGREE")
-            elif year_only and full_year_report:
+            elif year_only and full_year_report and calendar_ok:
                 lane.period_key, lane.period_basis = f"DURATION:YEAR:{year_only.group(1)}", "HEADER_PRINTED_YEAR"
+            elif (own_key or report_key or "").startswith("DURATION:YEAR:") and not calendar_ok:
+                lane.reasons.append("NON_CALENDAR_FISCAL_WINDOW_NOT_RELABELLED_AS_YEAR")
             elif own_key:
                 lane.period_key, lane.period_basis = own_key, "OWN_CAPTION_BOUND:" + own.key
             elif report_key:
                 lane.period_key, lane.period_basis = report_key, "REPORT_TITLE_BOUND:" + report.key
             else:
-                lane.candidates = _quarter_or_ytd_candidates(header, folded, report_context)
+                lane.candidates = _quarter_or_ytd_candidates(header, folded, report_context, own_context)
                 if lane.candidates and len(set(lane.candidates)) == 1:
                     basis = "ANNUAL_REPORT_END_DATE" if len(lane.candidates) == 1 else "FIRST_QUARTER_IS_YEAR_TO_DATE"
                     lane.period_key, lane.period_basis = lane.candidates[0], basis
@@ -793,21 +801,49 @@ def _windows_disagree(own, report) -> bool:
     return bool((own.annual and report_interim) or (report.annual and own_interim))
 
 
-_NUMERIC_DATE = r"(\d{1,2})[/.\-](\d{1,2})[/.\-]((?:19|20)\d{2})"
-_WORDED_DATE = r"(?:ngay )?(\d{1,2}) thang (\d{1,2}) nam ((?:19|20)\d{2})"
+def _calendar_year_compatible(context) -> bool:
+    """No printed window evidence contradicts a full calendar year (1/1 to 31/12)."""
+
+    if context.fiscal_year_end and context.fiscal_year_end[5:] != "12-31":
+        return False
+    if context.annual and context.reporting_date and context.reporting_date[5:] != "12-31":
+        return False
+    if context.range_start and context.range_start[5:] != "01-01":
+        return False
+    return not context.first_months_of_fiscal_year and context.months in (None, 12)
+
+
+_NUMERIC_DATE = r"([0-9]{1,2})[/.\-]([0-9]{1,2})[/.\-]((?:19|20)[0-9]{2})"
+_WORDED_DATE = r"(?:ngay )?([0-9]{1,2}) thang ([0-9]{1,2}) nam ((?:19|20)[0-9]{2})"
 _ANNUAL_PREFIX = r"(?:(?:cho )?nam (?:tai chinh )?ket thuc (?:vao )?ngay |(?:tai )?ngay )?"
 _PLAIN_PREFIX = r"(?:(?:tai )?ngay )?"
 
 
-def _single_date_header(core: str, *, annual_prefix: bool) -> str | None:
+def _raw_digits_and_marks_ok(raw_header: str) -> bool:
+    """Raw (unfolded) header: only ASCII digits and no stray combining mark.
+
+    Folding drops combining marks and Unicode digits would match a generic
+    digit class, so the raw text is checked before any folded grammar.
+    """
+
+    raw = unicodedata.normalize("NFC", raw_header)
+    if any(unicodedata.category(c) == "Mn" for c in raw):
+        return False
+    return all(c in "0123456789" for c in raw if unicodedata.category(c) == "Nd")
+
+
+def _single_date_header(core: str, raw_header: str, *, annual_prefix: bool) -> str | None:
     """The one valid date of a header that prints nothing else (finite grammar), else None.
 
-    The whole header must be an optional fixed prefix and exactly one date
+    The raw header must pass ``_raw_digits_and_marks_ok``; then the whole
+    folded header must be an optional fixed prefix and exactly one ASCII date
     token; any extra number, word or a second/invalid date rejects it.
     """
 
+    if not _raw_digits_and_marks_ok(raw_header):
+        return None
     prefix = _ANNUAL_PREFIX if annual_prefix else _PLAIN_PREFIX
-    match = re.fullmatch(prefix + f"(?:{_NUMERIC_DATE}|{_WORDED_DATE})", core)
+    match = re.fullmatch(prefix + f"(?:{_NUMERIC_DATE}|{_WORDED_DATE})", core, flags=re.ASCII)
     if not match:
         return None
     day, month, year = [g for g in match.groups() if g is not None]
@@ -832,7 +868,7 @@ def _header_core(folded: str) -> str:
     return re.sub(r"\s+", " ", _UNIT_WORDS.sub(" ", folded)).strip(" /")
 
 
-def _quarter_or_ytd_candidates(header: str, folded: str, context) -> list[str]:
+def _quarter_or_ytd_candidates(header: str, folded: str, context, own=None) -> list[str]:
     """The periods a header can mean when it prints only an end date or "Kỳ này".
 
     Quarterly report (printed quarter and end date): a header that is exactly
@@ -841,8 +877,10 @@ def _quarter_or_ytd_candidates(header: str, folded: str, context) -> list[str]:
     coincide (first quarter). Annual report: the only candidate is the
     reported calendar year, and only when the printed fiscal year ends on
     31/12 with no contrary range/months/first-N-months evidence; any other
-    fiscal end holds. Headers must match a finite grammar (one valid date
-    and nothing else). Returns [] otherwise, including "Kỳ trước".
+    fiscal end holds, and so does any window the table's own caption prints
+    (range start, months, quarter, first-N-months, another end) that is not
+    that full year. Headers must match a finite grammar (one valid date and
+    nothing else, raw digits ASCII). Returns [] otherwise, including "Kỳ trước".
     """
 
     if context.conflict:
@@ -855,14 +893,19 @@ def _quarter_or_ytd_candidates(header: str, folded: str, context) -> list[str]:
             return []
         if end[5:] != "12-31" or (context.range_start and context.range_start != end[:4] + "-01-01"):
             return []  # a non-calendar fiscal window is not relabelled as a calendar year
-        date = _single_date_header(core, annual_prefix=True)
+        if own is not None:
+            own_end = own.reporting_date or own.fiscal_year_end
+            if (own.range_start not in (None, end[:4] + "-01-01") or own.months not in (None, 12)
+                    or own.first_months_of_fiscal_year or own.quarter or own_end not in (None, end)):
+                return []  # every owned window constraint is enforced, not only the ones PRIMARY also prints
+        date = _single_date_header(core, header, annual_prefix=True)
         if date and date[5:] == "12-31" and date in (end, _same_day_previous_year(end)):
             return [f"DURATION:YEAR:{date[:4]}"]
         return []
     if not context.quarter or not context.reporting_date:
         return []
     quarter = context.quarter
-    date = _single_date_header(core, annual_prefix=False)
+    date = _single_date_header(core, header, annual_prefix=False)
     if date is not None:
         if date not in (context.reporting_date, _same_day_previous_year(context.reporting_date)):
             return []
