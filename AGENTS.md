@@ -17,6 +17,12 @@ in `docs/operations/F36_REVIEWED_WORKER_INTEGRATION_CHECKPOINT_2026-10-23.md`.
 That checkpoint is not a family seal; check the job's terminal receipt before
 starting another runtime job or changing its pinned runtime checkout.
 
+The original diagnostic pair is now terminal. The reviewed printed-root recovery
+and687-test/source-backed checkpoint is recorded in
+`docs/operations/F36_PRINTED_ROOT_SOURCE_PROVEN_CHECKPOINT_2026-10-23.md`.
+F36 remains unsealed; distinguish its promoted algorithm from isolated
+title/payroll/performance drafts and the older full/common baseline.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
