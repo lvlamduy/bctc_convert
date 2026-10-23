@@ -283,6 +283,10 @@ def duration_lane_period_v1(header: str, context: StatementPeriodContext) -> Per
     year_prior = bool(re.search(r"\bnam truoc\b|\bcung ky nam truoc\b", folded))
     if year_current and year_prior:
         return _unresolved("CURRENT_AND_PRIOR_WORDS_IN_ONE_HEADER", evidence)
+    if re.search(r"\bquy truoc\b", folded) and not year_prior:
+        # "Quý trước" prints the preceding quarter, not the same quarter of the
+        # prior year; no comparative window is printed, so nothing is bound.
+        return _unresolved("PREVIOUS_QUARTER_WITHOUT_PRINTED_COMPARATIVE_WINDOW", evidence)
     prior = year_prior or (not year_current and bool(_PRIOR_WORDS.search(folded)))
     current = not prior and bool(_CURRENT_WORDS.search(folded))
     durational = _RANGE.search(folded) or _YTD.search(folded) or _QUARTER.search(folded) or _Q_SHORT.search(folded)

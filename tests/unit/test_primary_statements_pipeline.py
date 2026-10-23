@@ -442,3 +442,18 @@ def test_continuation_table_naming_one_period_twice_holds_only_its_cells(catalog
     assert cells_by(result, 4310, "INSTANT:END_OF_QUARTER(Q3:2025)")[0]["acceptance"] == "ACCEPTED"
     deposits = [c for c in result["cells"] if c["label_exact"] == "Tiền gửi của khách hàng"]
     assert deposits and all(c["acceptance"] == "HOLD" and c["value"] is None and c["raw"] for c in deposits)
+
+
+def test_document_scope_never_overrides_a_statement_own_scope_conflict():
+    from types import SimpleNamespace as N
+
+    from bctc_ai.primary_statements.assembly_v1 import resolve_document_scope_v1, resolve_instance_scope_v1
+
+    item = N(key="KQKD_CONFLICT", tables=[N(section={"title_exact": "Báo cáo kết quả hoạt động hợp nhất và riêng"}, table={})],
+             scope=None, scope_basis={}, reasons=[])
+    resolve_instance_scope_v1(item, [])
+    assert item.scope is None and item.scope_basis.get("reason") == "SCOPE_CONFLICT"
+    donor = N(key="CDKT_DONOR", scope="CONSOLIDATED", scope_basis={"basis": "STATEMENT_TITLE"})
+    resolve_document_scope_v1([donor, item], [])
+    assert item.scope is None and "SCOPE_UNRESOLVED" in item.reasons
+    assert item.scope_basis.get("reason") == "SCOPE_CONFLICT"

@@ -885,6 +885,10 @@ def resolve_document_scope_v1(instances: list[StatementInstance], document_title
     for instance in instances:
         if instance.scope is not None:
             continue
+        if instance.scope_basis.get("reason") == "SCOPE_CONFLICT":
+            # Propagation fills absent evidence only; the statement's own
+            # contradictory titles stay a veto.
+            continue
         if len(proven) == 1:
             instance.scope = next(iter(proven))
             instance.scope_basis = {"basis": "DOCUMENT_PRIMARY_STATEMENT_SCOPE",

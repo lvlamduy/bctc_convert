@@ -184,3 +184,18 @@ def test_ytd_through_this_quarter_binds_to_printed_period_end():
 def test_transcribed_literal_line_break_does_not_glue_words():
     context = statement_period_context_v1(["BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT\nQuý II năm 2026"])
     assert context.quarter == 2 and context.year == 2026
+
+
+@pytest.mark.parametrize(
+    ("header", "expected"),
+    [
+        ("Quý trước", None),                                           # preceding quarter: no printed window
+        ("Quý này năm trước", "DURATION:QUARTER:2:PRIOR_YEAR_OF(2025)"),
+        ("Quý 2\nNăm trước", "DURATION:QUARTER:2:PRIOR_YEAR_OF(2025)"),
+    ],
+)
+def test_previous_quarter_is_not_the_same_quarter_of_prior_year(header, expected):
+    descriptor = _period(header, ["Báo cáo kết quả hoạt động cho Quý II năm 2025"])
+    assert descriptor.key == expected
+    if expected is None:
+        assert descriptor.reason == "PREVIOUS_QUARTER_WITHOUT_PRINTED_COMPARATIVE_WINDOW"
