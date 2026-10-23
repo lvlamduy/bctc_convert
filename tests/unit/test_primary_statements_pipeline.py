@@ -59,7 +59,7 @@ def section(tables, *, statement="BALANCE_SHEET", kind="PRIMARY_STATEMENT", titl
             "narratives_exact": list(narratives), "tables": tables}
 
 
-def run_doc(catalog, equations, pages):
+def run_doc(catalog, equations, pages, provenance=None):
     selected = []
     census, loaded, titles = {}, {}, {}
     for number, sections in enumerate(pages, 1):
@@ -67,8 +67,11 @@ def run_doc(catalog, equations, pages):
         selected.append(SelectedPage(number, vid, f"page-{number}", "PRIMARY_FINANCIAL_STATEMENT", "0" * 64))
         census[vid] = {"candidate": True, "primary_metadata": True, "max_hits": {}, "tables": 1,
                        "census_reason": "PRIMARY_METADATA"}
-        loaded[vid] = {"page_json": {"status": "PRIMARY_FINANCIAL_STATEMENT", "sections": sections}}
+        loaded[vid] = {"page_json_version_id": vid, "source_logical_name": "synthetic.pdf", "source_sha256": "a" * 64,
+                       "physical_page": number, "page_json": {"status": "PRIMARY_FINANCIAL_STATEMENT", "sections": sections}}
         titles[vid] = [(s["title_exact"], s["content_kind"]) for s in sections if s.get("title_exact")]
+    for item in loaded.values():
+        item.update(provenance or {})
     document = SelectedDocument(1, "synthetic.pdf", "a" * 64, 10, len(pages), "gjfpdocv1:" + "b" * 64,
                                 "gfdmv1:manifest:" + "c" * 64, "gjfcdmsv1:selection:" + "d" * 64, tuple(selected))
     return run_document_v1(document, census, titles, loaded, catalog, ROOT / "config/mapping/lctt-v2.yaml", equations)
@@ -532,3 +535,11 @@ def test_printed_amount_without_a_source_cell_origin_holds(catalog, equations):
     direct = next(c for c in result_of(run_doc(catalog, equations, [bs_page(balance_sheet_rows())]), catalog)["cells"]
                   if c["raw"] == "910")
     assert direct["origin_status"] == "DIRECT_SOURCE_CELL" and direct["locator"]["row_ordinal"] == 7
+
+
+@pytest.mark.parametrize("wrong", [{"source_logical_name": "other.pdf"}, {"source_sha256": "e" * 64}, {"physical_page": 7},
+                                   {"page_json_version_id": "gfpstorev1:json:" + "f" * 64}])
+def test_loaded_page_provenance_must_be_the_selected_page(catalog, equations, wrong):
+    assert result_of(run_doc(catalog, equations, [bs_page(balance_sheet_rows())]), catalog)["instances"]
+    with pytest.raises(PrimarySourceError):
+        run_doc(catalog, equations, [bs_page(balance_sheet_rows())], provenance=wrong)

@@ -37,6 +37,7 @@ from bctc_ai.primary_statements.mapping_v1 import (
 from bctc_ai.primary_statements.numbers_v1 import SeparatorRoles, evidence_roles_v1
 from bctc_ai.primary_statements.source_v1 import (
     CorpusSelection,
+    PrimarySourceError,
     SelectedDocument,
     SourceMetrics,
     load_original_pages_v1,
@@ -163,6 +164,11 @@ def run_document_v1(document, census, titles, loaded, catalog, rules_path, equat
         page_census.append(entry)
         if entry["candidate"]:
             item = loaded[page.page_json_version_id]
+            # The authenticated loader's provenance must be this selected page of this document.
+            if (item.get("page_json_version_id"), item.get("source_logical_name"), item.get("source_sha256"),
+                    item.get("physical_page")) != (page.page_json_version_id, document.relative_path,
+                                                   document.source_sha256, page.physical_page):
+                raise PrimarySourceError(f"loaded page provenance is not the selected page {page.page_json_version_id}")
             for source in iter_source_tables(document.ordinal, page, item["page_json"]):
                 source.classification = classify_table_v1(source, catalog)
                 tables.append(source)
