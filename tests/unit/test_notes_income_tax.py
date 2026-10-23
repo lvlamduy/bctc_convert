@@ -139,6 +139,17 @@ def test_bare_end_date_in_third_quarter_keeps_two_candidates():
     assert "PERIOD_QUARTER_OR_YEAR_TO_DATE_NOT_PRINTED" in lanes[0].reasons
 
 
+def test_cumulative_from_start_of_period_is_held_with_a_named_reason_not_none():
+    # "Từ đầu kỳ" does not print where the period starts: no canonical key, no candidate, and the
+    # stored reason names the printed grain instead of the literal "PERIOD_UNRESOLVED:None".
+    table = make_table(RECON[:1], [("Lũy kế từ đầu kỳ đến ngày 31/12/2025",), ("Lũy kế từ đầu năm đến ngày 31/12/2025",)])
+    lanes = resolve_duration_lanes_v1(table, document(quarter=4), [], [table.table_title])
+    assert lanes[0].period_key is None and lanes[0].candidates == []
+    assert lanes[0].reasons == ["PERIOD_UNRESOLVED:PRINTED_WINDOW_WITHOUT_CANONICAL_KEY:CUMULATIVE_FROM_START_OF_PERIOD_TO"]
+    assert lanes[1].period_key == "DURATION:CUMULATIVE_FROM_START_OF_YEAR_TO:2025-12-31"  # kept as printed
+    assert not any("None" in reason for lane in lanes for reason in lane.reasons)
+
+
 def test_this_period_has_candidates_previous_period_never_and_segments_are_not_periods():
     table = make_table(RECON[:1], [("Kỳ này",), ("Kỳ trước",), ("Miền Bắc",)])
     lanes = resolve_duration_lanes_v1(table, document(quarter=3), [], [table.table_title])

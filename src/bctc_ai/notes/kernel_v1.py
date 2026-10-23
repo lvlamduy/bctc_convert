@@ -889,7 +889,14 @@ def resolve_duration_lanes_v1(
                 elif lane.candidates:
                     lane.reasons.append("PERIOD_QUARTER_OR_YEAR_TO_DATE_NOT_PRINTED")
                 else:
-                    lane.reasons.append("PERIOD_UNRESOLVED:" + str(report.reason))
+                    unkeyed = next((d.key for d in (own, report) if d and d.key and not canonical_period_key_v1(d.key)), None)
+                    if unkeyed:
+                        # A parsed window with no canonical key ("Lũy kế từ đầu kỳ đến ngày D": the start of
+                        # "kỳ" is not printed) stays held; the reason names that grain, never "None".
+                        lane.reasons.append("PERIOD_UNRESOLVED:PRINTED_WINDOW_WITHOUT_CANONICAL_KEY:" + unkeyed.split(":")[1])
+                    else:
+                        lane.reasons.append("PERIOD_UNRESOLVED:" + (
+                            report.reason or (own.reason if own else None) or "NO_REASON_RECORDED"))
         _resolve_lane_unit(lane, header_units, unit_sources)
         lanes.append(lane)
     keys = [lane.period_key for lane in lanes if lane.period_key]
