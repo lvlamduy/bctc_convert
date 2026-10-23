@@ -5,7 +5,9 @@ hold reasons; one run manifest. Accepted cells have a unique write key, so a
 second accepted value for the same (document, scope, concept, axis, member,
 basis, period) cannot be stored. ``reload_notes_store_v1`` re-reads every
 cell and re-hashes the projection; any edit to a stored cell or to the
-manifest is detected.
+manifest is detected: every normalized column, the contiguous ordinal and the
+canonical JSON must agree with the record, and the schema must be exactly the
+notes store schema (Codex 0222).
 """
 
 from __future__ import annotations
@@ -65,6 +67,24 @@ def cells_projection_sha256_v1(cells: list[dict[str, Any]]) -> str:
     return hashlib.sha256(_canonical(cells).encode("utf-8")).hexdigest()
 
 
+def _cell_row_v1(index: int, c: dict[str, Any]) -> tuple[Any, ...]:
+    """The one note_cell row projection used by the writer and by the exact reload (Codex 0222)."""
+
+    return (index, c["document_ordinal"], c["document_plan_id"], c["family"], c["scope"], c["concept"], c["axis"],
+            c["member"], c["classification_basis"], c["period_key"], c["unit"], c["observation_state"], c["value"],
+            c["raw"], c["acceptance"], c.get("report_norm_id"), _canonical(c))
+
+
+def _schema_objects(connection) -> list[tuple[Any, ...]]:
+    return connection.execute("SELECT type, name, tbl_name, sql FROM sqlite_master ORDER BY type, name").fetchall()
+
+
+def _expected_schema_objects() -> list[tuple[Any, ...]]:
+    with closing(sqlite3.connect(":memory:")) as connection:
+        connection.executescript(_SCHEMA)
+        return _schema_objects(connection)
+
+
 def write_notes_store_v1(path: Path, *, manifest: dict[str, Any], cells: list[dict[str, Any]]) -> dict[str, Any]:
     if path.exists():
         raise NotesStoreError(f"store already exists (write-once): {path}")
@@ -78,9 +98,7 @@ def write_notes_store_v1(path: Path, *, manifest: dict[str, Any], cells: list[di
         try:
             connection.executemany(
                 "INSERT INTO note_cell VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [(index, c["document_ordinal"], c["document_plan_id"], c["family"], c["scope"], c["concept"], c["axis"],
-                  c["member"], c["classification_basis"], c["period_key"], c["unit"], c["observation_state"], c["value"],
-                  c["raw"], c["acceptance"], c.get("report_norm_id"), _canonical(c)) for index, c in enumerate(cells)],
+                [_cell_row_v1(index, c) for index, c in enumerate(cells)],
             )
         except sqlite3.IntegrityError as error:
             raise NotesStoreError(f"two accepted cells share a write key: {error}") from error
@@ -98,18 +116,24 @@ def reload_notes_store_v1(path: Path) -> tuple[dict[str, Any], list[dict[str, An
     with closing(sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)) as connection:
         if connection.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise NotesStoreError("store quick_check failed")
-        identity = connection.execute(
-            "SELECT format_version, manifest_sha256, manifest_json, cells_sha256 FROM store_identity").fetchone()
-        rows = connection.execute("SELECT cell_json, value_text, acceptance, period_key, member FROM note_cell ORDER BY cell_ordinal").fetchall()
-    if identity is None or identity[0] != NOTES_STORE_FORMAT:
+        schema = _schema_objects(connection)
+        identities = connection.execute(
+            "SELECT singleton, format_version, manifest_sha256, manifest_json, cells_sha256 FROM store_identity").fetchall()
+        rows = connection.execute("SELECT * FROM note_cell ORDER BY cell_ordinal").fetchall()
+    if schema != _expected_schema_objects():
+        raise NotesStoreError("store schema differs from the notes store schema (tables, columns, index)")
+    if len(identities) != 1 or identities[0][0] != 1 or identities[0][1] != NOTES_STORE_FORMAT:
         raise NotesStoreError("store identity missing or of another format")
+    identity = identities[0][1:]
     if hashlib.sha256(identity[2].encode()).hexdigest() != identity[1]:
         raise NotesStoreError("run manifest was edited")
     cells = []
-    for cell_json, value_text, acceptance, period_key, member in rows:
-        cell = json.loads(cell_json)
-        if (cell["value"], cell["acceptance"], cell["period_key"], cell["member"]) != (value_text, acceptance, period_key, member):
-            raise NotesStoreError("a stored cell column differs from its JSON record")
+    for index, row in enumerate(rows):
+        cell = json.loads(row[-1])
+        expected = _cell_row_v1(index, cell)
+        # Every normalized column, the contiguous ordinal and the canonical JSON itself, with exact types (Codex 0222).
+        if len(row) != len(expected) or any(type(a) is not type(b) or a != b for a, b in zip(row, expected)):
+            raise NotesStoreError(f"stored cell {index} differs from its canonical JSON record")
         cells.append(cell)
     if cells_projection_sha256_v1(cells) != identity[3]:
         raise NotesStoreError("stored cells differ from the recorded projection")

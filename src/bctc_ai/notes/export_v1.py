@@ -85,100 +85,112 @@ def _tm_cells(cells: list[dict[str, Any]]) -> tuple[list[str], dict[tuple[int, s
     return dated + sorted(p for p in keys if _period_order(p)[0] == 1), chosen
 
 
-def build_notes_workbook_v1(document: dict[str, Any], cells: list[dict[str, Any]], template: list[tuple[int, str]],
-                            pins: dict[str, Any]) -> tuple[bytes, dict[str, Any]]:
-    workbook = openpyxl.Workbook()
-    readme = workbook.active
-    readme.title = "README"
-    notice = [("product_label", PRODUCT_LABEL),
-              ("notice", "Experimental notes pilot (thuyết minh). Not a production or accepted export; only the "
-                         "families listed are evaluated, every other TM row is NOT EVALUATED (not NOT_OBSERVED)."),
-              ("document_plan_id", document["document_plan_id"]), ("relative_path", document["relative_path"]),
-              ("source_sha256", document["source_sha256"]), ("families", ",".join(sorted({c["family"] for c in cells}))),
-              ("pins", repr(sorted(pins.items())))]
-    for row, (name, value) in enumerate(notice, 1):
-        set_literal_cell(readme.cell(row, 1), name)
-        set_literal_cell(readme.cell(row, 2), value)
+_ABSENT = object()  # a grid position the writer never creates (no TM cell for that ReportNormId and period)
+
+
+def _readme_rows_v1(document: dict[str, Any], cells: list[dict[str, Any]], pins: dict[str, Any]) -> list[list[Any]]:
+    return [["product_label", PRODUCT_LABEL],
+            ["notice", "Experimental notes pilot (thuyết minh). Not a production or accepted export; only the "
+                       "families listed are evaluated, every other TM row is NOT EVALUATED (not NOT_OBSERVED)."],
+            ["document_plan_id", document["document_plan_id"]], ["relative_path", document["relative_path"]],
+            ["source_sha256", document["source_sha256"]], ["families", ",".join(sorted({c["family"] for c in cells}))],
+            ["pins", repr(sorted(pins.items()))]]
+
+
+def _tm_rows_v1(cells: list[dict[str, Any]], template: list[tuple[int, str]]) -> tuple[list[list[Any]], int]:
     periods, chosen = _tm_cells(cells)
-    sheet = workbook.create_sheet("TM")
     header = ["order", "ReportNormId", "name"]
     for period in periods:
         header += [f"{period}|value", f"{period}|state", f"{period}|acceptance", f"{period}|unit", f"{period}|source"]
-    for column, text in enumerate(header, 1):
-        set_literal_cell(sheet.cell(1, column), text)
-    for row, (rnid, name) in enumerate(template, 2):
-        sheet.cell(row, 1).value = row - 1
-        sheet.cell(row, 2).value = rnid
-        set_literal_cell(sheet.cell(row, 3), name)
-        for position, period in enumerate(periods):
+    rows, placed = [header], 0
+    for order, (rnid, name) in enumerate(template, 1):
+        row: list[Any] = [order, rnid, name]
+        for period in periods:
             cell = chosen.get((rnid, period))
             if cell is None:
+                row += [_ABSENT] * 5
                 continue
-            base = 4 + position * 5
             number, _policy = excel_number_v1(cell["value"] if cell["acceptance"] != "HOLD" else None)
-            if isinstance(number, str):
-                set_literal_cell(sheet.cell(row, base), number)
+            row += [number, cell["observation_state"], cell["acceptance"], cell["unit"], _source(cell)]
+            placed += 1
+        rows.append(row)
+    return rows, placed
+
+
+def _dimensional_rows_v1(cells: list[dict[str, Any]]) -> list[list[Any]]:
+    return [list(_DIMENSIONAL_HEADER)] + [
+        [cell["family"], cell["concept"], cell["axis"], cell["member"], cell["classification_basis"],
+         cell["period_key"], cell["period_basis"], cell["unit"], cell["unit_basis"], cell["observation_state"],
+         cell["value"], cell["raw"], cell["acceptance"], ";".join(cell["hold_reasons"]),
+         cell.get("report_norm_id"), cell["label_exact"], _source(cell),
+         # e.g. BASE_OR_TAX_EFFECT_UNPROVEN: an observation, not a proved legacy amount (Codex 0133).
+         cell.get("semantic_state")]
+        for cell in cells]
+
+
+def _sheets_v1(document, cells, template, pins) -> tuple[dict[str, list[list[Any]]], int]:
+    """The one projection both the writer and the verifier use: every emitted cell of every sheet (Codex 0222)."""
+
+    tm, placed = _tm_rows_v1(cells, template)
+    return {"README": _readme_rows_v1(document, cells, pins), "TM": tm, "DIMENSIONAL": _dimensional_rows_v1(cells)}, placed
+
+
+def _write_sheet(sheet, rows: list[list[Any]]) -> None:
+    for r, row in enumerate(rows, 1):
+        for c, value in enumerate(row, 1):
+            if value is _ABSENT:
+                continue
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                sheet.cell(r, c).value = value  # exact-number policy (excel_number_v1); ordinals and ReportNormIds
             else:
-                sheet.cell(row, base).value = number
-            for offset, text in enumerate([cell["observation_state"], cell["acceptance"], cell["unit"], _source(cell)], 1):
-                set_literal_cell(sheet.cell(row, base + offset), text)
-    dimensional = workbook.create_sheet("DIMENSIONAL")
-    for column, text in enumerate(_DIMENSIONAL_HEADER, 1):
-        set_literal_cell(dimensional.cell(1, column), text)
-    for row, cell in enumerate(cells, 2):
-        values = [cell["family"], cell["concept"], cell["axis"], cell["member"], cell["classification_basis"],
-                  cell["period_key"], cell["period_basis"], cell["unit"], cell["unit_basis"], cell["observation_state"],
-                  cell["value"], cell["raw"], cell["acceptance"], ";".join(cell["hold_reasons"]),
-                  cell.get("report_norm_id"), cell["label_exact"], _source(cell),
-                  # e.g. BASE_OR_TAX_EFFECT_UNPROVEN: an observation, not a proved legacy amount (Codex 0133).
-                  cell.get("semantic_state")]
-        for column, value in enumerate(values, 1):
-            if isinstance(value, int):
-                dimensional.cell(row, column).value = value
-            else:
-                set_literal_cell(dimensional.cell(row, column), value)
+                set_literal_cell(sheet.cell(r, c), value)  # text is always literal: never a formula
+
+
+def _as_read(value: Any) -> Any:
+    """What a written value reads back as: openpyxl writes an empty string as a value-less cell (None)."""
+
+    return None if value is _ABSENT or value == "" else value
+
+
+def _verify_sheet(sheet, rows: list[list[Any]], name: str) -> int:
+    for r, row in enumerate(rows, 1):
+        for c, value in enumerate(row, 1):
+            got, expected = sheet.cell(r, c).value, _as_read(value)
+            if type(got) is not type(expected) or got != expected:
+                raise NotesWorkbookError(f"{name}!R{r}C{c} does not read back exactly")
+    for line in sheet.iter_rows():
+        for cell in line:
+            if cell.value is not None and (cell.row > len(rows) or cell.column > len(rows[cell.row - 1])):
+                raise NotesWorkbookError(f"{name}!R{cell.row}C{cell.column} is an extra cell")
+    return sum(len(row) for row in rows)
+
+
+def build_notes_workbook_v1(document: dict[str, Any], cells: list[dict[str, Any]], template: list[tuple[int, str]],
+                            pins: dict[str, Any]) -> tuple[bytes, dict[str, Any]]:
+    workbook = openpyxl.Workbook()
+    sheets, _placed = _sheets_v1(document, cells, template, pins)
+    workbook.active.title = "README"
+    _write_sheet(workbook.active, sheets["README"])
+    for name in ("TM", "DIMENSIONAL"):
+        _write_sheet(workbook.create_sheet(name), sheets[name])
     payload = deterministic_workbook_bytes(workbook, creator="bctc-ai notes pilot v1")
-    receipt = verify_notes_workbook_v1(payload, document, cells, template)
+    receipt = verify_notes_workbook_v1(payload, document, cells, template, pins)
     return payload, receipt
 
 
 def verify_notes_workbook_v1(payload: bytes, document: dict[str, Any], cells: list[dict[str, Any]],
-                             template: list[tuple[int, str]]) -> dict[str, Any]:
+                             template: list[tuple[int, str]], pins: dict[str, Any]) -> dict[str, Any]:
+    """Every emitted cell of README, TM (header, order, name, every period column) and DIMENSIONAL (all 18 columns)
+    reads back with its exact value AND type; any value outside that grid is an extra cell (Codex 0222)."""
+
     workbook = openpyxl.load_workbook(BytesIO(payload), data_only=False)
     if workbook_has_formula(workbook):
         raise NotesWorkbookError("workbook contains a formula")
     if workbook.sheetnames != ["README", "TM", "DIMENSIONAL"]:
         raise NotesWorkbookError("workbook sheet set drifted")
-    if workbook["README"].cell(1, 2).value != PRODUCT_LABEL or workbook["README"].cell(3, 2).value != document["document_plan_id"]:
-        raise NotesWorkbookError("README binding drifted")
-    periods, chosen = _tm_cells(cells)
-    sheet = workbook["TM"]
-    if [sheet.cell(row, 2).value for row in range(2, sheet.max_row + 1)] != [rnid for rnid, _ in template]:
-        raise NotesWorkbookError("TM template rows drifted")
-    checked = 0
-    for row, (rnid, _name) in enumerate(template, 2):
-        for position, period in enumerate(periods):
-            base = 4 + position * 5
-            got = [sheet.cell(row, base + offset).value for offset in range(5)]
-            cell = chosen.get((rnid, period))
-            if cell is None:
-                if any(value is not None for value in got):
-                    raise NotesWorkbookError(f"TM {rnid} {period} has an unexpected value")
-                continue
-            number, _ = excel_number_v1(cell["value"] if cell["acceptance"] != "HOLD" else None)
-            expected = [number, cell["observation_state"], cell["acceptance"], cell["unit"], _source(cell)]
-            if got != expected or type(got[0]) is not type(number):
-                raise NotesWorkbookError(f"TM {rnid} {period} does not read back exactly")
-            checked += 1
-    dimensional = workbook["DIMENSIONAL"]
-    if dimensional.max_row - 1 != len(cells):
-        raise NotesWorkbookError("DIMENSIONAL row count drifted")
-    for row, cell in enumerate(cells, 2):
-        got = [dimensional.cell(row, column).value for column in (2, 4, 6, 8, 11, 13, 17, 18)]
-        expected = [cell["concept"], cell["member"], cell["period_key"], cell["unit"], cell["value"], cell["acceptance"], _source(cell),
-                    cell.get("semantic_state")]
-        if got != expected:
-            raise NotesWorkbookError(f"DIMENSIONAL row {row} does not read back exactly")
+    sheets, placed = _sheets_v1(document, cells, template, pins)
+    compared = sum(_verify_sheet(workbook[name], rows, name) for name, rows in sheets.items())
     return {"format_version": NOTES_WORKBOOK_FORMAT, "workbook_sha256": hashlib.sha256(payload).hexdigest(),
-            "workbook_size_bytes": len(payload), "tm_cells_checked": checked, "dimensional_rows": len(cells),
+            "workbook_size_bytes": len(payload), "tm_cells_checked": placed, "dimensional_rows": len(cells),
+            "grid_positions_compared": compared, "readback_scope": "EVERY_EMITTED_CELL_TYPED_NO_EXTRA_CELLS",
             "formula_cells": 0, "status": "PASS_EXACT_READBACK"}

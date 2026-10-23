@@ -61,7 +61,7 @@ def test_tampered_value_is_detected(template):
     row[3].value = 901
     tampered = deterministic_workbook_bytes(workbook, creator="tamper")
     with pytest.raises(NotesWorkbookError):
-        verify_notes_workbook_v1(tampered, DOCUMENT, cells, template)
+        verify_notes_workbook_v1(tampered, DOCUMENT, cells, template, {})
 
 
 def test_semantic_state_is_visible_on_the_dimensional_sheet_and_read_back(template):
@@ -78,4 +78,61 @@ def test_semantic_state_is_visible_on_the_dimensional_sheet_and_read_back(templa
     assert all(r[1].value != "NON_DEDUCTIBLE_EXPENSES" for r in workbook["TM"].iter_rows(min_row=2))  # never a template row
     sheet.cell(3, 18).value = None
     with pytest.raises(NotesWorkbookError):
-        verify_notes_workbook_v1(deterministic_workbook_bytes(workbook, creator="tamper"), DOCUMENT, cells, template)
+        verify_notes_workbook_v1(deterministic_workbook_bytes(workbook, creator="tamper"), DOCUMENT, cells, template, {})
+
+
+def _tamper(payload, edit):
+    workbook = openpyxl.load_workbook(io.BytesIO(payload))
+    edit(workbook)
+    return deterministic_workbook_bytes(workbook, creator="tamper")
+
+
+def _set(sheet, row, column, value):
+    def edit(workbook):
+        workbook[sheet].cell(row, column).value = value
+    return edit
+
+
+def test_every_emitted_cell_and_axis_is_read_back_with_its_type(template):
+    # Codex 0222: the verifier compares the complete projection (README, TM header/order/name/periods, all 18
+    # DIMENSIONAL columns) with exact types, and rejects cells outside it.
+    cells = [cell(747, "INSTANT:2025-06-30", "900"), cell(747, "INSTANT:2024-12-31", "800"),
+             {**cell(748, "INSTANT:2025-06-30", None, acceptance="HOLD", member="G2", state="BLANK"), "raw": None}]
+    pins = {"axes": "x"}
+    payload, receipt = build_notes_workbook_v1(DOCUMENT, cells, template, pins)
+    assert receipt["readback_scope"] == "EVERY_EMITTED_CELL_TYPED_NO_EXTRA_CELLS" and receipt["status"] == "PASS_EXACT_READBACK"
+    assert verify_notes_workbook_v1(payload, DOCUMENT, cells, template, pins)["grid_positions_compared"] == receipt["grid_positions_compared"]
+    tm = openpyxl.load_workbook(io.BytesIO(payload))["TM"]
+    row747 = next(r[0].row for r in tm.iter_rows(min_row=2) if r[1].value == 747)
+    tampers = {
+        "dimensional observation_state BLANK->DASH": _set("DIMENSIONAL", 4, 10, "DASH"),
+        "dimensional raw None->'-'": _set("DIMENSIONAL", 4, 12, "-"),
+        "dimensional family": _set("DIMENSIONAL", 2, 1, "OPERATING_EXPENSE"),
+        "dimensional axis": _set("DIMENSIONAL", 2, 3, "OTHER_AXIS"),
+        "dimensional classification_basis": _set("DIMENSIONAL", 2, 5, "TT31_2024"),
+        "dimensional period_basis": _set("DIMENSIONAL", 2, 7, "ALIGNED_TO_PRIMARY_BALANCE_CURRENT_LANE"),
+        "dimensional unit_basis": _set("DIMENSIONAL", 2, 9, "TABLE"),
+        "dimensional hold_reasons": _set("DIMENSIONAL", 4, 14, ""),
+        "dimensional report_norm_id": _set("DIMENSIONAL", 2, 15, 746),
+        "dimensional report_norm_id as text": _set("DIMENSIONAL", 2, 15, "747"),
+        "dimensional label_exact": _set("DIMENSIONAL", 2, 16, "Nhóm 2"),
+        "dimensional header": _set("DIMENSIONAL", 1, 11, "amount"),
+        "dimensional extra row": _set("DIMENSIONAL", 5, 1, "CREDIT_QUALITY"),
+        "dimensional extra column": _set("DIMENSIONAL", 2, 19, "x"),
+        "tm period header": _set("TM", 1, 4, "INSTANT:2025-03-31|value"),
+        "tm order": _set("TM", row747, 1, 9999),
+        "tm name": _set("TM", row747, 3, "renamed"),
+        "tm value type int->text": _set("TM", row747, 4, "900"),
+        "tm extra column": _set("TM", row747, 14, "x"),
+        "tm extra row": _set("TM", len(template) + 2, 2, 1),
+        "readme relative_path": _set("README", 4, 2, "y.pdf"),
+        "readme source_sha256": _set("README", 5, 2, "1" * 64),
+        "readme families": _set("README", 6, 2, "CREDIT_QUALITY,INCOME_TAX"),
+        "readme pins": _set("README", 7, 2, "[]"),
+    }
+    for name, edit in tampers.items():
+        with pytest.raises(NotesWorkbookError):
+            verify_notes_workbook_v1(_tamper(payload, edit), DOCUMENT, cells, template, pins)
+        assert name  # every tamper above is a distinct, previously unchecked field or axis
+    with pytest.raises(NotesWorkbookError):  # the same bytes against other pins are not the same workbook
+        verify_notes_workbook_v1(payload, DOCUMENT, cells, template, {"axes": "y"})

@@ -48,3 +48,37 @@ def test_edited_cell_is_detected_on_reload(tmp_path):
         connection.execute("UPDATE note_cell SET cell_json = replace(cell_json, '\"10\"', '\"12\"'), value_text = '12', raw_text = '12'")
     with pytest.raises(NotesStoreError):
         reload_notes_store_v1(path2)
+
+
+def test_every_normalized_column_ordinal_and_schema_must_agree_with_the_record(tmp_path):
+    # Codex 0222: reload compares the complete note_cell row (all normalized columns, the contiguous ordinal and the
+    # canonical JSON, with exact types) and the exact schema, not only value/acceptance/period/member.
+    cells = [cell(), cell(None, "HOLD", member="G3")]
+    tampers = {
+        "raw_text": "UPDATE note_cell SET raw_text = '-' WHERE cell_ordinal = 0",
+        "raw_text None->value": "UPDATE note_cell SET raw_text = 'x' WHERE cell_ordinal = 1",
+        "unit": "UPDATE note_cell SET unit = 'VND' WHERE cell_ordinal = 0",
+        "scope": "UPDATE note_cell SET scope = 'CONSOLIDATED' WHERE cell_ordinal = 0",
+        "document_ordinal": "UPDATE note_cell SET document_ordinal = 2 WHERE cell_ordinal = 0",
+        "document_plan_id": "UPDATE note_cell SET document_plan_id = 'other' WHERE cell_ordinal = 1",
+        "family": "UPDATE note_cell SET family = 'OPERATING_EXPENSE' WHERE cell_ordinal = 0",
+        "concept": "UPDATE note_cell SET concept = 'TRADING_SECURITIES_DEBT' WHERE cell_ordinal = 0",
+        "axis": "UPDATE note_cell SET axis = 'OTHER' WHERE cell_ordinal = 0",
+        "classification_basis": "UPDATE note_cell SET classification_basis = 'TT31_2024' WHERE cell_ordinal = 0",
+        "observation_state": "UPDATE note_cell SET observation_state = 'DASH' WHERE cell_ordinal = 1",
+        "report_norm_id": "UPDATE note_cell SET report_norm_id = 746 WHERE cell_ordinal = 0",
+        "report_norm_id None": "UPDATE note_cell SET report_norm_id = NULL WHERE cell_ordinal = 0",
+        "ordinal gap": "UPDATE note_cell SET cell_ordinal = 7 WHERE cell_ordinal = 1",
+        "extra column": "ALTER TABLE note_cell ADD COLUMN note TEXT",
+        "extra table": "CREATE TABLE side (x INTEGER) STRICT",
+        "dropped write-key index": "DROP INDEX note_cell_accepted_write_key",
+    }
+    for number, (name, statement) in enumerate(tampers.items()):
+        path = tmp_path / f"tamper-{number}.sqlite3"
+        write_notes_store_v1(path, manifest={"run": 1}, cells=cells)
+        assert reload_notes_store_v1(path)[1] == cells  # untampered control
+        with sqlite3.connect(path) as connection:
+            connection.execute(statement)
+        with pytest.raises(NotesStoreError):
+            reload_notes_store_v1(path)
+        assert name
