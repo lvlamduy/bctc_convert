@@ -110,6 +110,12 @@ def test_original_cell_requires_existing_row_cell_and_the_same_table_identity():
     assert original_cell_v1(table, at(table, "r01", "c1")) is None  # noncanonical row key
     for key, wrong in (("page_json_version_id", "gfpstorev1:json:" + "f" * 64), ("section_id", "s2"), ("table_id", "t2")):
         assert original_cell_v1(table, at(table, "r1", "c1", **{key: wrong})) is None
+    proof = table.bridge
+    for key in ("section_ordinal", "table_ordinal"):  # a same-VID proof made for another table is not this inverse
+        table.bridge = dict(proof, **{key: 2})
+        assert original_cell_v1(table, at(table, "r1", "c1")) is None
+    table.bridge = proof
+    assert original_cell_v1(table, at(table, "r1", "c1")) is not None
     table.bridge = None  # missing inverse -> not bijective
     assert original_cell_v1(table, at(table, "r1", "c1")) is None
 
@@ -224,9 +230,11 @@ def test_continuation_keeps_inverse_fragment_coordinates_through_a_column_offset
     for row_id in ("p17:r1", "r1", "p016:r1", "p16:r9"):  # unknown page, unprefixed, noncanonical, absent row
         assert original_cell_v1(merged, at(merged, row_id, "c1")) is None
     assert original_cell_v1(merged, at(merged, "p16:r1", "c2", page_json_version_id=follower_vid)) is None  # not this table
-    # A fragment proof that belongs to another VID, or an unproven fragment, is not an inverse.
-    merged.fragment_bridges[1] = dict(merged.fragment_bridges[1], page_json_version_id=head_vid)
-    assert original_cell_v1(merged, at(merged, "p16:r1", "c2")) is None
+    # A fragment proof that belongs to another VID or another table, or an unproven fragment, is not an inverse.
+    follower_proof = merged.fragment_bridges[1]
+    for wrong in ({"page_json_version_id": head_vid}, {"section_ordinal": 2}, {"table_ordinal": 2}):
+        merged.fragment_bridges[1] = dict(follower_proof, **wrong)
+        assert original_cell_v1(merged, at(merged, "p16:r1", "c2")) is None
     merged.fragment_bridges[1] = {"status": "MISMATCH:CELL_VALUE", "physical_page": 16}
     assert merged.bridge_failure() == "SOURCE_BRIDGE:MISMATCH:CELL_VALUE"
 
@@ -310,7 +318,11 @@ def test_cached_proof_binds_the_sql_payload_and_is_detached(tmp_path, monkeypatc
     for mutate in (lambda t: t.cells.__setitem__(("r1", "c1"), ("901", "VALUE")),
                    lambda t: setattr(t.columns[0], "header_raw", ["30/06/2025"]),
                    lambda t: setattr(t.rows[0], "hierarchy_raw", ["Nhóm 1"]),
-                   lambda t: setattr(t.rows[0], "kind", "GROUP")):
+                   lambda t: setattr(t.rows[0], "kind", "GROUP"),
+                   # same values, other container type: typed-exact comparison rejects it, so must the cache
+                   lambda t: setattr(t.columns[0], "header_raw", tuple(t.columns[0].header_raw)),
+                   lambda t: setattr(t.rows[0], "hierarchy_raw", tuple(t.rows[0].hierarchy_raw)),
+                   lambda t: setattr(t, "narratives_raw", tuple(t.narratives_raw))):
         changed = copy.deepcopy(again)
         mutate(changed)
         assert table_fingerprint_v1(changed) != table_fingerprint_v1(again)

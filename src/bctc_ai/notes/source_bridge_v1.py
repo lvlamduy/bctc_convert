@@ -42,13 +42,33 @@ def _sha(value: Any) -> str:
 
 
 def _typed(value: Any) -> Any:
-    """JSON-safe value that keeps the type (str/int/float/bool/None/list) visible to a hash."""
+    """JSON-safe value that keeps the exact type (str/int/float/bool/None/list/tuple/dict) visible to a hash."""
 
-    if isinstance(value, (list, tuple)):
-        return ["list", [_typed(item) for item in value]]
-    if isinstance(value, float):
+    if type(value) in (list, tuple):
+        return [type(value).__name__, [_typed(item) for item in value]]
+    if type(value) is dict:
+        return ["dict", sorted([key, _typed(item)] for key, item in value.items())]
+    if type(value) is float:
         return ["float", value.hex()]
+    if value is not None and type(value) not in (str, int, bool):
+        return [type(value).__name__, repr(value)]
     return [type(value).__name__, value]
+
+
+def _coordinate_of(locator: dict[str, Any]) -> tuple[Any, int | None, int | None]:
+    """(VID, section ordinal, table ordinal) named by a table/fragment locator."""
+
+    ms = re.fullmatch(r"s([1-9][0-9]*)", str(locator.get("section_id")))
+    mt = re.fullmatch(r"t([1-9][0-9]*)", str(locator.get("table_id")))
+    return (locator.get("page_json_version_id"), int(ms.group(1)) if ms else None, int(mt.group(1)) if mt else None)
+
+
+def _proof_binds(proof: dict[str, Any], locator: dict[str, Any]) -> bool:
+    """The proof was made for exactly this table (or fragment): same VID, section and table ordinal."""
+
+    coordinate = _coordinate_of(locator)
+    return None not in coordinate and (
+        proof.get("page_json_version_id"), proof.get("section_ordinal"), proof.get("table_ordinal")) == coordinate
 
 
 def table_fingerprint_v1(table) -> str:
@@ -204,14 +224,14 @@ def original_cell_v1(table, locator: dict[str, Any]) -> dict[str, Any] | None:
         page, own_row = int(match.group(1)), match.group(2)
         fragments = [f for f in table.fragments if f.get("physical_page") == page]
         bridges = [b for b in table.fragment_bridges if b.get("physical_page") == page]
-        if len(fragments) != 1 or len(bridges) != 1 or bridges[0].get("page_json_version_id") != fragments[0].get("page_json_version_id"):
+        if len(fragments) != 1 or len(bridges) != 1 or not _proof_binds(bridges[0], fragments[0]):
             return None
         bridge, own_column = bridges[0], (table.fragment_column_maps.get(page) or {}).get(column_id)
     else:
         if not _ROW_ID.fullmatch(row_id):
             return None
         bridge, own_row, own_column = table.bridge, row_id, column_id
-        if not bridge or bridge.get("page_json_version_id") != identity["page_json_version_id"]:
+        if not bridge or not _proof_binds(bridge, identity):
             return None
     if not bridge or bridge.get("status") not in (EXACT, EXACT_SHIFT) or own_column not in (bridge.get("column_map") or {}):
         return None
