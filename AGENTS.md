@@ -20,8 +20,8 @@ starting another runtime job or changing its pinned runtime checkout.
 The original diagnostic pair is now terminal. The reviewed printed-root recovery
 and687-test/source-backed checkpoint is recorded in
 `docs/operations/F36_PRINTED_ROOT_SOURCE_PROVEN_CHECKPOINT_2026-10-23.md`.
-F36 remains unsealed; distinguish its promoted algorithm from isolated
-title/payroll/performance drafts and the older full/common baseline.
+F36 remains unsealed; distinguish its promoted algorithms from isolated
+payroll/performance drafts and the older full/common baseline.
 
 The finite continuation-title improvement is now promoted separately; read
 `docs/operations/F36_OWNED_CONTINUATION_TITLE_CHECKPOINT_2026-10-23.md` for its

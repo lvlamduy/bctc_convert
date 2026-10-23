@@ -91,3 +91,26 @@ The older full/common pair is a baseline with coverage violations; its successfu
 execution does not seal the current code. Final source/cold replay, observation,
 SQLite persistence/integrity, PDF/residual audit and family ledger gates remain.
 Preserve all prior artifacts and failed runs.
+
+## Immutable backup
+
+Checkpoint `54638a6938112db5a815a6581cd108ba8773391a` is pushed and remote-exact.
+Twenty pinned evidence/image/helper/input objects plus one nonterminal HEARTBEAT
+were uploaded with conditional create-only PUT, AES256, SHA checksum and complete
+exact-VersionId byte readback. No old object was overwritten or deleted.
+
+Bucket `test-s3-duylv`, region `us-east-1`, prefix:
+`bctc-ai/coordination/2025-current/v1/artifacts/LAPTOP_INTEGRATOR/f36-owned-title-checkpoint-20261023T130719937314Z-4f3bfd121c8644e9b641d84bb8b167ae/`.
+
+HEARTBEAT key:
+`bctc-ai/coordination/2025-current/v1/events/20261023T130719937314Z-LAPTOP_INTEGRATOR-HEARTBEAT-7333323a5a314c34bacd3eb0c9be6b2a.json`,
+VersionId `bYU22GxaxVsaqS3i_qoY1VEANBe5K3tV`, SHA
+`23381c1109385fb30a138b2d258490e1fb5363ce98234ac8067223223f58e6c1`.
+The focused721 object's VersionId is `AZAAD.HsPWv9ZsfqqZNwyskdUU_lY5ny`.
+
+Local publication receipt:
+`D:/bctc_bank/restore-receipts/f36-owned-title-checkpoint-20261023T130719937314Z-4f3bfd121c8644e9b641d84bb8b167ae/final.json`,
+SHA `39d23446047daa6a5d1710b0d104125d64627d02cc92a370e91c694270b13521`.
+Publisher SHA `a8ffed515309746cfb969fab8bbe808660b2058fd46d1511aa78959196d78918`;
+publication-inputs SHA `cf7a37095436fae0369d9c8b15a3205c866b527b55bb805ae55fac8d841d716d`.
+The heartbeat explicitly retains F39/F36 unsealed, F37 unclaimed and F41 closed.
