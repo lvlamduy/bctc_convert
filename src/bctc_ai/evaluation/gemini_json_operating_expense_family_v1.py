@@ -3384,14 +3384,30 @@ def _operating_expense_root_closure_retry(
     """
 
     reasons = candidate.get("reasons")
-    if candidate.get("status") != UNRESOLVED or type(reasons) is not list or not reasons:
+    prior_derived_root = None
+    if candidate.get("status") == READY:
+        roots = [
+            item for item in candidate.get("mappings", [])
+            if item.get("role") == "FAMILY_ROOT_TOTAL"
+        ]
+        if (
+            reasons != []
+            or compiled_specs.get("family_root_requirement")
+            != "REQUIRED_SOURCE_VISIBLE_EXACT_ROOT"
+            or len(roots) != 1
+            or roots[0].get("state")
+            != "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
+        ):
+            return None, [], []
+        prior_derived_root = roots[0]
+    elif candidate.get("status") != UNRESOLVED or type(reasons) is not list or not reasons:
         return None, [], []
     mapped_subtotal_prefix = "MAPPED_SOURCE_SUBTOTAL_NOT_PROVEN_BY_EXACT_DIRECT_FRONTIER:"
     permitted_exact = {
         "REQUIRED_SOURCE_VISIBLE_EXACT_FAMILY_ROOT_NOT_PROVEN",
         "UNMAPPED_TOP_LEVEL_SOURCE_ONLY_ROW_NOT_DECLARED_VALIDATION_ROLE",
     }
-    if any(
+    if prior_derived_root is None and any(
         type(reason) is not str
         or (reason not in permitted_exact and not reason.startswith(mapped_subtotal_prefix))
         for reason in reasons
@@ -3414,6 +3430,10 @@ def _operating_expense_root_closure_retry(
         section, table = _source_table(
             page, section_id=region["section_id"], table_id=region["table_id"]
         )
+        # A READY-derived proposal never grants closure of an outgoing or
+        # unrecognized continuation. A valid earlier projection prints NONE.
+        if prior_derived_root is not None and table.get("continuation") != "NONE":
+            return None, [], []
         extracted = _extract_table_local_records(
             page_json=page,
             section=section,
@@ -3465,6 +3485,15 @@ def _operating_expense_root_closure_retry(
     ):
         return None, [], []
     total_ordinal = len(rows)
+    if prior_derived_root is not None and (
+        classification.get("owner_visible") is not True
+        or classification.get("family_presence_anchor_visible") is not True
+        or classification.get("typed_control_disposition") is not None
+        # A root-alias row elsewhere (for example a scoped management-cost
+        # row) cannot be displaced by a later total merely because it sums.
+        or set(classification.get("family_root_row_ordinals", [])) - {total_ordinal}
+    ):
+        return None, [], []
     root_records = [record for record in local_records if record["role"] == "FAMILY_ROOT_TOTAL"]
     if len(root_records) > 1:
         return None, [], []
@@ -3485,6 +3514,14 @@ def _operating_expense_root_closure_retry(
     ):
         return None, [], []
     root_key = _source_ref_key(root_record["source_refs"][0])
+    if prior_derived_root is not None and (
+        len(root_record["source_refs"]) != 1
+        or root_key != (
+            region["page_json_version_id"], region["section_id"],
+            region["table_id"], total_ordinal,
+        )
+    ):
+        return None, [], []
 
     direct_records = [
         record
@@ -3497,9 +3534,17 @@ def _operating_expense_root_closure_retry(
     for record in direct_records:
         by_key.setdefault(_source_ref_key(record["source_refs"][0]), []).append(record)
 
+    # Only the existing U route may consume its retained candidate equations.
+    # READY-derived promotion selects from equations freshly extracted above;
+    # a derived-root equation/result or a caller-resealed equation cannot pick
+    # the terminal source row or become new printed-root proof.
+    equation_axis = (
+        extracted["equations"] if prior_derived_root is not None
+        else candidate.get("closure_receipt", {}).get("equations", [])
+    )
     root_equations = [
         equation
-        for equation in candidate.get("closure_receipt", {}).get("equations", [])
+        for equation in equation_axis
         if type(equation) is dict
         and any(
             _source_ref_key(source_ref) == root_key
@@ -3741,6 +3786,14 @@ def _operating_expense_root_closure_retry(
             }
         )
 
+    if prior_derived_root is not None and not same_typed_json_v1(
+        [item for item in candidate["mappings"] if item["role"] != "FAMILY_ROOT_TOTAL"],
+        [item for item in mappings if item["role"] != "FAMILY_ROOT_TOTAL"],
+    ):
+        # This route replaces only a derived root. It cannot silently remove,
+        # rebind or reconstruct a different nonroot proposal/derived parent.
+        return None, [], []
+
     retried = canonical_clone_v1(candidate)
     retried["mappings"] = mappings
     retried["reasons"] = []
@@ -3762,7 +3815,10 @@ def _operating_expense_root_closure_retry(
             for item in receipt.get("source_only_rows", [])
         ],
     ]:
-        if _source_ref_key(source_only.get("source_ref", {})) in component_keys:
+        if _source_ref_key(source_only.get("source_ref", {})) in (
+            component_keys | {root_key}
+            if prior_derived_root is not None else component_keys
+        ):
             source_only["consumed_by_exact_equation"] = True
     closure["structural_root_receipt"]["emitted_mapping"] = True
     root_sum_receipt = {
@@ -3789,6 +3845,18 @@ def _operating_expense_root_closure_retry(
             "NO_VALUE_HIERARCHY_ROW_KIND_BLANK_OR_UNIT_MUTATION"
         ),
     }
+    if prior_derived_root is not None:
+        receipt_material["prior_ready_derived_root"] = {
+            "original_status": READY,
+            "original_reasons": [],
+            "superseded_root_mapping": canonical_clone_v1(prior_derived_root),
+            "equation_authority": "FRESH_TABLE_LOCAL_SOURCE_EXTRACTION",
+            "rule": (
+                "REQUIRED_PRINTED_ROOT_REPLACES_ONLY_ONE_READY_DERIVED_ROOT_"
+                "AFTER_UNIQUE_CLOSED_TERMINAL_SOURCE_FRONTIER_PROOF_"
+                "NONROOT_MAPPINGS_UNCHANGED_PRIOR_DERIVATION_NOT_PRINTED_AUTHORITY"
+            ),
+        }
     root_receipt = {
         **receipt_material,
         "receipt_id": "gjoefav1:root-closure:"
@@ -4816,7 +4884,7 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
             candidate = retried
     root_closure_receipts: list[dict[str, Any]] = []
     nonexhaustive_parent_receipts: list[dict[str, Any]] = []
-    if candidate.get("status") == UNRESOLVED:
+    if candidate.get("status") in {UNRESOLVED, READY}:
         (
             retried,
             root_closure_receipts,
