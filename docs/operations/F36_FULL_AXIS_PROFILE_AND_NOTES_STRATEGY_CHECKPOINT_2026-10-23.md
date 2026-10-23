@@ -1,5 +1,9 @@
 # F36 full-axis profile and notes strategy checkpoint — 2026-10-23
 
+Later evidence and algorithm promotion are recorded in
+`F36_PRIMARY_WITNESS_AND_MATCHER_CHECKPOINT_2026-10-24.md`. The earlier private/
+inactive and pending-run descriptions below retain their historical scope.
+
 This is a nonterminal checkpoint. F39 remains explicitly unsealed at
 `11380ed935a84b64d72c4e7d367f0451ce0e62e0`; the user's additive workflow amendment
 permits F36 work after that saved checkpoint. It does not waive remaining gates.

@@ -37,6 +37,14 @@ for the separate passing post-abort source hash barrier, inactive witness
 declarations, and the experimental notes strategy. Check the Claude pilot's
 terminal release before another runtime job; no prototype is promoted here.
 
+The witness API and separately reviewed nonfrozen matcher optimization are now
+promoted at949a0dca; read
+`docs/operations/F36_PRIMARY_WITNESS_AND_MATCHER_CHECKPOINT_2026-10-24.md`.
+It records841normal/3562subtest focused PASS,352cross-family regressions,
+actual FULL243 source/cold replay and six-original-document matcher equality.
+The witness remains opt-in and no family is sealed. The guarded Claude pilot and
+derived-store comparator are terminal PASS_DIAGNOSTIC but remain unpromoted.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
