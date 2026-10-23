@@ -4,6 +4,14 @@ Before changing this repository after a machine migration, read
 `docs/operations/MACHINE_MIGRATION_CHECKPOINT_2026-09-05.md` in full and verify
 the Git commit and restored S3 manifests named there.
 
+For laptop continuation, also read
+`docs/operations/F39_PERIOD_BATCH_UNSEALED_CHECKPOINT_AND_F36_HANDOFF_2026-10-23.md`.
+The user's 2026-10-23 amendment permits moving to F36 after saving/pushing an
+explicitly unsealed F39 checkpoint. It does not close F39 or waive any financial,
+source, replay, integrity or ledger gate. F41 remains prohibited until the three
+unfinished families are terminal. Honor the assigned task-owned branch; do not
+push directly to the integration branch without the required review.
+
 The authoritative worktree is this repository on branch
 `codex/27-bank-2025-current`. Preserve all committed family code, tests,
 registered evidence, and staging ledgers. Do not restart provider calls or

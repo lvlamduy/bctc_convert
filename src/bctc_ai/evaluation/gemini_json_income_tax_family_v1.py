@@ -6637,6 +6637,23 @@ def _owned_flow_date_range_caption_constraint(
         r"(?: \(phuong phap (?P<method>truc tiep|gian tiep)\))?"
     )
     match = re.fullmatch(pattern, printed) if printed is not None else None
+    # Additive only: old full-match routes and their receipt bytes stay first.
+    added_route = None
+    if (match is None and section.get("content_kind") == "PRIMARY_STATEMENT"
+            and section.get("statement_type") == "INCOME_STATEMENT"):
+        bare = r"bao cao ket qua hoat dong(?: (?P<scope>rieng|hop nhat))? cho giai doan "
+        slash = (r"tu ngay (?P<sd>[0-9]{1,2})/(?P<sm>[0-9]{1,2})/(?P<sy>[0-9]{4}) "
+                 r"den ngay (?P<ed>[0-9]{1,2})/(?P<em>[0-9]{1,2})/(?P<ey>[0-9]{4})")
+        written = (r"tu ngay (?P<sd>[0-9]{1,2}) thang (?P<sm>[0-9]{1,2}) nam (?P<sy>[0-9]{4}) "
+                   r"den ngay (?P<ed>[0-9]{1,2}) thang (?P<em>[0-9]{1,2}) nam (?P<ey>[0-9]{4})")
+        # Fold declared layout only for the new routes; raw faults remain vetoes.
+        new_printed = _recognition_printed_text(" ".join(layout.split()))
+        for route, dates_pattern in (("BARE_INCOME_EXPLICIT_SLASH_RANGE", slash),
+                                     ("BARE_INCOME_EXPLICIT_WRITTEN_RANGE", written)):
+            candidate = re.fullmatch(bare + dates_pattern, new_printed or "")
+            if candidate is not None:
+                match, added_route = candidate, route
+                break
     reasons = []
     if section.get("content_kind") != "PRIMARY_STATEMENT" or title is None:
         reasons.append("RANGE_NOT_OWNED_BY_TYPED_PRIMARY_FLOW_CAPTION")
@@ -6653,16 +6670,33 @@ def _owned_flow_date_range_caption_constraint(
         "unit_permission_granted": False, "report_scope_permission_granted": False,
         "sibling_or_other_surface_used": False,
     }
+    if added_route is not None:
+        evidence["added_lexical_rule"] = added_route
+        if any(unicodedata.category(char) in {"Cf", "Cs"}
+               or unicodedata.category(char) == "Cc" and char not in "\t\r\n"
+               for char in source_exact):
+            reasons.append("UNSUPPORTED_RAW_EXPLICIT_RANGE_CHARACTER")
+        nfd_raw = unicodedata.normalize("NFD", source_exact)
+        if any(char in "0123456789" and index + 1 < len(nfd_raw)
+               and unicodedata.category(nfd_raw[index + 1]).startswith("M")
+               for index, char in enumerate(nfd_raw)):
+            reasons.append("RAW_PRINTED_DATE_NUMERIC_ANNOTATION")
     dates = {}
     if match is not None:
         # Vietnamese accent folding must not erase annotations attached to a
         # date digit. Both raw tokens must already be literal ASCII dates.
         raw_dates = re.findall(r"(?<!\S)([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})(?=\s|$)", layout)
+        if added_route == "BARE_INCOME_EXPLICIT_WRITTEN_RANGE":
+            raw_dates = re.findall(
+                r"(?<!\S)([0-9]{1,2})\s+(?:tháng|thang)\s+([0-9]{1,2})\s+"
+                r"(?:năm|nam)\s+([0-9]{4})(?=\s|$)",
+                unicodedata.normalize("NFC", layout), flags=re.IGNORECASE,
+            )
         if raw_dates != [(match["sd"], match["sm"], match["sy"]), (match["ed"], match["em"], match["ey"])]:
             reasons.append("RAW_PRINTED_DATE_TOKENS_NOT_LITERAL_ASCII_DATES")
-        if match["before"] and match["after"]:
+        if match.groupdict().get("before") and match.groupdict().get("after"):
             reasons.append("DUPLICATE_PRINTED_CONTINUATION_ASSERTION")
-        if match["method"] and section.get("statement_type") != "CASH_FLOW":
+        if match.groupdict().get("method") and section.get("statement_type") != "CASH_FLOW":
             reasons.append("PRINTED_METHOD_NOT_OWNED_BY_CASH_FLOW")
         try:
             start = date(int(match["sy"]), int(match["sm"]), int(match["sd"]))
@@ -6675,8 +6709,10 @@ def _owned_flow_date_range_caption_constraint(
             if (start.year != end.year or (start.month, start.day) != (1, 1)
                     or end.month not in {3, 6, 9} or end.day != {3: 31, 6: 30, 9: 30}.get(end.month)):
                 reasons.append("PRINTED_RANGE_NOT_COMPLETE_CALENDAR_INTERIM_YTD")
-        evidence.update(printed_scope_furniture=match["scope"], printed_method_furniture=match["method"],
-                        continuation_furniture_present=bool(match["before"] or match["after"]))
+            if added_route is not None and end.month == 12:
+                reasons.append("PRINTED_ANNUAL_RANGE_NOT_GRANTED_BY_INTERIM_ROUTE")
+        evidence.update(printed_scope_furniture=match["scope"], printed_method_furniture=match.groupdict().get("method"),
+                        continuation_furniture_present=bool(match.groupdict().get("before") or match.groupdict().get("after")))
     material = {**evidence, **dates, "supported": not reasons, "reasons": sorted(set(reasons)),
                 "rule": "WHOLE_TYPED_INTERIM_CAPTION_EXPLICIT_SAME_YEAR_JANUARY_FIRST_TO_QUARTER_END_NO_OTHER_SURFACE_AUTHORITY"}
     receipt = {**material, "receipt_id": "gjitfav1:owned-flow-date-range-caption:" + canonical_json_sha256_v1(material)}
@@ -6741,11 +6777,46 @@ def _owned_flow_report_quarter_constraint(
     pattern = (r"bao cao " + title + r"(?: (?P<scope>rieng|hop nhat))?(?: giua nien do)? "
                r"quy (?P<quarter>iii|ii|iv|i|[1-4]) nam (?P<year>[0-9]{4})(?: \(tiep theo\))?")
     match = re.fullmatch(pattern, printed or "")
+    ended_match = None
+    # A distinct whole INC scaffold: a printed quarter endpoint plus its
+    # calendar date. Do not widen existing legal-prefix or CF grammars.
+    if match is None and not prefix and section["statement_type"] == "INCOME_STATEMENT":
+        ended_pattern = (
+            r"bao cao " + title + r"(?: (?P<scope>rieng|hop nhat))? cho quy "
+            r"(?P<quarter>iii|ii|iv|i|[1-4]) ket thuc ngay (?P<day>[0-9]{1,2}) "
+            r"thang (?P<month>[0-9]{1,2}) nam (?P<year>[0-9]{4})(?: \(tiep theo\))?"
+        )
+        ended_match = re.fullmatch(ended_pattern, printed or "")
+        match = ended_match
     if match is None:
         reasons.append("WHOLE_PRINTED_REPORT_QUARTER_NOT_RECOGNIZED")
     raw_tokens = re.findall(
         r"(?i)(?:^|\s)qu(?:ý|y)\s+([iIvV1-4]+)\s+n(?:ă|a)m\s+([0-9]{4})(?=\s|$)", unicodedata.normalize("NFC", core),
     )
+    endpoint_evidence = {}
+    if ended_match is not None:
+        raw_core = unicodedata.normalize("NFC", core)
+        raw_quarters = re.findall(r"(?i)(?:^|\s)qu(?:ý|y)\s+(\S+)", raw_core)
+        raw_dates = re.findall(
+            r"(?i)(?<!\S)([0-9]{1,2})\s+th(?:á|a)ng\s+([0-9]{1,2})\s+n(?:ă|a)m\s+([0-9]{4})(?=\s|$)",
+            raw_core,
+        )
+        raw_tokens = [(quarter, ended_match["year"]) for quarter in raw_quarters]
+        if (raw_dates != [(ended_match["day"], ended_match["month"], ended_match["year"])]
+                or any(not quarter.isascii() for quarter in raw_quarters)):
+            reasons.append("REPORT_QUARTER_END_RAW_ASCII_DATE_NOT_PROVEN")
+        try:
+            endpoint = date(int(ended_match["year"]), int(ended_match["month"]), int(ended_match["day"]))
+        except ValueError:
+            reasons.append("INVALID_REPORT_QUARTER_END_CALENDAR_DATE")
+        else:
+            quarter = {"i": 1, "ii": 2, "iii": 3, "iv": 4,
+                       "1": 1, "2": 2, "3": 3, "4": 4}[ended_match["quarter"]]
+            if (endpoint.month, endpoint.day) != (quarter * 3, {1: 31, 2: 30, 3: 30, 4: 31}[quarter]):
+                reasons.append("REPORT_QUARTER_AND_PRINTED_END_DATE_CONFLICT")
+            # Nested evidence only: top-level printed_end_date would be read
+            # elsewhere as a duration assertion requiring printed_months.
+            endpoint_evidence["printed_reporting_end_date"] = endpoint.isoformat()
     if match is not None and (len(raw_tokens) != 1 or raw_tokens[0][1] != match["year"]
                               or raw_tokens[0][0].lower() != match["quarter"]
                               or not 1 <= int(match["year"]) <= 9999):
@@ -6757,6 +6828,7 @@ def _owned_flow_report_quarter_constraint(
         "source_kind": source_kind, "source_exact": source_exact,
         "source_sha256": sha256(source_exact.encode("utf-8")).hexdigest(),
         "recognized_prefix_lines_exact": prefix, "report_caption_exact": core,
+        **endpoint_evidence,
         "supported": not reasons, "reasons": sorted(set(reasons)), **fields,
         "report_scope_permission_granted": False, "entity_permission_granted": False,
         "unit_permission_granted": False, "comparative_year_permission_granted": False,
@@ -6859,6 +6931,59 @@ def _owned_current_period_constraints(section: Mapping[str, Any], table: Mapping
     ending = r"(?P<day>\d{1,2}) (?:thang )?(?P<month>\d{1,2}) (?:nam )?(?P<year>\d{4})(?: tiep theo)?"
     output = []
     for kind, raw in surfaces:
+        # FIRST N CALENDAR MONTHS is a duration assertion, not a literal
+        # printed date/quarter or authority for the comparative column.
+        if (kind == "OWNED_NARRATIVE" and type(raw) is str
+                and section.get("content_kind") == "PRIMARY_STATEMENT"
+                and section.get("statement_type") == "INCOME_STATEMENT"
+                and len(section.get("tables") or []) == 1
+                and same_typed_json_v1(section["tables"][0], table)):
+            layout = raw.replace("\\n", "\n")
+            printed = _recognition_printed_text(" ".join(layout.split()))
+            first_months = re.fullmatch(
+                r"cho ky ke toan (?P<months>3|6|9|12) thang dau nam (?P<year>[0-9]{4})",
+                printed or "",
+            )
+            if first_months is not None:
+                months, year = int(first_months["months"]), int(first_months["year"])
+                faults = []
+                if any(unicodedata.category(char) in {"Cf", "Cs"}
+                       or unicodedata.category(char) == "Cc" and char not in "\t\r\n" for char in raw):
+                    faults.append("FIRST_MONTHS_RAW_CHARACTER_NOT_SUPPORTED")
+                if re.findall(r"(?<!\S)[0-9]+(?!\S)", layout) != [first_months["months"], first_months["year"]]:
+                    faults.append("FIRST_MONTHS_RAW_ASCII_DIGITS_NOT_PROVEN")
+                occurrences = [ordinal for ordinal, text in enumerate(section.get("narratives_exact") or [], 1)
+                               if type(text) is str and text == raw]
+                if len(occurrences) != 1:
+                    faults.append("FIRST_MONTHS_OWNED_NARRATIVE_OCCURRENCE_NOT_UNIQUE")
+                try:
+                    endpoint = date(year, months, {3: 31, 6: 30, 9: 30, 12: 31}[months]).isoformat()
+                except ValueError:
+                    endpoint = None
+                    faults.append("FIRST_MONTHS_PRINTED_YEAR_NOT_CALENDAR_VALID")
+                evidence = {
+                    "source_kind": kind, "source_exact": raw,
+                    "source_sha256": sha256(raw.encode("utf-8")).hexdigest(),
+                    "owned_table_object_canonical_sha256": canonical_json_sha256_v1(table),
+                    "narrative_ordinals": occurrences, "supported": not faults,
+                    "reasons": sorted(set(faults)), "semantic_origin": "FIRST_N_CALENDAR_MONTHS_OF_YEAR",
+                    "raw_month_token": first_months["months"], "raw_year_token": first_months["year"],
+                    "printed_months": months, "printed_year": year,
+                    "calendar_endpoint_derived_from_printed_first_months": endpoint,
+                    "literal_quarter_printed": False, "literal_endpoint_date_printed": False,
+                    "comparative_period_authority_granted": False, "source_period_keys_modified": False,
+                    "source_values_modified": False, "amounts_used_as_authority": False,
+                    "rule": "WHOLE_SINGLE_TABLE_PRIMARY_INCOME_FIRST_CALENDAR_MONTHS_ASSERTION_ONLY",
+                }
+                output.append({
+                    "source_kind": kind, "source_exact": raw, "supported": not faults,
+                    **({"printed_reporting_quarter": months // 3, "printed_year": year,
+                        "printed_months": months} if not faults else {}),
+                    "source_first_calendar_months_evidence": {
+                        **evidence, "receipt_id": "gjitfav1:owned-first-calendar-months:" + canonical_json_sha256_v1(evidence),
+                    },
+                })
+                continue
         note_report_quarter = _owned_note_report_quarter_constraint_v1(section, source_kind=kind, source_exact=raw)
         if note_report_quarter is not None:
             output.append(note_report_quarter)
@@ -7016,6 +7141,8 @@ def _owned_current_period_constraints_match(section: Mapping[str, Any], table: M
             quarter_month = item["printed_reporting_quarter"] * 3
             if ending_parts != (item["printed_year"], quarter_month, {3: 31, 6: 30, 9: 30, 12: 31}[quarter_month]):
                 return False
+            if "source_first_calendar_months_evidence" in item and months != item["printed_months"]:
+                return False
         elif item["printed_months"] != months or tuple(map(int, item["printed_end_date"].split("-"))) != ending_parts:
             return False
     return True
@@ -7127,19 +7254,47 @@ def _printed_ytd_sibling_period_evidence(section: Mapping[str, Any], table: Mapp
                 for header in headers[:2]]
     cumulative = [re.fullmatch(r"luy ke tu dau nam(?: den cuoi quy nay)? " + year_suffix + suffix, header or "")
                   for header in headers[2:]]
+    # This exact common reporting frame occurs on BOTH cumulative columns.
+    # Its internal 'nam nay' is not the comparative column's year suffix.
+    current_frame = [re.fullmatch(r"luy ke tu dau nam nay den cuoi quy nay " + year_suffix + suffix, header or "")
+                     for header in headers[2:]]
+    if any(match is not None for match in current_frame):
+        if any(match is None for match in current_frame):
+            return None
+        cumulative = current_frame
+    # A second, distinct frame prints the SAME named quarter on both YTD
+    # headers. Only explicit per-column years are admitted by this new route.
+    named_frame = [re.fullmatch(
+        r"luy ke tu dau nam den cuoi quy (?P<quarter>i|ii|iii|iv|1|2|3|4) " + year_suffix + suffix,
+        header or "",
+    ) for header in headers[2:]]
+    named_frame_active = any(match is not None for match in named_frame)
+    if named_frame_active:
+        if any(match is None for match in named_frame):
+            return None
+        cumulative = named_frame
     matches = [*quarters, *cumulative]
     if any(match is None for match in matches):
+        return None
+    if named_frame_active and any(match["absolute"] is None for match in matches):
         return None
     for index, (layout, match) in enumerate(zip(layouts, matches, strict=True)):
         if index < 2:
             raw_quarter = layout.split()[1]
             if not raw_quarter.isascii() or raw_quarter.lower() != match["quarter"]:
                 return None
+        elif named_frame_active:
+            raw_quarters = re.findall(r"(?i)(?:^|\s)qu(?:ý|y)\s+(\S+)", unicodedata.normalize("NFC", layout))
+            if (len(raw_quarters) != 1 or not raw_quarters[0].isascii()
+                    or raw_quarters[0].lower() != match["quarter"]):
+                return None
         if match["absolute"] is not None:
             raw_years = re.findall(r"(?<!\S)[0-9]{4}(?!\S)", layout)
             if raw_years != [match["absolute"]] or not 1 <= int(match["absolute"]) <= 9999:
                 return None
     quarter = quarter_numbers[quarters[0]["quarter"]]
+    if named_frame_active and any(quarter_numbers[match["quarter"]] != quarter for match in cumulative):
+        return None
     tokens = [match["relative"] or match["absolute"] for match in quarters]
     if (quarter_numbers[quarters[1]["quarter"]] != quarter
             or tokens != [match["relative"] or match["absolute"] for match in cumulative]):
