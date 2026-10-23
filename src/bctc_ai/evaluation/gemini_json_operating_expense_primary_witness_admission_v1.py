@@ -1,21 +1,25 @@
 """F36 runtime-only PRIMARY witness admission; no serialized token is authority."""
 from __future__ import annotations
 
+import os
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
-import os
 
 import fitz
 from PIL import Image
 
 from bctc_ai.evaluation.gemini_json_first_page_render_v1 import render_full_pdf_page_v1
 from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import (
-    HASH_KEY, SPEC_KEY, _primary_witness_projection_v1,
+    HASH_KEY,
+    SPEC_KEY,
+    _primary_witness_projection_v1,
     validate_f36_primary_witness_spec_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (
-    canonical_clone_v1, canonical_json_sha256_v1, same_typed_json_v1,
+    canonical_clone_v1,
+    canonical_json_sha256_v1,
+    same_typed_json_v1,
 )
 
 AXIS_FIELD = "operating_expense_primary_witness_axis_v1"
