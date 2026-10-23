@@ -148,6 +148,11 @@ def test_cumulative_from_start_of_period_is_held_with_a_named_reason_not_none():
     assert lanes[0].reasons == ["PERIOD_UNRESOLVED:PRINTED_WINDOW_WITHOUT_CANONICAL_KEY:CUMULATIVE_FROM_START_OF_PERIOD_TO"]
     assert lanes[1].period_key == "DURATION:CUMULATIVE_FROM_START_OF_YEAR_TO:2025-12-31"  # kept as printed
     assert not any("None" in reason for lane in lanes for reason in lane.reasons)
+    # The literal held FULL271 headers (ord 140, s2/t1/c1-c2): "Lũy kế <date>" prints only the end (0203-claude).
+    printed = make_table(RECON[:1], [("Lũy kế 30/09/2025",), ("Lũy kế 30/09/2024",)])
+    lanes = resolve_duration_lanes_v1(printed, document(quarter=3), [], [printed.table_title])
+    assert [(lane.period_key, lane.candidates, lane.reasons) for lane in lanes] == [
+        (None, [], ["PERIOD_UNRESOLVED:PRINTED_WINDOW_WITHOUT_CANONICAL_KEY:CUMULATIVE_FROM_START_OF_PERIOD_TO"])] * 2
 
 
 def test_this_period_has_candidates_previous_period_never_and_segments_are_not_periods():
