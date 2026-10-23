@@ -30,6 +30,13 @@ recorded in `docs/operations/F36_SCOPED_PAYROLL_SOURCE_PROVEN_CHECKPOINT_2026-10
 with744tests and actual FULL193 source proof. Performance and numeric
 PRIMARY-witness repair remain isolated drafts. No checkpoint seals F36.
 
+The later full-axis profile failed at its CPU limit before hydration/indexed
+phases; retain that failure and its partial alias-matching evidence. Read
+`docs/operations/F36_FULL_AXIS_PROFILE_AND_NOTES_STRATEGY_CHECKPOINT_2026-10-23.md`
+for the separate passing post-abort source hash barrier, inactive witness
+declarations, and the experimental notes strategy. Check the Claude pilot's
+terminal release before another runtime job; no prototype is promoted here.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
