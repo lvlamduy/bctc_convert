@@ -65,6 +65,8 @@ def _case(tmp_path, variant="READY", *, name="synthetic.pdf"):
     source = {"source_logical_name": name, "source_sha256": sha256(pdf_path.read_bytes()).hexdigest(),
               "source_size_bytes": pdf_path.stat().st_size}
     note = fixture._operating_page()
+    # The anonymous printed TOTAL retains label=None, with its explicit legal path.
+    note["sections"][0]["tables"][0]["rows"][-1]["hierarchy_path_exact"] = [None]
     if variant == "NOT_OBSERVED":
         note["status"], note["sections"] = "NO_RELEVANT_FINANCIAL_CONTENT", []
     elif variant == "UNIT_HOLD":
@@ -82,7 +84,7 @@ def _case(tmp_path, variant="READY", *, name="synthetic.pdf"):
                 "unit_exact": None if variant == "UNIT_HOLD" else "Triệu đồng", "continuation": "NONE",
                 "columns": [{"header_path_exact": [word], "value_kind": "MONEY"}
                             for word in ("Kỳ này", "Kỳ trước", "Lũy kế kỳ này", "Lũy kế kỳ trước")],
-                "rows": [fixture._row(fixture.OWNER, "83", None)]}],
+                "rows": [fixture._row(fixture.OWNER, "83", None, path=[fixture.OWNER])]}],
         }]}
     primary["sections"][0]["tables"][0]["rows"][0]["values_exact"] = ["83", None, None, None]
     database = tmp_path / "source.sqlite3"
