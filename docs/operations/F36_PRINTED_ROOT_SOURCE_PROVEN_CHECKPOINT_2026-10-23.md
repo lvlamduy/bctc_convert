@@ -87,3 +87,28 @@ PDF audits and a truthful ledger. Until all required gates pass, keep F36 unseal
 
 No provider, obsolete OCR, source database/PDF mutation, S3 overwrite/delete,
 standalone2024 production queue or integration-branch push occurred.
+
+## Immutable checkpoint backup
+
+Git checkpointeeae42ada633ec79e260e1a5abd9e2c73ac5d77e was pushed and exact-remote
+verified before publication.17 pinned receipts/images plus one nonterminal
+HEARTBEAT passed conditional encrypted PUT and exact-VersionId/full-byte readback.
+This includes retained failed runs; none was relabeled as acceptance.
+
+Artifact prefix in bucket`test-s3-duylv`, region`us-east-1`:
+`bctc-ai/coordination/2025-current/v1/artifacts/LAPTOP_INTEGRATOR/f36-printed-root-checkpoint-20261023T121014306916Z-ceee9250ab0f43f49df8bcfbcaa091cd/`.
+The focused687 receipt under`focused687/` has VersionId
+`jUml4A3jZV7XHkfxuo5Tu4yAQ2CTVVqg` and the SHA recorded above.
+
+HEARTBEAT key:
+`bctc-ai/coordination/2025-current/v1/events/20261023T121014306916Z-LAPTOP_INTEGRATOR-HEARTBEAT-b09f250283fa44afb805f77847136640.json`,
+VersionId`d_mN_0O8TW9BqOO7dUI5OAWl_wElVrrc`, SHA-256
+`712223adf2fbb3bcdda0fe395949fa5c27fee04f92e00b753875dbc0dcea91e3`.
+It explicitly keeps F36 unsealed, F39 unsealed, F37 unclaimed and F41 closed.
+
+Local publication directory:
+`D:/bctc_bank/restore-receipts/f36-printed-root-checkpoint-20261023T121014306916Z-ceee9250ab0f43f49df8bcfbcaa091cd/`.
+Its final.json SHA-256 is
+`3be300fd8c1938640b0b2370e66611b2e097204f926969891d5d6199df435c9b`.
+No existing object was overwritten/deleted; no duplicate PDF/database archive
+was created. This later documentation addendum changes no tested algorithm.
