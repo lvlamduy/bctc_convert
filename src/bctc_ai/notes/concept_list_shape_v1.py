@@ -39,7 +39,6 @@ from bctc_ai.notes.kernel_v1 import (
     parse_cell_v1,
     resolve_duration_lanes_v1,
 )
-from bctc_ai.notes.source_bridge_v1 import EXACT
 from bctc_ai.notes.list_shape_v1 import (
     OWNER_SOURCES,
     RowRole,
@@ -49,6 +48,7 @@ from bctc_ai.notes.list_shape_v1 import (
     owned_date_texts_v1,
     resolve_subject_v1,
 )
+from bctc_ai.notes.source_bridge_v1 import EXACT
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese
 from bctc_ai.primary_statements.units_v1 import SCALE
 
