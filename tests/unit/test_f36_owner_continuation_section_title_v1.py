@@ -34,7 +34,6 @@ from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1, canonical_json_sha256_v1
 
-
 _ROOT = Path(family.__file__).resolve().parents[3]
 _SPEC = importlib.util.spec_from_file_location(
     "_f36_owner_title_existing_fixtures",
