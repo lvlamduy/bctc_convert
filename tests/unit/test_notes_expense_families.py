@@ -186,3 +186,26 @@ def test_write_key_collisions_hold_every_occurrence_even_with_equal_values():
     assert equal[0]["collides_with"] == [equal[1]["locator"]] and equal[1]["collides_with"] == [equal[0]["locator"]]
     assert single[0]["acceptance"] == "ACCEPTED" and not single[0]["hold_reasons"]
     assert not any(c["acceptance"] == "DUPLICATE_IDENTICAL_CONTROL" for c in equal + different + single)
+
+
+def test_owner_made_ambiguous_by_a_duplicate_population_releases_its_child(config):
+    # Codex 0128: two EMPLOYEE rows under distinct coherent raw paths (Khối A / Khối B) are both
+    # AMBIGUOUS after duplicate-line resolution, so payroll uniquely linked under A is not read either.
+    family = config.families["OPERATING_EXPENSE"]
+    rows = [("Khối A", [None, None]), ("Chi phí cho nhân viên", ["100", "90"]), ("Các khoản chi đóng góp theo lương", ["15", "14"]),
+            ("Khối B", [None, None]), ("Chi phí cho nhân viên", ["60", "50"])]
+    table = make_table(rows, [("Năm 2025",), ("Năm 2024",)], title="30. Chi phí hoạt động")
+    for child, parent in ((1, 0), (2, 1), (4, 3)):
+        link(table, child, parent)
+    roles = _roles(table, family)
+    assert roles[1][1] == roles[4][1] == "AMBIGUOUS"
+    assert roles[2] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER")
+    # No amount equality resolves it: an income-statement total equal to a printed value grants nothing.
+    evaluations = evaluate_concept_table_v1(table, family, document(quarter=4, primary=kqkd({YEAR: {"OPEX": "15"}})),
+                                            context_of(table), [])
+    assert not [c for e in evaluations for c in e.cells if c["member"] == "PAYROLL_CONTRIBUTIONS"]
+    # The same layout with one employee population keeps payroll under its unique final MEMBER owner.
+    single = make_table(rows[:3], [("Năm 2025",), ("Năm 2024",)], title="30. Chi phí hoạt động")
+    for child, parent in ((1, 0), (2, 1)):
+        link(single, child, parent)
+    assert _roles(single, family)[2][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")

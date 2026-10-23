@@ -88,17 +88,21 @@ def proven_parent_index_v1(table: NoteTable, index: int) -> tuple[int | None, st
     return parent_index, "PROVEN_PRINTED_PARENT"
 
 
-def _proven_parent_line(table: NoteTable, index: int, family: Family) -> tuple[str | None, str]:
-    """The single axis line of the row's proven printed parent, else (None, reason)."""
+def _proven_parent_line(table: NoteTable, index: int, family: Family) -> tuple[str | None, str, int | None]:
+    """(line, reason, parent index) of the row's proven printed parent; line None unless it is one axis line.
+
+    This is the parent's label match only; ``assign_lines_v1`` additionally requires the parent's FINAL
+    role to be an unambiguous MEMBER of that line (after duplicate-line resolution).
+    """
 
     parent_index, reason = proven_parent_index_v1(table, index)
     if parent_index is None:
-        return None, reason
+        return None, reason, None
     parent = table.rows[parent_index]
     lines = family.axis.match(parent.key) if parent.key else []
     if len(lines) != 1:
-        return None, "PARENT_LINE_AMBIGUOUS" if lines else "PARENT_IS_NOT_A_LINE"
-    return lines[0], "PROVEN_PARENT_LINE"
+        return None, "PARENT_LINE_AMBIGUOUS" if lines else "PARENT_IS_NOT_A_LINE", parent_index
+    return lines[0], "PROVEN_PARENT_LINE", parent_index
 
 
 def _claims_parent(row) -> bool:
@@ -125,6 +129,7 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
 
     members = family.axis.members
     roles = []
+    depends: dict[int, tuple[int, str]] = {}  # child row -> (parent row, parent line) its reading relies on
     for index, row in enumerate(table.rows):
         key = row.key
         if not _has_values(table, row):
@@ -135,7 +140,7 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
         owned = [m for m in matches if members.get(m, {}).get("owner")]
         blocked: list[str] = []
         if scoped or owned or any(members.get(m, {}).get("not_within") for m in matches):
-            parent_line, parent_reason = _proven_parent_line(table, index, family)
+            parent_line, parent_reason, parent_index = _proven_parent_line(table, index, family)
             excluded = [m for m in matches if members.get(m, {}).get("not_within")
                         and (parent_line in members[m]["not_within"] or (parent_line is None and _claims_parent(row)))]
             # An owner-bound line is read only under its proven printed owner (never by amount or position).
@@ -150,6 +155,8 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             roles.append(RowRole(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES", matches))
         elif matches:
             roles.append(RowRole(index, matches[0], "MEMBER", "LINE_RULE"))
+            if matches[0] in owned or matches[0] in scoped:
+                depends[index] = (parent_index, parent_line)
         else:
             roles.append(RowRole(index, None, "SOURCE_ONLY", "NO_LINE_RULE"))
     printed: dict[str, list[RowRole]] = {}
@@ -161,6 +168,17 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             # Same label twice may be another population or basis: never merged, never chosen.
             for repeat in repeats:
                 repeat.disposition, repeat.reason, repeat.candidates, repeat.role = "AMBIGUOUS", "LINE_PRINTED_MORE_THAN_ONCE", [line], None
+    # An owner/scoped child is read only while its parent's FINAL role is an unambiguous MEMBER of the
+    # owner line (Codex 0128): a parent made AMBIGUOUS by a duplicate population releases the child too.
+    changed = True
+    while changed:
+        changed = False
+        for child, (parent_index, parent_line) in depends.items():
+            child_role, parent_role = roles[child], roles[parent_index]
+            if child_role.disposition == "MEMBER" and (parent_role.disposition != "MEMBER" or parent_role.role != parent_line):
+                child_role.disposition, child_role.reason = "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER"
+                child_role.candidates, child_role.role = [child_role.role], None
+                changed = True
     return roles
 
 
