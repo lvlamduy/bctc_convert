@@ -62,3 +62,20 @@ def test_tampered_value_is_detected(template):
     tampered = deterministic_workbook_bytes(workbook, creator="tamper")
     with pytest.raises(NotesWorkbookError):
         verify_notes_workbook_v1(tampered, DOCUMENT, cells, template)
+
+
+def test_semantic_state_is_visible_on_the_dimensional_sheet_and_read_back(template):
+    # Codex 0133: an unproven-meaning observation (5729/5730 lines, no legacy ID) must not look like a proved amount.
+    unproven = {**cell(None, "INSTANT:2025-06-30", "5", member="NON_DEDUCTIBLE_EXPENSES"),
+                "semantic_state": "BASE_OR_TAX_EFFECT_UNPROVEN"}
+    cells = [cell(747, "INSTANT:2025-06-30", "900"), unproven]
+    payload, receipt = build_notes_workbook_v1(DOCUMENT, cells, template, {})
+    assert receipt["format_version"] == "NOTES_PILOT_WORKBOOK_V2" and receipt["status"] == "PASS_EXACT_READBACK"
+    workbook = openpyxl.load_workbook(io.BytesIO(payload))
+    sheet = workbook["DIMENSIONAL"]
+    assert sheet.cell(1, 18).value == "semantic_state"
+    assert [sheet.cell(row, 18).value for row in (2, 3)] == [None, "BASE_OR_TAX_EFFECT_UNPROVEN"]
+    assert all(r[1].value != "NON_DEDUCTIBLE_EXPENSES" for r in workbook["TM"].iter_rows(min_row=2))  # never a template row
+    sheet.cell(3, 18).value = None
+    with pytest.raises(NotesWorkbookError):
+        verify_notes_workbook_v1(deterministic_workbook_bytes(workbook, creator="tamper"), DOCUMENT, cells, template)

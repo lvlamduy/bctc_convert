@@ -29,14 +29,14 @@ from bctc_ai.primary_statements.excel_v1 import excel_number_v1
 from bctc_ai.primary_statements.source_v1 import sha256_file
 from bctc_ai.schema.xlsx_reader import read_rows
 
-NOTES_WORKBOOK_FORMAT = "NOTES_PILOT_WORKBOOK_V1"
+NOTES_WORKBOOK_FORMAT = "NOTES_PILOT_WORKBOOK_V2"  # V2: DIMENSIONAL semantic_state column
 PRODUCT_LABEL = "NOTES_PILOT_EXPERIMENTAL"
 TM_TEMPLATE = "template/Bank_TM_ReportNormId.v2.xlsx"
 TM_TEMPLATE_SHA256 = "64589f7ee2b025ac0bd784c13e0b0ba0aff9d46456a83fa7fe2d68a7de375115"
 EXPORTED = {"ACCEPTED", "ACCEPTED_DASH", "ACCEPTED_BLANK", "HOLD"}
 _DIMENSIONAL_HEADER = ["family", "concept", "axis", "member", "classification_basis", "period_key", "period_basis",
                        "unit", "unit_basis", "observation_state", "value", "raw", "acceptance", "hold_reasons",
-                       "report_norm_id", "label_exact", "source"]
+                       "report_norm_id", "label_exact", "source", "semantic_state"]
 
 
 class NotesWorkbookError(ValueError):
@@ -129,7 +129,9 @@ def build_notes_workbook_v1(document: dict[str, Any], cells: list[dict[str, Any]
         values = [cell["family"], cell["concept"], cell["axis"], cell["member"], cell["classification_basis"],
                   cell["period_key"], cell["period_basis"], cell["unit"], cell["unit_basis"], cell["observation_state"],
                   cell["value"], cell["raw"], cell["acceptance"], ";".join(cell["hold_reasons"]),
-                  cell.get("report_norm_id"), cell["label_exact"], _source(cell)]
+                  cell.get("report_norm_id"), cell["label_exact"], _source(cell),
+                  # e.g. BASE_OR_TAX_EFFECT_UNPROVEN: an observation, not a proved legacy amount (Codex 0133).
+                  cell.get("semantic_state")]
         for column, value in enumerate(values, 1):
             if isinstance(value, int):
                 dimensional.cell(row, column).value = value
@@ -172,8 +174,9 @@ def verify_notes_workbook_v1(payload: bytes, document: dict[str, Any], cells: li
     if dimensional.max_row - 1 != len(cells):
         raise NotesWorkbookError("DIMENSIONAL row count drifted")
     for row, cell in enumerate(cells, 2):
-        got = [dimensional.cell(row, column).value for column in (2, 4, 6, 8, 11, 13, 17)]
-        expected = [cell["concept"], cell["member"], cell["period_key"], cell["unit"], cell["value"], cell["acceptance"], _source(cell)]
+        got = [dimensional.cell(row, column).value for column in (2, 4, 6, 8, 11, 13, 17, 18)]
+        expected = [cell["concept"], cell["member"], cell["period_key"], cell["unit"], cell["value"], cell["acceptance"], _source(cell),
+                    cell.get("semantic_state")]
         if got != expected:
             raise NotesWorkbookError(f"DIMENSIONAL row {row} does not read back exactly")
     return {"format_version": NOTES_WORKBOOK_FORMAT, "workbook_sha256": hashlib.sha256(payload).hexdigest(),
