@@ -77,6 +77,13 @@ actual48-page253 warm/cold PDF/row proof. Original blanks/raw violations remain;
 no full-corpus declaration or family seal is granted. Check any later FULL271
 producer job's terminal receipt before starting another runtime job.
 
+The selected held-frontier proof packet is now S3-backed; read
+`docs/operations/F36_HELD_FRONTIER_S3_BACKUP_AND_LIVE_FULL271_2026-10-24.md`.
+It records128exact-Version object readbacks and the single live FULL271 diagnostic
+at `/srv/bctc-receipts/f36-full271-existing-producer-v3-20261023T221542Z/`.
+Check its terminal execution-result before another project runtime job. This
+backup/diagnostic does not seal F36 or cover the whole project.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
