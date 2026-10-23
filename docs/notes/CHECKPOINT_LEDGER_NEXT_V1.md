@@ -110,6 +110,30 @@ F39 có 12 cell (1 tài liệu) mang nguyên văn lý do `PERIOD_UNRESOLVED:None
 - `f9a125f8`: `proof_bound_lines_v1`. Line có tên trong equation hoặc `primary_anchors` cần equation PASS chứa nó hoặc anchor EXACT của chính nó; nếu không thì HOLD `LINE_NOT_PROVEN_BY_ITS_OWN_EQUATION_OR_ANCHOR`.
 - Trạng thái: chờ Codex review và lease unit (`unit_only_v7.sh` `0044108b…`, dự kiến 126 node). Chưa đo tác động trên corpus.
 
+## Batch đã review cho unit `510be514` (Codex 0215: GO cho lượt 141 node về sau; chưa chạy)
+
+Root chạy từ một clone Linux riêng, detached tại `510be514e81de114156de6502ca37fff5ea2bc5d`: `/srv/bctc-receipts/notes-unit-510be514-private-20261024/repo`, launcher `unit_only_v8`.
+
+Các commit đều là phản ví dụ static do Codex review đưa ra, không phải phát hiện trên tài liệu thật:
+
+| Commit | Tin | Nội dung |
+|---|---|---|
+| `bd453318`, `f9a125f8` | 0196 | F39: CURRENT_TAX_EXPENSE chỉ nhận chi phí dương; "Năm hiện hành" cần owner; line có ràng buộc phải có proof của chính nó |
+| `3c980e98`, `f8588a3d` | 0203-claude | Lý do kỳ có tên, không còn `PERIOD_UNRESOLVED:None` ("Lũy kế D" là `CUMULATIVE_FROM_START_OF_PERIOD_TO`), vẫn HOLD |
+| `864e641d` | 0199 | F37 `row_vetoes`: basis stock/movement, population không phải tín dụng |
+| `ce14069e` | 0203 | F37 `foreign_row_holds`: dòng bị veto giữ tổng chung chung, chuỗi parent khai báo và các tổng chứa nó; anchor EXACT không gỡ được |
+| `24c37a18` | 0203 | "Dự phòng khác" trơn cần subject `OWNER_CONTEXT` |
+| `d36b8ab2` | 0206 | COORDINATE: subject in ở dòng (`ROW_SUBJECT_CONFLICT` → giữ cả bảng); `non_balance_column_measures` |
+| `586f81c9` | 0209 / 0210 | Operand BLANK → `INCOMPLETE_BLANK_OPERAND` (LIST + COORDINATE); DASH_ZERO chỉ từ equation PASS đầy đủ; subject tường minh của cột; measure `not_gross_balance` |
+| `f0d71415` | 0208 | Taint đi xuống theo cạnh owner/scoped (`RowRole.depends_on`) |
+| `510be514` | 0213 | Dòng axis được in, mọi cell null, không phải GROUP, là thành phần chưa biết (LIST + COORDINATE) |
+
+Hai ảnh hưởng dự kiến (chưa đo; chỉ là siết chặt):
+- dash nằm ngoài equation đã PASS không còn thành 0;
+- heading được nguồn in dưới dạng ITEM trong COORDINATE thành parent BLANK, nên tổng và các con của nó bị HOLD.
+
+Kiểm tra nguồn kỳ (0207): đã duyệt cho phép soạn. Helper `period_source_inspection_v1.py` `1f36ac78…` và launcher `a04437c9…` chưa chạy, chờ review.
+
 ## Việc còn mở
 
 - Luật marker gạch đầu dòng ("- ") cho leaf/label (43 dòng): cần kế hoạch đọc ORIGINAL được duyệt trước.
