@@ -4815,6 +4815,128 @@ def _source_root_authority_veto(
     }]
 
 
+def _literal_payroll_scope_receipts_v1(
+    *, table: Mapping[str, Any], original_table: Mapping[str, Any],
+    locator: Mapping[str, Any], compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Source-bound census of the new payroll literal, never a mapping grant."""
+    rows = table.get("rows")
+    if type(rows) is not list:
+        return []
+
+    def surface(value: Any) -> str:
+        return _without_leading_ordinal(_normalized(value))
+
+    def path(row: Mapping[str, Any]) -> list[str] | None:
+        values = row.get("hierarchy_path_exact")
+        return [surface(value) for value in values] if type(values) is list else None
+
+    literal = surface("Chi đóng góp theo lương")
+    employee_aliases = {
+        surface(alias)
+        for matcher in compiled_specs["child_by_role"]["EMPLOYEE_EXPENSE"]["matchers"]
+        for alias in matcher["aliases"]
+    }
+    parent_axis = [
+        (number, item) for number, item in enumerate(rows, 1)
+        if type(item) is dict and surface(item.get("label_exact")) in employee_aliases
+        and item.get("row_kind") in {"ITEM", "GROUP", "SUBTOTAL"}
+        and path(item) == [surface(item.get("label_exact"))]
+    ]
+    receipts = []
+    for number, row in enumerate(rows, 1):
+        if type(row) is not dict or surface(row.get("label_exact")) != literal:
+            continue
+        reasons = []
+        row_path = path(row)
+        parent = parent_axis[0] if len(parent_axis) == 1 else None
+        if parent is None or parent[0] >= number:
+            reasons.append("UNIQUE_EARLIER_SAME_TABLE_EMPLOYEE_PARENT_NOT_PROVEN")
+        owner = None if parent is None else surface(parent[1].get("label_exact"))
+        if (
+            row_path is None or len(row_path) not in {2, 3}
+            or row_path[-1] != literal or row_path[0] != owner
+            or (len(row_path) == 3 and row_path[1] != "trong do")
+        ):
+            reasons.append("EXACT_EMPLOYEE_PAYROLL_PATH_NOT_PROVEN")
+        wrappers = []
+        if parent is not None and parent[0] < number:
+            for between in range(parent[0] + 1, number):
+                item = rows[between - 1]
+                if type(item) is not dict:
+                    reasons.append("INTERVENING_SOURCE_ROW_NOT_LOCALLY_USABLE")
+                    continue
+                item_path = path(item)
+                if surface(item.get("label_exact")) == "trong do":
+                    wrappers.append((between, item))
+                    values = item.get("values_exact")
+                    if (
+                        item.get("row_kind") != "GROUP" or item_path != [owner, "trong do"]
+                        or type(values) is not list
+                        or len(values) != len(table.get("columns", []))
+                        or any(value is not None for value in values)
+                    ):
+                        reasons.append("EXACT_BLANK_EMPLOYEE_DISCLOSURE_WRAPPER_NOT_PROVEN")
+                elif (
+                    item.get("row_kind") in {"GROUP", "SUBTOTAL", "TOTAL"}
+                    or not item_path or item_path[0] != owner
+                    or item_path[-1] != surface(item.get("label_exact"))
+                ):
+                    reasons.append("INTERVENING_OWNER_RESET_OR_FOREIGN_PATH")
+        if row_path is not None and len(row_path) == 3:
+            if len(wrappers) != 1:
+                reasons.append("UNIQUE_EMPLOYEE_DISCLOSURE_WRAPPER_NOT_PROVEN")
+        elif wrappers:
+            reasons.append("PAYROLL_PATH_OMITS_PRINTED_DISCLOSURE_WRAPPER")
+        material = {
+            "complete": not reasons,
+            "reasons": sorted(set(reasons)),
+            "locator": {key: locator[key] for key in (
+                "document_id", "document_ordinal", "source_logical_name", "source_sha256",
+                "page_json_version_id", "physical_page", "selected_page_ordinal", "section_id", "table_id",
+            )},
+            "row_ordinal": number, "row_exact": canonical_clone_v1(row),
+            "parent_row_axis": [{"row_ordinal": n, "row_exact": canonical_clone_v1(item)} for n, item in parent_axis],
+            "wrapper_row_axis": [{"row_ordinal": n, "row_exact": canonical_clone_v1(item)} for n, item in wrappers],
+            "columns_exact": canonical_clone_v1(table.get("columns")),
+            "original_table_object_sha256": canonical_json_sha256_v1(original_table),
+            "evaluation_table_object_sha256": canonical_json_sha256_v1(table),
+            "rule": "NEW_LITERAL_PAYROLL_REQUIRES_UNIQUE_PRINTED_EMPLOYEE_PARENT_AND_EXACT_PATH",
+            "amounts_used_as_owner_authority": False, "source_modified": False,
+        }
+        receipts.append({
+            **material,
+            "receipt_id": "gjoefav1:literal-payroll-scope:" + canonical_json_sha256_v1(material),
+        })
+    return receipts
+
+
+def _literal_payroll_scope_veto_v1(
+    candidate: dict[str, Any], *, pages: Mapping[str, dict[str, Any]],
+    original_pages: Mapping[str, dict[str, Any]],
+    regions: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    receipts = []
+    for region in regions:
+        version = region["page_json_version_id"]
+        _section, table = _source_table(
+            pages[version], section_id=region["section_id"], table_id=region["table_id"],
+        )
+        _original_section, original_table = _source_table(
+            original_pages[version], section_id=region["section_id"], table_id=region["table_id"],
+        )
+        receipts.extend(_literal_payroll_scope_receipts_v1(
+            table=table, original_table=original_table, locator=region, compiled_specs=compiled_specs,
+        ))
+    if any(not item["complete"] for item in receipts):
+        candidate["status"] = UNRESOLVED
+        candidate["mappings"] = []
+        candidate["reasons"] = sorted({
+            *candidate["reasons"], "OPERATING_EXPENSE_LITERAL_PAYROLL_OWNER_NOT_PROVEN",
+        })
+    return receipts
+
+
 def _reseal_candidate(
     candidate: dict[str, Any],
     *,
@@ -4827,6 +4949,7 @@ def _reseal_candidate(
     source_root_authority_veto_receipts: Sequence[Mapping[str, Any]],
     source_repair_receipts: Sequence[Mapping[str, Any]],
     unit_receipts: Sequence[Mapping[str, Any]],
+    literal_payroll_scope_receipts: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     source_ref_deduplication_receipts = _deduplicate_exact_mapping_source_refs(candidate)
     material = {
@@ -4854,6 +4977,10 @@ def _reseal_candidate(
         "source_repair_receipts": canonical_clone_v1(list(source_repair_receipts)),
         "unit_corroboration_receipts": canonical_clone_v1(list(unit_receipts)),
     }
+    if literal_payroll_scope_receipts:
+        material["literal_payroll_scope_receipts"] = canonical_clone_v1(
+            list(literal_payroll_scope_receipts)
+        )
     if source_ref_deduplication_receipts:
         material["source_ref_deduplication_receipts"] = canonical_clone_v1(
             source_ref_deduplication_receipts
@@ -5039,6 +5166,10 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
         evaluation_regions=evaluation_regions,
         compiled_specs=evaluation_specs,
     )
+    literal_payroll_scope_receipts = _literal_payroll_scope_veto_v1(
+        candidate, pages=pages, original_pages=source_ordered_pages,
+        regions=region_axis, compiled_specs=compiled_specs,
+    )
     return _reseal_candidate(
         candidate,
         all_blank_validation_role_omission_receipts=all_blank_receipts,
@@ -5050,6 +5181,7 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
         source_repair_receipts=source_repair_receipts,
         source_root_authority_veto_receipts=source_root_authority_veto_receipts,
         unit_receipts=unit_receipts,
+        literal_payroll_scope_receipts=literal_payroll_scope_receipts,
     )
 
 
@@ -5648,6 +5780,19 @@ def build_operating_expense_source_row_coverage_receipt_v1(
                     rows = table.get("rows")
                     if type(rows) is not list:
                         continue
+                    scope_by_row = {}
+                    if table_selected:
+                        _original_section, original_table = _source_table(
+                            source_pages[page_json_version_id], section_id=section_id, table_id=table_id,
+                        )
+                        scope_by_row = {
+                            item["row_ordinal"]: item
+                            for item in _literal_payroll_scope_receipts_v1(
+                                table=table, original_table=original_table,
+                                locator={**page_axis, "section_id": section_id, "table_id": table_id},
+                                compiled_specs=compiled_specs,
+                            )
+                        }
                     hit_by_row: dict[int, set[str]] = {}
                     for hit in classification.get("role_hits", []):
                         if (
@@ -5705,9 +5850,15 @@ def build_operating_expense_source_row_coverage_receipt_v1(
                         )
                         roles.update(source_only_roles.get(identity, set()))
                         roles.update(all_blank_roles.get(identity, set()))
+                        scope_receipt = scope_by_row.get(row_ordinal)
+                        blocked_payroll = (
+                            type(scope_receipt) is dict and not scope_receipt["complete"]
+                        )
                         for role in sorted(roles):
                             report_norm_id = bindings.get(role)
-                            if (*identity, role) in mapped_role_rows:
+                            if blocked_payroll and role == "PAYROLL_CONTRIBUTIONS":
+                                coverage = "VIOLATION_UNMAPPED_SELECTED_SCHEMA_ROLE_ROW"
+                            elif (*identity, role) in mapped_role_rows:
                                 coverage = "MAPPED_EXACT_SOURCE_ROLE_ROW"
                             elif identity in mapped_rows:
                                 coverage = "CONSUMED_BY_EXACT_SOURCE_DERIVATION"
@@ -5750,6 +5901,10 @@ def build_operating_expense_source_row_coverage_receipt_v1(
                                 role=role,
                                 report_norm_id=report_norm_id,
                                 evidence={
+                                    **(
+                                        {"rejected_scope_proposal": canonical_clone_v1(scope_receipt)}
+                                        if blocked_payroll and role == "PAYROLL_CONTRIBUTIONS" else {}
+                                    ),
                                     "equation_consumed": identity in equation_rows,
                                     "inventory_disposition": inventory.get(
                                         "disposition"

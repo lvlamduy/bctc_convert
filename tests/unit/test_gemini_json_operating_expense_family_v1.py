@@ -4476,3 +4476,310 @@ def test_s18_same_label_in_unrelated_note_never_enters_f36_population() -> None:
     assert _coefficients(other) == [10, 8]
     assert {ref["locator"]["section_id"] for ref in other["source_refs"]} == {"s2"}
     assert {region["section_id"] for region in cluster["component_regions"]} == {"s2"}
+
+
+# INACTIVE SCOPE-FENCE TEST DRAFT V1 (older payroll drafts retained unchanged): append these definitions to the existing
+# tests/unit/test_gemini_json_operating_expense_family_v1.py after review.
+# Reuses that module's real fixtures/public evaluators; no mocks or runtime lease.
+# Proposed configuration change is the single exact within-EMPLOYEE alias.
+
+
+def _payroll_literal_alias_page(*, disclosure_wrapper: bool = False) -> dict[str, Any]:
+    rows = _base_rows()
+    employee = rows[1]["label_exact"]
+    label = "Chi đóng góp theo lương"
+    rows[3] = _row(label, "10", "7", path=[employee, label])
+    if disclosure_wrapper:
+        rows.insert(2, _row("Trong đó:", None, None, kind="GROUP", path=[employee, "Trong đó:"]))
+        for row in rows[3:5]:
+            row["hierarchy_path_exact"] = [employee, "Trong đó:", row["label_exact"]]
+    return _operating_page(rows)
+
+
+@pytest.mark.parametrize("disclosure_wrapper", [False, True])
+def test_scoped_payroll_literal_alias_has_exact_source_receipt_coverage_and_replay(
+    disclosure_wrapper: bool,
+) -> None:
+    page = _payroll_literal_alias_page(disclosure_wrapper=disclosure_wrapper)
+    original = copy.deepcopy(page)
+    candidate, cluster, query_receipt = _evaluate_adapter(page)
+    assert candidate["status"] == READY
+    scope = candidate["closure_receipt"]["operating_expense_adapter_receipt"]["literal_payroll_scope_receipts"]
+    assert len(scope) == 1 and scope[0]["complete"] is True
+    assert scope[0]["parent_row_axis"][0]["row_ordinal"] == 2
+    assert len(scope[0]["wrapper_row_axis"]) == (1 if disclosure_wrapper else 0)
+    assert scope[0]["amounts_used_as_owner_authority"] is False
+    mapping = _mapping_by_role(candidate)["PAYROLL_CONTRIBUTIONS"]
+    row_ordinal = 5 if disclosure_wrapper else 4
+    assert mapping["report_norm_id"] == 1209
+    assert _coefficients(mapping) == [10, 7]
+    assert [cell["source_text"] for cell in mapping["values"]] == ["10", "7"]
+    assert [cell["state"] for cell in mapping["values"]] == ["RAW_SIGNED_INTEGER", "RAW_SIGNED_INTEGER"]
+    assert len(mapping["source_refs"]) == 1
+    source = mapping["source_refs"][0]
+    assert source["row_ordinal"] == row_ordinal
+    assert source["label_exact"] == "Chi đóng góp theo lương"
+    assert source["hierarchy_path_exact"] == page["sections"][0]["tables"][0]["rows"][row_ordinal - 1]["hierarchy_path_exact"]
+    table_receipt = candidate["closure_receipt"]["table_receipts"][0]
+    assert any(
+        hit["role"] == "PAYROLL_CONTRIBUTIONS" and hit["row_ordinal"] == row_ordinal
+        for hit in table_receipt["classification"]["role_hits"]
+    )
+    assert validate_source_observation_mapping_contract_v1(candidate)["violation_count"] == 0
+    validate_gemini_json_operating_expense_candidate_replay_v1(
+        candidate,
+        regions=cluster["component_regions"],
+        page_json_by_version={VERSION_ID: page},
+        selected_page_axis=[],
+        compiled_specs=_compiled(),
+        query_receipt=query_receipt,
+    )
+    indexed, trials, pages, compiled = _source_row_coverage_inputs(page)
+    assert trials[0]["status"] == READY
+    coverage = build_operating_expense_source_row_coverage_receipt_v1(
+        indexed_query_evidence=indexed,
+        trials=trials,
+        page_json_by_document=pages,
+        compiled_specs=compiled,
+    )
+    payroll_rows = [
+        row for row in coverage["source_row_axis"]
+        if row["role"] == "PAYROLL_CONTRIBUTIONS"
+    ]
+    assert len(payroll_rows) == 1
+    assert payroll_rows[0]["row_ordinal"] == row_ordinal
+    assert payroll_rows[0]["coverage"] == "MAPPED_EXACT_SOURCE_ROLE_ROW"
+    assert payroll_rows[0]["values_exact"] == ["10", "7"]
+    assert not any(row["row_ordinal"] == row_ordinal for row in coverage["violation_axis"])
+    assert page == original
+
+
+@pytest.mark.parametrize("owner", ["Chi về tài sản", "Chi phí hoạt động khác", "Chủ thể chưa xác định"])
+def test_scoped_payroll_literal_alias_does_not_gain_role_under_other_owner(owner: str) -> None:
+    page = _payroll_literal_alias_page()
+    row = page["sections"][0]["tables"][0]["rows"][3]
+    row["hierarchy_path_exact"] = [owner, row["label_exact"]]
+    before = copy.deepcopy(page)
+    table = page["sections"][0]["tables"][0]
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        page, page["sections"][0], table, compiled_specs=_compiled()
+    )
+    raw_hits = [
+        hit for hit in classification["role_hits"]
+        if hit["role"] == "PAYROLL_CONTRIBUTIONS" and hit["row_ordinal"] == 4
+    ]
+    if owner == "Chủ thể chưa xác định":
+        # Frozen generic fallback is retained as an explicitly rejected proposal.
+        assert raw_hits
+    else:
+        assert raw_hits == []
+    candidate, _cluster_value, _query_receipt = _evaluate_adapter(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert "OPERATING_EXPENSE_LITERAL_PAYROLL_OWNER_NOT_PROVEN" in candidate["reasons"]
+    scope = candidate["closure_receipt"]["operating_expense_adapter_receipt"]["literal_payroll_scope_receipts"]
+    assert len(scope) == 1 and scope[0]["complete"] is False
+    assert scope[0]["row_exact"]["hierarchy_path_exact"] == [owner, "Chi đóng góp theo lương"]
+    indexed, trials, pages, compiled = _source_row_coverage_inputs(page)
+    # Query READY is only proposal entry; the family candidate/trial must reject.
+    assert indexed["candidate_dispositions"][0]["disposition"] == READY
+    assert trials[0]["status"] == UNRESOLVED
+    assert trials[0]["mappings"] == []
+    assert "OPERATING_EXPENSE_LITERAL_PAYROLL_OWNER_NOT_PROVEN" in trials[0]["reasons"]
+    # Diagnostics retain the deliberately unclassified selected source row.
+    # This is not a coverage PASS or financial-admission waiver.
+    coverage = build_operating_expense_source_row_coverage_receipt_v1(
+        indexed_query_evidence=indexed, trials=trials,
+        page_json_by_document=pages, compiled_specs=compiled,
+        fail_on_violation=False,
+    )
+    assert any(row["row_ordinal"] == 4 for row in coverage["raw_target_like_row_axis"])
+    row_violations = [
+        item for item in coverage["violation_axis"] if item["row_ordinal"] == 4
+    ]
+    assert row_violations
+    assert any(
+        item["coverage"] == (
+            "VIOLATION_UNMAPPED_SELECTED_SCHEMA_ROLE_ROW" if raw_hits
+            else "VIOLATION_UNCLASSIFIED_VISIBLE_OPERATING_EXPENSE_ROW"
+        )
+        and item["label_exact"] == "Chi đóng góp theo lương"
+        and item["hierarchy_path_exact"] == [owner, "Chi đóng góp theo lương"]
+        for item in row_violations
+    )
+    assert coverage["violation_count"] > 0
+    if raw_hits:
+        assert any(
+            item["evidence"]["rejected_scope_proposal"]["complete"] is False
+            for item in row_violations
+        )
+    with pytest.raises(
+        GeminiJsonOperatingExpenseFamilyV1Error,
+        match="source-row coverage has",
+    ):
+        build_operating_expense_source_row_coverage_receipt_v1(
+            indexed_query_evidence=indexed, trials=trials,
+            page_json_by_document=pages, compiled_specs=compiled,
+        )
+    assert page == before
+
+
+@pytest.mark.parametrize("suffix", [" và chi trang phục", " do kiểm toán viên điều chỉnh", " chưa xác định"])
+def test_scoped_payroll_literal_alias_does_not_accept_composite_or_unknown_suffix(suffix: str) -> None:
+    page = _payroll_literal_alias_page()
+    row = page["sections"][0]["tables"][0]["rows"][3]
+    row["label_exact"] += suffix
+    row["hierarchy_path_exact"] = ["Chi phí cho nhân viên", row["label_exact"]]
+    table = page["sections"][0]["tables"][0]
+    classification = classify_gemini_json_multitable_hierarchical_table_v1(
+        page, page["sections"][0], table, compiled_specs=_compiled()
+    )
+    assert not any(
+        hit["role"] == "PAYROLL_CONTRIBUTIONS" and hit["row_ordinal"] == 4
+        for hit in classification["role_hits"]
+    )
+
+
+def test_scoped_payroll_literal_alias_partial_detail_never_backsolves_employee_or_payroll() -> None:
+    employee = "Chi phí cho nhân viên"
+    label = "Chi đóng góp theo lương"
+    rows = [
+        _row(employee, "100", "90", kind="SUBTOTAL"),
+        _row("Trong đó:", None, None, kind="GROUP", path=[employee, "Trong đó:"]),
+        _row("Chi lương và phụ cấp", "80", "72", path=[employee, "Trong đó:", "Chi lương và phụ cấp"]),
+        _row(label, "10", "8", path=[employee, "Trong đó:", label]),
+        _row("Chi về tài sản", "10", "9"),
+        _row("Chi cho hoạt động quản lý công vụ", "5", "4"),
+        _row(None, "115", "103", kind="TOTAL", path=[None]),
+    ]
+    page = _operating_page(rows)
+    before = copy.deepcopy(page)
+    candidate, cluster, query_receipt = _evaluate_adapter(page)
+    assert candidate["status"] == READY
+    by_role = _mapping_by_role(candidate)
+    assert _coefficients(by_role["EMPLOYEE_EXPENSE"]) == [100, 90]
+    assert _coefficients(by_role["PAYROLL_CONTRIBUTIONS"]) == [10, 8]
+    assert _coefficients(by_role["FAMILY_ROOT_TOTAL"]) == [115, 103]
+    assert {ref["row_ordinal"] for ref in by_role["EMPLOYEE_EXPENSE"]["source_refs"]} == {1}
+    assert {ref["row_ordinal"] for ref in by_role["PAYROLL_CONTRIBUTIONS"]["source_refs"]} == {4}
+    assert not any(
+        mapping["role"] == "PAYROLL_CONTRIBUTIONS" and mapping["state"] == "DECLARED_ROLE_DERIVED_FROM_EXACT_VISIBLE_COMPONENT_SUM"
+        for mapping in candidate["mappings"]
+    )
+    assert validate_source_observation_mapping_contract_v1(candidate)["violation_count"] == 0
+    validate_gemini_json_operating_expense_candidate_replay_v1(
+        candidate, regions=cluster["component_regions"], page_json_by_version={VERSION_ID: page},
+        selected_page_axis=[], compiled_specs=_compiled(), query_receipt=query_receipt,
+    )
+    assert page == before
+
+
+@pytest.mark.parametrize("mutation", ["MAPPING_VALUE", "MAPPING_SOURCE_ROW"])
+def test_scoped_payroll_literal_alias_resealed_mapping_tamper_rejected(mutation: str) -> None:
+    page = _payroll_literal_alias_page(disclosure_wrapper=True)
+    candidate, cluster, query_receipt = _evaluate_adapter(page)
+    assert candidate["status"] == READY
+    attacked = copy.deepcopy(candidate)
+    mapping = _mapping_by_role(attacked)["PAYROLL_CONTRIBUTIONS"]
+    if mutation == "MAPPING_VALUE":
+        mapping["values"][0] = {"coefficient": 999, "source_text": "999", "state": "RAW_SIGNED_INTEGER"}
+    else:
+        mapping["source_refs"][0]["row_ordinal"] = 4
+        mapping["source_refs"][0]["row_id"] = "r4"
+    mapping["item_mapping_id"] = "gjmthfmv1:item:" + canonical_json_sha256_v1(
+        {key: value for key, value in mapping.items() if key != "item_mapping_id"}
+    )
+    attacked["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in attacked.items() if key != "candidate_id"}
+    )
+    with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error):
+        validate_gemini_json_operating_expense_candidate_replay_v1(
+            attacked, regions=cluster["component_regions"], page_json_by_version={VERSION_ID: page},
+            selected_page_axis=[], compiled_specs=_compiled(), query_receipt=query_receipt,
+        )
+
+
+
+def _payroll_scope_draft_receipts(page: dict[str, Any]) -> list[dict[str, Any]]:
+    table = page["sections"][0]["tables"][0]
+    record = _record(page)
+    locator = {key: value for key, value in record.items() if key != "page_json"}
+    locator.update({"section_id": "s1", "table_id": "t1"})
+    return operating_expense_adapter._literal_payroll_scope_receipts_v1(
+        table=table, original_table=copy.deepcopy(table), locator=locator,
+        compiled_specs=_adapter_compiled(),
+    )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["MISSING_PARENT", "LATER_PARENT", "DUPLICATE_PARENT", "FOREIGN_PREFIX",
+     "NONBLANK_WRAPPER", "MISSING_WRAPPER", "OWNER_RESET", "PATH_OMITS_WRAPPER"],
+)
+def test_literal_payroll_scope_receipt_rejects_unproven_original_owner(mutation: str) -> None:
+    page = _payroll_literal_alias_page(disclosure_wrapper=True)
+    rows = page["sections"][0]["tables"][0]["rows"]
+    if mutation == "MISSING_PARENT":
+        rows[1] = _row("Chủ thể chưa xác định", "30", "25", kind="GROUP")
+    elif mutation == "LATER_PARENT":
+        parent = rows.pop(1)
+        rows.insert(5, parent)
+    elif mutation == "DUPLICATE_PARENT":
+        rows.insert(1, copy.deepcopy(rows[1]))
+    elif mutation == "FOREIGN_PREFIX":
+        rows[4]["hierarchy_path_exact"].insert(0, "Chủ thể chưa xác định")
+    elif mutation == "NONBLANK_WRAPPER":
+        rows[2]["values_exact"] = ["-", None]
+    elif mutation == "MISSING_WRAPPER":
+        rows.pop(2)
+    elif mutation == "OWNER_RESET":
+        rows.insert(4, _row("Chi về tài sản", "1", "1", kind="GROUP"))
+    else:
+        rows[4]["hierarchy_path_exact"] = ["Chi phí cho nhân viên", "Chi đóng góp theo lương"]
+    before = copy.deepcopy(page)
+    receipts = _payroll_scope_draft_receipts(page)
+    assert len(receipts) == 1
+    assert receipts[0]["complete"] is False
+    assert receipts[0]["reasons"]
+    assert receipts[0]["source_modified"] is False
+    assert page == before
+
+
+@pytest.mark.parametrize("mutation", ["DROP_SCOPE", "FORGE_COMPLETE", "REDIRECT_PARENT"])
+def test_literal_payroll_scope_public_candidate_replay_rejects_resealed_proof(mutation: str) -> None:
+    page = _payroll_literal_alias_page(disclosure_wrapper=True)
+    candidate, cluster, query_receipt = _evaluate_adapter(page)
+    assert candidate["status"] == READY
+    attacked = copy.deepcopy(candidate)
+    adapter = attacked["closure_receipt"]["operating_expense_adapter_receipt"]
+    if mutation == "DROP_SCOPE":
+        adapter.pop("literal_payroll_scope_receipts")
+    else:
+        proof = adapter["literal_payroll_scope_receipts"][0]
+        if mutation == "FORGE_COMPLETE":
+            proof["complete"] = False
+            proof["reasons"] = ["CALLER_RESEALED_SCOPE"]
+        else:
+            proof["parent_row_axis"][0]["row_ordinal"] = 3
+        proof["receipt_id"] = "gjoefav1:literal-payroll-scope:" + canonical_json_sha256_v1(
+            {key: value for key, value in proof.items() if key != "receipt_id"}
+        )
+    adapter["adapter_receipt_id"] = "gjoefav1:receipt:" + canonical_json_sha256_v1(
+        {key: value for key, value in adapter.items() if key != "adapter_receipt_id"}
+    )
+    attacked["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in attacked.items() if key != "candidate_id"}
+    )
+    with pytest.raises(GeminiJsonOperatingExpenseFamilyV1Error, match="candidate replay drifted"):
+        validate_gemini_json_operating_expense_candidate_replay_v1(
+            attacked, regions=cluster["component_regions"], page_json_by_version={VERSION_ID: page},
+            selected_page_axis=[], compiled_specs=_compiled(), query_receipt=query_receipt,
+        )
+
+
+def test_literal_payroll_scope_fence_does_not_add_receipt_when_literal_absent() -> None:
+    page = _operating_page()
+    candidate, _cluster_value, _query_receipt = _evaluate_adapter(page)
+    assert candidate["status"] == READY
+    assert "literal_payroll_scope_receipts" not in candidate["closure_receipt"]["operating_expense_adapter_receipt"]
+    assert _payroll_scope_draft_receipts(page) == []
