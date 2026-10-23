@@ -179,7 +179,7 @@ def evaluate_coordinate_table_v1(
             block_values = {k[1]: v for k, v in values.items() if k[0] == block}
             subject = next((r.subject for r, _ in block_values.values() if r.subject), evaluation.subject)
             _corroborate_block(evaluation, family, document, lane, subject, block, block_values, proven)
-            for parent_key, children in _equations_for(block_values, axis_names, axes[0]):
+            for parent_key, children in _equations_for(block_values, axis_names, axes[0], table):
                 _check(evaluation, lane, block, parent_key, children, block_values, proven, failed)
         for (block, key), (row, parsed) in values.items():
             evaluation.cells.append(_cell(evaluation, family, document, lane, row, parsed, key, basis,
@@ -195,18 +195,38 @@ def _member_ancestors(member: str, first_axis) -> set[str]:
     return found
 
 
-def _is_ancestor(a: dict[str, str], c: dict[str, str], first: str, first_axis) -> bool:
-    """a covers c: every axis of a is in c with the same member or a parent member."""
+def _is_ancestor(a: dict[str, str], c: dict[str, str], first: str, first_axis, nested: bool = True) -> bool:
+    """a covers c: every axis of a is in c with the same member or a parent member.
+
+    A parent *member* (e.g. LLC over LLC_OTHER) covers only when the source
+    prints the child nested under the parent row (``nested``); banks often
+    list the same members flat, as siblings.
+    """
 
     if a == c or not set(a) <= set(c):
         return False
     for axis, member in a.items():
-        if c[axis] != member and not (axis == first and member in _member_ancestors(c[axis], first_axis)):
+        if c[axis] == member:
+            continue
+        if not (axis == first and nested and member in _member_ancestors(c[axis], first_axis)):
             return False
     return True
 
 
-def _equations_for(block_values, axis_names, first_axis):
+def _source_nested(table, child_index: int, parent_index: int) -> bool:
+    """The printed hierarchy puts the child row under the parent row."""
+
+    child, parent = table.rows[child_index], table.rows[parent_index]
+    seen, current, by_id = set(), child.parent_row_id, {row.row_id: row for row in table.rows}
+    while current and current not in seen:
+        if current == parent.row_id:
+            return True
+        seen.add(current)
+        current = by_id[current].parent_row_id if current in by_id else None
+    return bool(parent.label) and parent.label in child.hierarchy[:-1]
+
+
+def _equations_for(block_values, axis_names, first_axis, table):
     """(parent, children) pairs generated from the printed coordinate tree.
 
     * the block total equals the sum of the frontier: printed coordinates
@@ -219,13 +239,16 @@ def _equations_for(block_values, axis_names, first_axis):
 
     first = axis_names[0]
     coordinates = {key: block_values[key][0].coordinate for key in block_values if key != TOTAL}
-    ancestors = {k: [a for a, ca in coordinates.items() if _is_ancestor(ca, c, first, first_axis)] for k, c in coordinates.items()}
+    index = {key: block_values[key][0].row_index for key in coordinates}
+    ancestors = {k: [a for a, ca in coordinates.items()
+                     if _is_ancestor(ca, c, first, first_axis, _source_nested(table, index[k], index[a]))]
+                 for k, c in coordinates.items()}
     frontier = [k for k, found in ancestors.items() if not found]
     if TOTAL in block_values and len(frontier) >= 2:
         yield TOTAL, frontier
     nearest = {}
     for key, found in ancestors.items():
-        direct = [a for a in found if not any(_is_ancestor(coordinates[a], coordinates[b], first, first_axis) for b in found if b != a)]
+        direct = [a for a in found if not any(b in ancestors and a in ancestors[b] for b in found if b != a)]
         if len(direct) == 1:
             nearest.setdefault(direct[0], []).append(key)
     for parent_key, children in nearest.items():

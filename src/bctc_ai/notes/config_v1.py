@@ -46,7 +46,7 @@ class Axis:
         found = []
         for member, spec in self.members.items():
             if any(key == alias or phrase_in(alias, key) for alias in spec.get("aliases", [])) \
-                    or all_phrases(spec.get("all_of", []), key):
+                    or key in spec.get("exact", []) or all_phrases(spec.get("all_of", []), key):
                 found.append(member)
         for member, spec in self.outside_members.items():
             if all_phrases(spec.get("contains_all", []), key):
@@ -103,11 +103,12 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
     _require(axes_raw.get("format_version") == "NOTES_AXES_V1", "axes format")
     axes = {}
     for name, spec in axes_raw["axes"].items():
-        members = {m: {**s, "aliases": [fold_vietnamese(a) for a in s.get("aliases", [])],
-                       "all_of": [[fold_vietnamese(p) for p in g] for g in s.get("all_of", [])]}
+        members = {m: {**s, "aliases": [fold_vietnamese(str(a)) for a in s.get("aliases", [])],
+                       "exact": [fold_vietnamese(str(a)) for a in s.get("exact", [])],
+                       "all_of": [[fold_vietnamese(str(p)) for p in g] for g in s.get("all_of", [])]}
                    for m, s in spec["members"].items()}
         _require(all(s.get("parent") in (None, *members) for s in members.values()), f"axis {name}: unknown member parent")
-        outside = {m: {**s, "contains_all": [[fold_vietnamese(p) for p in g] for g in s.get("contains_all", [])]}
+        outside = {m: {**s, "contains_all": [[fold_vietnamese(str(p)) for p in g] for g in s.get("contains_all", [])]}
                    for m, s in (spec.get("outside_members") or {}).items()}
         _require(not set(members) & set(outside), f"axis {name}: member defined twice")
         axes[name] = Axis(name, members, outside)
@@ -120,11 +121,11 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
         _require(all(name in axes for name in raw.get("axes", [])) and (not raw.get("axes") or raw["axes"][0] == raw["axis"]),
                  f"{path.name}: axes must exist and start with the family axis")
         for subject, spec in raw["subjects"].items():
-            spec["any"] = [[fold_vietnamese(p) for p in g] for g in spec.get("any", [])]
-            spec["none"] = [[fold_vietnamese(p) for p in g] for g in spec.get("none", [])]
-        raw["reject_context"] = [[fold_vietnamese(p) for p in g] for g in raw.get("reject_context", [])]
+            spec["any"] = [[fold_vietnamese(str(p)) for p in g] for g in spec.get("any", [])]
+            spec["none"] = [[fold_vietnamese(str(p)) for p in g] for g in spec.get("none", [])]
+        raw["reject_context"] = [[fold_vietnamese(str(p)) for p in g] for g in raw.get("reject_context", [])]
         raw["retrieval"]["explicit_title_phrases"] = [
-            [fold_vietnamese(p) for p in g] for g in raw["retrieval"].get("explicit_title_phrases", [])
+            [fold_vietnamese(str(p)) for p in g] for g in raw["retrieval"].get("explicit_title_phrases", [])
         ]
         families[raw["family"]] = Family(raw["family"], raw["shape"], axes[raw["axis"]], raw["period_basis"], raw, sha)
         pins[f"families/{path.name}"] = sha

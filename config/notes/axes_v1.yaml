@@ -55,3 +55,40 @@ axes:
       FOREIGN_CURRENCY: {name: Bằng ngoại tệ, aliases: [ngoai te]}
       GOLD: {name: Bằng vàng, aliases: [bang vang]}
       FOREIGN_CURRENCY_AND_GOLD: {name: Bằng ngoại tệ và vàng, aliases: [ngoai te va vang], dominates: [FOREIGN_CURRENCY]}
+
+  CUSTOMER_ENTITY_TYPE:
+    description: Loại hình khách hàng / doanh nghiệp (dùng chung cho cho vay và tiền gửi)
+    members:
+      ECONOMIC_ORGANIZATIONS: {name: Tổ chức kinh tế, aliases: [to chuc kinh te, tckt]}
+      STATE_OWNED: {parent: ECONOMIC_ORGANIZATIONS, name: Doanh nghiệp nhà nước, aliases: [doanh nghiep nha nuoc, dnnn, cong ty nha nuoc]}
+      LLC: {parent: ECONOMIC_ORGANIZATIONS, name: Công ty TNHH, aliases: [cong ty tnhh, trach nhiem huu han, tnhh]}
+      LLC_STATE: {name: Công ty TNHH nhà nước (không in tỷ lệ), parent: LLC,
+                  all_of: [[tnhh, nha nuoc], [trach nhiem huu han, nha nuoc]], dominates: [LLC, STATE_OWNED]}
+      LLC_STATE_100: {name: Công ty TNHH MTV vốn nhà nước 100%, parent: LLC,
+                      all_of: [[tnhh, 100], [trach nhiem huu han, 100]], dominates: [LLC, LLC_STATE, STATE_OWNED]}
+      LLC_STATE_OVER_50: {name: Công ty TNHH vốn nhà nước trên 50%, parent: LLC,
+                          all_of: [[tnhh, tren 50], [trach nhiem huu han, tren 50], [tnhh, hon 50], [trach nhiem huu han, hon 50]],
+                          dominates: [LLC, LLC_STATE, STATE_OWNED]}
+      LLC_OTHER: {name: Công ty TNHH khác, parent: LLC, all_of: [[tnhh, khac], [trach nhiem huu han, khac]], dominates: [LLC, OTHER]}
+      # "cổ phần" and "có phần" fold to the same letters: JSC needs "công ty cổ phần".
+      JSC: {parent: ECONOMIC_ORGANIZATIONS, name: Công ty cổ phần, aliases: [cong ty co phan, ctcp]}
+      JSC_STATE: {name: Công ty cổ phần nhà nước (không in tỷ lệ), parent: JSC, all_of: [[cong ty co phan, nha nuoc]],
+                  dominates: [JSC, STATE_OWNED]}
+      JSC_STATE_OVER_50: {name: Công ty cổ phần có vốn nhà nước trên 50%, parent: JSC,
+                          all_of: [[cong ty co phan, tren 50], [cong ty co phan, hon 50]], dominates: [JSC, JSC_STATE, STATE_OWNED]}
+      JSC_OTHER: {name: Công ty cổ phần khác, parent: JSC, all_of: [[cong ty co phan, khac]], dominates: [JSC, OTHER]}
+      PRIVATE_ENTERPRISE: {parent: ECONOMIC_ORGANIZATIONS, name: Doanh nghiệp tư nhân, aliases: [doanh nghiep tu nhan, dntn]}
+      PRIVATE_AND_PARTNERSHIP: {parent: ECONOMIC_ORGANIZATIONS, name: Doanh nghiệp tư nhân và công ty hợp danh, all_of: [[tu nhan, hop danh]],
+                                dominates: [PRIVATE_ENTERPRISE, PARTNERSHIP]}
+      COMBINED_JSC_LLC_PRIVATE: {parent: ECONOMIC_ORGANIZATIONS, name: Công ty CP, TNHH, DN tư nhân, all_of: [[co phan, tnhh, tu nhan]],
+                                 dominates: [JSC, LLC, PRIVATE_ENTERPRISE]}
+      COOPERATIVE: {parent: ECONOMIC_ORGANIZATIONS, name: Hợp tác xã và liên hợp tác xã, aliases: [hop tac xa]}
+      COOPERATIVE_AND_PRIVATE: {parent: ECONOMIC_ORGANIZATIONS, name: Hợp tác xã và công ty tư nhân, all_of: [[hop tac xa, tu nhan]],
+                                dominates: [COOPERATIVE, PRIVATE_ENTERPRISE]}
+      JOINT_VENTURE: {parent: ECONOMIC_ORGANIZATIONS, name: Công ty liên doanh, aliases: [lien doanh]}
+      PARTNERSHIP: {parent: ECONOMIC_ORGANIZATIONS, name: Công ty hợp danh, aliases: [hop danh]}
+      FOREIGN_INVESTED: {parent: ECONOMIC_ORGANIZATIONS, name: Doanh nghiệp có vốn nước ngoài, aliases: [von nuoc ngoai, von dau tu nuoc ngoai, fdi]}
+      HOUSEHOLD_INDIVIDUAL: {name: Hộ kinh doanh, cá nhân, aliases: [ca nhan, ho kinh doanh, ho gia dinh]}
+      ADMIN_ASSOCIATION: {parent: ECONOMIC_ORGANIZATIONS, name: Hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội, aliases: [hanh chinh su nghiep, doan the, hiep hoi]}
+      OTHER: {parent: ECONOMIC_ORGANIZATIONS, name: Khác, aliases: [doi tuong khac, khach hang khac, to chuc khac],
+              exact: [khac, khac khac, tien gui khac, cho vay khac, doanh nghiep khac, cac doi tuong khac]}

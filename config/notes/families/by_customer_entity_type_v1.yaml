@@ -1,0 +1,26 @@
+# Plugin: balances by customer entity type (loại hình doanh nghiệp / đối tượng
+# khách hàng) for loans and customer deposits. One axis with member hierarchy.
+format_version: NOTES_FAMILY_V1
+family: BY_CUSTOMER_ENTITY_TYPE
+shape: COORDINATE_LIST
+axis: CUSTOMER_ENTITY_TYPE
+axes: [CUSTOMER_ENTITY_TYPE]
+period_basis: INSTANT
+
+retrieval:
+  row_label_like: ['%doanh nghiep nha nuoc%', '%cong ty co phan%', '%trach nhiem huu han%', '%cong ty tnhh%', '%hop tac xa%']
+  min_distinct_members: 3
+
+subjects:
+  LOANS_TO_CUSTOMERS:
+    any: [[cho vay khach hang], [du no cho vay], [cho vay theo], [no cho vay]]
+    none: [[tien gui], [chung khoan], [to chuc tin dung], [tctd]]
+  CUSTOMER_DEPOSITS:
+    any: [[tien gui cua khach hang], [tien gui khach hang], [tien gui theo doi tuong], [tien gui theo loai hinh]]
+    none: [[to chuc tin dung], [tctd]]
+
+reject_context: [[ty le], [lai suat], [thu nhap], [chi phi], [dau tu vao cong ty], [gop von]]
+
+primary_corroboration:
+  LOANS_TO_CUSTOMERS: {statement: CDKT, report_norm_id: 4348, compare_to: [TOTAL]}
+  CUSTOMER_DEPOSITS: {statement: CDKT, report_norm_id: 4320, compare_to: [TOTAL]}
