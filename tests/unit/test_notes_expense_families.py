@@ -289,8 +289,18 @@ def test_payroll_reaches_its_owner_through_one_null_trong_do_wrapper(config):
     assert (roles[2].role, roles[2].disposition, roles[2].reason) == (
         "PAYROLL_CONTRIBUTIONS", "MEMBER", "LINE_RULE_VIA_TRANSPARENT_WRAPPER:r1:ORIGINAL_EXACT_UNSHIFTED_SINGLE_TABLE")
     assert _roles(_wrapped(wrapper="Trong đó"), family)[2][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")
-    # The wrapper does not change the equation: EMPLOYEE = Σ printed detail still uses the payroll line only.
-    evaluations = evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), [])
+    # Public evaluation under the UNCHANGED table gate (min_emitted_lines = 3): the synthetic table also prints a
+    # salary line under the same wrapper, so EMPLOYEE / SALARY / PAYROLL are three emitted lines and the fixed
+    # EMPLOYEE_FROM_DETAIL equation has printed detail (100 = 85 + 15; 90 = 76 + 14). Fixture-only (Codex 0160).
+    printed = make_table([("Chi phí cho nhân viên", ["100", "90"]), ("Trong đó:", [None, None]),
+                          ("Chi lương và phụ cấp", ["85", "76"]), ("Các khoản chi đóng góp theo lương", ["15", "14"])],
+                         [("Năm 2025",), ("Năm 2024",)], title="30. Chi phí hoạt động")
+    printed.rows[1] = replace(printed.rows[1], kind="GROUP")
+    for child, parent in ((1, 0), (2, 1), (3, 1)):
+        link(printed, child, parent)
+    bridged(printed)
+    assert _roles(printed, family)[3][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")
+    evaluations = evaluate_concept_table_v1(printed, family, document(quarter=4), context_of(printed), [])
     assert any(c["member"] == "PAYROLL_CONTRIBUTIONS" for e in evaluations for c in e.cells)
 
 
