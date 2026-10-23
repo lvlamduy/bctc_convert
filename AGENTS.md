@@ -52,6 +52,12 @@ Actual FULL253 has a blank printed component, so the finding is incomplete sourc
 not a numeric contradiction or permission to fill it. Preserve raw violations and
 require exact fresh source/PDF/row joins before any held-row accounting.
 
+The later qualified provision and lazy matcher changes are recorded in
+`docs/operations/F36_QUALIFIED_PROVISIONS_AND_LAZY_MATCHER_CHECKPOINT_2026-10-24.md`.
+It records904normal/4327subtest composed PASS, the retained stale-count failure,
+352cross-family regressions and actual FULL193 improvement11→13mappings.
+Publication coverage and the private audited-U gate remain unfinished; no seal.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
