@@ -184,13 +184,17 @@ def validate_f36_primary_witness_spec_v1(value: Any) -> dict:
 
 
 def _primary_witness_projection_v1(*, pages: Any, document: Any,
-                                   selected_page_axis: Any, compiled_specs: Any) -> tuple[dict, list]:
+                                   selected_page_axis: Any, compiled_specs: Any,
+                                   _borrow_nonapplicable_pages_v1: bool = False) -> tuple[dict, list]:
     """Validate ALL before-images on ORIGINAL input; only then clone and edit.
 
     The document/page axes are the unchanged four/seven-field shared-query axes.
     PDF size binds through the declared document content ID, not a fabricated
     source_size_bytes field on that four-field runtime document axis.
+    Only the internal run/discard paths may borrow a proved foreign source;
+    the default and the applicable projection always return private containers.
     """
+    _need(type(_borrow_nonapplicable_pages_v1) is bool, "invalid internal PRIMARY projection mode")
     doc_fields = {"document_id", "document_ordinal", "source_logical_name", "source_sha256"}
     _need(_shape(document, doc_fields) and _positive(document["document_ordinal"])
           and _matches(_DOC, document["document_id"])
@@ -232,7 +236,7 @@ def _primary_witness_projection_v1(*, pages: Any, document: Any,
         _need(document["source_sha256"] != source["source_sha256"]
               and document["source_logical_name"] != source["source_logical_name"]
               and document["document_id"] != source_doc, "partial witness source identity collision")
-        return canonical_clone_v1(pages), []
+        return (pages if _borrow_nonapplicable_pages_v1 else canonical_clone_v1(pages)), []
     _need(document["document_id"] == source_doc, "witness PDF size/document identity drifted")
     aliases = compiled_specs.get("topology", {}).get("parent", {}).get("aliases")
     _need(type(aliases) is list and bool(aliases)

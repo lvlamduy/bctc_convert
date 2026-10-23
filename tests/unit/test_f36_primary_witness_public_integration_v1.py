@@ -415,3 +415,131 @@ def test_optional_runner_arguments_are_paired_and_default_none_unchanged(path, p
     else:
         with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
             runner._primary_witness_options_v1(args)
+
+
+def _container_ids(value):
+    result, todo = set(), [value]
+    while todo:
+        item = todo.pop()
+        if type(item) not in {dict, list, tuple} or id(item) in result:
+            continue
+        result.add(id(item))
+        todo.extend(item.values() if type(item) is dict else item)
+    return result
+
+
+@pytest.mark.parametrize("attack", [None, "original-digest", "selected-vid", "closed", "compiled-spec", "authority-file"])
+def test_internal_foreign_view_has_identical_facts_and_the_actual_live_capability_guards(tmp_path, attack):
+    first, second = tmp_path / "declared", tmp_path / "foreign"
+    first.mkdir()
+    second.mkdir()
+    declared = _case(first)
+    c = _case(second, "NOT_OBSERVED", name="foreign.pdf")
+    c.spec, c.path, c.pin, c.compiled = declared.spec, declared.path, declared.pin, declared.compiled
+    cap = _auth(c)
+    try:
+        doc = c.base["selected_document_axis"][0]
+        axis, pages = c.base["selected_page_axis"], c.pages[1]
+        before = deepcopy(pages)
+        if attack == "original-digest":
+            next(iter(pages.values()))["status"] = "SOURCE_CHANGED_AFTER_LIVE_ADMISSION"
+        elif attack == "selected-vid":
+            old = axis[0]["page_json_version_id"]
+            axis[0]["page_json_version_id"] = "gfpstorev1:json:" + "f" * 64
+            pages[axis[0]["page_json_version_id"]] = pages.pop(old)
+        elif attack == "closed":
+            cap.close()
+        elif attack == "compiled-spec":
+            c.compiled[primitive.HASH_KEY] = "0" * 64
+        elif attack == "authority-file":
+            c.path.write_bytes(c.path.read_bytes() + b" ")
+        if attack is not None:
+            with pytest.raises(admission.PrimaryWitnessAdmissionError):
+                cap._project_for_run_v1(pages=pages, document=doc,
+                    selected_page_axis=axis, compiled_specs=c.compiled)
+        else:
+            private, old_facts = cap.project(pages=pages, document=doc,
+                selected_page_axis=axis, compiled_specs=c.compiled)
+            borrowed, facts = cap._project_for_run_v1(pages=pages, document=doc,
+                selected_page_axis=axis, compiled_specs=c.compiled)
+            assert private is not pages and borrowed is pages
+            assert not (_container_ids(private) & _container_ids(pages))
+            assert same_typed_json_v1([private, old_facts], [borrowed, facts])
+            assert facts["projection_receipts"] == facts["pixel_verification_receipts"] == []
+            assert pages == before
+    finally:
+        if attack == "authority-file":
+            with pytest.raises(admission.PrimaryWitnessAdmissionError):
+                cap.close()
+        elif attack != "closed":
+            cap.close()
+
+
+def test_mixed_ready_unresolved_absent_public_outputs_match_private_clone_baseline_and_are_isolated(tmp_path, monkeypatch):
+    cases = []
+    for number, variant in enumerate(("READY", "READY", "PERIOD_HOLD", "NOT_OBSERVED"), 1):
+        directory = tmp_path / str(number)
+        directory.mkdir()
+        cases.append(_case(directory, variant, name=f"synthetic-{number}.pdf"))
+    declared = cases[0]
+    docs, axes, pages = [], [], {}
+    for ordinal, case in enumerate(cases, 1):
+        doc = deepcopy(case.base["selected_document_axis"][0])
+        doc["document_ordinal"] = ordinal
+        docs.append(doc)
+        for original_axis in case.base["selected_page_axis"]:
+            axis = deepcopy(original_axis)
+            axis["document_ordinal"] = ordinal
+            axes.append(axis)
+        pages[ordinal] = case.pages[1]
+    base = family._fresh_original_primary_base_v1(evidence={"selected_document_axis": docs, "selected_page_axis": axes},
+        pages=pages, compiled_specs=declared.compiled)
+    c = SimpleNamespace(**{**vars(declared), "base": base, "pages": pages,
+        "index": {"documents": [case.index["documents"][0] for case in cases]}})
+    before = deepcopy([c.base, c.pages, c.compiled])
+    cap = _auth(c)
+    try:
+        borrowed, facts = family._admitted_primary_run_v1(
+            evidence=base, pages=pages, compiled_specs=c.compiled, admission=cap)
+        assert borrowed[1] is not pages[1]
+        assert all(borrowed[ordinal] is pages[ordinal] for ordinal in (2, 3, 4))
+        defaults, default_facts = {}, {}
+        for document in docs:
+            ordinal = document["document_ordinal"]
+            defaults[ordinal], default_facts[ordinal] = cap.project(pages=pages[ordinal], document=document,
+                selected_page_axis=[p for p in axes if p["document_ordinal"] == ordinal], compiled_specs=c.compiled)
+        assert same_typed_json_v1([borrowed, facts], [defaults, default_facts])
+
+        def public_outputs():
+            indexed, trials = _build(c, cap)
+            replay = family.validate_gemini_json_operating_expense_replay_v1(
+                indexed_query_evidence=indexed, trials=trials, page_json_by_document=pages,
+                compiled_specs=c.compiled, primary_witness_admission=cap)
+            coverage = family.build_operating_expense_source_row_coverage_receipt_v1(
+                indexed_query_evidence=indexed, trials=trials, page_json_by_document=pages,
+                compiled_specs=c.compiled, primary_witness_admission=cap, fail_on_violation=False)
+            return [indexed, trials, replay, coverage]
+
+        # Differential dispatch only: both paths still perform the real live
+        # capability checks, PDF authentication and public source evaluation.
+        # No auth, evaluator, source, receipt or returned result is stubbed.
+        with monkeypatch.context() as baseline:
+            baseline.setattr(admission.PrimaryWitnessAdmissionV1, "_project_for_run_v1",
+                             admission.PrimaryWitnessAdmissionV1.project)
+            reference = public_outputs()
+        actual = public_outputs()
+        assert [trial["status"] for trial in actual[1]] == [
+            fixture.READY, fixture.READY, fixture.UNRESOLVED, fixture.NOT_OBSERVED]
+        assert canonical_json_bytes_v1(actual) == canonical_json_bytes_v1(reference)
+        assert [c.base, c.pages, c.compiled] == before
+        assert not (_container_ids(actual) & _container_ids([c.base, c.pages, c.compiled]))
+        retained = deepcopy(actual)
+        first_page = next(iter(pages[2].values()))
+        original_status = first_page["status"]
+        first_page["status"] = "SOURCE_MUTATION_ISOLATION_CHECK"
+        assert actual == retained
+        first_page["status"] = original_status
+        actual[0]["selected_document_axis"][0]["source_logical_name"] = "OUTPUT_MUTATION_ISOLATION_CHECK"
+        assert [c.base, c.pages, c.compiled] == before
+    finally:
+        cap.close()

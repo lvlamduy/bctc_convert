@@ -101,6 +101,18 @@ class PrimaryWitnessAdmissionV1:
               "witness admission reused for another selected run")
 
     def project(self, *, pages, document, selected_page_axis, compiled_specs):
+        return self._project_v1(pages=pages, document=document,
+            selected_page_axis=selected_page_axis, compiled_specs=compiled_specs,
+            _borrow_nonapplicable_pages_v1=False)
+
+    def _project_for_run_v1(self, *, pages, document, selected_page_axis, compiled_specs):
+        """Internal read-only run view; never a public returned page container."""
+        return self._project_v1(pages=pages, document=document,
+            selected_page_axis=selected_page_axis, compiled_specs=compiled_specs,
+            _borrow_nonapplicable_pages_v1=True)
+
+    def _project_v1(self, *, pages, document, selected_page_axis, compiled_specs,
+                    _borrow_nonapplicable_pages_v1):
         self._check(compiled_specs)
         document = _document(document)
         ordinal = document["document_ordinal"]
@@ -109,7 +121,8 @@ class PrimaryWitnessAdmissionV1:
               and matches[0]["original_fingerprint"] == _fingerprint(pages, selected_page_axis),
               "witness admission reused for another ORIGINAL document/page scope")
         private, projections = _primary_witness_projection_v1(
-            pages=pages, document=document, selected_page_axis=list(selected_page_axis), compiled_specs=compiled_specs)
+            pages=pages, document=document, selected_page_axis=list(selected_page_axis), compiled_specs=compiled_specs,
+            _borrow_nonapplicable_pages_v1=_borrow_nonapplicable_pages_v1)
         facts = {
             "format_version": "F36_AUTHENTICATED_PRIMARY_WITNESS_DOCUMENT_AXIS_V1",
             "document": document, "spec_sha256": self._data["spec_sha256"],
@@ -234,7 +247,7 @@ def authenticate_primary_witness_admission_v1(*, spec_path, expected_sha256, ind
         axis = [p for p in axes if p["document_ordinal"] == ordinal]
         private, receipts = _primary_witness_projection_v1(
             pages=page_json_by_document[ordinal], document=document,
-            selected_page_axis=axis, compiled_specs=compiled_specs)
+            selected_page_axis=axis, compiled_specs=compiled_specs, _borrow_nonapplicable_pages_v1=True)
         del private
         ids = [r["witness"]["witness_id"] for r in receipts]
         _need(all(wid in pixels for wid in ids), "applicable witness lacks actual pixel authentication")

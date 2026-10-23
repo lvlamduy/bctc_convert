@@ -6595,9 +6595,9 @@ def _admitted_primary_run_v1(*, evidence, pages, compiled_specs, admission):
     for document in evidence["selected_document_axis"]:
         ordinal = document["document_ordinal"]
         axis = [p for p in evidence["selected_page_axis"] if p["document_ordinal"] == ordinal]
-        private[ordinal], facts[ordinal] = _admitted_primary_document_v1(
-            pages=pages[ordinal], document=document, page_axis=axis,
-            compiled_specs=compiled_specs, admission=capability)
+        private[ordinal], facts[ordinal] = capability._project_for_run_v1(
+            pages=pages[ordinal], document=document, selected_page_axis=axis,
+            compiled_specs=compiled_specs)
     return private, facts
 
 

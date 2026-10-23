@@ -346,3 +346,63 @@ def test_no_spec_and_unrelated_source_are_private_noop_not_permission():
         axis[0][field] = document[field]
     private, receipts = _project(pages, document, axis, spec)
     assert same_typed_json_v1(private, pages) and private is not pages and receipts == []
+
+
+def _foreign_internal_borrow_case():
+    pages, document, axis, spec = _case()
+    foreign = {"source_logical_name": "foreign.pdf", "source_sha256": "8" * 64, "source_size_bytes": 8192}
+    document.update(source_logical_name=foreign["source_logical_name"], source_sha256=foreign["source_sha256"],
+                    document_id="gfpstorev1:document:" + canonical_json_sha256_v1(foreign))
+    for field, value in document.items():
+        axis[0][field] = value
+    return pages, document, axis, spec
+
+
+@pytest.mark.parametrize("mode", ["NO_SPEC", "FOREIGN", "APPLICABLE"])
+def test_internal_borrow_only_changes_foreign_container_ownership_not_projection_facts(mode):
+    pages, document, axis, spec = _foreign_internal_borrow_case() if mode == "FOREIGN" else _case()
+    compiled = fixture._adapter_compiled() if mode == "NO_SPEC" else _compiled(spec)
+    before = deepcopy([pages, document, axis, compiled])
+    default, default_receipts = witness._primary_witness_projection_v1(
+        pages=pages, document=document, selected_page_axis=axis, compiled_specs=compiled)
+    internal, internal_receipts = witness._primary_witness_projection_v1(
+        pages=pages, document=document, selected_page_axis=axis, compiled_specs=compiled,
+        _borrow_nonapplicable_pages_v1=True)
+    assert default is not pages
+    assert (internal is pages) is (mode == "FOREIGN")
+    assert same_typed_json_v1([default, default_receipts], [internal, internal_receipts])
+    assert [pages, document, axis, compiled] == before
+    assert bool(internal_receipts) is (mode == "APPLICABLE")
+
+
+@pytest.mark.parametrize("flag", [0, 1, None, "true", {"approved": True}])
+def test_internal_borrow_mode_is_not_a_coerced_or_json_approval_flag(flag):
+    pages, document, axis, spec = _foreign_internal_borrow_case()
+    with pytest.raises(witness.F36PrimaryWitnessV1Error, match="internal PRIMARY projection mode"):
+        witness._primary_witness_projection_v1(pages=pages, document=document,
+            selected_page_axis=axis, compiled_specs=_compiled(spec), _borrow_nonapplicable_pages_v1=flag)
+
+
+@pytest.mark.parametrize("attack", ["logical-collision", "sha-collision", "document-collision",
+                                   "missing-page", "extra-page", "spec-sha"])
+def test_internal_foreign_borrow_preserves_all_identity_axis_and_spec_checks(attack):
+    pages, document, axis, spec = _foreign_internal_borrow_case()
+    compiled = _compiled(spec)
+    source = spec["witnesses"][0]["source"]
+    if attack == "logical-collision":
+        document["source_logical_name"] = source["source_logical_name"]
+    elif attack == "sha-collision":
+        document["source_sha256"] = source["source_sha256"]
+    elif attack == "document-collision":
+        document["document_id"] = "gfpstorev1:document:" + canonical_json_sha256_v1(source)
+    elif attack == "missing-page":
+        pages.clear()
+    elif attack == "extra-page":
+        pages["gfpstorev1:json:" + "9" * 64] = deepcopy(next(iter(pages.values())))
+    else:
+        compiled[witness.HASH_KEY] = "0" * 64
+    for field, value in document.items():
+        axis[0][field] = value
+    with pytest.raises(witness.F36PrimaryWitnessV1Error):
+        witness._primary_witness_projection_v1(pages=pages, document=document,
+            selected_page_axis=axis, compiled_specs=compiled, _borrow_nonapplicable_pages_v1=True)
