@@ -77,9 +77,44 @@ Thư mục: `cross-corpus-20261023T213125Z`. terminal `70e5ab51…` PASS_DIAGNOS
 - **Cell trên trang CHANGED_JSON_VERSION** (chỉ đếm, không so giá trị): INCOME_TAX 16 (FULL271) / 26 (COMMON204); OPERATING_EXPENSE 36 / 36.
 - **Giới hạn:** chỉ chứng minh file ổn định trước và sau khi chạy. Đây không phải held-FD hay source proof, cũng không chứng minh tương đương tài chính, kỳ, scope hay basis.
 
+## Kiểm kê cell bị giữ vì kỳ trên FULL271 `194848Z` (root, derived store, chỉ chẩn đoán)
+
+Root chạy, `period_inventory_v2.sh` `c233d200…`, helper `b18b874a…`. Input đã pin: dispositions `078ccdbb…` (19.004.844 B) và store `92dba9b9…` (67.215.360 B).
+Thư mục: `/home/bctc/notes-compare/period-inventory-20261023T215302Z/`. terminal `8f126df9…` PASS_DIAGNOSTIC; inventory `94642533…` (`NOTES_PERIOD_HOLD_INVENTORY_DERIVED_V2`).
+
+- Khóa lane: `family | document_ordinal của chính lượt | VID | section_id | table_id | column_id`. Ordinal chỉ dùng trong cùng lượt.
+- Input ổn định trước/sau (`FILE_STABILITY_BEFORE_AFTER_NOT_HELD_FD_PROOF`). `identity_problems` và `lane_key_multiple` đều rỗng.
+- 2.898 cell bị giữ vì kỳ đều nối được với lane cùng lượt, cùng tài liệu: OPERATING_EXPENSE 1.979, CREDIT_QUALITY 292, INCOME_TAX 331, CREDIT_PROVISION_EXPENSE 262, DEPOSITS_BY_TYPE 34.
+
+Các nhóm lớn nhất (cell / tài liệu):
+
+| Family | Lý do | Cell | Tài liệu |
+|---|---|---|---|
+| OPEX | `PRIOR_PERIOD_WITHOUT_PRINTED_COMPARATIVE_WINDOW` | 709 | 57 |
+| OPEX | `PERIOD_END_WITHOUT_PRINTED_DURATION` | 496 | 18 |
+| OPEX | `RELATIVE_HEADER_WITHOUT_PRINTED_DURATION_GRAIN` | 458 | 30 |
+| OPEX | `PERIOD_QUARTER_OR_YEAR_TO_DATE_NOT_PRINTED` | 258 | 14 |
+| CREDIT_QUALITY | `NO_PRINTED_INSTANT` | 216 | 7 |
+| F37 | `PERIOD_END_WITHOUT_PRINTED_DURATION` | 162 | 23 |
+| F39 | `PERIOD_END_WITHOUT_PRINTED_DURATION` | 102 | 8 |
+| F39 | `PERIOD_QUARTER_OR_YEAR_TO_DATE_NOT_PRINTED` | 88 | 6 |
+| F39 | `PRIOR_PERIOD_WITHOUT_PRINTED_COMPARATIVE_WINDOW` | 81 | 12 |
+
+F39 có 12 cell (1 tài liệu) mang nguyên văn lý do `PERIOD_UNRESOLVED:None`. Các cell này vẫn bị giữ; cần điều tra chất lượng lời giải thích, không cấp kỳ.
+
+**Phạm vi.** Đây là số đếm lý do mang tính chẩn đoán trên derived store. Nó không phải một lượt đọc lại nguồn và không chứng minh rằng các cell này có thể khôi phục được. Không có quyền xác định kỳ nào đến từ số tiền hay từ context không được sở hữu. Việc làm kỳ tiếp theo cần một đề xuất kiểm tra nguồn nhỏ, có duyệt, nêu đúng locator ORIGINAL (tài liệu / VID / bảng) cho các nhóm đại diện và bằng chứng in cần thiết.
+
+## F39: hai commit admission (Codex 0196), chưa chạy
+
+- `bd453318`: CURRENT_TAX_EXPENSE chỉ nhận nghĩa chi phí dương. Bỏ alias "phải nộp", thêm `none_of` [số dư], [phải nộp], [phải trả]. "Năm hiện hành" (CURRENT_YEAR_PORTION) cần owner CURRENT_TAX_EXPENSE được chứng minh.
+- `f9a125f8`: `proof_bound_lines_v1`. Line có tên trong equation hoặc `primary_anchors` cần equation PASS chứa nó hoặc anchor EXACT của chính nó; nếu không thì HOLD `LINE_NOT_PROVEN_BY_ITS_OWN_EQUATION_OR_ANCHOR`.
+- Trạng thái: chờ Codex review và lease unit (`unit_only_v7.sh` `0044108b…`, dự kiến 126 node). Chưa đo tác động trên corpus.
+
 ## Việc còn mở
 
 - Luật marker gạch đầu dòng ("- ") cho leaf/label (43 dòng): cần kế hoạch đọc ORIGINAL được duyệt trước.
 - So sánh pilot với F39 theo tọa độ ORIGINAL: chưa được duyệt.
 - COMMON204: cần store PRIMARY COMMON204 khớp identity; không dùng lại ordinal của FULL271.
 - Chưa mở family mới hay F41 khi F36/F37/F39 còn chưa terminal.
+- F39 `PERIOD_UNRESOLVED:None` (12 cell): làm rõ lời giải thích lý do, vẫn giữ cell.
+- Kỳ: đề xuất kiểm tra nguồn nhỏ cho các nhóm đại diện, chỉ sau khi hai commit F39 được review.
