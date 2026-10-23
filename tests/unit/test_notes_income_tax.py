@@ -301,3 +301,41 @@ def test_annual_report_end_date_headers_are_the_reported_years():
     # The same bare date in a fourth-quarter report stays open between Q4 and the year.
     q4 = resolve_duration_lanes_v1(make_table(RECON[:1], [("31/12/2025",)]), document(quarter=4), [], [table.table_title])
     assert q4[0].period_key is None and q4[0].candidates == ["DURATION:QUARTER:4:2025", YEAR]
+
+
+def annual_with(text):
+    doc = document(quarter=4)
+    doc.income_context_texts = [text]
+    return doc
+
+
+@pytest.mark.parametrize("report_title", [
+    "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG\nCho năm tài chính kết thúc ngày 30 tháng 06 năm 2025",          # non-calendar fiscal year
+    "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG\nCho năm tài chính từ ngày 01/04/2025 đến ngày 31/12/2025",       # contrary range start
+])
+def test_annual_rule_never_relabels_a_non_calendar_or_partial_window(report_title):
+    table = make_table(RECON[:1], [("30/06/2025",), ("31/12/2025",)])
+    lanes = resolve_duration_lanes_v1(table, annual_with(report_title), [], [table.table_title])
+    assert [lane.period_key for lane in lanes] == [None, None]
+
+
+def test_annual_rule_holds_when_the_note_caption_prints_another_window():
+    table = make_table(RECON[:1], [("31/12/2025",)], section="Thuyết minh cho 6 tháng đầu của năm tài chính kết thúc ngày 31/12/2025")
+    lanes = resolve_duration_lanes_v1(table, annual_document(), [], [table.section_title])
+    assert lanes[0].period_key is None and "OWN_AND_REPORT_CONTEXT_DISAGREE" in lanes[0].reasons
+    other_year = make_table(RECON[:1], [("31/12/2025",)], section="Thuyết minh cho năm tài chính kết thúc ngày 31/12/2024")
+    lanes = resolve_duration_lanes_v1(other_year, annual_document(), [], [other_year.section_title])
+    assert lanes[0].period_key is None
+
+
+@pytest.mark.parametrize("header", ["2020 31/12/2025", "31/12/2025 32/12/2025", "31/12/2025 (đã kiểm toán)", "Tại 31/12/2025 và 2024"])
+def test_end_date_header_grammar_rejects_extra_assertions(header):
+    table = make_table(RECON[:1], [(header,)])
+    assert resolve_duration_lanes_v1(table, annual_document(), [], [table.table_title])[0].period_key is None
+    assert resolve_duration_lanes_v1(table, document(quarter=4), [], [table.table_title])[0].candidates == []
+
+
+def test_more_specific_own_caption_is_not_a_contradiction():
+    table = make_table(RECON[:1], [("Kỳ này",)], section="Thuyết minh báo cáo tài chính cho kỳ 9 tháng kết thúc ngày 30/09/2025")
+    lanes = resolve_duration_lanes_v1(table, document(quarter=3), [], [table.section_title])
+    assert "OWN_AND_REPORT_CONTEXT_DISAGREE" not in lanes[0].reasons

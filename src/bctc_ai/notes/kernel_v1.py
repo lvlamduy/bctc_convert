@@ -717,8 +717,7 @@ def resolve_duration_lanes_v1(
     own_context = statement_period_context_v1(own_texts)
     report_context = statement_period_context_v1(document.income_context_texts)
     has_own = bool(own_context.reporting_date or own_context.year) and not own_context.conflict
-    contexts_disagree = bool(has_own and own_context.reporting_date and report_context.reporting_date
-                             and own_context.reporting_date != report_context.reporting_date)
+    contexts_disagree = bool(own_context.conflict) or _windows_disagree(own_context, report_context)
     full_year_report = report_context.quarter in (None, 4) and report_context.months in (None, 12) and not report_context.conflict
     unit_sources = _unit_sources(table, page_texts)
     lanes = []
@@ -769,6 +768,61 @@ def resolve_duration_lanes_v1(
     return lanes
 
 
+def _windows_disagree(own, report) -> bool:
+    """The table's own caption prints a reporting window that contradicts the income statement's.
+
+    A more specific own window ("9 tháng kết thúc 30/09/2025" under a third-quarter
+    statement) is not a contradiction; a different end, fiscal-year end,
+    quarter, months, first-N-months or range start printed by both is, and so
+    is an annual caption against a quarterly/interim statement (or vice versa).
+    """
+
+    def both_differ(a, b):
+        return a is not None and b is not None and a != b
+
+    report_end = report.reporting_date or (report.fiscal_year_end if report.annual else None)
+    own_end = own.reporting_date or (own.fiscal_year_end if own.annual else None)
+    if both_differ(own_end, report_end) or both_differ(own.fiscal_year_end, report.fiscal_year_end):
+        return True
+    if both_differ(own.quarter, report.quarter) or both_differ(own.months, report.months):
+        return True
+    if both_differ(own.first_months_of_fiscal_year, report.first_months_of_fiscal_year) or both_differ(own.range_start, report.range_start):
+        return True
+    report_interim = bool(report.quarter or (report.months and report.months != 12) or report.first_months_of_fiscal_year)
+    own_interim = bool(own.quarter or (own.months and own.months != 12) or own.first_months_of_fiscal_year)
+    return bool((own.annual and report_interim) or (report.annual and own_interim))
+
+
+_NUMERIC_DATE = r"(\d{1,2})[/.\-](\d{1,2})[/.\-]((?:19|20)\d{2})"
+_WORDED_DATE = r"(?:ngay )?(\d{1,2}) thang (\d{1,2}) nam ((?:19|20)\d{2})"
+_ANNUAL_PREFIX = r"(?:(?:cho )?nam (?:tai chinh )?ket thuc (?:vao )?ngay |(?:tai )?ngay )?"
+_PLAIN_PREFIX = r"(?:(?:tai )?ngay )?"
+
+
+def _single_date_header(core: str, *, annual_prefix: bool) -> str | None:
+    """The one valid date of a header that prints nothing else (finite grammar), else None.
+
+    The whole header must be an optional fixed prefix and exactly one date
+    token; any extra number, word or a second/invalid date rejects it.
+    """
+
+    prefix = _ANNUAL_PREFIX if annual_prefix else _PLAIN_PREFIX
+    match = re.fullmatch(prefix + f"(?:{_NUMERIC_DATE}|{_WORDED_DATE})", core)
+    if not match:
+        return None
+    day, month, year = [g for g in match.groups() if g is not None]
+    iso = _iso_date(int(day), int(month), int(year))
+    return iso if iso and printed_dates_v1(core) == [iso] else None
+
+
+def _iso_date(day: int, month: int, year: int) -> str | None:
+    if not 1 <= month <= 12:
+        return None
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    last = 29 if month == 2 and leap else _MONTH_END[month]
+    return f"{year:04d}-{month:02d}-{day:02d}" if 1 <= day <= last else None
+
+
 _UNIT_WORDS = re.compile(r"\(?\b(?:trieu|nghin|ngan|ty)?\s*(?:dong(?: viet nam)?|vnd|vn dong)\b\)?|\bdon vi(?: tinh)?\s*:?")
 
 
@@ -779,38 +833,43 @@ def _header_core(folded: str) -> str:
 
 
 def _quarter_or_ytd_candidates(header: str, folded: str, context) -> list[str]:
-    """The two periods a header can mean when it prints only an end date or "Kỳ này".
+    """The periods a header can mean when it prints only an end date or "Kỳ này".
 
-    Needs the report's printed quarter and end date. A printed date must be
-    the report end date or the same day one year earlier (the year is the
-    printed one). In an annual report the only candidate is the reported
-    year. Returns [] for anything else, including "Kỳ trước".
+    Quarterly report (printed quarter and end date): a header that is exactly
+    the report end date (or the same day one year earlier), or only "Kỳ
+    này", is the quarter or the year-to-date — two candidates, one when they
+    coincide (first quarter). Annual report: the only candidate is the
+    reported calendar year, and only when the printed fiscal year ends on
+    31/12 with no contrary range/months/first-N-months evidence; any other
+    fiscal end holds. Headers must match a finite grammar (one valid date
+    and nothing else). Returns [] otherwise, including "Kỳ trước".
     """
 
-    annual = context.annual and not context.quarter and not context.months and not context.first_months_of_fiscal_year
-    # "Cho năm tài chính kết thúc ngày D" prints D as the fiscal-year end of an annual report.
-    end = context.reporting_date or (context.fiscal_year_end if annual else None)
-    if context.conflict or not end:
+    if context.conflict:
         return []
-    dates = printed_dates_v1(header)
+    core = _header_core(folded)
+    annual = context.annual and not context.quarter and not context.months and not context.first_months_of_fiscal_year
     if annual:
-        # An annual report: a column printing only the report end date (or the same day one year
-        # earlier), optionally as "Năm (tài chính) kết thúc ngày D", is that reported year.
-        if len(dates) == 1 and dates[0] in (end, _same_day_previous_year(end)):
-            core = re.sub(r"\b(?:cho|nam|tai chinh|ket thuc|vao|ngay|thang)\b", "", _header_core(fold_vietnamese(header)))
-            if not re.sub(r"[\d/.\-\s]", "", core):
-                return [f"DURATION:YEAR:{dates[0][:4]}"]
+        end = context.reporting_date or context.fiscal_year_end
+        if not end or (context.fiscal_year_end and context.reporting_date and context.fiscal_year_end != context.reporting_date):
+            return []
+        if end[5:] != "12-31" or (context.range_start and context.range_start != end[:4] + "-01-01"):
+            return []  # a non-calendar fiscal window is not relabelled as a calendar year
+        date = _single_date_header(core, annual_prefix=True)
+        if date and date[5:] == "12-31" and date in (end, _same_day_previous_year(end)):
+            return [f"DURATION:YEAR:{date[:4]}"]
         return []
     if not context.quarter or not context.reporting_date:
         return []
     quarter = context.quarter
-    if len(dates) == 1:
-        if dates[0] not in (context.reporting_date, _same_day_previous_year(context.reporting_date)):
+    date = _single_date_header(core, annual_prefix=False)
+    if date is not None:
+        if date not in (context.reporting_date, _same_day_previous_year(context.reporting_date)):
             return []
-        if re.sub(r"[\d/.\-\s]|\bngay\b|\bthang\b|\bnam\b|\btai\b", "", _header_core(folded)):
-            return []  # anything else printed (a measure, a range word) is not this pattern
-        year = dates[0][:4]
-    elif _THIS_PERIOD.search(folded) and len(set(_ANY_RELATIVE.findall(folded))) == 1:
+        year = date[:4]
+    elif printed_dates_v1(header):
+        return []
+    elif _THIS_PERIOD.search(folded) and len(set(_ANY_RELATIVE.findall(folded))) == 1 and re.fullmatch(r"ky nay", core):
         year = context.reporting_date[:4]
     else:
         return []
