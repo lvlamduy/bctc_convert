@@ -58,6 +58,12 @@ It records904normal/4327subtest composed PASS, the retained stale-count failure,
 352cross-family regressions and actual FULL193 improvement11→13mappings.
 Publication coverage and the private audited-U gate remain unfinished; no seal.
 
+The opt-in audited-U API is now separately promoted after973normal/4327subtest
+PASS; read `docs/operations/F36_AUDITED_UNRESOLVED_API_AND_NOTES_CORPUS_CHECKPOINT_2026-10-24.md`.
+It retains the earlier failures and records the018cd914S3 backup plus Claude's
+completed experimental FULL271 run. No actual held-row declaration is registered,
+no notes code is integrated, and no family is sealed by this checkpoint.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
