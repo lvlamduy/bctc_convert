@@ -33,7 +33,7 @@ NOTES_WORKBOOK_FORMAT = "NOTES_PILOT_WORKBOOK_V1"
 PRODUCT_LABEL = "NOTES_PILOT_EXPERIMENTAL"
 TM_TEMPLATE = "template/Bank_TM_ReportNormId.v2.xlsx"
 TM_TEMPLATE_SHA256 = "64589f7ee2b025ac0bd784c13e0b0ba0aff9d46456a83fa7fe2d68a7de375115"
-EXPORTED = {"ACCEPTED", "ACCEPTED_BLANK", "HOLD"}
+EXPORTED = {"ACCEPTED", "ACCEPTED_DASH", "ACCEPTED_BLANK", "HOLD"}
 _DIMENSIONAL_HEADER = ["family", "concept", "axis", "member", "classification_basis", "period_key", "period_basis",
                        "unit", "unit_basis", "observation_state", "value", "raw", "acceptance", "hold_reasons",
                        "report_norm_id", "label_exact", "source"]

@@ -76,3 +76,53 @@ entries:
   - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=ADMIN_ASSOCIATION', report_norm_id: 1090}
   - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=OTHER', report_norm_id: 1091}
   - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'TOTAL', report_norm_id: 1075}
+
+  # Income-tax note lines (legacy 5723-5737). 5729/5730 take only the named
+  # lines (non-taxable income / non-deductible expenses), never a printed
+  # adjustments total of another population. 5726/5736 and 5737 are other presentations of
+  # deferred tax and total tax in the legacy layout; the line values are under
+  # DEFERRED_TAX_EXPENSE / TOTAL_TAX_EXPENSE.
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: PROFIT_BEFORE_TAX, report_norm_id: 5728}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: NON_TAXABLE_INCOME, report_norm_id: 5729}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: NON_DEDUCTIBLE_EXPENSES, report_norm_id: 5730}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: TAXABLE_INCOME, report_norm_id: 5731}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: TAX_AT_STATUTORY_RATE, report_norm_id: 5732}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: PRIOR_YEAR_TAX_ADJUSTMENT, report_norm_id: 5733}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: FOREIGN_BRANCH_TAX, report_norm_id: 5734}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: SUBSIDIARY_TAX, report_norm_id: 5735}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: CURRENT_TAX_EXPENSE, report_norm_id: 5723}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: CURRENT_YEAR_PORTION, report_norm_id: 5724}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: DEFERRED_TAX_EXPENSE, report_norm_id: 5725}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: TOTAL_TAX_EXPENSE, report_norm_id: 5727}
+
+  # Operating-expense note lines (legacy 1205-1220). Lines the legacy layout
+  # has no row for (rent, maintenance, advertising, IT ...) keep no legacy ID.
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: TOTAL_OPERATING_EXPENSE, report_norm_id: 1205}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: TAX_FEES, report_norm_id: 1206}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: EMPLOYEE_EXPENSE, report_norm_id: 1207}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: SALARY_ALLOWANCE, report_norm_id: 1208}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: PAYROLL_CONTRIBUTIONS, report_norm_id: 1209}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: EMPLOYEE_BENEFIT, report_norm_id: 1210}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: OTHER_EMPLOYEE_EXPENSE, report_norm_id: 1211}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: ASSET_EXPENSE, report_norm_id: 1212}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: DEPRECIATION_EXPENSE, report_norm_id: 1213}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: ADMIN_EXPENSE, report_norm_id: 1214}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: TRAVEL_EXPENSE, report_norm_id: 1215}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: UNION_ACTIVITY_EXPENSE, report_norm_id: 1216}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: DEPOSIT_INSURANCE_EXPENSE, report_norm_id: 1217}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: LONG_TERM_INVESTMENT_PROVISION, report_norm_id: 1218}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: OTHER_OPERATING_EXPENSE, report_norm_id: 1219}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: OTHER_ASSET_PROVISION, report_norm_id: 1220}
+
+  # Credit-risk provision expense note lines (legacy 1221-1228, 6031-6033).
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: TOTAL_CREDIT_PROVISION, report_norm_id: 1221}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: INTERBANK_GENERAL, report_norm_id: 1222}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: INTERBANK_SPECIFIC, report_norm_id: 1223}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: CUSTOMER_GENERAL, report_norm_id: 1224}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: CUSTOMER_SPECIFIC, report_norm_id: 1225}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: VAMC_PROVISION, report_norm_id: 1226}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: OFF_BALANCE_PROVISION, report_norm_id: 1227}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: OTHER_PROVISION, report_norm_id: 1228}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: CUSTOMER_PROVISION, report_norm_id: 6031}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: INTERBANK_PROVISION, report_norm_id: 6032}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: PURCHASED_DEBT_PROVISION, report_norm_id: 6033}

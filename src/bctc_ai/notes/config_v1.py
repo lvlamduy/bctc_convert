@@ -45,6 +45,8 @@ class Axis:
 
         found = []
         for member, spec in self.members.items():
+            if all_phrases(spec.get("none_of", []), key):
+                continue  # an excluding phrase is printed: never this member
             if any(key == alias or phrase_in(alias, key) for alias in spec.get("aliases", [])) \
                     or key in spec.get("exact", []) or all_phrases(spec.get("all_of", []), key):
                 found.append(member)
@@ -105,7 +107,8 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
     for name, spec in axes_raw["axes"].items():
         members = {m: {**s, "aliases": [fold_vietnamese(str(a)) for a in s.get("aliases", [])],
                        "exact": [fold_vietnamese(str(a)) for a in s.get("exact", [])],
-                       "all_of": [[fold_vietnamese(str(p)) for p in g] for g in s.get("all_of", [])]}
+                       "all_of": [[fold_vietnamese(str(p)) for p in g] for g in s.get("all_of", [])],
+                       "none_of": [[fold_vietnamese(str(p)) for p in g] for g in s.get("none_of", [])]}
                    for m, s in spec["members"].items()}
         _require(all(s.get("parent") in (None, *members) for s in members.values()), f"axis {name}: unknown member parent")
         outside = {m: {**s, "contains_all": [[fold_vietnamese(str(p)) for p in g] for g in s.get("contains_all", [])]}

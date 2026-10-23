@@ -1,0 +1,46 @@
+# Plugin: the operating-expense note (F36 "Chi phí hoạt động"). Same shape and
+# kernel as the income-tax note; only the line axis, the anchors and the
+# equations are family data. A lane is proven by the printed total equalling
+# the same-window "Chi phí hoạt động" of the report's income statement, or by
+# the note's own sums; a differing income-statement total vetoes the lane.
+format_version: NOTES_FAMILY_V1
+family: OPERATING_EXPENSE
+shape: CONCEPT_LIST
+axis: OPERATING_EXPENSE_LINE
+period_basis: DURATION
+concept: OPERATING_EXPENSE_NOTE
+
+retrieval:
+  row_label_like: ['%khau hao%', '%cho nhan vien%', '%nhan vien%', '%bao hiem tien gui%', '%bao toan tien gui%', '%cong vu%',
+                   '%le phi%', '%cong tac phi%', '%doan the%']
+  anchor_lines: [EMPLOYEE_EXPENSE, SALARY_ALLOWANCE, DEPRECIATION_EXPENSE, DEPOSIT_INSURANCE_EXPENSE, TAX_FEES, ADMIN_EXPENSE, ASSET_EXPENSE]
+  min_anchor_lines_without_title: 3
+  min_emitted_lines: 3
+
+subjects:
+  OPERATING_EXPENSE_NOTE:
+    any: [[chi phi hoat dong], [chi phi quan ly chung]]
+    none: [[thu nhap], [khac], [dich vu]]
+
+reject_context: [[ben lien quan], [bo phan], [thu nhap cua can bo], [tinh hinh thu nhap], [ngan sach nha nuoc], [quy luong]]
+
+emit_lines: [TAX_FEES, EMPLOYEE_EXPENSE, SALARY_ALLOWANCE, PAYROLL_CONTRIBUTIONS, EMPLOYEE_BENEFIT, UNIFORM_EXPENSE,
+             OTHER_EMPLOYEE_EXPENSE, ASSET_EXPENSE, DEPRECIATION_EXPENSE, RENT_EXPENSE,
+             MAINTENANCE_EXPENSE, TOOLS_EQUIPMENT_EXPENSE, OTHER_ASSET_EXPENSE, ADMIN_EXPENSE,
+             TRAVEL_EXPENSE, UNION_ACTIVITY_EXPENSE, ADVERTISING_EXPENSE, CONFERENCE_EXPENSE, UTILITIES_EXPENSE,
+             COMMUNICATION_EXPENSE, STATIONERY_EXPENSE, CONSULTING_EXPENSE, IT_EXPENSE, OTHER_ADMIN_EXPENSE,
+             DEPOSIT_INSURANCE_EXPENSE, LONG_TERM_INVESTMENT_PROVISION, OTHER_ASSET_PROVISION,
+             GOODWILL_AMORTIZATION, NONDEDUCTIBLE_INPUT_VAT, OTHER_OPERATING_EXPENSE, TOTAL_OPERATING_EXPENSE]
+
+# Proof only (a FAIL never decides membership). The total is the sum of the
+# printed top-level lines; a group is the sum of its printed detail lines.
+equations:
+  - {name: TOTAL_FROM_TOP_LEVEL_LINES, equals: TOTAL_OPERATING_EXPENSE,
+     plus_present: [TAX_FEES, EMPLOYEE_EXPENSE, ASSET_EXPENSE, ADMIN_EXPENSE, DEPOSIT_INSURANCE_EXPENSE,
+                    LONG_TERM_INVESTMENT_PROVISION, OTHER_ASSET_PROVISION, GOODWILL_AMORTIZATION, NONDEDUCTIBLE_INPUT_VAT,
+                    OTHER_OPERATING_EXPENSE]}
+  - {name: EMPLOYEE_FROM_DETAIL, equals: EMPLOYEE_EXPENSE,
+     plus_present: [SALARY_ALLOWANCE, PAYROLL_CONTRIBUTIONS, EMPLOYEE_BENEFIT, UNIFORM_EXPENSE, OTHER_EMPLOYEE_EXPENSE]}
+
+primary_anchors:
+  TOTAL_OPERATING_EXPENSE: {statement: KQKD, report_norm_id: 4391}

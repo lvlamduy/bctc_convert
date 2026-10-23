@@ -26,6 +26,7 @@ from typing import Any, Iterable
 
 from bctc_ai.primary_statements.numbers_v1 import SeparatorRoles, evidence_roles_v1, parse_money_cell_v1
 from bctc_ai.primary_statements.periods_v1 import (
+    duration_lane_period_v1,
     instant_lane_period_v1,
     printed_dates_v1,
     statement_period_context_v1,
@@ -70,9 +71,22 @@ class DocumentContext:
     context_texts: list[str]
     primary_cells: dict[tuple[str, int, str], tuple[Decimal, str]]
     separator_roles: SeparatorRoles = field(default_factory=SeparatorRoles)
+    # Printed period context of the income statement (title, narratives) and
+    # its resolved lane keys; pages holding primary statements; first note page.
+    income_context_texts: list[str] = field(default_factory=list)
+    income_lane_keys: list[str] = field(default_factory=list)
+    statement_pages: frozenset[str] = frozenset()
+    notes_start_page: int | None = None
 
     def balance_lane_keys(self, role: str) -> list[str]:
         return [lane["key"] for lane in self.balance_lanes if lane["role"] == role and lane["key"]]
+
+    def primary_value_for_period(self, statement: str, report_norm_id: int, period_key: str) -> tuple[Decimal, str] | None:
+        """The accepted primary cell of the same printed duration (None when absent or not unique)."""
+
+        found = {value for (s, rnid, key), value in self.primary_cells.items()
+                 if s == statement and rnid == report_norm_id and canonical_period_key_v1(key) == period_key}
+        return next(iter(found)) if len(found) == 1 else None
 
 
 def load_primary_context_v1(store_path: Path, expected_sha256: str) -> dict[int, DocumentContext]:
@@ -86,6 +100,13 @@ def load_primary_context_v1(store_path: Path, expected_sha256: str) -> dict[int,
             scopes = {i["scope"] for i in primary if i["scope"]}
             scope = next(iter(scopes)) if len(scopes) == 1 and all(i["scope"] for i in primary) else None
             balance = [i for i in primary if i["statement"] == "CDKT"]
+            income = [i for i in primary if i["statement"] == "KQKD"]
+            income_texts, income_keys = [], []
+            if len(income) == 1:
+                income_texts = list(income[0]["period_context"].get("evidence") or [])
+                income_keys = [(lane.get("period") or {}).get("key") for lane in income[0]["lanes"]]
+                income_keys = [key for key in income_keys if key]
+            statement_pages = frozenset(t["page_json_version_id"] for i in result["instances"] for t in i["tables"])
             lanes, texts, dates = [], [], set()
             if len(balance) == 1:
                 for lane in balance[0]["lanes"]:
@@ -109,6 +130,8 @@ def load_primary_context_v1(store_path: Path, expected_sha256: str) -> dict[int,
                 scope=scope, scope_basis="PRIMARY_DOCUMENT_SCOPE" if scope else "PRIMARY_SCOPE_NOT_UNIQUE",
                 reporting_date=next(iter(dates)) if len(dates) == 1 else None,
                 balance_lanes=lanes, context_texts=texts, primary_cells=cells, separator_roles=roles,
+                income_context_texts=income_texts, income_lane_keys=income_keys, statement_pages=statement_pages,
+                notes_start_page=result.get("notes_start_page"),
             )
     return contexts
 
@@ -481,6 +504,7 @@ class NoteLane:
     reasons: list[str] = field(default_factory=list)
     measure: str | None = None
     subject: str | None = None
+    candidates: list[str] = field(default_factory=list)
 
 
 _REPORTING_POINT = re.compile(r"\b(?:tai ngay|den ngay|tinh den ngay|ket thuc ngay|ket thuc vao ngay|vao ngay ket thuc)\b\s*")
@@ -526,13 +550,7 @@ def resolve_instant_lanes_v1(
                              for d in reporting_dates(text)})
         if len(introduced) == 1:
             own_dates = introduced
-    all_header_units = {u.unit for column in table.columns if column.value_kind == "MONEY"
-                        for part in column.header_path for u in units_in_header_component_v1(part)
-                        if u.unit not in {PERCENT, VND_PER_SHARE}}
-    table_units = units_in_unit_field_v1(table.unit_exact, source_kind="TABLE_UNIT_FIELD")
-    prose_units = []
-    for text in [table.section_title, table.table_title, *table.narratives, *page_texts]:
-        prose_units += units_in_prose_v1(text, source_kind="NOTE_PAGE_TEXT")
+    unit_sources = _unit_sources(table, page_texts)
     lanes = []
     for column in table.columns:
         if column.value_kind != "MONEY":
@@ -576,24 +594,210 @@ def resolve_instant_lanes_v1(
                     lane.reasons.append("PERIOD_UNRESOLVED:" + str(descriptor.reason))
         if lane.period_key is None and not lane.reasons:
             lane.reasons.append("PERIOD_UNRESOLVED")
-        money = {u.unit for u in header_units if u.unit not in {PERCENT, VND_PER_SHARE}}
-        basis = "HEADER"
-        if not money and len(all_header_units) == 1:
-            money, basis = set(all_header_units), "SAME_TABLE_HEADER"
-        if not money:
-            money, basis = {u.unit for u in table_units if u.unit not in {PERCENT, VND_PER_SHARE}}, "TABLE_UNIT_FIELD"
-        if not money:
-            money, basis = {u.unit for u in prose_units if u.unit not in {PERCENT, VND_PER_SHARE}}, "NOTE_PAGE_TEXT"
-        if len(money) == 1:
-            lane.unit, lane.unit_basis = next(iter(money)), basis
-        else:
-            lane.reasons.append("UNIT_CONFLICT" if money else "UNIT_UNRESOLVED")
+        _resolve_lane_unit(lane, header_units, unit_sources)
         lanes.append(lane)
     keys = [(lane.period_key, lane.measure) for lane in lanes if lane.period_key]
     for lane in lanes:
         if lane.period_key and keys.count((lane.period_key, lane.measure)) > 1:
             lane.reasons.append("DUPLICATE_PERIOD_LANE")
     return lanes
+
+
+def _unit_sources(table: NoteTable, page_texts: list[str]) -> tuple[set[str], list[Any], list[Any]]:
+    all_header_units = {u.unit for column in table.columns if column.value_kind == "MONEY"
+                        for part in column.header_path for u in units_in_header_component_v1(part)
+                        if u.unit not in {PERCENT, VND_PER_SHARE}}
+    table_units = units_in_unit_field_v1(table.unit_exact, source_kind="TABLE_UNIT_FIELD")
+    prose_units = []
+    for text in [table.section_title, table.table_title, *table.narratives, *page_texts]:
+        prose_units += units_in_prose_v1(text, source_kind="NOTE_PAGE_TEXT")
+    return all_header_units, table_units, prose_units
+
+
+def _resolve_lane_unit(lane: NoteLane, header_units: list[Any], sources: tuple[set[str], list[Any], list[Any]]) -> None:
+    """Printed unit only: own header, one unit shared by the table's headers, table unit field, page text."""
+
+    all_header_units, table_units, prose_units = sources
+    money = {u.unit for u in header_units if u.unit not in {PERCENT, VND_PER_SHARE}}
+    basis = "HEADER"
+    if not money and len(all_header_units) == 1:
+        money, basis = set(all_header_units), "SAME_TABLE_HEADER"
+    if not money:
+        money, basis = {u.unit for u in table_units if u.unit not in {PERCENT, VND_PER_SHARE}}, "TABLE_UNIT_FIELD"
+    if not money:
+        money, basis = {u.unit for u in prose_units if u.unit not in {PERCENT, VND_PER_SHARE}}, "NOTE_PAGE_TEXT"
+    if len(money) == 1:
+        lane.unit, lane.unit_basis = next(iter(money)), basis
+    else:
+        lane.reasons.append("UNIT_CONFLICT" if money else "UNIT_UNRESOLVED")
+
+
+# --------------------------------------------------------------------------- duration lanes
+
+_MONTH_END = {1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
+
+
+def _same_day_previous_year(date: str) -> str:
+    """The printed date one year earlier, for comparing two printed dates (29 Feb -> 28 Feb)."""
+
+    year, month, day = int(date[:4]) - 1, int(date[5:7]), int(date[8:10])
+    if month == 2 and day == 29 and not (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)):
+        day = 28
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
+def _year_value(token: str) -> str | None:
+    match = re.fullmatch(r"(PRIOR_YEAR_OF\()?((?:19|20)\d{2})\)?", token)
+    if not match:
+        return None
+    return str(int(match.group(2)) - (1 if match.group(1) else 0))
+
+
+_KEPT_AS_PRINTED = {"RANGE", "MONTHS_ENDED", "CUMULATIVE_FROM_START_OF_YEAR_TO", "CORRESPONDING_PRIOR_YEAR_RANGE",
+                    "CORRESPONDING_PRIOR_YEAR_MONTHS_ENDED"}
+
+
+def canonical_period_key_v1(key: str | None) -> str | None:
+    """One key per printed duration, by definitional identities only.
+
+    The year-to-date through the first quarter is the first quarter, and
+    through the fourth quarter is the year, by the meaning of the words;
+    "PRIOR_YEAR_OF(2025)" is the printed relation "năm trước" of 2025. No
+    calendar convention is used: no start date is computed, and ranges and
+    months-ended keys stay exactly as printed. Instants and unparsed keys
+    return None.
+    """
+
+    if not key or not key.startswith("DURATION:"):
+        return None
+    parts = key.split(":")
+    kind = parts[1] if len(parts) > 1 else ""
+    if kind == "QUARTER" and len(parts) == 4 and parts[2].isdigit() and _year_value(parts[3]):
+        return f"DURATION:QUARTER:{int(parts[2])}:{_year_value(parts[3])}"
+    if kind == "YEAR" and len(parts) == 3 and _year_value(parts[2]):
+        return f"DURATION:YEAR:{_year_value(parts[2])}"
+    if kind == "YTD" and len(parts) == 4 and _year_value(parts[3]):
+        through, year = parts[2], _year_value(parts[3])
+        if through == "Q1":
+            return f"DURATION:QUARTER:1:{year}"
+        if through == "Q4":
+            return f"DURATION:YEAR:{year}"
+        return f"DURATION:YTD:{through}:{year}"
+    if kind in _KEPT_AS_PRINTED:
+        return key
+    return None
+
+
+_LITERAL_NEWLINE = re.compile(r"\\n")
+_THIS_PERIOD = re.compile(r"\bky nay\b")
+_ANY_RELATIVE = re.compile(r"\b(?:ky nay|nam nay|quy nay|ky truoc|nam truoc|quy truoc|cung ky)\b")
+_SEGMENT_OR_SCOPE = re.compile(r"\b(?:mien bac|mien trung|mien nam|bo phan|khu vuc|dieu chinh|loai tru|hop nhat|rieng le|ngan hang me)\b")
+
+
+def resolve_duration_lanes_v1(
+    table: NoteTable, document: DocumentContext, page_texts: list[str], own_texts: list[str],
+) -> list[NoteLane]:
+    """Money lanes of a flow-type note table, keyed by the printed duration.
+
+    Period evidence, in order: (1) a duration printed in the column header
+    itself; (2) a relative header bound by the PRIMARY parser to the period
+    printed in the table's own caption, else in the same report's income
+    statement title (text only, never its numbers); a different report end
+    printed by the two holds; (3) "Năm YYYY" printed alone, in an annual or
+    fourth-quarter report. (4) A header printing only the report end date (or
+    the same day of the previous year) or only "Kỳ này" leaves "quarter or
+    year-to-date" open: it resolves only in a first-quarter report, where the
+    two are the same period by definition; otherwise the lane keeps both
+    candidates and is unresolved. "Kỳ trước"/"Năm trước" never get candidates.
+    Units as printed.
+    """
+
+    own_context = statement_period_context_v1(own_texts)
+    report_context = statement_period_context_v1(document.income_context_texts)
+    has_own = bool(own_context.reporting_date or own_context.year) and not own_context.conflict
+    contexts_disagree = bool(has_own and own_context.reporting_date and report_context.reporting_date
+                             and own_context.reporting_date != report_context.reporting_date)
+    full_year_report = report_context.quarter in (None, 4) and report_context.months in (None, 12) and not report_context.conflict
+    unit_sources = _unit_sources(table, page_texts)
+    lanes = []
+    for column in table.columns:
+        if column.value_kind != "MONEY":
+            continue
+        header_units = [u for part in column.header_path for u in units_in_header_component_v1(part)]
+        if any(u.unit == PERCENT for u in header_units):
+            continue
+        header = _LITERAL_NEWLINE.sub(" ", column.header_text)
+        folded = fold_vietnamese(header)
+        lane = NoteLane(column, None, "UNRESOLVED", None, "UNRESOLVED")
+        if _SEGMENT_OR_SCOPE.search(folded):
+            lane.reasons.append("HEADER_NAMES_SEGMENT_OR_SCOPE")
+        else:
+            own = duration_lane_period_v1(header, own_context) if has_own else None
+            report = duration_lane_period_v1(header, report_context)
+            own_key = canonical_period_key_v1(own.key) if own else None
+            report_key = canonical_period_key_v1(report.key)
+            explicit = next((d for d in (own, report) if d and d.key and d.resolution == "EXPLICIT"), None)
+            year_only = re.fullmatch(r"nam\s+((?:19|20)\d{2})", _header_core(folded))
+            if explicit and canonical_period_key_v1(explicit.key):
+                lane.period_key, lane.period_basis = canonical_period_key_v1(explicit.key), "HEADER_PRINTED:" + explicit.key
+            elif contexts_disagree or (own_key and report_key and own_key != report_key):
+                lane.reasons.append("OWN_AND_REPORT_CONTEXT_DISAGREE")
+            elif year_only and full_year_report:
+                lane.period_key, lane.period_basis = f"DURATION:YEAR:{year_only.group(1)}", "HEADER_PRINTED_YEAR"
+            elif own_key:
+                lane.period_key, lane.period_basis = own_key, "OWN_CAPTION_BOUND:" + own.key
+            elif report_key:
+                lane.period_key, lane.period_basis = report_key, "REPORT_TITLE_BOUND:" + report.key
+            else:
+                lane.candidates = _quarter_or_ytd_candidates(header, folded, report_context)
+                if lane.candidates and len(set(lane.candidates)) == 1:
+                    lane.period_key, lane.period_basis = lane.candidates[0], "FIRST_QUARTER_IS_YEAR_TO_DATE"
+                    lane.candidates = []
+                elif lane.candidates:
+                    lane.reasons.append("PERIOD_QUARTER_OR_YEAR_TO_DATE_NOT_PRINTED")
+                else:
+                    lane.reasons.append("PERIOD_UNRESOLVED:" + str(report.reason))
+        _resolve_lane_unit(lane, header_units, unit_sources)
+        lanes.append(lane)
+    keys = [lane.period_key for lane in lanes if lane.period_key]
+    for lane in lanes:
+        if lane.period_key and keys.count(lane.period_key) > 1:
+            lane.reasons.append("DUPLICATE_PERIOD_LANE")
+    return lanes
+
+
+_UNIT_WORDS = re.compile(r"\(?\b(?:trieu|nghin|ngan|ty)?\s*(?:dong(?: viet nam)?|vnd|vn dong)\b\)?|\bdon vi(?: tinh)?\s*:?")
+
+
+def _header_core(folded: str) -> str:
+    """A folded header without unit words and line breaks."""
+
+    return re.sub(r"\s+", " ", _UNIT_WORDS.sub(" ", folded)).strip(" /")
+
+
+def _quarter_or_ytd_candidates(header: str, folded: str, context) -> list[str]:
+    """The two periods a header can mean when it prints only an end date or "Kỳ này".
+
+    Needs the report's printed quarter and end date. A printed date must be
+    the report end date or the same day one year earlier (the year is the
+    printed one). Returns [] for anything else, including "Kỳ trước".
+    """
+
+    if context.conflict or not context.quarter or not context.reporting_date:
+        return []
+    quarter = context.quarter
+    dates = printed_dates_v1(header)
+    if len(dates) == 1:
+        if dates[0] not in (context.reporting_date, _same_day_previous_year(context.reporting_date)):
+            return []
+        if re.sub(r"[\d/.\-\s]|\bngay\b|\bthang\b|\bnam\b|\btai\b", "", _header_core(folded)):
+            return []  # anything else printed (a measure, a range word) is not this pattern
+        year = dates[0][:4]
+    elif _THIS_PERIOD.search(folded) and len(set(_ANY_RELATIVE.findall(folded))) == 1:
+        year = context.reporting_date[:4]
+    else:
+        return []
+    return [f"DURATION:QUARTER:{quarter}:{year}", canonical_period_key_v1(f"DURATION:YTD:Q{quarter}:{year}")]
 
 
 @dataclass

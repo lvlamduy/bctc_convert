@@ -42,13 +42,14 @@ CREATE TABLE note_cell (
   observation_state TEXT NOT NULL,
   value_text TEXT,
   raw_text TEXT,
-  acceptance TEXT NOT NULL CHECK (acceptance IN ('ACCEPTED','ACCEPTED_BLANK','HOLD','DUPLICATE_IDENTICAL_CONTROL')),
+  acceptance TEXT NOT NULL CHECK (acceptance IN ('ACCEPTED','ACCEPTED_DASH','ACCEPTED_BLANK','HOLD',
+                                                'DUPLICATE_IDENTICAL_CONTROL')),
   report_norm_id INTEGER,
   cell_json TEXT NOT NULL
 ) STRICT;
 CREATE UNIQUE INDEX note_cell_accepted_write_key ON note_cell(
   document_plan_id, scope, concept, axis, member, classification_basis, period_key
-) WHERE acceptance IN ('ACCEPTED', 'ACCEPTED_BLANK');
+) WHERE acceptance IN ('ACCEPTED', 'ACCEPTED_DASH', 'ACCEPTED_BLANK');
 """
 
 
@@ -85,6 +86,10 @@ def write_notes_store_v1(path: Path, *, manifest: dict[str, Any], cells: list[di
             raise NotesStoreError(f"two accepted cells share a write key: {error}") from error
         connection.commit()
         check = connection.execute("PRAGMA quick_check").fetchone()[0]
+        foreign = connection.execute("PRAGMA foreign_key_check").fetchall()
+    sidecars = [str(path) + suffix for suffix in ("-wal", "-shm", "-journal") if Path(str(path) + suffix).exists()]
+    if check != "ok" or foreign or sidecars:
+        raise NotesStoreError(f"store integrity barrier failed: quick_check={check} foreign={len(foreign)} sidecars={sidecars}")
     return {"path": str(path), "format_version": NOTES_STORE_FORMAT, "cells": len(cells), "cells_sha256": cells_sha,
             "quick_check": check, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "size_bytes": path.stat().st_size}
 

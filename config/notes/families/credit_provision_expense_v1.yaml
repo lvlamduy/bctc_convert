@@ -1,0 +1,44 @@
+# Plugin: the credit-risk provision expense note (F37 "Chi phí dự phòng rủi
+# ro tín dụng"). Same CONCEPT_LIST shape; proven by the printed total equal
+# to the same-window "Chi phí dự phòng rủi ro tín dụng" of the income
+# statement or by the note's own sums. Signs are stored as printed
+# (reversals are negative where the bank prints them so).
+format_version: NOTES_FAMILY_V1
+family: CREDIT_PROVISION_EXPENSE
+shape: CONCEPT_LIST
+axis: CREDIT_PROVISION_LINE
+period_basis: DURATION
+concept: CREDIT_PROVISION_EXPENSE_NOTE
+
+retrieval:
+  row_label_like: ['%du phong%khach hang%', '%du phong%tctd%', '%du phong%to chuc tin dung%', '%vamc%', '%du phong%ngoai bang%',
+                   '%du phong%mua no%', '%du phong chung%', '%du phong cu the%']
+  anchor_lines: [CUSTOMER_PROVISION, CUSTOMER_GENERAL, CUSTOMER_SPECIFIC, INTERBANK_PROVISION, VAMC_PROVISION, OFF_BALANCE_PROVISION,
+                 TOTAL_CREDIT_PROVISION]
+  min_anchor_lines_without_title: 2
+  min_emitted_lines: 2
+
+subjects:
+  CREDIT_PROVISION_EXPENSE_NOTE:
+    any: [[chi phi du phong rui ro tin dung], [du phong rui ro tin dung], [chi phi du phong rui ro]]
+    none: [[bien dong], [so du dau], [so du cuoi], [thay doi]]
+
+# Provision balances and movements are other notes (roll-forwards).
+reject_context: [[bien dong du phong], [thay doi du phong], [so du dau], [so du cuoi], [phan loai no], [chat luong no]]
+
+emit_lines: [INTERBANK_PROVISION, INTERBANK_GENERAL, INTERBANK_SPECIFIC,
+             CUSTOMER_PROVISION, CUSTOMER_GENERAL, CUSTOMER_SPECIFIC,
+             PURCHASED_DEBT_PROVISION, VAMC_PROVISION, OFF_BALANCE_PROVISION, CORPORATE_BOND_PROVISION, OTHER_PROVISION,
+             TOTAL_CREDIT_PROVISION]
+
+equations:
+  - {name: TOTAL_FROM_TOP_LEVEL_LINES, equals: TOTAL_CREDIT_PROVISION,
+     plus_present: [INTERBANK_PROVISION, CUSTOMER_PROVISION, PURCHASED_DEBT_PROVISION, VAMC_PROVISION, OFF_BALANCE_PROVISION,
+                    CORPORATE_BOND_PROVISION, OTHER_PROVISION]}
+  - {name: CUSTOMER_FROM_GENERAL_AND_SPECIFIC, equals: CUSTOMER_PROVISION,
+     plus_present: [CUSTOMER_GENERAL, CUSTOMER_SPECIFIC]}
+  - {name: INTERBANK_FROM_GENERAL_AND_SPECIFIC, equals: INTERBANK_PROVISION,
+     plus_present: [INTERBANK_GENERAL, INTERBANK_SPECIFIC]}
+
+primary_anchors:
+  TOTAL_CREDIT_PROVISION: {statement: KQKD, report_norm_id: 4392}

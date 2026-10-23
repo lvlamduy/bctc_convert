@@ -92,3 +92,195 @@ axes:
       ADMIN_ASSOCIATION: {parent: ECONOMIC_ORGANIZATIONS, name: Hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội, aliases: [hanh chinh su nghiep, doan the, hiep hoi]}
       OTHER: {parent: ECONOMIC_ORGANIZATIONS, name: Khác, aliases: [doi tuong khac, khach hang khac, to chuc khac],
               exact: [khac, khac khac, tien gui khac, cho vay khac, doanh nghiep khac, cac doi tuong khac]}
+
+  # Lines of the income-tax note (thuyết minh chi phí thuế TNDN). A line is a
+  # concept read from the printed row label: all phrases of one all_of group
+  # present and no none_of group present. Rows matching two lines are held.
+  # Adding a line adds one entry here (and one crosswalk row if it has a
+  # legacy ReportNormId); no other line changes.
+  INCOME_TAX_LINE:
+    description: Dòng của thuyết minh chi phí thuế thu nhập doanh nghiệp (đối chiếu lợi nhuận kế toán - thu nhập chịu thuế - chi phí thuế)
+    members:
+      PROFIT_BEFORE_TAX:
+        name: Lợi nhuận kế toán trước thuế
+        all_of: [[loi nhuan, truoc thue], [lai, truoc thue], [thu nhap, truoc thue]]
+        none_of: [[cong ty con], [chi nhanh], [don vi], [lien doanh], [lien ket], [chiu thue], [tinh thue], [phan chia], [duoc chia]]
+      NON_TAXABLE_INCOME:
+        name: Thu nhập không chịu thuế / miễn thuế
+        all_of: [[khong chiu thue], [mien thue], [khong phai chiu thue], [khong tinh thue]]
+        none_of: [[chi phi], [thue suat], [tong thu nhap chiu thue]]
+      DIVIDEND_INCOME:
+        name: Thu nhập từ cổ tức, góp vốn mua cổ phần (không chịu thuế)
+        all_of: [[co tuc], [gop von, mua co phan], [loi nhuan duoc chia]]
+        none_of: [[bao gom], [va cac khoan], [chi phi]]
+        dominates: [NON_TAXABLE_INCOME]
+      DECREASING_ADJUSTMENTS:
+        name: Các khoản điều chỉnh giảm thu nhập chịu thuế
+        all_of: [[dieu chinh giam], [khoan giam tru]]
+        none_of: [[chi phi thue]]
+      INCREASING_ADJUSTMENTS:
+        name: Các khoản điều chỉnh tăng thu nhập chịu thuế
+        all_of: [[dieu chinh tang]]
+        none_of: [[chi phi thue]]
+      NON_DEDUCTIBLE_EXPENSES:
+        name: Chi phí không được khấu trừ khi xác định thu nhập chịu thuế
+        all_of: [[khong duoc khau tru], [khong duoc tru], [khong duoc tinh tru], [khong hop le]]
+        none_of: [[hoan nhap]]
+        dominates: [INCREASING_ADJUSTMENTS]
+      LOSS_CARRIED_FORWARD:
+        name: Lỗ các năm trước chuyển sang
+        all_of: [[lo nam truoc], [lo cac nam truoc], [chuyen lo]]
+      TAXABLE_INCOME:
+        name: Thu nhập chịu thuế
+        all_of: [[thu nhap chiu thue], [thu nhap tinh thue], [loi nhuan chiu thue], [loi nhuan tinh thue], [thu nhap, lo, chiu thue],
+                 [chiu thue, uoc tinh]]
+        none_of: [[khong chiu thue], [chi phi thue], [thue suat], [tinh tren], [nhan voi], [lo nam truoc], [chuyen lo], [mien thue],
+                  [khong duoc], [dieu chinh]]
+      TAX_RATE:
+        name: Thuế suất (dòng tỷ lệ, không phải số tiền)
+        all_of: [[thue suat]]
+        none_of: [[chi phi], [theo thue suat], [tinh theo], [ap dung], [tinh tren]]
+      TAX_AT_STATUTORY_RATE:
+        name: Thuế TNDN tính trên thu nhập chịu thuế theo thuế suất
+        all_of: [[theo thue suat], [tinh tren thu nhap chiu thue], [tinh tren loi nhuan chiu thue], [tinh tren thu nhap tinh thue],
+                 [thue tinh theo thue suat], [thue suat ap dung]]
+        none_of: [[hoan lai], [nam truoc], [cong ty con], [nuoc ngoai]]
+        dominates: [TAX_RATE]
+      CURRENT_TAX_EXPENSE:
+        name: Chi phí thuế TNDN hiện hành
+        all_of: [[chi phi thue, hien hanh], [thue thu nhap doanh nghiep hien hanh], [thue tndn hien hanh], [thue thu nhap hien hanh],
+                 [chi phi thue, trong ky], [chi phi thue, trong nam], [thue tndn, trong ky], [thue tndn, trong nam],
+                 [thue thu nhap doanh nghiep, trong ky], [thue thu nhap doanh nghiep, trong nam],
+                 [thue thu nhap doanh nghiep phai nop], [thue tndn phai nop]]
+        none_of: [[hoan lai], [dau ky], [cuoi ky], [dau nam], [cuoi nam], [da nop], [da tra], [nam truoc], [cac nam truoc], [ky truoc],
+                  [cong ty con], [chi nhanh], [nuoc ngoai], [tinh tren], [theo thue suat], [quyet toan], [bo sung]]
+      CURRENT_YEAR_PORTION:
+        name: Chi phí thuế hiện hành - năm/kỳ hiện hành
+        exact: [nam hien hanh, ky hien hanh]
+      PRIOR_YEAR_TAX_ADJUSTMENT:
+        name: Điều chỉnh thuế TNDN của các năm trước
+        all_of: [[dieu chinh, nam truoc], [dieu chinh, ky truoc], [dieu chinh, quyet toan], [bo sung, nam truoc], [nop bo sung],
+                 [chi phi nam truoc], [thue, cac nam truoc]]
+        none_of: [[lo nam truoc], [chuyen lo], [hoan nhap chi phi], [khong duoc]]
+      FOREIGN_BRANCH_TAX:
+        name: Chi phí thuế TNDN của chi nhánh nước ngoài
+        all_of: [[thue, chi nhanh nuoc ngoai], [thue, o nuoc ngoai], [thue, tai nuoc ngoai]]
+        none_of: [[loi nhuan], [lai thuan], [thu nhap thuan]]
+      SUBSIDIARY_TAX:
+        name: Chi phí thuế TNDN của các công ty con
+        all_of: [[thue, cong ty con]]
+        none_of: [[loi nhuan], [lai thuan], [thu nhap tu], [lo tu]]
+      DEFERRED_TAX_EXPENSE:
+        name: Chi phí/(thu nhập) thuế TNDN hoãn lại
+        all_of: [[hoan lai, thue thu nhap], [hoan lai, thue tndn], [hoan lai, chi phi thue]]
+        none_of: [[tai san], [phai tra], [dau ky], [cuoi ky], [dau nam], [cuoi nam]]
+      TOTAL_TAX_EXPENSE:
+        name: Tổng chi phí thuế TNDN
+        exact: [chi phi thue thu nhap doanh nghiep, chi phi thue tndn, chi phi thue thu nhap, tong chi phi thue thu nhap doanh nghiep,
+                tong chi phi thue tndn, tong chi phi thue thu nhap]
+      TAX_PAYABLE_OPENING:
+        name: Thuế TNDN phải nộp đầu kỳ (số dư)
+        all_of: [[phai nop, dau ky], [phai nop, dau nam], [phai tra, dau ky], [phai tra, dau nam]]
+      TAX_PAID:
+        name: Thuế TNDN đã nộp trong kỳ
+        all_of: [[thue, da nop], [thue, da tra]]
+        none_of: [[nuoc ngoai]]
+      TAX_PAYABLE_CLOSING:
+        name: Thuế TNDN phải nộp cuối kỳ (số dư)
+        all_of: [[phai nop, cuoi ky], [phai nop, cuoi nam], [phai tra, cuoi ky], [phai tra, cuoi nam]]
+
+  # Lines of the operating-expense note (F36 "Chi phí hoạt động"). Legacy
+  # 1205-1220 plus the common lines most banks print that the legacy layout
+  # has no row for (rent, maintenance, advertising, IT, utilities ...), so a
+  # user can compare them across banks. "thuê" (rent) and "thuế" (tax) fold to
+  # the same letters: rent lines always name what is rented.
+  OPERATING_EXPENSE_LINE:
+    description: Dòng của thuyết minh chi phí hoạt động
+    members:
+      TAX_FEES: {name: "Chi nộp thuế và các khoản phí, lệ phí",
+                 all_of: [[le phi], [nop thue], [thue va cac khoan phi], [thue va cac loai phi], [thue, phi va le phi]],
+                 none_of: [[thu nhap doanh nghiep], [tndn], [gtgt], [gia tri gia tang], [dau vao]]}
+      EMPLOYEE_EXPENSE: {name: Chi phí cho nhân viên,
+                         all_of: [[chi phi cho nhan vien], [chi phi nhan vien], [chi cho nhan vien], [luong va cac chi phi lien quan]],
+                         none_of: [[khac]]}
+      SALARY_ALLOWANCE: {name: Chi lương và phụ cấp, all_of: [[luong, phu cap], [chi luong], [tien luong], [luong va thuong]],
+                         none_of: [[dong gop], [theo luong]]}
+      PAYROLL_CONTRIBUTIONS: {name: "Các khoản chi đóng góp theo lương (BHXH, BHYT, KPCĐ)",
+                              all_of: [[dong gop theo luong], [dong theo luong], [bao hiem xa hoi], [kinh phi cong doan]]}
+      EMPLOYEE_BENEFIT: {name: Chi trợ cấp, all_of: [[tro cap]]}
+      UNIFORM_EXPENSE: {name: "Chi trang phục giao dịch, bảo hộ lao động", all_of: [[trang phuc], [bao ho lao dong]]}
+      OTHER_EMPLOYEE_EXPENSE: {name: Chi khác cho nhân viên, all_of: [[chi khac cho nhan vien], [chi phi khac cho nhan vien]],
+                               scoped: {within: [EMPLOYEE_EXPENSE], exact: [chi khac, khac, cac khoan chi khac, chi phi khac]}}
+      ASSET_EXPENSE: {name: Chi về tài sản, all_of: [[chi ve tai san], [chi phi ve tai san], [chi phi tai san]], none_of: [[khac]]}
+      DEPRECIATION_EXPENSE: {name: Chi phí khấu hao tài sản cố định, all_of: [[khau hao]], none_of: [[loi the thuong mai]]}
+      RENT_EXPENSE: {name: "Chi thuê văn phòng, tài sản",
+                     all_of: [[thue van phong], [thue tai san], [thue nha], [thue dia diem], [thue tru so], [thue tscd], [thue tai san co dinh],
+                              [di thue]]}
+      MAINTENANCE_EXPENSE: {name: "Chi bảo dưỡng, sửa chữa tài sản", all_of: [[bao duong], [sua chua], [bao tri]]}
+      TOOLS_EQUIPMENT_EXPENSE: {name: "Chi mua sắm công cụ, dụng cụ", all_of: [[cong cu], [dung cu]]}
+      OTHER_ASSET_EXPENSE: {name: Chi khác về tài sản, all_of: [[khac ve tai san], [khac ve tscd]],
+                            scoped: {within: [ASSET_EXPENSE], exact: [chi khac, khac, cac khoan chi khac, chi phi khac]}}
+      ADMIN_EXPENSE: {name: Chi cho hoạt động quản lý công vụ,
+                      all_of: [[quan ly cong vu], [chi cho hoat dong quan ly], [hoat dong quan ly va cong vu], [chi phi hoat dong quan ly]],
+                      none_of: [[khac]]}
+      TRAVEL_EXPENSE: {name: Công tác phí, all_of: [[cong tac phi]]}
+      UNION_ACTIVITY_EXPENSE: {name: Chi về hoạt động đoàn thể của TCTD, all_of: [[doan the]]}
+      ADVERTISING_EXPENSE: {name: "Chi quảng cáo, tiếp thị, khuyến mại", all_of: [[quang cao], [tiep thi], [khuyen mai], [marketing]]}
+      CONFERENCE_EXPENSE: {name: "Chi hội nghị, lễ tân, khánh tiết", all_of: [[hoi nghi], [le tan], [khanh tiet], [tiep khach]]}
+      UTILITIES_EXPENSE: {name: "Chi điện, nước, vệ sinh cơ quan", all_of: [[dien nuoc], [dien, nuoc], [ve sinh co quan], [ve sinh van phong]]}
+      COMMUNICATION_EXPENSE: {name: "Chi thông tin liên lạc, bưu phí", all_of: [[thong tin lien lac], [buu phi], [buu dien], [dien thoai]]}
+      STATIONERY_EXPENSE: {name: "Chi vật liệu, giấy tờ in, văn phòng phẩm", all_of: [[van phong pham], [in an], [giay to in]]}
+      CONSULTING_EXPENSE: {name: "Chi phí dịch vụ tư vấn, kiểm toán", all_of: [[tu van], [kiem toan]]}
+      IT_EXPENSE: {name: Chi phí công nghệ thông tin, all_of: [[cong nghe thong tin]]}
+      OTHER_ADMIN_EXPENSE: {name: Chi khác cho hoạt động quản lý, all_of: [[chi khac cho hoat dong quan ly]],
+                            scoped: {within: [ADMIN_EXPENSE], exact: [chi khac, khac, cac khoan chi khac, chi phi khac]}}
+      DEPOSIT_INSURANCE_EXPENSE: {name: Chi phí bảo hiểm tiền gửi của khách hàng,
+                                  all_of: [[bao hiem tien gui], [bao toan tien gui], [bao dam tien gui], [bao hiem cho cac khoan tien gui]]}
+      LONG_TERM_INVESTMENT_PROVISION: {name: "Dự phòng giảm giá đầu tư dài hạn, nợ khó đòi",
+                                       all_of: [[du phong, dau tu dai han], [du phong, gop von], [du phong no kho doi], [du phong, mua co phan]]}
+      OTHER_ASSET_PROVISION: {name: "(Hoàn nhập)/trích lập dự phòng tài sản Có khác",
+                              all_of: [[du phong, tai san co], [du phong khac], [du phong rui ro khac], [du phong, phai thu]],
+                              none_of: [[tin dung], [dau tu dai han], [gop von]]}
+      GOODWILL_AMORTIZATION: {name: Phân bổ lợi thế thương mại, all_of: [[loi the thuong mai]]}
+      NONDEDUCTIBLE_INPUT_VAT: {name: Thuế GTGT đầu vào không được khấu trừ, all_of: [[gtgt dau vao], [gia tri gia tang dau vao]]}
+      OTHER_OPERATING_EXPENSE: {name: Chi phí hoạt động khác,
+                                # A bare "Chi khác" is read only under a printed parent (scoped rules of the OTHER_* lines).
+                                all_of: [[chi phi hoat dong khac], [chi hoat dong khac], [chi phi quan ly khac], [chi phi quan ly hoat dong khac]],
+                                not_within: [EMPLOYEE_EXPENSE, ASSET_EXPENSE, ADMIN_EXPENSE]}
+      TOTAL_OPERATING_EXPENSE: {name: Tổng chi phí hoạt động,
+                                exact: [tong, cong, tong cong, tong chi phi hoat dong, chi phi hoat dong, cong chi phi hoat dong,
+                                        tong chi phi quan ly chung, chi phi quan ly chung]}
+
+  # Lines of the credit-risk provision expense note (F37). Group-level lines
+  # name their subject; "Dự phòng chung / cụ thể" lines are read only under a
+  # printed parent naming the subject (never by position).
+  CREDIT_PROVISION_LINE:
+    description: Dòng của thuyết minh chi phí dự phòng rủi ro tín dụng
+    members:
+      INTERBANK_PROVISION: {name: "Chi phí/(hoàn nhập) dự phòng tiền gửi và cho vay các TCTD khác",
+                            all_of: [[du phong, tctd], [du phong, to chuc tin dung]], none_of: [[chung], [cu the], [ngoai bang]]}
+      INTERBANK_GENERAL: {name: Dự phòng chung tiền gửi và cho vay các TCTD khác,
+                          all_of: [[du phong chung, tctd], [du phong chung, to chuc tin dung]],
+                          scoped: {within: [INTERBANK_PROVISION], all_of: [[du phong chung]]}}
+      INTERBANK_SPECIFIC: {name: Dự phòng cụ thể tiền gửi và cho vay các TCTD khác,
+                           all_of: [[du phong cu the, tctd], [du phong cu the, to chuc tin dung], [cu the, cap tin dung cho cac tctd]],
+                           scoped: {within: [INTERBANK_PROVISION], all_of: [[du phong cu the]]}}
+      CUSTOMER_PROVISION: {name: "Chi phí/(hoàn nhập) dự phòng cho vay khách hàng",
+                           all_of: [[du phong, khach hang], [du phong, ky quy], [du phong, ung truoc]],
+                           none_of: [[chung], [cu the], [ngoai bang], [tctd], [to chuc tin dung]]}
+      CUSTOMER_GENERAL: {name: Dự phòng chung cho vay khách hàng, all_of: [[du phong chung, khach hang]],
+                         scoped: {within: [CUSTOMER_PROVISION], all_of: [[du phong chung]]}}
+      CUSTOMER_SPECIFIC: {name: Dự phòng cụ thể cho vay khách hàng, all_of: [[du phong cu the, khach hang]],
+                          scoped: {within: [CUSTOMER_PROVISION], all_of: [[du phong cu the]]}}
+      PURCHASED_DEBT_PROVISION: {name: "Chi phí/(hoàn nhập) dự phòng hoạt động mua nợ", all_of: [[du phong, mua no]]}
+      VAMC_PROVISION: {name: Dự phòng trái phiếu đặc biệt VAMC, all_of: [[vamc]]}
+      OFF_BALANCE_PROVISION: {name: "Dự phòng các cam kết ngoại bảng, nợ tiềm ẩn",
+                              all_of: [[du phong, ngoai bang], [du phong, cam ket], [du phong, thu tin dung], [du phong, no tiem an]]}
+      CORPORATE_BOND_PROVISION: {name: Dự phòng trái phiếu doanh nghiệp chưa niêm yết, all_of: [[du phong, trai phieu doanh nghiep]],
+                                 none_of: [[vamc]]}
+      OTHER_PROVISION: {name: Dự phòng khác,
+                        all_of: [[du phong khac], [du phong, tai san co khac], [du phong, tai tro thuong mai], [du phong cac khoan rui ro khac]],
+                        none_of: [[vamc]]}
+      TOTAL_CREDIT_PROVISION: {name: Tổng chi phí dự phòng rủi ro tín dụng,
+                               exact: [tong, cong, tong cong, chi phi du phong rui ro tin dung, tong chi phi du phong rui ro tin dung,
+                                       chi phi du phong rui ro, tong chi phi du phong]}

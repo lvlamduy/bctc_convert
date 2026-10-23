@@ -27,10 +27,12 @@ from bctc_ai.notes.kernel_v1 import (
 )
 from functools import partial
 
+from bctc_ai.notes.concept_list_shape_v1 import evaluate_concept_table_v1
 from bctc_ai.notes.coordinate_shape_v1 import evaluate_coordinate_table_v1
 from bctc_ai.notes.list_shape_v1 import evaluate_table_v1
 
-SHAPES = {"LIST_BY_AXIS": evaluate_table_v1, "COORDINATE_LIST": evaluate_coordinate_table_v1}
+SHAPES = {"LIST_BY_AXIS": evaluate_table_v1, "COORDINATE_LIST": evaluate_coordinate_table_v1,
+          "CONCEPT_LIST": evaluate_concept_table_v1}
 
 
 @dataclass
