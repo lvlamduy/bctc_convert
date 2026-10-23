@@ -161,6 +161,7 @@ class NoteTable:
     rows: list[NoteRow] = field(default_factory=list)
     cells: dict[tuple[str, str], tuple[str | None, str]] = field(default_factory=dict)
     fragments: list[dict[str, Any]] = field(default_factory=list)
+    section_table_count: int = 1
 
     @property
     def key(self) -> tuple[str, str, str]:
@@ -322,6 +323,25 @@ def _money_columns(table: NoteTable) -> list[NoteColumn]:
     return [c for c in table.columns if c.value_kind == "MONEY"]
 
 
+def _continuation_compatible(head: NoteTable, follower: NoteTable) -> bool:
+    """Owner/reset fence and column bijection for a page continuation.
+
+    The follower prints no title of its own, its section is untitled or the
+    same note continued ("(tiếp theo)") or identical to the head's, and each
+    of its money columns has the head's header or no header at all.
+    """
+
+    head_money, follower_money = _money_columns(head), _money_columns(follower)
+    if not head_money or len(head_money) != len(follower_money):
+        return False
+    if follower.table_title:
+        return False
+    section = fold_vietnamese(follower.section_title or "")
+    if section and section != fold_vietnamese(head.section_title or "") and "tiep theo" not in section:
+        return False
+    return all(not f.header_text or f.header_text == h.header_text for h, f in zip(head_money, follower_money))
+
+
 def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) -> tuple[list[NoteTable], list[dict[str, Any]]]:
     """Join a table with its continuation on the next page.
 
@@ -354,8 +374,7 @@ def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) ->
         if follower is None:
             continue
         declared = flags.get(key) in _ON_NEXT or flags.get(follower) in _FROM_PREVIOUS
-        width = len(_money_columns(table))
-        if declared and width > 0 and width == len(_money_columns(by_key[follower])):
+        if declared and _continuation_compatible(table, by_key[follower]):
             next_of[key] = follower
     followers = set(next_of.values())
     joined, receipts = [], []
@@ -428,38 +447,6 @@ def table_context_v1(table: NoteTable, outline: list[dict[str, Any]], *, max_hea
 # --------------------------------------------------------------------------- lanes and cells
 
 
-def positional_date_caption_v1(table: NoteTable, outline: list[dict[str, Any]]) -> tuple[str | None, str | None]:
-    """The single date of a caption printed for this table only.
-
-    The table's own title when it is a date caption, else the nearest caption
-    above it and below the previous table (a short title carrying exactly one
-    printed date, e.g. "Tại ngày 31 tháng 12 năm 2025"). Returns (iso date,
-    caption text) or (None, None).
-    """
-
-    def caption_date(text: str | None) -> str | None:
-        if not text or len(text) > 90:
-            return None
-        dates = printed_dates_v1(text)
-        return dates[0] if len(dates) == 1 else None
-
-    if caption_date(table.table_title):
-        return caption_date(table.table_title), table.table_title
-    position = next((i for i, e in enumerate(outline) if e["version"] == table.page_json_version_id
-                     and e["section_id"] == table.section_id and e["table_id"] == table.table_id), None)
-    if position is None:
-        return None, None
-    for entry in reversed(outline[:position]):
-        if entry["table_id"] is not None:
-            return None, None  # reached the previous table: its caption is not ours
-        if entry["version"] == table.page_json_version_id and entry["section_id"] == table.section_id:
-            continue  # the own section title is shared by every table of the section
-        date = caption_date(entry["title"])
-        if date:
-            return date, entry["title"]
-    return None, None
-
-
 @dataclass
 class NoteLane:
     column: NoteColumn
@@ -530,7 +517,7 @@ def resolve_instant_lanes_v1(
         dates = printed_dates_v1(column.header_text)
         if not dates and lane.measure and not (_CLOSING_WORDS.search(folded) or _OPENING_WORDS.search(folded)):
             if len(own_dates) == 1:
-                lane.period_key, lane.period_basis = f"INSTANT:{own_dates[0]}", "TABLE_CONTEXT_PRINTED_DATE"
+                lane.period_key, lane.period_basis = f"INSTANT:{own_dates[0]}", "OWN_CAPTION_PRINTED_DATE"
             else:
                 lane.reasons.append("PERIOD_UNRESOLVED:MEASURE_COLUMN_WITHOUT_UNIQUE_CONTEXT_DATE")
         elif len(dates) == 1:

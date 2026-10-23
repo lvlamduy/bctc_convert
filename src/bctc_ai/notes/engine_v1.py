@@ -22,7 +22,6 @@ from bctc_ai.notes.kernel_v1 import (
     assemble_continuations_v1,
     continuation_neighbors_v1,
     page_texts_v1,
-    positional_date_caption_v1,
     stable_json_sha256,
     table_context_v1,
 )
@@ -67,9 +66,9 @@ def run_family_v1(
     for table in tables:
         document = contexts[table.document_ordinal]
         context = table_context_v1(table, outline.get(table.document_ordinal, []))
-        caption_date, caption = positional_date_caption_v1(table, outline.get(table.document_ordinal, []))
-        if caption:
-            context = [("POSITIONAL_DATE_CAPTION", caption)] + context
+        table.section_table_count = sum(1 for e in outline.get(table.document_ordinal, [])
+                                        if e["table_id"] is not None and e["version"] == table.page_json_version_id
+                                        and e["section_id"] == table.section_id)
         for evaluation in evaluate(table, family, document, context, page_texts_v1(source, table)):
             run.evaluations.append(evaluation)
             for cell in evaluation.cells:

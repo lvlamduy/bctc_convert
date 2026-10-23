@@ -9,7 +9,7 @@ import pytest
 
 from bctc_ai.notes.config_v1 import NotesConfigError, load_notes_config_v1
 from bctc_ai.notes.engine_v1 import _assign_legacy_ids
-from bctc_ai.notes.kernel_v1 import DocumentContext, NoteColumn, NoteRow, NoteTable, positional_date_caption_v1
+from bctc_ai.notes.kernel_v1 import DocumentContext, NoteColumn, NoteRow, NoteTable, assemble_continuations_v1
 from bctc_ai.notes.list_shape_v1 import axis_blocks_v1, evaluate_table_v1
 from bctc_ai.primary_statements.numbers_v1 import SeparatorRoles
 
@@ -158,7 +158,7 @@ def test_rate_table_is_rejected(family):
 
 
 def test_subject_from_printed_context_and_ambiguity_holds(family):
-    table = make_table(FIVE, title="Phân tích chất lượng dư nợ của hoạt động mua nợ")
+    table = make_table(FIVE, title="Phân tích chất lượng dư nợ của hoạt động mua nợ", section="7. Hoạt động mua nợ")
     assert {c["concept"] for e in evaluate_table_v1(table, family, document(), context_of(table), []) for c in e.cells} == {"PURCHASED_DEBT"}
     table = make_table(FIVE, title=None, section=None)
     result = cells(evaluate_table_v1(table, family, document(), [], []))
@@ -185,22 +185,6 @@ def test_legacy_ids_prefer_grand_total_and_skip_competing_bases(config, family):
     extra = [dict(c, classification_basis="AS_PRESENTED") for c in evaluated]
     _assign_legacy_ids(evaluated + extra, config)
     assert all(c["report_norm_id"] is None for c in evaluated)
-
-
-def test_positional_caption_stops_at_previous_table():
-    table = make_table(FIVE, title=None)
-    outline = [
-        {"page": 10, "section_order": 0, "table_order": -1, "title": "Tại ngày 31 tháng 12 năm 2024", "source": "SECTION_TITLE",
-         "version": "v10", "section_id": "s0", "table_id": None},
-        {"page": 10, "section_order": 0, "table_order": 0, "title": None, "source": "TABLE_TITLE",
-         "version": "v10", "section_id": "s0", "table_id": "t0"},
-        {"page": 10, "section_order": 1, "table_order": 0, "title": None, "source": "TABLE_TITLE",
-         "version": "v10", "section_id": "s1", "table_id": "t1"},
-    ]
-    assert positional_date_caption_v1(table, outline) == (None, None)
-    outline.insert(2, {"page": 10, "section_order": 1, "table_order": -1, "title": "Tại ngày 30 tháng 6 năm 2025",
-                       "source": "SECTION_TITLE", "version": "v10", "section_id": "s9", "table_id": None})
-    assert positional_date_caption_v1(table, outline) == ("2025-06-30", "Tại ngày 30 tháng 6 năm 2025")
 
 
 def test_crosswalk_rejects_reused_report_norm_id(tmp_path):
@@ -232,3 +216,72 @@ def test_lone_separator_without_document_evidence_is_not_parsed(family):
     result = cells(evaluate_table_v1(table, family, doc, context_of(table), []))
     total = result[("TOTAL_FIVE_GROUPS", "INSTANT:2025-06-30")]
     assert total["acceptance"] == "HOLD" and total["value"] is None
+
+
+def test_owner_context_with_two_subjects_holds_not_first_wins(family):
+    table = make_table(FIVE, title="Phân tích chất lượng nợ cho vay", section="7. Hoạt động mua nợ")
+    result = cells(evaluate_table_v1(table, family, document(), context_of(table), []))
+    assert all(any(r.startswith("SUBJECT_UNRESOLVED") for r in c["hold_reasons"]) for c in result.values())
+
+
+def test_vbb258_interbank_quality_table_is_not_customer_loans(family):
+    # p15/s3: same five group labels, but the section narrative owns the subject.
+    table = make_table(FIVE, title=None, section=None)
+    table.narratives = ["Phân tích chất lượng dư nợ tiền gửi có kỳ hạn và cho vay các TCTD khác như sau:"]
+    context = [("SECTION_NARRATIVE", table.narratives[0]), ("PRECEDING_TABLE_TITLE", "6. Cho vay khách hàng")]
+    concepts = {c["concept"] for e in evaluate_table_v1(table, family, document(), context, []) for c in e.cells}
+    assert concepts == {"INTERBANK_DEPOSITS_AND_LOANS"}
+
+
+class _OutlineSource:
+    def __init__(self, entries):
+        self._entries = entries
+
+    def outline(self):
+        return {1: self._entries}
+
+
+def _entry(page, section, table_id, title, continuation):
+    return {"page": page, "section_order": 0, "table_order": 0, "kind": "FINANCIAL_NOTE", "title": title,
+            "source": "TABLE_TITLE", "version": f"v{page}", "section_id": section, "table_id": table_id,
+            "continuation": continuation}
+
+
+def test_vbb258_declared_continuation_joins_head_group_and_follower_rows(family):
+    head = make_table([("Cho vay các tổ chức kinh tế, cá nhân trong nước", ["100", "90"]),
+                       ("Phân tích chất lượng nợ cho vay:", [None, None])],
+                      headers=(("Số cuối quý",), ("Số đầu năm",)), title=None, section="6. Cho vay khách hàng\n6.1 Cho vay khách hàng",
+                      unit="ĐVT : Triệu đồng", page=15)
+    head.rows[1].kind = "GROUP"
+    follower = make_table(FIVE, headers=((), ()), title=None, section=None, page=16)
+    follower.section_id = "s1"
+    source = _OutlineSource([_entry(15, "s1", "t1", None, "CONTINUES_ON_NEXT_PAGE"), _entry(16, "s1", "t1", None, "CONTINUES_FROM_PREVIOUS_PAGE")])
+    joined, receipts = assemble_continuations_v1(source, [head, follower])
+    assert len(joined) == 1 and len(receipts) == 1 and len(joined[0].rows) == 8
+    context = [("SECTION_TITLE", head.section_title)]
+    result = cells(evaluate_table_v1(joined[0], family, document(), context, []))
+    g1 = result[("G1", "INSTANT:2025-06-30")]
+    assert g1["concept"] == "LOANS_TO_CUSTOMERS" and g1["value"] == "900" and g1["unit"] == "MILLION_VND"
+    assert g1["period_basis"] == "ALIGNED_TO_PRIMARY_BALANCE_CURRENT_LANE"
+
+
+def test_titled_follower_is_not_a_continuation(family):
+    head = make_table(FIVE[:3], title="Phân tích chất lượng nợ cho vay", page=15)
+    follower = make_table(FIVE[3:], title="Phân tích dư nợ theo ngành", page=16)
+    source = _OutlineSource([_entry(15, "s1", "t1", None, "CONTINUES_ON_NEXT_PAGE"), _entry(16, "s1", "t1", None, "CONTINUES_FROM_PREVIOUS_PAGE")])
+    joined, receipts = assemble_continuations_v1(source, [head, follower])
+    assert len(joined) == 2 and not receipts
+
+
+def test_shared_section_narrative_date_has_no_owner(family):
+    rows = FIVE
+    table = make_table(rows, headers=(("Dư nợ cho vay", "Triệu đồng"), ("Dự phòng cụ thể", "Triệu đồng")), title=None,
+                       section="11.1 Dự phòng rủi ro cho vay khách hàng")
+    table.narratives = ["Kết quả phân loại nợ tại ngày 31 tháng 12 năm 2025 như sau:"]
+    context = [("SECTION_TITLE", table.section_title), ("SECTION_NARRATIVE", table.narratives[0])]
+    table.section_table_count = 2
+    held = cells(evaluate_table_v1(table, family, document(), context, []))
+    assert all(c["period_key"] is None for c in held.values())
+    table.section_table_count = 1
+    owned = cells(evaluate_table_v1(table, family, document(), context, []))
+    assert owned[("G1", "INSTANT:2025-12-31")]["period_basis"] == "OWN_CAPTION_PRINTED_DATE"

@@ -23,7 +23,7 @@ from typing import Any
 
 from bctc_ai.notes.config_v1 import Family
 from bctc_ai.notes.kernel_v1 import DocumentContext, NoteLane, NoteTable, parse_cell_v1, resolve_instant_lanes_v1
-from bctc_ai.notes.list_shape_v1 import TOTAL_KEYS, classification_basis_v1, resolve_subject_v1
+from bctc_ai.notes.list_shape_v1 import TOTAL_KEYS, classification_basis_v1, owned_date_texts_v1, resolve_subject_v1
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese
 from bctc_ai.primary_statements.units_v1 import SCALE
 
@@ -160,7 +160,7 @@ def evaluate_coordinate_table_v1(
         evaluation.status, evaluation.reasons = "REJECTED", [f"ONLY_{len(first_members)}_FIRST_AXIS_MEMBERS"]
         return [evaluation]
     evaluation.rows = rows
-    own = [text for source, text in context if source in {"TABLE_TITLE", "SECTION_TITLE", "SECTION_NARRATIVE"}]
+    own = owned_date_texts_v1(table, context)
     evaluation.lanes = resolve_instant_lanes_v1(table, document, page_texts, own)
     if not evaluation.lanes:
         evaluation.status, evaluation.reasons = "REJECTED", ["NO_MONEY_LANES"]

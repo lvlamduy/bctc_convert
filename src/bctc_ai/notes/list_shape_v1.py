@@ -21,7 +21,6 @@ from bctc_ai.notes.kernel_v1 import (
     parse_cell_v1,
     resolve_instant_lanes_v1,
 )
-from bctc_ai.primary_statements.periods_v1 import printed_dates_v1
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese
 from bctc_ai.primary_statements.units_v1 import SCALE
 
@@ -117,16 +116,47 @@ def assign_roles_v1(table: NoteTable, family: Family) -> list[RowRole]:
     return roles
 
 
-def resolve_subject_v1(family: Family, context: list[tuple[str, str]]) -> tuple[str | None, dict[str, Any]]:
-    """Nearest printed context naming exactly one subject decides; ties hold."""
+OWNER_SOURCES = {"BLOCK_HEADING", "TABLE_TITLE", "SECTION_TITLE", "SECTION_NARRATIVE"}
 
-    for source, text in context:
-        found = family.subjects_in(fold_vietnamese(text))
-        if len(found) == 1:
-            return found[0], {"basis": source, "text": text}
-        if len(found) > 1:
-            return None, {"basis": "AMBIGUOUS_SUBJECT", "source": source, "text": text, "candidates": found}
+
+def resolve_subject_v1(family: Family, context: list[tuple[str, str]]) -> tuple[str | None, dict[str, Any]]:
+    """The subject named by the table's own printed context, else by its note heading.
+
+    All owner context (block heading, table title, section title, section
+    narratives) is read, not the first hit: one distinct subject decides,
+    two different subjects hold. Only without any owner evidence are the
+    preceding titles up to the nearest numbered note heading read, with the
+    same uniqueness rule. No first-wins, no equation-wins.
+    """
+
+    def subjects(entries):
+        found = {}
+        for source, text in entries:
+            for subject in family.subjects_in(fold_vietnamese(text)):
+                found.setdefault(subject, (source, text))
+        return found
+
+    owner = subjects([(s, t) for s, t in context if s in OWNER_SOURCES])
+    tier, found = "OWNER_CONTEXT", owner
+    if not owner:
+        tier, found = "PRECEDING_NOTE_HEADING", subjects([(s, t) for s, t in context if s.startswith("PRECEDING_")])
+    if len(found) == 1:
+        subject, (source, text) = next(iter(found.items()))
+        return subject, {"basis": source, "tier": tier, "text": text}
+    if len(found) > 1:
+        return None, {"basis": "AMBIGUOUS_SUBJECT", "tier": tier, "candidates": sorted(found)}
     return None, {"basis": "NO_PRINTED_SUBJECT"}
+
+
+def owned_date_texts_v1(table: NoteTable, context: list[tuple[str, str]]) -> list[str]:
+    """Texts that belong to this table for a date caption: its own title and
+    block heading, its section title, and section narratives only when the
+    section holds this table alone (a shared narrative date has no owner)."""
+
+    keep = {"BLOCK_HEADING", "TABLE_TITLE", "SECTION_TITLE"}
+    if table.section_table_count == 1:
+        keep.add("SECTION_NARRATIVE")
+    return [text for source, text in context if source in keep]
 
 
 def classification_basis_v1(context: list[tuple[str, str]]) -> str:
@@ -244,21 +274,17 @@ def _evaluate_block(
     else:
         evaluation.subject, evaluation.subject_basis = resolve_subject_v1(family, context)
     evaluation.basis = classification_basis_v1(context)
-    own = [text for source, text in context if source in {"BLOCK_HEADING", "TABLE_TITLE", "SECTION_TITLE", "SECTION_NARRATIVE"}]
+    own = owned_date_texts_v1(table, context)
     measures = {m: [fold_vietnamese(a) for a in spec["aliases"]] for m, spec in (family.raw.get("column_measures") or {}).items()}
     evaluation.lanes = resolve_instant_lanes_v1(table, document, page_texts, own, measures,
                                                 family.raw["retrieval"].get("explicit_title_phrases", []))
     if matrix:
-        caption = next((text for source, text in context if source == "POSITIONAL_DATE_CAPTION"), None)
         kept = []
         for lane in evaluation.lanes:
             subjects = family.subjects_in(fold_vietnamese(lane.column.header_text))
             if len(subjects) != 1:
                 continue  # the "Tổng cộng" column or an unnamed column: not a subject lane
             lane.subject = subjects[0]
-            if lane.period_key is None and caption:
-                lane.period_key, lane.period_basis = f"INSTANT:{printed_dates_v1(caption)[0]}", "POSITIONAL_DATE_CAPTION"
-                lane.reasons = [r for r in lane.reasons if not r.startswith("PERIOD_UNRESOLVED")]
             kept.append(lane)
         evaluation.lanes = kept
     if not evaluation.lanes:
