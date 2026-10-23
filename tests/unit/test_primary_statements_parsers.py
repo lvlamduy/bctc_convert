@@ -184,3 +184,56 @@ def test_ytd_through_this_quarter_binds_to_printed_period_end():
 def test_transcribed_literal_line_break_does_not_glue_words():
     context = statement_period_context_v1(["BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT\nQuý II năm 2026"])
     assert context.quarter == 2 and context.year == 2026
+
+
+@pytest.mark.parametrize(
+    ("header", "expected"),
+    [
+        ("Quý trước", None),                                           # preceding quarter: no printed window
+        ("Quý này năm trước", "DURATION:QUARTER:2:PRIOR_YEAR_OF(2025)"),
+        ("Quý 2\nNăm trước", "DURATION:QUARTER:2:PRIOR_YEAR_OF(2025)"),
+    ],
+)
+def test_previous_quarter_is_not_the_same_quarter_of_prior_year(header, expected):
+    descriptor = _period(header, ["Báo cáo kết quả hoạt động cho Quý II năm 2025"])
+    assert descriptor.key == expected
+    if expected is None:
+        assert descriptor.reason == "PREVIOUS_QUARTER_WITHOUT_PRINTED_COMPARATIVE_WINDOW"
+
+
+@pytest.mark.parametrize(
+    ("header", "context", "key", "reason"),
+    [
+        # "Kỳ trước" alone: the comparative window is not printed -> held.
+        ("Kỳ trước", ["Cho giai đoạn từ ngày 01/01/2025 đến ngày 30/06/2025"], None,
+         "PRIOR_PERIOD_WITHOUT_PRINTED_COMPARATIVE_WINDOW"),
+        ("Kỳ trước", ["Cho kỳ sáu tháng kết thúc ngày 30 tháng 6 năm 2025"], None,
+         "PRIOR_PERIOD_WITHOUT_PRINTED_COMPARATIVE_WINDOW"),
+        ("Quý 2\nKỳ trước", ["Quý 2 năm 2025"], None, "PRIOR_PERIOD_WITHOUT_PRINTED_COMPARATIVE_WINDOW"),
+        # The window printed in the column itself binds it.
+        ("Kỳ trước\nTừ 01/01/2024 đến 30/06/2024", [], "DURATION:RANGE:2024-01-01..2024-06-30", None),
+        # "Cùng kỳ năm trước" and "Năm trước" print the prior-year relation.
+        ("Cùng kỳ năm trước", ["Cho giai đoạn từ ngày 01/01/2025 đến ngày 30/06/2025"],
+         "DURATION:CORRESPONDING_PRIOR_YEAR_RANGE:2025-01-01..2025-06-30", None),
+        ("Năm trước", ["Cho năm tài chính kết thúc ngày 31 tháng 12 năm 2025"], "DURATION:YEAR:PRIOR_YEAR_OF(2025)", None),
+        ("Kỳ này", ["Cho giai đoạn từ ngày 01/01/2025 đến ngày 30/06/2025"], "DURATION:RANGE:2025-01-01..2025-06-30", None),
+    ],
+)
+def test_prior_period_relations_are_distinct(header, context, key, reason):
+    descriptor = _period(header, context)
+    assert descriptor.key == key
+    if reason:
+        assert descriptor.reason == reason
+
+
+@pytest.mark.parametrize(
+    ("header", "key"),
+    [
+        ("Quý trước\nTừ 01/04/2025 đến 30/06/2025", "DURATION:RANGE:2025-04-01..2025-06-30"),  # printed window binds
+        ("Quý trước năm trước", None),                                                          # compound relation held
+        ("Quý trước", None),
+        ("Quý này năm trước", "DURATION:QUARTER:3:PRIOR_YEAR_OF(2025)"),
+    ],
+)
+def test_previous_quarter_binds_only_a_printed_window(header, key):
+    assert _period(header, ["Báo cáo kết quả hoạt động cho Quý III năm 2025"]).key == key
