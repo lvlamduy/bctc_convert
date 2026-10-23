@@ -148,9 +148,9 @@ def _is_generic_total_label(value: Any) -> bool:
     return _without_leading_ordinal(_normalized(value)) in _GENERIC_TOTAL_LABELS
 
 
-def _matches(value: Any, alias: str) -> bool:
+def _match_value_forms_v1(value: Any) -> frozenset[str]:
+    """Prepare the unchanged value-only matching forms, without a cache."""
     folded = _normalized(value)
-    alias = _normalized(alias)
     forms = {folded, _without_leading_ordinal(folded)}
     # Some provider payloads contain a literal ``\\n`` immediately before a
     # Vietnamese word whose leading ``n`` was consumed by the escape marker
@@ -167,6 +167,13 @@ def _matches(value: Any, alias: str) -> bool:
         for prefix in ("trong do ", "bao gom ")
         if form.startswith(prefix)
     }
+    return frozenset(forms)
+
+
+def _matches_prepared_forms_v1(forms: frozenset[str], alias: str) -> bool:
+    """Apply the unchanged alias/suffix predicate to immutable value forms."""
+
+    alias = _normalized(alias)
     if alias in forms:
         return True
     suffixes = {form.removeprefix(alias).strip() for form in forms if form.startswith(alias + " ")}
@@ -232,6 +239,12 @@ def _matches(value: Any, alias: str) -> bool:
     )
 
 
+def _matches(value: Any, alias: str) -> bool:
+    """Compatibility entry point; no value or alias normalization policy changes."""
+
+    return _matches_prepared_forms_v1(_match_value_forms_v1(value), alias)
+
+
 def _without_decorative_parentheticals(value: str) -> str:
     def replacement(match: re.Match[str]) -> str:
         content = match.group(1).strip()
@@ -279,7 +292,8 @@ def _matcher_match_kind(
     # ``1TV``/``một thành viên`` equivalence.
     aliases = [_normalized(alias) for alias in matcher["aliases"]]
     if mode == "EXACT_NORMALIZED":
-        if any(_matches(value, alias) for alias in aliases):
+        prepared_forms = _match_value_forms_v1(value) if aliases else frozenset()
+        if any(_matches_prepared_forms_v1(prepared_forms, alias) for alias in aliases):
             return "EXACT_NORMALIZED"
         if enable_declared_equivalences and matcher.get(
             "normalize_single_member_abbreviations", False
@@ -295,8 +309,10 @@ def _matcher_match_kind(
             and type(value) is str
         ):
             stripped = _without_decorative_parentheticals(value)
-            if stripped != value and any(_matches(stripped, alias) for alias in aliases):
-                return "EXACT_NORMALIZED_AFTER_DECORATIVE_PARENTHETICAL_REMOVAL"
+            if stripped != value and aliases:
+                stripped_forms = _match_value_forms_v1(stripped)
+                if any(_matches_prepared_forms_v1(stripped_forms, alias) for alias in aliases):
+                    return "EXACT_NORMALIZED_AFTER_DECORATIVE_PARENTHETICAL_REMOVAL"
         if enable_declared_equivalences and matcher.get(
             "allow_trailing_organization_qualifier", False
         ):
