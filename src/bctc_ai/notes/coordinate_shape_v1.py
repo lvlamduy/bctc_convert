@@ -114,8 +114,9 @@ def assign_coordinates_v1(table: NoteTable, family: Family, axes, table_subject:
             rows.append(CoordinateRow(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_MEMBERS:" + ",".join(ambiguous), subject, block))
             continue
         first = axis_names[0]
-        if not valued and own:
-            # A value-less row only opens the parent its first-axis member names.
+        if not valued and own and row.kind == "GROUP":
+            # A value-less source GROUP row only opens the parent its first-axis member names. Any other printed
+            # axis row with all-null money cells stays a coordinate: an unknown component (Codex 0213).
             if first in own:
                 parent = {first: own[first]}
             rows.append(CoordinateRow(index, None, "HEADING", "NO_VALUES", subject, block))

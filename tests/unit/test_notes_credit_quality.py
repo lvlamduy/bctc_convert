@@ -433,3 +433,23 @@ def test_a_net_or_interest_column_is_never_the_gross_balance(family):
     plain = make_table(FIVE, headers=(("Dư nợ", "30/06/2025", "Triệu VND"),))
     result = cells(evaluate_table_v1(plain, family, document(primary), context_of(plain), []))
     assert result[("G2", JUN)]["acceptance"] == "ACCEPTED" and result[("G2", JUN)]["measure"] == "BALANCE"
+
+
+def test_an_all_null_printed_group_row_stays_an_unknown_component(family):
+    # Codex 0213: a printed "Nhóm 5" ITEM with no value in ANY lane must not leave the run (as a heading) so that
+    # 900 + 50 + 30 + "-" = 980 closes and reads the dash as zero.
+    rows = [("Nhóm 1 - Nợ đủ tiêu chuẩn", ["900", "800"]), ("Nhóm 2 - Nợ cần chú ý", ["50", "40"]),
+            ("Nhóm 3 - Nợ dưới tiêu chuẩn", ["30", "10"]), ("Nhóm 4 - Nợ nghi ngờ", ["-", "-"]),
+            ("Nhóm 5 - Nợ có khả năng mất vốn", [None, None]), ("Tổng", ["980", "850"])]
+    primary = {("CDKT", 4348, JUN): (Decimal("980"), "MILLION_VND"), ("CDKT", 4348, DEC): (Decimal("850"), "MILLION_VND")}
+    for cells_primary in ({}, primary):
+        table = make_table(rows)
+        assert axis_blocks_v1(table, family) == [([], list(range(6)))]  # one run: G5 is not a heading
+        evaluations = evaluate_table_v1(table, family, document(cells_primary), context_of(table), [])
+        assert len(evaluations) == 1
+        assert {e["lane"] for e in evaluations[0].equations if e["status"] == "INCOMPLETE_BLANK_OPERAND"} == {"c1", "c2"}
+        result = cells(evaluations)
+        for period in (JUN, DEC):
+            assert result[("G5", period)]["observation_state"] == "BLANK" and result[("G5", period)]["value"] is None
+            dash = result[("G4", period)]
+            assert dash["observation_state"] == "DASH" and dash["value"] is None and dash["acceptance"] == "HOLD", cells_primary

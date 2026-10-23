@@ -199,13 +199,16 @@ def axis_blocks_v1(table: NoteTable, family: Family) -> list[tuple[list[str], li
         matches = family.axis.match(key) if key else []
         valued = _has_values(table, row)
         is_total = row.kind in {"TOTAL", "SUBTOTAL"} or bool(key and TOTAL_KEYS.match(key))
-        if not valued:
+        regular = [m for m in matches if m in family.axis.members]
+        # A printed known axis row with all-null money cells (not a source GROUP) is an unknown component that stays
+        # in its run, never a heading that drops it from the frontier (Codex 0213).
+        component = row.kind != "GROUP" and bool(regular or (current and matches))
+        if not valued and not component:
             if row.label:
                 if current:
                     close()
                 pending_headings.append(row.label)
             continue
-        regular = [m for m in matches if m in family.axis.members]
         if regular and regular[0] in seen:
             close()
         # A run starts only at a regular member; outside members and totals only extend one.

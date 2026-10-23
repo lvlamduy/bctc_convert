@@ -195,3 +195,18 @@ def test_a_blank_child_never_proves_a_sibling_dash_zero(config):
         assert cells[("DEPOSIT_TYPE=MARGIN", JUN)]["value"] is None
         closed = cells[("DEPOSIT_TYPE=TERM", DEC)]  # 90 + 0 + 30 = 120, every child observed
         assert closed["observation_state"] == "DASH_ZERO" and closed["acceptance"] == "ACCEPTED"
+
+
+def test_an_all_null_printed_item_stays_an_unknown_component(config):
+    # Codex 0213: MARGIN printed as an ITEM with no value in either lane is not a heading; TOTAL = DEMAND + TERM("-")
+    # must not close and read TERM as zero. A source GROUP heading keeps its heading meaning (test above).
+    rows = [("Tiền gửi không kỳ hạn", ["100", "90"]), ("Tiền gửi có kỳ hạn", ["-", "-"]), ("Tiền ký quỹ", [None, None]),
+            ("Tổng", ["100", "90"])]
+    for primary in (None, primary_balance(4320, "100", "90")):
+        cells, evaluations = run(config, "DEPOSITS_BY_TYPE", rows, primary=primary)
+        assert evaluations[0].rows[2].disposition == "COORDINATE"
+        assert {e["lane"] for e in evaluations[0].equations if e["status"] == "INCOMPLETE_BLANK_OPERAND"} == {"c1", "c2"}
+        for period in (JUN, DEC):
+            assert cells[("DEPOSIT_TYPE=MARGIN", period)]["value"] is None
+            dash = cells[("DEPOSIT_TYPE=TERM", period)]
+            assert dash["observation_state"] == "DASH" and dash["value"] is None and dash["acceptance"] == "HOLD", primary
