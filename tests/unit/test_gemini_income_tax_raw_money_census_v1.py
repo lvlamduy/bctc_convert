@@ -37,7 +37,9 @@ def _put(root, relative, value):
     return {"path": relative, "sha256": sha256(raw).hexdigest(), "size_bytes": len(raw)}
 
 
-def _fixture(tmp_path, monkeypatch, *, pages=None, year="2025", legacy=False, documents=1):
+def _fixture(tmp_path, monkeypatch, *, pages=None, year="2025", legacy=False, documents=1,
+             prompt_variant="compact", prompt_sha256="d" * 64,
+             prompt_digest_encoding=False, manifest_v4=False):
     root = tmp_path / "artifacts"
     root.mkdir()
     database = root / "source.sqlite3"
@@ -59,10 +61,14 @@ def _fixture(tmp_path, monkeypatch, *, pages=None, year="2025", legacy=False, do
                 if legacy:
                     patch.setattr(page_store, "validate_financial_page_json_v1", deepcopy)
                 stored = _ingest(database, source_logical_name=logical, physical_page=physical,
-                                 image_sha256=image_sha, page_json=page)
+                                 image_sha256=image_sha, page_json=page,
+                                 prompt_variant=prompt_variant, prompt_sha256=prompt_sha256)
             frontier.append({"physical_page": physical, "page_json_version_id": stored["page_json_version_id"]})
         material = {"document": {**source, "document_id": "gfpstorev1:document:" + canonical_json_sha256_v1(source)},
                     "page_count": len(frontier), "pages": frontier}
+        if manifest_v4:
+            material.update(format_version="GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4",
+                            extraction_contract={"prompt_sha256": prompt_sha256})
         manifest = {**material, "document_manifest_id": "gfdmv1:manifest:" + canonical_json_sha256_v1(material)}
         document_root = f"documents/{document_ordinal}"
         local_manifest = "current-document-manifests/manifest.json"
@@ -77,7 +83,9 @@ def _fixture(tmp_path, monkeypatch, *, pages=None, year="2025", legacy=False, do
                 for physical in range(1, len(pages) + 1)
             ]),
             page_prompt_frontier_sha256=canonical_json_sha256_v1([
-                {"physical_page": physical, "prompt_variant": "compact"}
+                {"physical_page": physical,
+                 "prompt_sha256" if prompt_digest_encoding else "prompt_variant":
+                     prompt_sha256 if prompt_digest_encoding else prompt_variant}
                 for physical in range(1, len(pages) + 1)
             ]), prior_selection_ids=[],
         )
@@ -444,3 +452,207 @@ def test_coherently_resealed_authority_cannot_use_boolean_counts_or_ordinals(tmp
     with pytest.raises(target.GeminiIncomeTaxRawMoneyCensusV1Error, match="plain"):
         with target.open_income_tax_original_census_source_v1(**options):
             pytest.fail("Boolean authority count was treated as an integer")
+
+
+_SIMPLE_PROMPT_SHA = "2c1d1e6b26f96207616fbfbfc65b3cbaed1abff1b65a380bbb0b30c4d63b539c"
+
+
+def _write_test_prompt_scope(monkeypatch, path, value):
+    # Test-only independently byte-pinned local authority; no production loader,
+    # source query, validation, replay, or approval result is mocked.
+    raw = canonical_json_bytes_v1(value)
+    path.write_bytes(raw)
+    monkeypatch.setattr(target, "_PROMPT_ENCODING_SCOPE_PATH", path)
+    monkeypatch.setattr(target, "_PROMPT_ENCODING_SCOPE_SHA256", sha256(raw).hexdigest())
+    monkeypatch.setattr(target, "_PROMPT_ENCODING_SCOPE_SIZE_BYTES", len(raw))
+    monkeypatch.setattr(target, "_PROMPT_ENCODING_DIAGNOSTIC_SCOPE_SHA256",
+                        canonical_json_sha256_v1(value["scope"]))
+
+
+def _legacy_prompt_fixture(tmp_path, monkeypatch, *, prompt_variant="simple", prompt_sha256=_SIMPLE_PROMPT_SHA):
+    cfg = json.loads(target._PROMPT_ENCODING_SCOPE_PATH.read_bytes())
+    pages = [_primary_page(_primary_tax_rows()), _primary_page(_primary_tax_rows())]
+    options, index, _ = _fixture(tmp_path, monkeypatch, pages=pages,
+                               prompt_variant=prompt_variant, prompt_sha256=prompt_sha256,
+                               prompt_digest_encoding=True, manifest_v4=True)
+    document = index["documents"][0]
+    manifest = json.loads((options["artifact_root"] / document["document_manifest_ref"]["path"]).read_bytes())
+    selection = json.loads((options["artifact_root"] / document["selection_ref"]["path"]).read_bytes())
+    ids = [page["page_json_version_id"] for page in manifest["pages"]]
+    cfg.update(corpus_manifest_index_id=index["corpus_manifest_index_id"],
+               corpus_index_ref=deepcopy(options["corpus_index_ref"]),
+               database_ref=deepcopy(options["database_ref"]))
+    # Synthetic registration models the reviewed technical encoding only. It is
+    # not evidence that this fixture has a real FULL271 partner or PDF review.
+    cfg["scope"] = [{
+        "source_ordinal": 1, "relative_path": document["relative_path"], "page_count": 2,
+        "common_selection_ref": deepcopy(document["selection_ref"]),
+        "full271_selection_ref": deepcopy(document["selection_ref"]),
+        "selection_prompt_frontier_sha256": selection["page_prompt_frontier_sha256"],
+        "replayed_prompt_frontier_sha256": canonical_json_sha256_v1([
+            {"physical_page": physical, "prompt_variant": prompt_variant} for physical in (1, 2)
+        ]),
+        "selected_page_json_version_ids_sha256": canonical_json_sha256_v1(ids),
+        "selected_page_json_version_ids_exactly_equal_full271": True,
+        "page_image_frontier_replays_from_sqlite": True,
+    }]
+    keys = cfg["source_bindings"][0]
+    cfg["source_bindings"] = [{key: deepcopy(document[key]) for key in keys}]
+    cfg["diagnostic_scope_sha256"] = canonical_json_sha256_v1(cfg["scope"])
+    path = tmp_path / "registered-prompt-scope.json"
+    _write_test_prompt_scope(monkeypatch, path, cfg)
+    return options, index, cfg, path, ids
+
+
+def _reseal_prompt_test_index(options, index):
+    index["document_selection_frontier_sha256"] = canonical_json_sha256_v1([
+        {key: item[key] for key in ("document_manifest_id", "document_plan_id", "selection_id")}
+        for item in index["documents"]
+    ])
+    index["corpus_manifest_index_id"] = "gjfccmiv1:index:" + canonical_json_sha256_v1({
+        key: item for key, item in index.items() if key != "corpus_manifest_index_id"
+    })
+    options["corpus_index_ref"] = _put(options["artifact_root"], options["corpus_index_ref"]["path"], index)
+
+
+def test_registered_prompt_encoding_production_scope_exact_twenty_and_literal_pin():
+    raw = target._PROMPT_ENCODING_SCOPE_PATH.read_bytes()
+    assert sha256(raw).hexdigest() == target._PROMPT_ENCODING_SCOPE_SHA256 == "2e23473ce9246764d3a37d112f6f42a567824ebd053834e8299641f8b5bdd479"
+    assert len(raw) == target._PROMPT_ENCODING_SCOPE_SIZE_BYTES == 56250
+    cfg = json.loads(raw)
+    assert len(cfg["scope"]) == len(cfg["source_bindings"]) == 20
+    assert sum(item["page_count"] for item in cfg["scope"]) == 1113
+    assert canonical_json_sha256_v1(cfg["scope"]) == "218e69be9ccf1f620a3a4552f9f1d824b22b1aecee32a9641273285161b53151"
+    assert [item["source_ordinal"] for item in cfg["scope"]] == [1, 7, 14, 15, 16, 17, 29, 40, 42, 45, 65, 80, 81, 87, 104, 109, 154, 179, 195, 201]
+    assert cfg["corpus_index_ref"]["sha256"] == "acc1d08e45e5a05925c434ae1c96fd6bc481a0e6ca61fc9f78e155efca7365b1"
+    assert cfg["database_ref"]["sha256"] == "a14904a492e6beae165b81f7aa1738352a9824e113f1b163a46ee277d37e0220"
+    assert cfg["database_ref"]["size_bytes"] == 553984000
+    assert cfg["simple_prompt_sha256"] == _SIMPLE_PROMPT_SHA
+
+
+def test_registered_prompt_encoding_public_context_original_census_and_fresh_cold(tmp_path, monkeypatch):
+    options, _, _, _, _ = _legacy_prompt_fixture(tmp_path, monkeypatch)
+    before = options["database"].read_bytes()
+    with target.open_income_tax_original_census_source_v1(**options) as source:
+        warm = _load(source, run=17)
+    with target.open_income_tax_original_census_source_v1(**options) as source:
+        cold = _load(source, run=17)
+    assert cold == warm
+    assert options["database"].read_bytes() == before
+    proof = warm["census"]["source_binding"]["registered_prompt_frontier_encoding_witness"]
+    assert proof["encoding"] == "PHYSICAL_PAGE_PROMPT_SHA256_OBSERVED"
+    assert proof["recorded_sha256"] == proof["recomputed_sha256"] != proof["variant_encoding_sha256"]
+    assert proof["prompt_body_sha256"] == _SIMPLE_PROMPT_SHA
+    assert proof["financial_or_pdf_or_export_permission_granted"] is False
+    assert proof["source_values_or_period_keys_modified"] is False
+    assert all(item["source_json_replay_receipt"]["mapping_input"] == "ORIGINAL_STORED_JSON_UNMODIFIED"
+               for item in warm["loaded"])
+    assert warm["records"][0]["page_json"] == warm["loaded"][0]["page_json"]
+
+
+def test_registered_prompt_encoding_standard_source_binding_unchanged(tmp_path, monkeypatch):
+    options, _, _ = _fixture(tmp_path, monkeypatch)
+    with target.open_income_tax_original_census_source_v1(**options) as source:
+        census = _load(source)["census"]
+    assert "registered_prompt_frontier_encoding_witness" not in census["source_binding"]
+
+
+@pytest.mark.parametrize("where", [
+    "selection_ref", "source_sha256", "source_size_bytes", "document_plan_id", "document_manifest_id",
+    "selected_ids", "reversed_selected_ids", "recorded_digest", "variant_digest", "page_count",
+    "corpus_index_id", "corpus_index_ref", "database_ref",
+])
+def test_registered_prompt_encoding_exact_registered_axes_required(tmp_path, monkeypatch, where):
+    options, _, cfg, path, ids = _legacy_prompt_fixture(tmp_path, monkeypatch)
+    scope, binding = cfg["scope"][0], cfg["source_bindings"][0]
+    if where == "selection_ref":
+        scope["common_selection_ref"]["sha256"] = "0" * 64
+    elif where in {"source_sha256", "document_plan_id", "document_manifest_id"}:
+        binding[where] = "0" * 64
+    elif where == "source_size_bytes":
+        binding[where] += 1
+    elif where in {"selected_ids", "reversed_selected_ids"}:
+        scope["selected_page_json_version_ids_sha256"] = canonical_json_sha256_v1(
+            list(reversed(ids)) if where.startswith("reversed") else ["gfpstorev1:json:" + "0" * 64]
+        )
+    elif where in {"recorded_digest", "variant_digest"}:
+        scope["selection_prompt_frontier_sha256" if where == "recorded_digest" else "replayed_prompt_frontier_sha256"] = "0" * 64
+    elif where == "page_count":
+        scope["page_count"] += 1
+    elif where == "corpus_index_id":
+        cfg["corpus_manifest_index_id"] = "gjfccmiv1:index:" + "0" * 64
+    else:
+        cfg[where]["sha256"] = "0" * 64
+    cfg["diagnostic_scope_sha256"] = canonical_json_sha256_v1(cfg["scope"])
+    _write_test_prompt_scope(monkeypatch, path, cfg)
+    with pytest.raises(target.GeminiIncomeTaxRawMoneyCensusV1Error, match="invalidated"):
+        with target.open_income_tax_original_census_source_v1(**options) as source:
+            with pytest.raises(target.GeminiIncomeTaxRawMoneyCensusV1Error):
+                _load(source)
+
+
+@pytest.mark.parametrize("variant,body", [("compact", _SIMPLE_PROMPT_SHA), ("simple", "d" * 64)])
+def test_registered_prompt_encoding_all_original_rows_must_be_simple_correct_body(tmp_path, monkeypatch, variant, body):
+    options, _, _, _, _ = _legacy_prompt_fixture(tmp_path, monkeypatch, prompt_variant=variant, prompt_sha256=body)
+    with pytest.raises(target.GeminiIncomeTaxRawMoneyCensusV1Error, match="body/manifest"):
+        with target.open_income_tax_original_census_source_v1(**options) as source:
+            _load(source)
+
+
+@pytest.mark.parametrize("where", ["unknown_selection", "image", "manifest_version", "manifest_prompt", "manifest_extra_prompt_axis"])
+def test_registered_prompt_encoding_cannot_approve_resealed_unknown_source_axes(tmp_path, monkeypatch, where):
+    options, index, cfg, cfg_path, _ = _legacy_prompt_fixture(tmp_path, monkeypatch)
+    document = index["documents"][0]
+    selection_path = options["artifact_root"] / document["selection_ref"]["path"]
+    selection = json.loads(selection_path.read_bytes())
+    if where in {"unknown_selection", "image"}:
+        if where == "unknown_selection":
+            selection["prior_selection_ids"] = ["gjfcdmsv1:selection:" + "f" * 64]
+        else:
+            selection["page_image_frontier_sha256"] = "0" * 64
+    else:
+        manifest_path = options["artifact_root"] / document["document_manifest_ref"]["path"]
+        manifest = json.loads(manifest_path.read_bytes())
+        if where == "manifest_version":
+            manifest["format_version"] = "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V3"
+        elif where == "manifest_prompt":
+            manifest["extraction_contract"]["prompt_sha256"] = "0" * 64
+        else:
+            manifest["extraction_contract"]["page_prompt_sha256s"] = []
+        manifest["document_manifest_id"] = "gfdmv1:manifest:" + canonical_json_sha256_v1({
+            key: item for key, item in manifest.items() if key != "document_manifest_id"
+        })
+        document["document_manifest_id"] = selection["document_manifest_id"] = manifest["document_manifest_id"]
+        document["document_manifest_ref"] = _put(options["artifact_root"], document["document_manifest_ref"]["path"], manifest)
+        selection["document_manifest_ref"].update({key: document["document_manifest_ref"][key] for key in ("sha256", "size_bytes")})
+    selection["selection_id"] = "gjfcdmsv1:selection:" + canonical_json_sha256_v1({
+        key: item for key, item in selection.items() if key != "selection_id"
+    })
+    document["selection_id"] = selection["selection_id"]
+    document["selection_ref"] = _put(options["artifact_root"], document["selection_ref"]["path"], selection)
+    _reseal_prompt_test_index(options, index)
+    if where.startswith("manifest_"):
+        # Rebind the synthetic authority to the actual coherently sealed new
+        # index, so this negative reaches the manifest contract guard rather
+        # than merely failing because its index/selection registration changed.
+        cfg["corpus_manifest_index_id"] = index["corpus_manifest_index_id"]
+        cfg["corpus_index_ref"] = deepcopy(options["corpus_index_ref"])
+        cfg["source_bindings"] = [{key: deepcopy(document[key]) for key in cfg["source_bindings"][0]}]
+        cfg["scope"][0]["common_selection_ref"] = deepcopy(document["selection_ref"])
+        cfg["diagnostic_scope_sha256"] = canonical_json_sha256_v1(cfg["scope"])
+        _write_test_prompt_scope(monkeypatch, cfg_path, cfg)
+    match = "body/manifest" if where.startswith("manifest_") else "frontier"
+    with pytest.raises(target.GeminiIncomeTaxRawMoneyCensusV1Error, match=match):
+        with target.open_income_tax_original_census_source_v1(**options) as source:
+            _load(source)
+
+
+@pytest.mark.parametrize("when", ["before_context", "after_load"])
+def test_registered_prompt_encoding_authority_file_drift_rejected(tmp_path, monkeypatch, when):
+    options, _, _, path, _ = _legacy_prompt_fixture(tmp_path, monkeypatch)
+    if when == "before_context":
+        path.write_bytes(path.read_bytes() + b" ")
+    with pytest.raises(target.GeminiIncomeTaxRawMoneyCensusV1Error, match="Authority"):
+        with target.open_income_tax_original_census_source_v1(**options) as source:
+            _load(source)
+            path.write_bytes(path.read_bytes() + b" ")

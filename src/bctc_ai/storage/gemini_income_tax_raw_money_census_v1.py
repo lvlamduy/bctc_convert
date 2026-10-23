@@ -45,6 +45,11 @@ _LOCATOR_KEYS = (
     "page_json_version_id", "physical_page", "selected_page_ordinal",
 )
 _VALUE_KINDS = {"MONEY", "PERCENT", "COUNT", "TEXT", "UNKNOWN"}
+_PROMPT_ENCODING_SCOPE_RELATIVE = "config/families/tm-income-tax-common204-prompt-frontier-encoding-v1.json"
+_PROMPT_ENCODING_SCOPE_PATH = Path(__file__).resolve().parents[3] / _PROMPT_ENCODING_SCOPE_RELATIVE
+_PROMPT_ENCODING_SCOPE_SHA256 = "2e23473ce9246764d3a37d112f6f42a567824ebd053834e8299641f8b5bdd479"
+_PROMPT_ENCODING_SCOPE_SIZE_BYTES = 56250
+_PROMPT_ENCODING_DIAGNOSTIC_SCOPE_SHA256 = "218e69be9ccf1f620a3a4552f9f1d824b22b1aecee32a9641273285161b53151"
 
 
 class GeminiIncomeTaxRawMoneyCensusV1Error(ValueError):
@@ -128,6 +133,113 @@ def _json_object(raw: bytes) -> dict[str, Any]:
     _require(type(value) is dict, "Authority JSON must be an object")
     canonical_json_bytes_v1(value)
     return value
+
+
+def _load_registered_prompt_encoding_scope(source) -> dict[str, Any]:
+    """Read one independently pinned encoding scope, not a caller exception.
+
+    The restore evidence proves only an exact SHA-body versus variant encoding
+    distinction. It grants no financial, PDF, period, unit or export authority.
+    The actual file joins the source context's before/finally authority barriers.
+    """
+    path = _PROMPT_ENCODING_SCOPE_PATH
+    value = source._read_authority(path.parent, {
+        "path": path.name, "sha256": _PROMPT_ENCODING_SCOPE_SHA256,
+        "size_bytes": _PROMPT_ENCODING_SCOPE_SIZE_BYTES,
+    })
+    _require(set(value) == {
+        "format_version", "family_id", "authority", "corpus_manifest_index_id",
+        "corpus_index_ref", "database_ref", "diagnostic_scope_sha256",
+        "simple_prompt_sha256", "scope", "source_bindings", "lineage",
+    } and value["format_version"] == "F39_REGISTERED_COMMON204_PROMPT_FRONTIER_ENCODING_V1"
+       and value["family_id"] == "INCOME_TAX"
+       and value["authority"] == "RESTORE_AUTHENTICATED_EXACT_SCOPE_PROMPT_DIGEST_ENCODING_ONLY",
+       "Registered prompt encoding scope fields differ")
+    scope, bindings = value["scope"], value["source_bindings"]
+    _require(type(scope) is list and bool(scope) and type(bindings) is list
+             and len(scope) == len(bindings)
+             and value["diagnostic_scope_sha256"] == _PROMPT_ENCODING_DIAGNOSTIC_SCOPE_SHA256
+             == canonical_json_sha256_v1(scope), "Registered prompt encoding scope digest differs")
+    ordinals = [item["source_ordinal"] for item in scope]
+    _require(all(type(ordinal) is int and ordinal > 0 for ordinal in ordinals)
+             and ordinals == sorted(set(ordinals))
+             and all(type(item["source_ordinal"]) is int for item in bindings)
+             and [item["source_ordinal"] for item in bindings] == ordinals
+             and all(type(item["page_count"]) is int and item["page_count"] > 0
+                     and item["selected_page_json_version_ids_exactly_equal_full271"] is True
+                     and item["page_image_frontier_replays_from_sqlite"] is True for item in scope),
+             "Registered prompt encoding source axis differs")
+    _reference(value["corpus_index_ref"])
+    _reference(value["database_ref"])
+    return value
+
+
+def _registered_prompt_encoding_witness(source, document, loaded, *, variant_frontier_sha256):
+    """Admit SHA-body encoding only for the pinned original corpus/selection.
+
+    Every other corpus/document retains the variant-only rule. All inputs here
+    came from this context's official single load, never a supplied receipt.
+    """
+    scope = json.loads(source._prompt_encoding_scope_bytes)
+    selection, indexed = document["selection"], document["index_document"]
+    recorded = selection["page_prompt_frontier_sha256"]
+    corpus_matches = (
+        source._index_id == scope["corpus_manifest_index_id"]
+        and same_typed_json_v1(source._index_ref, scope["corpus_index_ref"])
+        and same_typed_json_v1(source._database_ref, scope["database_ref"])
+    )
+    matches = [item for item in scope["scope"]
+               if item["source_ordinal"] == indexed["source_ordinal"]] if corpus_matches else []
+    if not matches:
+        _require(recorded == variant_frontier_sha256,
+                 "Selected image/prompt frontier differs from original source")
+        return None
+    _require(len(matches) == 1, "Registered prompt encoding source is not unique")
+    expected = matches[0]
+    binding = next(item for item in scope["source_bindings"]
+                   if item["source_ordinal"] == indexed["source_ordinal"])
+    _require(same_typed_json_v1({key: indexed.get(key) for key in binding}, binding)
+             and expected["relative_path"] == indexed["relative_path"]
+             and expected["page_count"] == indexed["page_count"] == len(loaded)
+             and same_typed_json_v1(expected["common_selection_ref"], indexed["selection_ref"])
+             and canonical_json_sha256_v1(document["ids"])
+             == expected["selected_page_json_version_ids_sha256"],
+             "Registered prompt encoding document/selection frontier differs")
+    manifest = document["manifest"]
+    contract = manifest.get("extraction_contract")
+    simple_sha = scope["simple_prompt_sha256"]
+    _require(manifest.get("format_version") == "GEMINI_FINANCIAL_DOCUMENT_MANIFEST_V4"
+             and type(contract) is dict and contract.get("prompt_sha256") == simple_sha
+             and "page_prompt_sha256s" not in contract
+             and all(row["prompt_variant"] == "simple" and row["prompt_sha256"] == simple_sha
+                     for row in loaded), "Registered prompt encoding body/manifest contract differs")
+    digest_frontier_sha256 = canonical_json_sha256_v1([
+        {"physical_page": row["physical_page"], "prompt_sha256": row["prompt_sha256"]}
+        for row in loaded
+    ])
+    _require(recorded == expected["selection_prompt_frontier_sha256"] == digest_frontier_sha256
+             and variant_frontier_sha256 == expected["replayed_prompt_frontier_sha256"]
+             and recorded != variant_frontier_sha256,
+             "Registered prompt encoding does not replay from original source")
+    material = {
+        "format_version": "F39_REGISTERED_PROMPT_FRONTIER_ENCODING_WITNESS_V1",
+        "encoding": "PHYSICAL_PAGE_PROMPT_SHA256_OBSERVED",
+        "registered_scope_ref": {"path": _PROMPT_ENCODING_SCOPE_RELATIVE,
+                                 "sha256": _PROMPT_ENCODING_SCOPE_SHA256,
+                                 "size_bytes": _PROMPT_ENCODING_SCOPE_SIZE_BYTES},
+        "diagnostic_scope_sha256": scope["diagnostic_scope_sha256"],
+        "corpus_manifest_index_id": source._index_id,
+        "source_ordinal": indexed["source_ordinal"],
+        "selection_ref": canonical_clone_v1(indexed["selection_ref"]),
+        "selected_page_json_version_ids_sha256": canonical_json_sha256_v1(document["ids"]),
+        "recorded_sha256": recorded,
+        "recomputed_sha256": digest_frontier_sha256,
+        "variant_encoding_sha256": variant_frontier_sha256,
+        "prompt_body_sha256": simple_sha,
+        "source_values_or_period_keys_modified": False,
+        "financial_or_pdf_or_export_permission_granted": False,
+    }
+    return {**material, "witness_id": "f39promptencodingv1:" + canonical_json_sha256_v1(material)}
 
 
 class IncomeTaxOriginalCensusSourceV1:
@@ -276,6 +388,9 @@ def open_income_tax_original_census_source_v1(
             _require(all(index["database_ref"][key] == source._database_ref[key] for key in ("sha256", "size_bytes")), "Database pins differ from corpus index")
             source._index_bytes = canonical_json_bytes_v1(index)
             source._index_id = index["corpus_manifest_index_id"]
+            source._prompt_encoding_scope_bytes = canonical_json_bytes_v1(
+                _load_registered_prompt_encoding_scope(source)
+            )
             source._document_bytes = tuple(canonical_json_bytes_v1(document)
                                            for document in _load_document_authorities(source, index))
             source._check_authorities()
@@ -430,9 +545,12 @@ def load_income_tax_original_document_census_v1(
         axis, records = original_income_tax_records_from_loaded_v1(document, loaded, run_document_ordinal=run_document_ordinal)
         _require(document["selection"]["page_image_frontier_sha256"] == canonical_json_sha256_v1([
             {"physical_page": row["physical_page"], "image_sha256": row["image_sha256"]} for row in loaded
-        ]) and document["selection"]["page_prompt_frontier_sha256"] == canonical_json_sha256_v1([
-            {"physical_page": row["physical_page"], "prompt_variant": row["prompt_variant"]} for row in loaded
         ]), "Selected image/prompt frontier differs from original source")
+        encoding_witness = _registered_prompt_encoding_witness(
+            source, document, loaded, variant_frontier_sha256=canonical_json_sha256_v1([
+                {"physical_page": row["physical_page"], "prompt_variant": row["prompt_variant"]} for row in loaded
+            ]),
+        )
         source._check_database(full_hash=False)
         page_axis = [{key: record[key] for key in _LOCATOR_KEYS} for record in records]
         binding = {"corpus_index_ref": source._index_ref,
@@ -447,6 +565,8 @@ def load_income_tax_original_document_census_v1(
                    "official_source_replay_receipt_axis_sha256": canonical_json_sha256_v1([row["source_json_replay_receipt"] for row in loaded]),
                    "source_scope": "SELECTED_ORIGINAL_DOCUMENT_NOT_PHYSICAL_PDF_COMPLETENESS",
                    "operation_scope": "PROVISIONAL_UNTIL_AUTHENTICATED_SOURCE_CONTEXT_EXIT"}
+        if encoding_witness is not None:
+            binding["registered_prompt_frontier_encoding_witness"] = encoding_witness
         census = _enumerate_original_cells(records, loaded, binding)
         source._loaded_ordinals.add(corpus_document_ordinal)
         source._run_ordinals.add(run_document_ordinal)

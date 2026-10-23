@@ -1,0 +1,96 @@
+{
+  "schema": "f39-frontier-export-checkpoint-v1",
+  "recorded_at_utc": "2026-10-23T01:14:00Z",
+  "branch": "codex/f39-income-tax-laptop",
+  "parent_git_commit": "5c9ec4077e22780867da1153d928d29e63f5f14d",
+  "authority_base_commit": "8efd618b6c77f0cdbb402a440e7ba3b3549184f1",
+  "family_id": "INCOME_TAX",
+  "report_year_from": 2025,
+  "excluded_production_years": [2024],
+  "family_terminal_claimed": false,
+  "provider_called": false,
+  "changes": [
+    {
+      "scope": "EXACT_REGISTERED_COMMON204_PROMPT_FRONTIER_ENCODING",
+      "description": "Accept the restore-authenticated prompt-SHA encoding only for the exact 20 registered original selections. Fresh image frontier, ordered selected IDs, source bindings, original prompt body and immutable authorities remain mandatory. All other documents retain variant-only frontier equality.",
+      "financial_values_periods_units_or_export_permissions_changed": false,
+      "registered_documents": 20,
+      "registered_pages": 1113,
+      "registry_path": "config/families/tm-income-tax-common204-prompt-frontier-encoding-v1.json",
+      "registry_sha256": "2e23473ce9246764d3a37d112f6f42a567824ebd053834e8299641f8b5bdd479",
+      "diagnostic_scope_sha256": "218e69be9ccf1f620a3a4552f9f1d824b22b1aecee32a9641273285161b53151",
+      "restore_preflight_receipt_sha256": "9429c4660646f3caba9febab90b8de951f41e8fe6ce9c36ab683b62989cd1383"
+    },
+    {
+      "scope": "F39_EXACT_STORED_SWEEP_SERIALIZATION",
+      "description": "Write our validated sweep in the exact two-LF representation already persisted by the store. This avoids the known one-LF fallback reparse. Exclusive creation, full write, flush and fsync are required; publication failures retain their artifact. Existing outputs are never replaced.",
+      "validation_cold_replay_or_reload_gates_removed": false,
+      "measured_performance_improvement_claimed": false
+    }
+  ],
+  "tested_source_sha256": {
+    "src/bctc_ai/storage/gemini_income_tax_raw_money_census_v1.py": "483e635fb3d01e819c2c87cf649ef84f4917dc654c89cbd227cd6ced602213bd",
+    "tests/unit/test_gemini_income_tax_raw_money_census_v1.py": "e729d294b6aa4104f2b46786b28be2d8b930ca82a1e642c2dc472b1266317da6",
+    "scripts/experiments/run_gemini_json_income_tax_accounting_family_v1.py": "bbb618ca0e0461416c4b0d9ffaa5d2ccb8847dcf6133fe45aac1076ff04a4c68",
+    "tests/unit/test_run_gemini_json_income_tax_accounting_family_v1.py": "e76ac65ff34592227fa35100ac19498e332d1d19754528893df475276abbc9c5"
+  },
+  "focused_regression": {
+    "receipt": "/srv/bctc-receipts/f39-frontier-export-focused-20261023T010000Z/F39_FRONTIER_EXPORT_FOCUSED_RECEIPT.json",
+    "sha256": "93363516d658e539e638dcbaa26ab29e0e3762061e07110604cd0c1ca037d6fa",
+    "size_bytes": 715498,
+    "python": "3.12",
+    "status": "PASS",
+    "executed_tests": 688,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "inputs_unchanged": true,
+    "complete_executed_node_axis": true
+  },
+  "real_source_boundary_smoke": {
+    "receipt": "/srv/bctc-receipts/f39-common204-frontier-smoke-20261023T011100Z/F39_COMMON204_REGISTERED_FRONTIER_SOURCE_SMOKE_V1.json",
+    "sha256": "8517625ac9eff6a6ec6f130ca9782b9443c2845d990764e54f8a274cfb2fc198",
+    "size_bytes": 509039,
+    "status": "PASS_REGISTERED_SOURCE_FRONTIERS_NOT_FINANCIAL_OR_FAMILY_ACCEPTANCE",
+    "documents_per_pass": 20,
+    "pages_per_pass": 1113,
+    "independent_source_contexts": 2,
+    "full_bundle_hashes_exactly_equal": true,
+    "both_source_context_exits_passed": true,
+    "source_bytes_unchanged": true
+  },
+  "prior_official_pair": {
+    "result": "/srv/bctc-receipts/f39-taxable-stage-official-full-common-1792706026104/execution-result.json",
+    "sha256": "5163475fe3f6f877a117fdcb93a13e94ead16f8bbaeab089b82529b70c860f08",
+    "status": "FAIL_COMMON204_BEFORE_FIRST_CENSUS",
+    "child_known_terminal": true,
+    "full271_command_succeeded_on_prior_snapshot": true,
+    "prior_full_ready_proposals": 48,
+    "prior_full_unresolved_proposals": 223,
+    "ready_proposals_are_not_accepted_values": true,
+    "old_full_is_not_current_patch_full_coverage": true,
+    "automatic_restart_permitted": false
+  },
+  "test_temp_incident": {
+    "external_receipt": "D:/bctc_bank/restore-receipts/F39_PYTEST_TMP_INCIDENT_20261023_V1.json",
+    "sha256": "ac99e25be1cefae2e2f42a8a2607ba661fb5d7fab68efd74687f08777e05d996",
+    "other_system_tmp_content_loss": "UNKNOWN_NO_BEFORE_INVENTORY",
+    "source_databases_indexes_and_frozen_shared_file_hashes_after_incident": "PASS",
+    "no_global_no_loss_claim": true,
+    "safe_retest_used_literal_argv_and_python_constructed_absent_private_scratch": true,
+    "no_attempt_artifact_cleanup_performed": true
+  },
+  "frozen_shared_files": {
+    "src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py": "bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2",
+    "scripts/experiments/run_gemini_json_multitable_hierarchical_accounting_family_v1.py": "d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5",
+    "both_read_only_verified": true
+  },
+  "next_required_work": [
+    "Fresh authoritative FULL271 then COMMON204 on the exact tested committed code; independent cold replay, exact SQLite reload and all existing source/PDF/runtime/integrity gates remain required.",
+    "Audit actual final mappings and required PDF evidence; a READY proposal alone does not authorize a value.",
+    "Account for every residual truthfully. Explicit algorithm backlog may remain unaccepted and unexported; never relabel it issuer conflict or source absence without evidence.",
+    "Verify the exact common-document semantic projection and write an authenticated accepted-core ledger before claiming F39 terminal.",
+    "After F39 is terminal, continue F36 then F37. Do not open Family41 before all three are terminal."
+  ],
+  "breadth_policy": "PROJECT_OPERATING_DIRECTIVE.md sections35.2/35.6/35.7: do not wait for zero unresolved; preserve the full goal and report accepted bank/schema/value coverage, not test counts."
+}

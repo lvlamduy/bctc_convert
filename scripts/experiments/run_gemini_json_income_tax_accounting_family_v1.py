@@ -132,6 +132,20 @@ def require(condition: Any, message: str) -> None:
         raise RunGeminiJsonIncomeTaxV1Error(message)
 
 
+def _write_income_tax_sweep_once_v1(path: Path, sweep: dict[str, Any]) -> None:
+    """Publish our validated sweep in the store's exact two-LF representation.
+
+    Never copy caller/DB bytes or replace an existing output. If publication
+    fails, retain the exclusively created artifact for fail-closed inspection.
+    """
+    payload = canonical_json_bytes_v1(sweep) + b"\n"
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)
+    with os.fdopen(descriptor, "wb") as stream:
+        require(stream.write(payload) == len(payload), "Income-tax sweep output write was incomplete")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
 def _json(path: Path) -> dict[str, Any]:
     def pairs(items):
         result = {}
@@ -1560,7 +1574,7 @@ def run(args):
             "diagnostic_ref": generic._file_ref(args.output_dir / "income-tax-bounded-diagnostic.json"),
         }
     output = args.output_dir / "income-tax-sweep.json"
-    generic._write_once(output, sweep)
+    _write_income_tax_sweep_once_v1(output, sweep)
     export = record_gemini_accounting_family_export_v1(
         args.results_database, family_run_id=stored["family_run_id"], output_path=output
     )

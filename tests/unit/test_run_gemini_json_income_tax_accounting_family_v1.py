@@ -1116,3 +1116,170 @@ def test_authenticated_raw_census_run_pins_both_actual_authority_validator_imple
         assert captured[path]["sha256"] == sha256(path.read_bytes()).hexdigest()
         assert captured[path]["size_bytes"] == path.stat().st_size
     assert not args.results_database.exists()
+
+
+def _stored_sweep_export_case(tmp_path, monkeypatch):
+    """Real source/index, independent cold replay and genuine result-store row."""
+    fixture = _raw_census_authority_fixture(tmp_path, monkeypatch)
+    (indexed, trials, _), references, _ = _written_authenticated_raw_census_stream(
+        fixture, tmp_path / "warm",
+    )
+    sweep = _raw_census_sweep(fixture, indexed, trials)
+    database = tmp_path / "family-results.sqlite3"
+    stored = _raw_census_generic_ingest(
+        fixture, database, sweep, _authenticated_raw_cold_adapter(fixture, references),
+    )
+    assert same_typed_json_v1(
+        runner.load_gemini_accounting_family_sweep_v1(database, stored["family_run_id"]), sweep,
+    )
+    return database, stored["family_run_id"], sweep
+
+
+def test_income_tax_stored_sweep_export_exact_db_fastpath_and_truthful_ref(tmp_path, monkeypatch):
+    import sqlite3
+
+    from bctc_ai.storage import gemini_accounting_family_store_v1 as store
+
+    database, run_id, sweep = _stored_sweep_export_case(tmp_path, monkeypatch)
+    before = deepcopy(sweep)
+    output = tmp_path / "income-tax-sweep.json"
+    runner._write_income_tax_sweep_once_v1(output, sweep)
+    raw = output.read_bytes()
+    with sqlite3.connect(database) as connection:
+        stored_raw, stored_sha = connection.execute(
+            "SELECT sweep_bytes,sweep_sha256 FROM family_run WHERE family_run_id=?", (run_id,),
+        ).fetchone()
+    assert raw == stored_raw == canonical_json_bytes_v1(sweep) + b"\n"
+    assert raw.endswith(b"\n\n") and not raw.endswith(b"\n\n\n")
+    assert sha256(raw).hexdigest() == stored_sha
+    assert same_typed_json_v1(json.loads(raw), before)
+    assert sweep == before
+    assert json.loads(raw)["sweep_id"] == before["sweep_id"]
+    assert json.loads(raw)["metrics"] == before["metrics"]
+
+    def forbidden_fallback(*args, **kwargs):
+        raise AssertionError("Exact stored representation must not revalidate huge JSON blobs")
+
+    # Install only after genuine ingest/reload; no source admission is mocked.
+    monkeypatch.setattr(store, "validate_gemini_json_flat_family_sweep_v1", forbidden_fallback)
+    reference = runner.record_gemini_accounting_family_export_v1(
+        database, family_run_id=run_id, output_path=output,
+    )
+    assert reference == {"output_path": str(output.resolve()), "sha256": sha256(raw).hexdigest(),
+                         "size_bytes": len(raw)}
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT output_sha256,output_size_bytes FROM family_export WHERE family_run_id=?", (run_id,),
+        ).fetchone() == (reference["sha256"], reference["size_bytes"])
+
+
+@pytest.mark.parametrize("mutation", ["file_value", "file_extra_lf", "file_space", "database_value"])
+def test_income_tax_stored_sweep_export_mutation_fails_actual_export_api(tmp_path, monkeypatch, mutation):
+    import sqlite3
+
+    from bctc_ai.storage.gemini_accounting_family_store_v1 import GeminiAccountingFamilyStoreV1Error
+
+    database, run_id, sweep = _stored_sweep_export_case(tmp_path, monkeypatch)
+    output = tmp_path / "income-tax-sweep.json"
+    runner._write_income_tax_sweep_once_v1(output, sweep)
+    altered = deepcopy(sweep)
+    altered["metrics"]["mapping_count"] += 1
+    if mutation == "database_value":
+        raw = canonical_json_bytes_v1(altered) + b"\n"
+        with sqlite3.connect(database) as connection:
+            connection.execute("UPDATE family_run SET sweep_bytes=?,sweep_sha256=? WHERE family_run_id=?",
+                               (raw, sha256(raw).hexdigest(), run_id))
+    else:
+        output.chmod(0o644)
+        raw = output.read_bytes()
+        output.write_bytes(canonical_json_bytes_v1(altered) + b"\n" if mutation == "file_value"
+                           else raw + (b"\n" if mutation == "file_extra_lf" else b" "))
+    with pytest.raises(GeminiAccountingFamilyStoreV1Error, match="does not equal"):
+        runner.record_gemini_accounting_family_export_v1(database, family_run_id=run_id, output_path=output)
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM family_export").fetchone() == (0,)
+
+
+def test_income_tax_stored_sweep_export_legacy_one_lf_still_supported(tmp_path, monkeypatch):
+    database, run_id, sweep = _stored_sweep_export_case(tmp_path, monkeypatch)
+    output = tmp_path / "legacy-canonical-sweep.json"
+    raw = canonical_json_bytes_v1(sweep)
+    output.write_bytes(raw)
+    reference = runner.record_gemini_accounting_family_export_v1(
+        database, family_run_id=run_id, output_path=output,
+    )
+    assert reference["sha256"] == sha256(raw).hexdigest()
+    assert reference["size_bytes"] == len(raw)
+
+
+@pytest.mark.parametrize("existing", ["same", "different", "empty", "symlink", "dangling_symlink"])
+def test_income_tax_stored_sweep_export_never_replaces_existing_path(tmp_path, existing):
+    sweep = {"sweep_id": "writer-protocol-only", "blank": None}
+    output = tmp_path / "sweep.json"
+    target = tmp_path / "target.json"
+    if existing.endswith("symlink"):
+        if existing == "symlink":
+            target.write_bytes(b"unchanged target")
+        output.symlink_to(target)
+        expected = None if existing == "dangling_symlink" else target.read_bytes()
+    else:
+        output.write_bytes(canonical_json_bytes_v1(sweep) + b"\n" if existing == "same"
+                           else b"different" if existing == "different" else b"")
+        expected = output.read_bytes()
+    with pytest.raises(FileExistsError):
+        runner._write_income_tax_sweep_once_v1(output, sweep)
+    if existing.endswith("symlink"):
+        assert output.is_symlink() and output.readlink() == target
+        assert (target.read_bytes() if target.exists() else None) == expected
+    else:
+        assert output.read_bytes() == expected
+
+
+@pytest.mark.parametrize("failure", ["write", "short_write", "flush", "fsync"])
+def test_income_tax_stored_sweep_export_failed_publication_retains_artifact(tmp_path, monkeypatch, failure):
+    sweep = {"sweep_id": "writer-protocol-only", "blank": None}
+    output = tmp_path / "sweep.json"
+    actual_fdopen = runner.os.fdopen
+
+    class FailingStream:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.stream.close()
+
+        def write(self, raw):
+            if failure in {"write", "short_write"}:
+                self.stream.write(raw[:5])
+                self.stream.flush()
+                if failure == "write":
+                    raise OSError("injected write failure")
+                return 5
+            return self.stream.write(raw)
+
+        def flush(self):
+            self.stream.flush()
+            if failure == "flush":
+                raise OSError("injected flush failure")
+
+        def fileno(self):
+            return self.stream.fileno()
+
+    monkeypatch.setattr(runner.os, "fdopen", lambda *args: FailingStream(actual_fdopen(*args)))
+    if failure == "fsync":
+        def fail_fsync(descriptor):
+            raise OSError("injected fsync failure")
+
+        monkeypatch.setattr(runner.os, "fsync", fail_fsync)
+    with pytest.raises((OSError, runner.RunGeminiJsonIncomeTaxV1Error), match="injected|incomplete"):
+        runner._write_income_tax_sweep_once_v1(output, sweep)
+    assert output.exists() and not output.is_symlink()
+    raw = output.read_bytes()
+    assert raw == ((canonical_json_bytes_v1(sweep) + b"\n")[:5] if failure in {"write", "short_write"}
+                   else canonical_json_bytes_v1(sweep) + b"\n")
+    with pytest.raises(FileExistsError):
+        runner._write_income_tax_sweep_once_v1(output, sweep)
+    assert output.read_bytes() == raw
