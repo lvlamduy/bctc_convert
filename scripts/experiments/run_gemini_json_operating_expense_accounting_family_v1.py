@@ -250,6 +250,8 @@ def _row_original_blob_refs_v1(database, indexed, pages, declaration):
 
     No validator output is declared ORIGINAL unless it exactly matches the
     stored two-LF canonical BLOB. Transform/crosswalk cases stay unsupported.
+    Declared PRIMARY dependencies only request bounded IO; the pure core must
+    independently rebuild the unit binder before any held-row reconciliation.
     """
     result = {}
     def identity(st):
@@ -262,19 +264,78 @@ def _row_original_blob_refs_v1(database, indexed, pages, declaration):
         connection.execute("PRAGMA cache_size=-1024")
         for review in declaration["reviews"]:
             ordinal = review["document"]["document_ordinal"]
-            version = review["printed_frontier"]["locator"]["page_json_version_id"]
-            axis = [p for p in indexed["selected_page_axis"] if p["document_ordinal"] == ordinal and p["page_json_version_id"] == version]
-            if len(axis) != 1:
-                raise _error("Family-36 reviewed original VID not uniquely selected")
-            size = connection.execute("SELECT length(canonical_json_bytes) FROM page_json_version WHERE page_json_version_id=?", (version,)).fetchone()
-            if size is None or type(size[0]) is not int or not 0 < size[0] <= 4 * 1024**2:
-                raise _error("Family-36 reviewed original BLOB absent/oversized")
-            blob, stored_sha = connection.execute("SELECT canonical_json_bytes,canonical_json_sha256 FROM page_json_version WHERE page_json_version_id=?", (version,)).fetchone()
-            page = pages[ordinal][version]
-            if type(blob) is not bytes or sha256(blob).hexdigest() != stored_sha or canonical_json_bytes_v1(page) + b"\n" != blob:
-                raise _error("Family-36 reviewed source BLOB/object validation domain differs")
-            result[version] = {"page_json_version_id": version, "stored_blob_sha256": stored_sha,
-                               "stored_blob_size_bytes": len(blob), "original_object_sha256": canonical_json_sha256_v1(page)}
+            frontier = review["printed_frontier"]
+            version = frontier["locator"]["page_json_version_id"]
+            requests = [(version, None)]
+            fields = ("unit_corroboration_receipts", "unit_source_page_blob_refs")
+            if any(key in frontier for key in fields):
+                receipts, dependencies = (frontier.get(key) for key in fields)
+                doc = review["document"]
+                doc_keys = unresolved_rows.LOCATOR[:4]
+                page_keys = unresolved_rows.LOCATOR[:7]
+                selected_docs = [d for d in indexed["selected_document_axis"] if same_typed_json_v1(d, doc)]
+                if (set(doc) != set(doc_keys) or type(ordinal) is not int or ordinal <= 0
+                        or any(type(doc[k]) is not str or not doc[k] for k in doc_keys if k != "document_ordinal")
+                        or len(selected_docs) != 1 or type(receipts) is not list or not receipts
+                        or type(dependencies) is not list or not dependencies):
+                    raise _error("Family-36 unit-source dependency document/pair is invalid")
+                note_axis = [p for p in indexed["selected_page_axis"] if p["page_json_version_id"] == version]
+                if (len(note_axis) != 1 or set(note_axis[0]) != set(page_keys)
+                        or not same_typed_json_v1({k: note_axis[0][k] for k in doc_keys}, doc)
+                        or any(type(note_axis[0][k]) is not int or note_axis[0][k] <= 0
+                            for k in ("document_ordinal", "physical_page", "selected_page_ordinal"))
+                        or not same_typed_json_v1({k: frontier["locator"].get(k) for k in page_keys}, note_axis[0])):
+                    raise _error("Family-36 unit-source NOTE axis differs from its reviewed document")
+                root_versions = set()
+                for receipt in receipts:
+                    roots = receipt.get("matched_primary_roots") if type(receipt) is dict else None
+                    if type(roots) is not list or not roots:
+                        raise _error("Family-36 unit-source matched PRIMARY axis is absent")
+                    for root in roots:
+                        locator = root.get("locator") if type(root) is dict else None
+                        if (type(locator) is not dict or type(locator.get("physical_page")) is not int
+                                or locator["physical_page"] <= 0
+                                or type(locator.get("page_json_version_id")) is not str or not locator["page_json_version_id"]):
+                            raise _error("Family-36 unit-source PRIMARY root identity differs")
+                        root_versions.add(locator["page_json_version_id"])
+                declared_versions = []
+                for dependency in dependencies:
+                    if type(dependency) is not dict or set(dependency) != {"selected_page_axis", "stored_page_blob_ref"}:
+                        raise _error("Family-36 unit-source dependency fields differ")
+                    axis, expected = dependency["selected_page_axis"], dependency["stored_page_blob_ref"]
+                    if (type(axis) is not dict or set(axis) != set(page_keys)
+                            or not same_typed_json_v1({k: axis[k] for k in doc_keys}, doc)
+                            or any(type(axis[k]) is not int or axis[k] <= 0 for k in ("document_ordinal", "physical_page", "selected_page_ordinal"))
+                            or type(axis["page_json_version_id"]) is not str or not axis["page_json_version_id"]
+                            or type(expected) is not dict):
+                        raise _error("Family-36 unit-source selected page identity is invalid")
+                    matches = [p for p in indexed["selected_page_axis"] if p["page_json_version_id"] == axis["page_json_version_id"]]
+                    if (len(matches) != 1 or not same_typed_json_v1(matches[0], axis)
+                            or not all(same_typed_json_v1(r["locator"]["physical_page"], axis["physical_page"])
+                                for receipt in receipts for r in receipt["matched_primary_roots"]
+                                if r["locator"]["page_json_version_id"] == axis["page_json_version_id"])
+                            or pages[ordinal].get(axis["page_json_version_id"], {}).get("status") != "PRIMARY_FINANCIAL_STATEMENT"):
+                        raise _error("Family-36 unit-source PRIMARY page is not uniquely selected in this document")
+                    declared_versions.append(axis["page_json_version_id"])
+                    requests.append((axis["page_json_version_id"], expected))
+                if declared_versions != sorted(root_versions) or version in root_versions:
+                    raise _error("Family-36 unit-source dependency VID set/order differs from matched PRIMARY roots")
+            for version, expected in requests:
+                axis = [p for p in indexed["selected_page_axis"] if p["document_ordinal"] == ordinal and p["page_json_version_id"] == version]
+                if len(axis) != 1:
+                    raise _error("Family-36 reviewed original VID not uniquely selected")
+                size = connection.execute("SELECT length(canonical_json_bytes) FROM page_json_version WHERE page_json_version_id=?", (version,)).fetchone()
+                if size is None or type(size[0]) is not int or not 0 < size[0] <= 4 * 1024**2:
+                    raise _error("Family-36 reviewed original BLOB absent/oversized")
+                blob, stored_sha = connection.execute("SELECT canonical_json_bytes,canonical_json_sha256 FROM page_json_version WHERE page_json_version_id=?", (version,)).fetchone()
+                page = pages[ordinal][version]
+                if type(blob) is not bytes or sha256(blob).hexdigest() != stored_sha or canonical_json_bytes_v1(page) + b"\n" != blob:
+                    raise _error("Family-36 reviewed source BLOB/object validation domain differs")
+                actual = {"page_json_version_id": version, "stored_blob_sha256": stored_sha,
+                          "stored_blob_size_bytes": len(blob), "original_object_sha256": canonical_json_sha256_v1(page)}
+                if expected is not None and not same_typed_json_v1(actual, expected):
+                    raise _error("Family-36 declared unit-source original BLOB proof differs")
+                result[version] = actual
     if identity(database.stat()) != before or any(os.path.lexists(str(database) + suffix) for suffix in ("-wal", "-shm", "-journal")):
         raise _error("Family-36 reviewed source SQLite changed")
     return result
