@@ -23,6 +23,11 @@ and687-test/source-backed checkpoint is recorded in
 F36 remains unsealed; distinguish its promoted algorithm from isolated
 title/payroll/performance drafts and the older full/common baseline.
 
+The finite continuation-title improvement is now promoted separately; read
+`docs/operations/F36_OWNED_CONTINUATION_TITLE_CHECKPOINT_2026-10-23.md` for its
+721-test gate and actual FULL149 source proof. Payroll/performance and numeric
+PRIMARY-witness repair remain isolated drafts. Neither checkpoint seals F36.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
