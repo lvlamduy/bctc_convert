@@ -170,6 +170,119 @@ def _source_path(source_pdf_root: Path, logical_name: str) -> Path:
     return path
 
 
+def _primary_witness_options_v1(args):
+    path = getattr(args, "primary_witness_spec", None)
+    pin = getattr(args, "expected_primary_witness_sha256", None)
+    if (path is None) != (pin is None):
+        raise _error("Family-36 witness path and independently reviewed SHA are required together")
+    if path is None:
+        return None, None
+    if not Path(path).is_absolute() or type(pin) is not str or re.fullmatch(r"[0-9a-f]{64}", pin) is None:
+        raise _error("Family-36 witness authority requires an absolute path and exact SHA")
+    return Path(path), pin
+
+
+def _load_primary_witness_spec_v1(path, expected_sha256):
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import _read
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import validate_f36_primary_witness_spec_v1
+    payload, reference = _read(path)
+    if reference["sha256"] != expected_sha256:
+        raise _error("Family-36 PRIMARY witness file pin drifted")
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise _error("Family-36 duplicate witness spec JSON key")
+            result[key] = value
+        return result
+    return validate_f36_primary_witness_spec_v1(json.loads(payload, object_pairs_hook=pairs))
+
+
+def _authenticate_primary_witness_admission_v1(*, path, expected_sha256, index, base, pages, compiled, source_pdf_root):
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import authenticate_primary_witness_admission_v1
+    return authenticate_primary_witness_admission_v1(
+        spec_path=path, expected_sha256=expected_sha256, index=index,
+        selected_document_axis=base["selected_document_axis"], selected_page_axis=base["selected_page_axis"],
+        page_json_by_document=pages, compiled_specs=compiled, source_pdf_root=source_pdf_root)
+
+
+def _primary_witness_application_receipt_v1(*, indexed, compiled):
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import AXIS_FIELD
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import SPEC_KEY, HASH_KEY
+    spec = compiled[SPEC_KEY]
+    documents = indexed["selected_document_axis"]
+    sources = {(d["source_logical_name"], d["source_sha256"]) for d in documents}
+    expected = [w["witness_id"] for w in spec["witnesses"]
+                if (w["source"]["source_logical_name"], w["source"]["source_sha256"]) in sources]
+    applied, axis_ids, logical = [], [], 0
+    if len(indexed["candidate_dispositions"]) != len(documents):
+        raise _error("Family-36 PRIMARY witness document denominator drifted")
+    for document, disposition in zip(documents, indexed["candidate_dispositions"], strict=True):
+        facts = disposition["cluster"].get(AXIS_FIELD)
+        if (type(facts) is not dict or not same_typed_json_v1(facts.get("document"), document)
+                or facts.get("spec_sha256") != compiled[HASH_KEY]):
+            raise _error("Family-36 missing/wrong-scope PRIMARY witness document axis")
+        material = {k: v for k, v in facts.items() if k != "receipt_id"}
+        if facts.get("receipt_id") != "gjoepwa1:document:" + canonical_json_sha256_v1(material):
+            raise _error("Family-36 PRIMARY witness document receipt identity drifted")
+        projections, pixel_axis = facts.get("projection_receipts"), facts.get("pixel_verification_receipts")
+        if type(projections) is not list or type(pixel_axis) is not list:
+            raise _error("Family-36 PRIMARY witness projection/pixel axis is malformed")
+        ids = []
+        declared = {w["witness_id"]: w for w in spec["witnesses"]}
+        for projection in projections:
+            if type(projection) is not dict or type(projection.get("witness")) is not dict:
+                raise _error("Family-36 PRIMARY witness projection is malformed")
+            body = {k: v for k, v in projection.items() if k != "receipt_id"}
+            witness = projection["witness"]
+            wid = witness.get("witness_id")
+            if (projection.get("receipt_id") != "gjoepwv1:projection:" + canonical_json_sha256_v1(body)
+                    or wid not in declared or not same_typed_json_v1(witness, declared[wid])
+                    or projection.get("witness_spec_sha256") != compiled[HASH_KEY]
+                    or witness["source"]["source_sha256"] != document["source_sha256"]
+                    or witness["source"]["source_logical_name"] != document["source_logical_name"]):
+                raise _error("Family-36 PRIMARY witness declared projection drifted")
+            ids.append(wid)
+        pixel_ids = []
+        for pixel in pixel_axis:
+            if type(pixel) is not dict or pixel.get("witness_id") not in declared:
+                raise _error("Family-36 PRIMARY witness pixel receipt is malformed")
+            wid = pixel["witness_id"]
+            body = {k: v for k, v in pixel.items() if k != "receipt_id"}
+            witness = declared[wid]
+            if (pixel.get("receipt_id") != "gjoepwa1:pixels:" + canonical_json_sha256_v1(body)
+                    or any(not same_typed_json_v1(pixel.get(k), witness[k]) for k in
+                           ("witness_kind", "after_exact", "observed_pdf_glyph", "source", "locator"))
+                    or not same_typed_json_v1(pixel.get("actual_render"), witness["render"])
+                    or not same_typed_json_v1(pixel.get("actual_crop"), witness["crop_evidence"])):
+                raise _error("Family-36 PRIMARY witness pixel facts drifted")
+            pixel_ids.append(wid)
+        if pixel_ids != ids or facts.get("pdf_pixels_verified") is not bool(ids):
+            raise _error("Family-36 PRIMARY witness pixel/projection axis drifted")
+        applied.extend(ids)
+        logical += bool(ids)
+        axis_ids.append(facts["receipt_id"])
+    if len(applied) != len(set(applied)) or sorted(applied) != sorted(expected):
+        raise _error("Family-36 PRIMARY witness exactly-once application axis drifted")
+    material = {"rule": "EACH_SELECTED_WITNESS_ON_ONE_DOCUMENT_CLUSTER_INCLUDING_ALL_R_U_N",
+        "spec_sha256": compiled[HASH_KEY], "expected_witness_ids": expected,
+        "applied_witness_ids": applied, "document_axis_receipt_ids": axis_ids,
+        "logical_document_application_count": logical}
+    return {**material, "receipt_id": "gjoepwa1:application:" + canonical_json_sha256_v1(material)}
+
+
+def _make_primary_witness_source_replay_adapter_v1(*, path, expected_sha256, index, source_pdf_root):
+    """Return a runner-file-defined function; never capture a live admission."""
+    def replay(*, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence):
+        return replay_operating_expense_trials_from_source_v1(
+            source_page_database=source_page_database,
+            selected_page_json_version_ids=selected_page_json_version_ids,
+            compiled_specs=compiled_specs, indexed_query_evidence=indexed_query_evidence,
+            primary_witness_spec_path=path, expected_primary_witness_sha256=expected_sha256,
+            primary_witness_index=index, primary_witness_pdf_root=source_pdf_root)
+    return replay
+
+
 def _authenticate_source_repairs_v1(
     *,
     compiled_specs: Mapping[str, Any],
@@ -1573,6 +1686,10 @@ def replay_operating_expense_trials_from_source_v1(
     selected_page_json_version_ids: tuple[str, ...],
     compiled_specs: dict[str, Any],
     indexed_query_evidence: dict[str, Any],
+    primary_witness_spec_path: Path | None = None,
+    expected_primary_witness_sha256: str | None = None,
+    primary_witness_index: Mapping[str, Any] | None = None,
+    primary_witness_pdf_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Re-query and replay every candidate through the byte-bound adapter."""
 
@@ -1585,8 +1702,16 @@ def replay_operating_expense_trials_from_source_v1(
     )
     if not same_typed_json_v1(base_compiled, compiled_specs):
         raise _error("Family-36 source replay declarative specs drifted")
+    witness = None
+    if primary_witness_spec_path is not None:
+        if primary_witness_index is None or primary_witness_pdf_root is None or expected_primary_witness_sha256 is None:
+            raise _error("Family-36 cold witness replay requires its complete fresh IO authority")
+        witness = _load_primary_witness_spec_v1(primary_witness_spec_path, expected_primary_witness_sha256)
+    elif any(v is not None for v in (expected_primary_witness_sha256, primary_witness_index, primary_witness_pdf_root)):
+        raise _error("Family-36 partial cold witness replay authority")
     family_compiled = compile_gemini_json_operating_expense_family_specs_v1(
-        topology, evaluation, schema, source_repairs
+        topology, evaluation, schema, source_repairs,
+        **({"primary_witness_spec": witness} if witness is not None else {})
     )
     base = query_selected_multitable_hierarchical_family_regions_v1(
         source_page_database,
@@ -1598,18 +1723,32 @@ def replay_operating_expense_trials_from_source_v1(
         selected_ids=list(selected_page_json_version_ids),
         selected_page_axis=base["selected_page_axis"],
     )
-    indexed = build_gemini_json_operating_expense_indexed_query_evidence_v1(
-        base_indexed_query_evidence=base,
-        page_json_by_document=pages,
-        compiled_specs=family_compiled,
-    )
-    if not same_typed_json_v1(indexed, indexed_query_evidence):
-        raise _error("Family-36 source replay rebuilt different query evidence")
-    return build_gemini_json_operating_expense_trials_v1(
-        indexed_query_evidence=indexed,
-        page_json_by_document=pages,
-        compiled_specs=family_compiled,
-    )
+    admission = None
+    if witness is not None:
+        admission = _authenticate_primary_witness_admission_v1(
+            path=primary_witness_spec_path, expected_sha256=expected_primary_witness_sha256,
+            index=primary_witness_index, base=base, pages=pages, compiled=family_compiled,
+            source_pdf_root=primary_witness_pdf_root)
+    try:
+        indexed = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+            base_indexed_query_evidence=base,
+            page_json_by_document=pages,
+            compiled_specs=family_compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+        if not same_typed_json_v1(indexed, indexed_query_evidence):
+            raise _error("Family-36 source replay rebuilt different query evidence")
+        if admission is not None:
+            _primary_witness_application_receipt_v1(indexed=indexed, compiled=family_compiled)
+        return build_gemini_json_operating_expense_trials_v1(
+            indexed_query_evidence=indexed,
+            page_json_by_document=pages,
+            compiled_specs=family_compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+    finally:
+        if admission is not None:
+            admission.close()
 
 
 def _implementation_refs(
@@ -1618,6 +1757,7 @@ def _implementation_refs(
     evaluation_spec: Path = EVALUATION_SPEC_PATH,
     schema_binding_spec: Path = SCHEMA_BINDING_SPEC_PATH,
     source_repair_spec: Path = SOURCE_REPAIR_SPEC_PATH,
+    primary_witness_spec: Path | None = None,
     pdf_residual_audit_spec: Path,
     pdf_visible_source_row_audit: Path,
 ) -> list[dict[str, Any]]:
@@ -1641,6 +1781,12 @@ def _implementation_refs(
         pdf_residual_audit_spec,
         pdf_visible_source_row_audit,
     )
+    if primary_witness_spec is not None:
+        paths += (
+            ROOT / "src/bctc_ai/evaluation/gemini_json_operating_expense_primary_witness_v1.py",
+            ROOT / "src/bctc_ai/evaluation/gemini_json_operating_expense_primary_witness_admission_v1.py",
+            primary_witness_spec,
+        )
     root = ROOT.resolve()
     return [
         generic._file_ref(
@@ -1674,161 +1820,197 @@ def _run_with_database(
         selected_ids=selected_ids,
         selected_page_axis=base["selected_page_axis"],
     )
-    indexed = build_gemini_json_operating_expense_indexed_query_evidence_v1(
-        base_indexed_query_evidence=base,
-        page_json_by_document=pages,
-        compiled_specs=compiled,
-    )
-    trials = build_gemini_json_operating_expense_trials_v1(
-        indexed_query_evidence=indexed,
-        page_json_by_document=pages,
-        compiled_specs=compiled,
-    )
-    validate_gemini_json_operating_expense_replay_v1(
-        indexed_query_evidence=indexed,
-        trials=trials,
-        page_json_by_document=pages,
-        compiled_specs=compiled,
-    )
-    replayed = replay_operating_expense_trials_from_source_v1(
-        source_page_database=database,
-        selected_page_json_version_ids=tuple(selected_ids),
-        compiled_specs=compile_gemini_json_flat_family_specs_v1(
-            topology, evaluation, schema
-        ),
-        indexed_query_evidence=indexed,
-    )
-    if not same_typed_json_v1(replayed, trials):
-        raise _error("Family-36 direct source replay returned different trials")
-    sweep = build_gemini_json_flat_family_sweep_v1(
-        corpus_manifest_index_id=index["corpus_manifest_index_id"],
-        topology_spec=topology,
-        evaluation_spec=evaluation,
-        schema_binding_spec=schema,
-        trials=trials,
-        indexed_query_evidence=indexed,
-    )
-    validate_gemini_json_flat_family_sweep_v1(sweep)
-    if sweep["metrics"].get("document_count") != len(index["documents"]):
-        raise _error("Family-36 current corpus denominator drifted")
-    observation_contract = validate_source_observation_mapping_contract_v1(sweep)
-    source_row_coverage = build_operating_expense_source_row_coverage_receipt_v1(
-        indexed_query_evidence=indexed,
-        trials=trials,
-        page_json_by_document=dict(pages),
-        compiled_specs=compiled,
-        fail_on_violation=True,
-    )
-    source_row_coverage = _validate_source_row_coverage_receipt_v1(
-        source_row_coverage
-    )
-    source_repair_authentication = _authenticate_source_repairs_v1(
-        compiled_specs=compiled,
-        index=index,
-        selected_page_axis=base["selected_page_axis"],
-        source_pdf_root=args.source_pdf_root,
-    )
-    source_repair_application = _source_repair_application_receipt_v1(
-        index=index, compiled_specs=compiled, trials=trials
-    )
-    pdf_visible_source_row_audit = _authenticate_pdf_visible_source_row_audit_v1(
-        value=generic._json(args.pdf_visible_source_row_audit),
-        index=index,
-        selected_page_axis=base["selected_page_axis"],
-        source_row_coverage=source_row_coverage,
-        source_pdf_root=args.source_pdf_root,
-    )
-    pdf_residuals = _authenticate_pdf_residuals_v1(
-        spec=generic._json(args.pdf_residual_audit_spec),
-        index=index,
-        selected_page_axis=base["selected_page_axis"],
-        page_json_by_document=pages,
-        trials=trials,
-        source_pdf_root=args.source_pdf_root,
-    )
-    historical_receipt = _historical_policy_receipt_v1(
-        index=index,
-        selected_ids=selected_ids,
-        indexed=indexed,
-        trials=trials,
-        compiled_specs=compiled,
-    )
-    audit = build_operating_expense_experimental_audit_v1(
-        sweep=sweep,
-        output=args.output,
-        indexed=indexed,
-        trials=trials,
-        historical_receipt=historical_receipt,
-        observation_contract=observation_contract,
-        source_repair_application=source_repair_application,
-        source_repair_authentication=source_repair_authentication,
-        source_row_coverage=source_row_coverage,
-        pdf_visible_source_row_audit=pdf_visible_source_row_audit,
-        pdf_residuals=pdf_residuals,
-        selected_ids=selected_ids,
-        spec_refs=spec_refs,
-    )
-    validate_operating_expense_experimental_audit_v1(audit)
-    database_guard.validate()
-    generic._write_once(args.output, sweep)
-    audit_output = args.output.with_suffix(".audit.json")
-    generic._write_once(audit_output, audit)
-    runner_ref = generic._file_ref(
-        ROOT
-        / "scripts/experiments/run_gemini_json_operating_expense_accounting_family_v1.py",
-        root=ROOT,
-    )
-    stored = ingest_gemini_accounting_family_sweep_v1(
-        args.results_database,
-        sweep=sweep,
-        corpus_index_ref=generic._file_ref(args.corpus_index),
-        implementation_refs=_implementation_refs(
-            topology_spec=args.topology_spec,
-            evaluation_spec=args.evaluation_spec,
-            schema_binding_spec=args.schema_binding_spec,
-            source_repair_spec=args.source_repair_spec,
-            pdf_residual_audit_spec=args.pdf_residual_audit_spec,
-            pdf_visible_source_row_audit=args.pdf_visible_source_row_audit,
-        ),
-        run_kind="EXPERIMENTAL",
-        source_page_database=database,
-        selected_page_json_version_ids=selected_ids,
-        corpus_artifact_root=args.artifact_root.resolve(),
-        source_replay_adapter=replay_operating_expense_trials_from_source_v1,
-        source_replay_adapter_ref=runner_ref,
-    )
-    stored_sweep = load_gemini_accounting_family_sweep_v1(
-        args.results_database, stored["family_run_id"]
-    )
-    if not same_typed_json_v1(stored_sweep, sweep):
-        raise _error("stored Family-36 sweep differs from authenticated evaluation")
-    validate_source_observation_mapping_contract_v1(stored_sweep)
-    output_ref = record_gemini_accounting_family_export_v1(
-        args.results_database,
-        family_run_id=stored["family_run_id"],
-        output_path=args.output,
-    )
-    database_guard.validate()
-    return {
-        "audit_id": audit["audit_id"],
-        "audit_output": str(audit_output),
-        "axis_counts": audit["axis_counts"],
-        "axis_sha256": audit["axis_sha256"],
-        "disposition": "SUCCEEDED",
-        "family_run_id": stored["family_run_id"],
-        "historical_comparator_policy": DISJOINT_EXPANSION,
-        "metrics": sweep["metrics"],
-        "output": str(args.output),
-        "output_ref": output_ref,
-        "pdf_residual_count": len(pdf_residuals),
-        "pdf_visible_source_row_audit_id": pdf_visible_source_row_audit[
-            "audit_id"
-        ],
-        "results_database": str(args.results_database),
-        "run_kind": "EXPERIMENTAL",
-        "source_row_coverage_receipt_id": source_row_coverage["receipt_id"],
-        "sweep_id": sweep["sweep_id"],
-    }
+    witness_path, witness_pin = _primary_witness_options_v1(args)
+    admission = None
+    if witness_path is not None:
+        admission = _authenticate_primary_witness_admission_v1(
+            path=witness_path, expected_sha256=witness_pin, index=index, base=base,
+            pages=pages, compiled=compiled, source_pdf_root=args.source_pdf_root)
+    try:
+        indexed = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+            base_indexed_query_evidence=base,
+            page_json_by_document=pages,
+            compiled_specs=compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+        trials = build_gemini_json_operating_expense_trials_v1(
+            indexed_query_evidence=indexed,
+            page_json_by_document=pages,
+            compiled_specs=compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+        validate_gemini_json_operating_expense_replay_v1(
+            indexed_query_evidence=indexed,
+            trials=trials,
+            page_json_by_document=pages,
+            compiled_specs=compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+        witness_replay_kwargs = {}
+        if admission is not None:
+            witness_replay_kwargs = {
+                "primary_witness_spec_path": witness_path,
+                "expected_primary_witness_sha256": witness_pin,
+                "primary_witness_index": index,
+                "primary_witness_pdf_root": args.source_pdf_root,
+            }
+        replayed = replay_operating_expense_trials_from_source_v1(
+            **witness_replay_kwargs,
+            source_page_database=database,
+            selected_page_json_version_ids=tuple(selected_ids),
+            compiled_specs=compile_gemini_json_flat_family_specs_v1(
+                topology, evaluation, schema
+            ),
+            indexed_query_evidence=indexed,
+        )
+        if not same_typed_json_v1(replayed, trials):
+            raise _error("Family-36 direct source replay returned different trials")
+        sweep = build_gemini_json_flat_family_sweep_v1(
+            corpus_manifest_index_id=index["corpus_manifest_index_id"],
+            topology_spec=topology,
+            evaluation_spec=evaluation,
+            schema_binding_spec=schema,
+            trials=trials,
+            indexed_query_evidence=indexed,
+        )
+        validate_gemini_json_flat_family_sweep_v1(sweep)
+        if sweep["metrics"].get("document_count") != len(index["documents"]):
+            raise _error("Family-36 current corpus denominator drifted")
+        observation_contract = validate_source_observation_mapping_contract_v1(sweep)
+        witness_application = None if admission is None else _primary_witness_application_receipt_v1(
+            indexed=indexed, compiled=compiled)
+        source_row_coverage = build_operating_expense_source_row_coverage_receipt_v1(
+            indexed_query_evidence=indexed,
+            trials=trials,
+            page_json_by_document=dict(pages),
+            compiled_specs=compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+            fail_on_violation=True,
+        )
+        source_row_coverage = _validate_source_row_coverage_receipt_v1(
+            source_row_coverage
+        )
+        source_repair_authentication = _authenticate_source_repairs_v1(
+            compiled_specs=compiled,
+            index=index,
+            selected_page_axis=base["selected_page_axis"],
+            source_pdf_root=args.source_pdf_root,
+        )
+        source_repair_application = _source_repair_application_receipt_v1(
+            index=index, compiled_specs=compiled, trials=trials
+        )
+        pdf_visible_source_row_audit = _authenticate_pdf_visible_source_row_audit_v1(
+            value=generic._json(args.pdf_visible_source_row_audit),
+            index=index,
+            selected_page_axis=base["selected_page_axis"],
+            source_row_coverage=source_row_coverage,
+            source_pdf_root=args.source_pdf_root,
+        )
+        pdf_residuals = _authenticate_pdf_residuals_v1(
+            spec=generic._json(args.pdf_residual_audit_spec),
+            index=index,
+            selected_page_axis=base["selected_page_axis"],
+            page_json_by_document=pages,
+            trials=trials,
+            source_pdf_root=args.source_pdf_root,
+        )
+        historical_receipt = _historical_policy_receipt_v1(
+            index=index,
+            selected_ids=selected_ids,
+            indexed=indexed,
+            trials=trials,
+            compiled_specs=compiled,
+        )
+        audit = build_operating_expense_experimental_audit_v1(
+            sweep=sweep,
+            output=args.output,
+            indexed=indexed,
+            trials=trials,
+            historical_receipt=historical_receipt,
+            observation_contract=observation_contract,
+            source_repair_application=source_repair_application,
+            source_repair_authentication=source_repair_authentication,
+            source_row_coverage=source_row_coverage,
+            pdf_visible_source_row_audit=pdf_visible_source_row_audit,
+            pdf_residuals=pdf_residuals,
+            selected_ids=selected_ids,
+            spec_refs=spec_refs,
+        )
+        validate_operating_expense_experimental_audit_v1(audit)
+        if admission is not None:
+            admission.recheck()
+        database_guard.validate()
+        generic._write_once(args.output, sweep)
+        audit_output = args.output.with_suffix(".audit.json")
+        generic._write_once(audit_output, audit)
+        runner_ref = generic._file_ref(
+            ROOT
+            / "scripts/experiments/run_gemini_json_operating_expense_accounting_family_v1.py",
+            root=ROOT,
+        )
+        source_adapter = replay_operating_expense_trials_from_source_v1
+        if admission is not None:
+            source_adapter = _make_primary_witness_source_replay_adapter_v1(
+                path=witness_path, expected_sha256=witness_pin, index=index,
+                source_pdf_root=args.source_pdf_root)
+        stored = ingest_gemini_accounting_family_sweep_v1(
+            args.results_database,
+            sweep=sweep,
+            corpus_index_ref=generic._file_ref(args.corpus_index),
+            implementation_refs=_implementation_refs(
+                **({"primary_witness_spec": witness_path} if witness_path is not None else {}),
+                topology_spec=args.topology_spec,
+                evaluation_spec=args.evaluation_spec,
+                schema_binding_spec=args.schema_binding_spec,
+                source_repair_spec=args.source_repair_spec,
+                pdf_residual_audit_spec=args.pdf_residual_audit_spec,
+                pdf_visible_source_row_audit=args.pdf_visible_source_row_audit,
+            ),
+            run_kind="EXPERIMENTAL",
+            source_page_database=database,
+            selected_page_json_version_ids=selected_ids,
+            corpus_artifact_root=args.artifact_root.resolve(),
+            source_replay_adapter=source_adapter,
+            source_replay_adapter_ref=runner_ref,
+        )
+        stored_sweep = load_gemini_accounting_family_sweep_v1(
+            args.results_database, stored["family_run_id"]
+        )
+        if not same_typed_json_v1(stored_sweep, sweep):
+            raise _error("stored Family-36 sweep differs from authenticated evaluation")
+        validate_source_observation_mapping_contract_v1(stored_sweep)
+        output_ref = record_gemini_accounting_family_export_v1(
+            args.results_database,
+            family_run_id=stored["family_run_id"],
+            output_path=args.output,
+        )
+        database_guard.validate()
+        result = {
+            "audit_id": audit["audit_id"],
+            "audit_output": str(audit_output),
+            "axis_counts": audit["axis_counts"],
+            "axis_sha256": audit["axis_sha256"],
+            "disposition": "SUCCEEDED",
+            "family_run_id": stored["family_run_id"],
+            "historical_comparator_policy": DISJOINT_EXPANSION,
+            "metrics": sweep["metrics"],
+            "output": str(args.output),
+            "output_ref": output_ref,
+            "pdf_residual_count": len(pdf_residuals),
+            "pdf_visible_source_row_audit_id": pdf_visible_source_row_audit[
+                "audit_id"
+            ],
+            "results_database": str(args.results_database),
+            "run_kind": "EXPERIMENTAL",
+            "source_row_coverage_receipt_id": source_row_coverage["receipt_id"],
+            "sweep_id": sweep["sweep_id"],
+        }
+        if witness_application is not None:
+            result["primary_witness_application_receipt"] = witness_application
+        return result
+    finally:
+        if admission is not None:
+            admission.close()
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -1852,8 +2034,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     evaluation = generic._json(args.evaluation_spec)
     schema = generic._json(args.schema_binding_spec)
     source_repairs = generic._json(args.source_repair_spec)
+    witness_path, witness_pin = _primary_witness_options_v1(args)
+    witness = None if witness_path is None else _load_primary_witness_spec_v1(witness_path, witness_pin)
     compiled = compile_gemini_json_operating_expense_family_specs_v1(
-        topology, evaluation, schema, source_repairs
+        topology, evaluation, schema, source_repairs,
+        **({"primary_witness_spec": witness} if witness is not None else {})
     )
     spec_refs = {
         "evaluation": generic._file_ref(args.evaluation_spec, root=ROOT),
@@ -1879,6 +2064,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "source_repair": generic._file_ref(args.source_repair_spec, root=ROOT),
         "topology": generic._file_ref(args.topology_spec, root=ROOT),
     }
+    if witness_path is not None:
+        spec_refs["primary_witness"] = generic._file_ref(
+            witness_path, root=ROOT if witness_path.is_relative_to(ROOT) else None)
     with generic._authenticated_sqlite_snapshot(
         database, reference=index["database_ref"]
     ) as database_guard:
@@ -1907,6 +2095,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--source-repair-spec", type=Path, default=SOURCE_REPAIR_SPEC_PATH
     )
+    parser.add_argument("--primary-witness-spec", type=Path)
+    parser.add_argument("--expected-primary-witness-sha256")
     parser.add_argument("--pdf-residual-audit-spec", type=Path, required=True)
     parser.add_argument("--pdf-visible-source-row-audit", type=Path, required=True)
     parser.add_argument("--source-pdf-root", type=Path, required=True)
