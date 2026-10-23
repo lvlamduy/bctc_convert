@@ -215,9 +215,30 @@ def test_explicit_non_credit_population_never_closes_a_credit_total(config):
     assert ("OTHER_PROVISION", YEAR) not in result
     assert all(result[(line, YEAR)]["acceptance"] != "ACCEPTED" for line in ("TOTAL_CREDIT_PROVISION", "CUSTOMER_PROVISION")
                if (line, YEAR) in result)
-    # Credit populations of "other provision" still read.
-    for label in ("Dự phòng tài sản Có khác", "Chi phí dự phòng khác"):
-        assert _roles(make_table([(label, ["5", "4"])], headers, title=title), family)[0][:2] == ("OTHER_PROVISION", "MEMBER"), label
+    # An explicit credit population of "other provision" reads on its own.
+    explicit = make_table([("Dự phòng tài sản Có khác", ["5", "4"])], headers, title=title)
+    assert _roles(explicit, family)[0][:2] == ("OTHER_PROVISION", "MEMBER")
+
+
+def test_bare_other_provision_needs_the_subject_of_the_tables_own_context(config):
+    # Codex 0203: bare "Dự phòng khác" prints no population; only a positively proven flow/credit owner (the family
+    # subject in the table's OWN context) admits it - never arithmetic, a preceding heading or the anchor lines alone.
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    headers = [("Năm 2025",), ("Năm 2024",)]
+    rows = [("Chi phí dự phòng rủi ro cho vay khách hàng", ["300", "250"]), ("Trích lập dự phòng trái phiếu đặc biệt VAMC", ["40", "50"]),
+            ("Chi phí dự phòng khác", ["5", "4"]), ("Tổng cộng", ["345", "304"])]
+    owned = make_table(rows, headers, title="29. Chi phí dự phòng rủi ro tín dụng")
+    roles = assign_lines_v1(owned, family, owned_subject=True)
+    assert (roles[2].role, roles[2].disposition) == ("OTHER_PROVISION", "MEMBER")
+    result = cells(evaluate_concept_table_v1(owned, family, document(quarter=4), context_of(owned), []))
+    assert result[("OTHER_PROVISION", YEAR)]["acceptance"] == "ACCEPTED"  # 300 + 40 + 5 = 345, own population owned
+    assert _roles(owned, family)[2] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:NO_OWNED_FLOW_SUBJECT")  # default: not owned
+    # No owned subject: the table is admitted by its anchor lines only, or the subject is only a preceding heading.
+    untitled = make_table(rows, headers, title="", section="")
+    for context in ([], [("PRECEDING_NOTE_HEADING", "29. Chi phí dự phòng rủi ro tín dụng")]):
+        evaluations = evaluate_concept_table_v1(untitled, family, document(quarter=4), context, [])
+        assert [(r.role, r.reason) for r in evaluations[0].roles][2] == (None, "OWNER_NOT_PROVEN:NO_OWNED_FLOW_SUBJECT")
+        assert ("OTHER_PROVISION", YEAR) not in cells(evaluations), context
 
 
 def _anchored(table, family, year_value, prior_value):

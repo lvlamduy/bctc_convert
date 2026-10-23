@@ -116,7 +116,10 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
         members = {m: {**s, "aliases": [fold_vietnamese(str(a)) for a in s.get("aliases", [])],
                        "exact": [fold_vietnamese(str(a)) for a in s.get("exact", [])],
                        "all_of": [[fold_vietnamese(str(p)) for p in g] for g in s.get("all_of", [])],
-                       "none_of": [[fold_vietnamese(str(p)) for p in g] for g in s.get("none_of", [])]}
+                       "none_of": [[fold_vietnamese(str(p)) for p in g] for g in s.get("none_of", [])],
+                       **({"needs_owned_subject_unless": [[fold_vietnamese(str(p)) for p in g]
+                                                          for g in s["needs_owned_subject_unless"] or []]}
+                          if "needs_owned_subject_unless" in s else {})}
                    for m, s in spec["members"].items()}
         _require(all(s.get("parent") in (None, *members) for s in members.values()), f"axis {name}: unknown member parent")
         outside = {m: {**s, "contains_all": [[fold_vietnamese(str(p)) for p in g] for g in s.get("contains_all", [])]}

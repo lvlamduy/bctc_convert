@@ -290,7 +290,9 @@ axes:
                                  none_of: [[vamc]]}
       OTHER_PROVISION: {name: Dự phòng khác,
                         all_of: [[du phong khac], [du phong, tai san co khac], [du phong, tai tro thuong mai], [du phong cac khoan rui ro khac]],
-                        none_of: [[vamc]]}
+                        none_of: [[vamc]],
+                        # Bare "Dự phòng khác" prints no population: only under the subject of the table's own context.
+                        needs_owned_subject_unless: [[du phong, tai san co khac], [du phong, tai tro thuong mai]]}
       TOTAL_CREDIT_PROVISION: {name: Tổng chi phí dự phòng rủi ro tín dụng,
                                exact: [tong, cong, tong cong, chi phi du phong rui ro tin dung, tong chi phi du phong rui ro tin dung,
                                        chi phi du phong rui ro, tong chi phi du phong]}

@@ -170,7 +170,7 @@ def _scoped_match(spec: dict[str, Any], key: str) -> bool:
     return key in exact or all_phrases(groups, key)
 
 
-def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
+def assign_lines_v1(table: NoteTable, family: Family, *, owned_subject: bool = False) -> list[RowRole]:
     """One line per valued row, or an explicit reason why not.
 
     A member's ``scoped`` rule (bare "Chi khác", "Dự phòng chung") matches
@@ -238,6 +238,11 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             by_owner = set()
         if len(matches) > 1:
             roles.append(RowRole(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES", matches))
+        elif matches and not owned_subject and members.get(matches[0], {}).get("needs_owned_subject_unless") is not None \
+                and not all_phrases(members[matches[0]]["needs_owned_subject_unless"], key):
+            # A bare generic line ("Dự phòng khác") names no population of its own: it is read only under the family's
+            # subject printed in the table's OWN context (Codex 0203), never from arithmetic or a preceding heading.
+            roles.append(RowRole(index, None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:NO_OWNED_FLOW_SUBJECT", matches))
         elif matches:
             # The wrapper is recorded as the source proof of the owner edge, never as a value.
             reason = "LINE_RULE" if via_wrapper is None else (
@@ -420,10 +425,11 @@ def evaluate_concept_table_v1(
     if family.rejects(owner):
         evaluation.status, evaluation.reasons = "REJECTED", ["OWNER_CONTEXT_IS_ANOTHER_NOTE"]
         return [evaluation]
-    roles = assign_lines_v1(table, family)
+    evaluation.subject, evaluation.subject_basis = resolve_subject_v1(family, context)
+    owned_subject = evaluation.subject is not None and evaluation.subject_basis.get("tier") == "OWNER_CONTEXT"
+    roles = assign_lines_v1(table, family, owned_subject=owned_subject)
     evaluation.roles = roles
     members = {r.role for r in roles if r.disposition == "MEMBER"}
-    evaluation.subject, evaluation.subject_basis = resolve_subject_v1(family, context)
     anchors = members & set(retrieval["anchor_lines"])
     if evaluation.subject is None and len(anchors) < int(retrieval["min_anchor_lines_without_title"]):
         evaluation.status, evaluation.reasons = "REJECTED", [f"NO_TITLE_AND_ONLY_{len(anchors)}_ANCHOR_LINES"]
