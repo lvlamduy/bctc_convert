@@ -35,6 +35,9 @@ row_vetoes:
                             [da su dung], [chenh lech ty gia]]
   NON_CREDIT_ASSET_POPULATION: [[tai san co dinh], [bat dong san dau tu], [hang ton kho], [gop von], [dau tu dai han],
                                 [giam gia]]
+# A valued vetoed row in a lane holds these generic-population lines wherever it is printed (Codex 0203), plus the
+# lines it claims as parents and every line summing a held one; an exact KQKD 4392 anchor never overrides this.
+foreign_row_holds: [TOTAL_CREDIT_PROVISION]
 
 emit_lines: [INTERBANK_PROVISION, INTERBANK_GENERAL, INTERBANK_SPECIFIC,
              CUSTOMER_PROVISION, CUSTOMER_GENERAL, CUSTOMER_SPECIFIC,

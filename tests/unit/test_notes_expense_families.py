@@ -220,6 +220,59 @@ def test_explicit_non_credit_population_never_closes_a_credit_total(config):
         assert _roles(make_table([(label, ["5", "4"])], headers, title=title), family)[0][:2] == ("OTHER_PROVISION", "MEMBER"), label
 
 
+def _anchored(table, family, year_value, prior_value):
+    evaluations = evaluate_concept_table_v1(
+        table, family, document(quarter=4, primary=kqkd({YEAR: {"PROVISION": year_value}, PRIOR: {"PROVISION": prior_value}})),
+        context_of(table), [])
+    exact = {(c["line"], c["period_key"]) for e in evaluations for c in e.corroboration if c["status"] == "EXACT"}
+    return cells(evaluations), exact
+
+
+def test_an_exact_income_statement_anchor_never_accepts_a_total_containing_a_vetoed_row(config):
+    # Codex 0203: the vetoed row leaves one term, the top-level equation is skipped before any span check, and an
+    # exact KQKD 4392 equal to the printed total would otherwise accept the generic total with the foreign population.
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    headers, title = [("Năm 2025",), ("Năm 2024",)], "29. Chi phí dự phòng rủi ro tín dụng"
+    customer, foreign = ("Chi phí dự phòng rủi ro cho vay khách hàng", ["300", "250"]), ("Chi phí dự phòng khác cho tài sản cố định", ["5", "4"])
+    general, specific = ("Dự phòng chung cho vay khách hàng", ["20", "10"]), ("Dự phòng cụ thể cho vay khách hàng", ["280", "240"])
+    total = ("Tổng cộng", ["305", "254"])
+    for rows in ([customer, foreign, total], [customer, total, foreign], [foreign, customer, total]):  # every printed order
+        table = make_table(rows, headers, title=title)
+        result, exact = _anchored(table, family, "305", "254")
+        for period in (YEAR, PRIOR):
+            assert ("TOTAL_CREDIT_PROVISION", period) in exact  # the anchor IS exact; it is overridden, not absent
+            held = result[("TOTAL_CREDIT_PROVISION", period)]
+            assert held["acceptance"] == "HOLD" and "POPULATION_MAY_INCLUDE_VETOED_ROW" in held["hold_reasons"], rows
+            assert held["value"] in {"305", "254"}  # stored as printed; nothing is filled or inferred
+        assert ("OTHER_PROVISION", YEAR) not in result
+    # The stock counterexample of 0199 with an exact 340 / 300 anchor: the total stays held too.
+    stock = make_table([("Số dư dự phòng cho vay khách hàng cuối kỳ", ["300", "250"]), ("Dự phòng chung", ["20", "10"]),
+                        ("Dự phòng cụ thể", ["280", "240"]), ("Trích lập dự phòng trái phiếu đặc biệt VAMC", ["40", "50"]),
+                        ("Tổng cộng", ["340", "300"])], headers, title=title)
+    for child in (1, 2):
+        link(stock, child, 0)
+    result, exact = _anchored(stock, family, "340", "300")
+    assert ("TOTAL_CREDIT_PROVISION", YEAR) in exact
+    assert "POPULATION_MAY_INCLUDE_VETOED_ROW" in result[("TOTAL_CREDIT_PROVISION", YEAR)]["hold_reasons"]
+    assert not {member for member, _period in result} & CUSTOMER_LINES
+    # An unrelated line with its own printed population and its own passing equation keeps its proof.
+    table = make_table([customer, general, specific, total, foreign], headers, title=title)
+    result, _exact = _anchored(table, family, "305", "254")
+    assert all(result[(line, YEAR)]["acceptance"] == "ACCEPTED" for line in CUSTOMER_LINES)
+    assert result[("TOTAL_CREDIT_PROVISION", YEAR)]["acceptance"] == "HOLD"
+    # A foreign row CLAIMING a read line as its parent holds that line (and every line summing it), proven or not.
+    claimed = make_table([customer, general, specific, foreign, total], headers, title=title)
+    for child in (1, 2, 3):
+        link(claimed, child, 0)
+    result, _exact = _anchored(claimed, family, "305", "254")
+    assert "POPULATION_MAY_INCLUDE_VETOED_ROW" in result[("CUSTOMER_PROVISION", YEAR)]["hold_reasons"]
+    assert result[("CUSTOMER_GENERAL", YEAR)]["acceptance"] == "ACCEPTED"  # its own population, its own proof
+    # Without any vetoed row the same anchored table is accepted: the hold comes from the foreign row only.
+    clean = make_table([customer, ("Trích lập dự phòng trái phiếu đặc biệt VAMC", ["5", "4"]), total], headers, title=title)
+    result, _exact = _anchored(clean, family, "305", "254")
+    assert result[("TOTAL_CREDIT_PROVISION", YEAR)]["acceptance"] == "ACCEPTED"
+
+
 def test_write_key_collisions_hold_every_occurrence_even_with_equal_values():
     def cell(member, value, table_id, acceptance="ACCEPTED"):
         return {"acceptance": acceptance, "value": value, "unit": "MILLION_VND", "observation_state": "VALUE",

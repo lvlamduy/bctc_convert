@@ -437,6 +437,7 @@ def evaluate_concept_table_v1(
         evaluation.status, evaluation.reasons = "REJECTED", ["NO_MONEY_LANES"]
         return [evaluation]
     separators = table.separator_roles()
+    vetoed_rows = [role.row_index for role in roles if role.reason.startswith("ROW_VETO:")]
     for lane in evaluation.lanes:
         values = {role.role: parse_cell_v1(table, table.rows[role.row_index], lane.column, separators, document.separator_roles)
                   for role in roles if role.disposition == "MEMBER"}
@@ -448,7 +449,8 @@ def evaluate_concept_table_v1(
             if table.cells.get((table.rows[role.row_index].row_id, lane.column.column_id), (None, "BLANK"))[1] == "BLANK":
                 continue
             parent = None
-            if role.disposition == "SOURCE_ONLY":
+            # A vetoed (foreign) row is never excused as printed detail of a read line.
+            if role.disposition == "SOURCE_ONLY" and role.row_index not in vetoed_rows:
                 parent, _reason = detail_parent_line_v1(table, roles, role.row_index)
                 # The parent must itself carry a parsed amount in this lane to contain its detail.
                 if parent is not None and (parent not in values or values[parent].state not in NUMERIC):
@@ -472,9 +474,54 @@ def evaluate_concept_table_v1(
         # Lines of an equation with unread rows in its span: population closure is not proven, so no
         # other proof (an income-statement anchor) may accept them.
         open_lines = {line for e in equations if e["status"] == "INCOMPLETE_UNREAD_ROWS_IN_SPAN" for line in [e["equals"], *e["terms"]]}
+        foreign = [i for i in vetoed_rows
+                   if table.cells.get((table.rows[i].row_id, lane.column.column_id), (None, "BLANK"))[1] != "BLANK"]
         _emit(evaluation, family, document, lane, values, roles, proven=proven, vetoed=vetoed, failed=failed, open_lines=open_lines,
-              own_proven=own_proven)
+              own_proven=own_proven, foreign_held=foreign_population_lines_v1(table, family, roles, foreign))
     return [evaluation]
+
+
+def _equation_terms(equation: dict[str, Any]) -> set[str]:
+    terms = set(equation.get("plus", [])) | set(equation.get("minus", [])) | set(equation.get("plus_present", []))
+    for key in ("plus_first_present", "minus_first_present"):
+        for group in equation.get(key, []):
+            terms.update(group)
+    return terms
+
+
+def foreign_population_lines_v1(table: NoteTable, family: Family, roles: list[RowRole], foreign_rows: list[int]) -> set[str]:
+    """Lines whose printed population may contain a valued vetoed row (Codex 0203); nothing can accept them.
+
+    Held: the family's generic-population lines (``foreign_row_holds``, e.g. the note total) wherever the
+    foreign row is printed; every read line on the foreign row's CLAIMED parent chain (a claim suffices to
+    doubt the population); and, to a fixed point, every equation target summing a held line. An exact
+    income-statement anchor or a passing equation never overrides this, and no position, amount or
+    arithmetic excludes a foreign row: excluding one would need a positive source partition (not in V1).
+    Lines with their own printed population that the row does not claim (e.g. customer loans) keep their proofs.
+    """
+
+    if not foreign_rows:
+        return set()
+    held = set(family.raw.get("foreign_row_holds") or [])
+    line_of_row = {role.row_index: role.role for role in roles if role.disposition == "MEMBER"}
+    index_of = {row.row_id: i for i, row in enumerate(table.rows)}
+    for index in foreign_rows:
+        seen = {index}
+        current = table.rows[index].parent_row_id
+        while current in index_of and index_of[current] not in seen:
+            parent = index_of[current]
+            seen.add(parent)
+            if parent in line_of_row:
+                held.add(line_of_row[parent])
+            current = table.rows[parent].parent_row_id
+    changed = True
+    while changed:
+        changed = False
+        for equation in family.raw.get("equations") or []:
+            if equation["equals"] not in held and _equation_terms(equation) & held:
+                held.add(equation["equals"])
+                changed = True
+    return held
 
 
 def proof_bound_lines_v1(family: Family) -> set[str]:
@@ -491,7 +538,8 @@ def proof_bound_lines_v1(family: Family) -> set[str]:
 
 
 def _emit(evaluation: TableEvaluation, family: Family, document: DocumentContext, lane: NoteLane, values, roles,
-          *, proven: bool, vetoed: bool, failed: set[str], open_lines: set[str], own_proven: set[str]) -> None:
+          *, proven: bool, vetoed: bool, failed: set[str], open_lines: set[str], own_proven: set[str],
+          foreign_held: set[str] = frozenset()) -> None:
     bound = proof_bound_lines_v1(family)
     table = evaluation.table
     emit = set(family.raw["emit_lines"])
@@ -509,6 +557,8 @@ def _emit(evaluation: TableEvaluation, family: Family, document: DocumentContext
             reasons.append("VALIDATION_FAIL")
         if role.role in open_lines:
             reasons.append("EQUATION_SPAN_HAS_UNREAD_ROWS")
+        if role.role in foreign_held:
+            reasons.append("POPULATION_MAY_INCLUDE_VETOED_ROW")
         if parsed.state in {"MALFORMED", "AMBIGUOUS_SEPARATOR"}:
             reasons.append("CELL_" + parsed.state)
         if not proven and parsed.state != "BLANK":

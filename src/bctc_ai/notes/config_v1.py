@@ -137,6 +137,8 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
         raw["reject_context"] = [[fold_vietnamese(str(p)) for p in g] for g in raw.get("reject_context", [])]
         raw["row_vetoes"] = {str(name): [[fold_vietnamese(str(p)) for p in g] for g in groups]
                              for name, groups in (raw.get("row_vetoes") or {}).items()}
+        _require(all(line in axes[raw["axis"]].members for line in raw.get("foreign_row_holds") or []),
+                 f"{path.name}: foreign_row_holds must name lines of the family axis")
         raw["retrieval"]["explicit_title_phrases"] = [
             [fold_vietnamese(str(p)) for p in g] for g in raw["retrieval"].get("explicit_title_phrases", [])
         ]
