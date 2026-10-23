@@ -733,6 +733,10 @@ def resolve_duration_lanes_v1(
         lane = NoteLane(column, None, "UNRESOLVED", None, "UNRESOLVED")
         if _SEGMENT_OR_SCOPE.search(folded):
             lane.reasons.append("HEADER_NAMES_SEGMENT_OR_SCOPE")
+        elif not _raw_digits_and_marks_ok(header):
+            # A date-bearing header with non-ASCII digits or a stray combining mark is never parsed
+            # (folding would silently drop the annotation before any PRIMARY parser call).
+            lane.reasons.append("HEADER_RAW_DIGIT_OR_MARK_NOT_PLAIN")
         else:
             own = duration_lane_period_v1(header, own_context) if has_own else None
             report = duration_lane_period_v1(header, report_context)

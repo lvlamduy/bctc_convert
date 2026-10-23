@@ -375,3 +375,11 @@ def test_context_bound_year_is_not_relabelled_under_a_non_calendar_fiscal_year()
     lanes = resolve_duration_lanes_v1(table, doc, [], [table.table_title])
     assert [lane.period_key for lane in lanes] == [None, None]
     assert all("NON_CALENDAR_FISCAL_WINDOW_NOT_RELABELLED_AS_YEAR" in lane.reasons for lane in lanes)
+
+
+def test_raw_guard_runs_before_the_owned_context_parser():
+    table = make_table(RECON[:1], [("30/09/2025́",), ("Kỳ này",)],
+                       section="Thuyết minh báo cáo tài chính cho kỳ 9 tháng kết thúc ngày 30/09/2025")
+    lanes = resolve_duration_lanes_v1(table, document(quarter=3), [], [table.section_title])
+    assert lanes[0].period_key is None and "HEADER_RAW_DIGIT_OR_MARK_NOT_PLAIN" in lanes[0].reasons
+    assert lanes[1].period_key == "DURATION:MONTHS_ENDED:9:2025-09-30"  # accented words stay valid
