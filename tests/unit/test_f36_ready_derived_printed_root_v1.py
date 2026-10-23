@@ -36,7 +36,6 @@ from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_sha256_v1,
 )
 
-
 _ROOT = Path(family.__file__).resolve().parents[3]
 _SPEC = importlib.util.spec_from_file_location(
     "_f36_ready_root_existing_fixtures",
