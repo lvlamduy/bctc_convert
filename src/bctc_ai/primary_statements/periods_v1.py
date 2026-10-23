@@ -287,6 +287,11 @@ def duration_lane_period_v1(header: str, context: StatementPeriodContext) -> Per
         # "Quý trước" prints the preceding quarter, not the same quarter of the
         # prior year; no comparative window is printed, so nothing is bound.
         return _unresolved("PREVIOUS_QUARTER_WITHOUT_PRINTED_COMPARATIVE_WINDOW", evidence)
+    if re.search(r"\bky truoc\b", folded) and not year_prior and not _RANGE.search(folded) \
+            and not printed_dates_v1(header) and not re.search(r"\b(?:19|20)\d{2}\b", folded):
+        # "Kỳ trước" alone names a comparative period without printing its
+        # window; the comparative convention is not printed evidence.
+        return _unresolved("PRIOR_PERIOD_WITHOUT_PRINTED_COMPARATIVE_WINDOW", evidence)
     prior = year_prior or (not year_current and bool(_PRIOR_WORDS.search(folded)))
     current = not prior and bool(_CURRENT_WORDS.search(folded))
     durational = _RANGE.search(folded) or _YTD.search(folded) or _QUARTER.search(folded) or _Q_SHORT.search(folded)
