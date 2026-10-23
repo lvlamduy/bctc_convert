@@ -65,7 +65,17 @@ Coverage của COMMON204, theo family (FOUND / OBSERVED_UNRESOLVED / NOT_OBSERVE
 - DEPOSITS_BY_TYPE: 200 / – / 4
 - BY_CUSTOMER_ENTITY_TYPE: 130 / – / 74
 
-Đây là số đếm ở mức cell, mang tính thử nghiệm, không phải độ chính xác tài chính. So sánh FULL271 với COMMON204 cần một kế hoạch có kiểm identity riêng.
+Đây là số đếm ở mức cell, mang tính thử nghiệm, không phải độ chính xác tài chính.
+
+### So sánh FULL271 ↔ COMMON204 theo identity (root, `compare_cross_corpus_v2.sh` `98514258…`, helper `4461b015…`)
+
+Thư mục: `cross-corpus-20261023T213125Z`. terminal `70e5ab51…` PASS_DIAGNOSTIC; compare `b2faf4c0…`; wall 9,78 s; RSS 109 MB.
+
+- **Document:** 204 ghép khớp đúng `(relative_path, source_sha256, document_plan_id)`; 67 chỉ có trong FULL271; 0 chỉ có trong COMMON204; 0 mơ hồ; 0 trường hợp cùng SHA nhưng khác path/plan. Bốn store đều qua kiểm tra ghép cặp manifest notes ↔ PRIMARY.
+- **Trang** (trục `SELECTED_PAGE_AXIS_AS_RECORDED_BY_PRIMARY_STORE`): 11.447 SAME_VID và 7 CHANGED_JSON_VERSION.
+- **Cell trên trang SAME_VID:** 23.108 (COMMON204) và 30.814 (FULL271) cell đều có khóa. Không có MULTI_OCCURRENCE, không có cell chỉ có ở một phía. **Mọi** cell ghép được đều giữ nguyên acceptance, cách đọc (value/raw/member/period/unit) và RNID ở cả sáu family. Nghĩa là engine cho kết quả tất định theo trang, không phụ thuộc corpus được chọn.
+- **Cell trên trang CHANGED_JSON_VERSION** (chỉ đếm, không so giá trị): INCOME_TAX 16 (FULL271) / 26 (COMMON204); OPERATING_EXPENSE 36 / 36.
+- **Giới hạn:** chỉ chứng minh file ổn định trước và sau khi chạy. Đây không phải held-FD hay source proof, cũng không chứng minh tương đương tài chính, kỳ, scope hay basis.
 
 ## Việc còn mở
 
