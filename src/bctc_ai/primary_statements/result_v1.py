@@ -116,6 +116,9 @@ def build_document_result_v1(run, catalog: PrimaryCatalog, *, corpus_identity: d
                 unit, unit_status, unit_evidence = row_measure_unit_v1(item.row, item.report_norm_id, lane)
                 period_key = lane.period.get("key") if lane.period else None
                 reasons = list(instance_hold)
+                if cell.raw not in (None, "") and (cell.origin is None or cell.origin_status == "COMPETING_IDENTICAL_FRAGMENT_CELLS"):
+                    # A printed amount whose source cell is missing or not unique is never exported as accepted.
+                    reasons.append("VALUE_ORIGIN_" + ("MISSING" if cell.origin is None else "NOT_BIJECTIVE_IDENTICAL_FRAGMENTS"))
                 if lane.period is None or not period_key:
                     reasons.append("PERIOD_UNRESOLVED:" + str((lane.period or {}).get("reason")))
                 if "DUPLICATE_PERIOD_LANE" in lane.reasons:
@@ -147,8 +150,12 @@ def build_document_result_v1(run, catalog: PrimaryCatalog, *, corpus_identity: d
                     "value": value,
                     "raw": cell.raw,
                     "numeric_policy": policy,
-                    "locator": {**item.row.locator, "row_ordinal": item.row.row_ordinal,
-                                "column_ordinal": cell.column_ordinal},
+                    # Value origin (the source cell that printed the amount) and label origin are
+                    # separate; SQLite and Excel source refs use the value origin.
+                    "locator": dict(cell.origin) if cell.origin else {**item.row.locator, "row_ordinal": item.row.row_ordinal,
+                                                                      "column_ordinal": cell.column_ordinal},
+                    "label_locator": {**item.row.locator, "row_ordinal": item.row.row_ordinal},
+                    "origin_status": cell.origin_status if cell.origin else "VALUE_ORIGIN_MISSING",
                     "label_exact": item.row.label_exact,
                     "acceptance": acceptance,
                     "hold_reasons": reasons,

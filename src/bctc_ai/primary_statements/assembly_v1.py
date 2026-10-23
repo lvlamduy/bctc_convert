@@ -246,6 +246,10 @@ class LaneCell:
     qualifiers: tuple[str, ...] = ()
     separator_basis: str | None = None
     reason: str | None = None
+    # Original source cell of the value (table locator + 1-based row/column), kept through
+    # fragment merging; origin_status says how the logical row obtained it.
+    origin: dict[str, Any] | None = None
+    origin_status: str = "DIRECT_SOURCE_CELL"
 
 
 @dataclass
@@ -363,7 +367,8 @@ def build_table_rows(source: SourceTable, *, start_ordinal: int) -> tuple[list[L
             if token:
                 enumerator, enumerator_class = token, kind
         key = label_key_v1(label) if label_like(label) else label_key_v1(None)
-        cells = [LaneCell(lane, index + 1, nfc(values[index]) if index < len(values) else None)
+        cells = [LaneCell(lane, index + 1, nfc(values[index]) if index < len(values) else None,
+                          origin={**source.locator, "row_ordinal": row_index, "column_ordinal": index + 1})
                  for lane, index in enumerate(money)]
         measure_cells = [
             {"column_ordinal": index + 1, "value_kind": columns[index].get("value_kind"),
@@ -417,7 +422,17 @@ def _merge_fragments(rows: list[LogicalRow]) -> list[LogicalRow]:
                 keep = following
                 keep.enumerator, keep.enumerator_class = row.enumerator, row.enumerator_class
                 if blank_b and not blank_a:
+                    # The values are printed on the enumerator fragment: each cell keeps that
+                    # fragment's own source-cell origin, never the label row's coordinates.
                     keep.cells = row.cells
+                    for cell in keep.cells:
+                        cell.origin_status = "MERGED_FROM_ENUMERATOR_FRAGMENT"
+                elif raws_a == raws_b and not blank_a:
+                    # Both fragments print the same values: two candidate source cells for one
+                    # logical cell. Not a bijection - held until proven, never chosen.
+                    for cell in keep.cells:
+                        if cell.raw not in (None, ""):
+                            cell.origin_status = "COMPETING_IDENTICAL_FRAGMENT_CELLS"
                 keep.note_ref = keep.note_ref or row.note_ref
                 keep.merged_fragments.append({
                     "row_ordinal": row.row_ordinal,

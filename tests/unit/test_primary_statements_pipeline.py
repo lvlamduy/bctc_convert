@@ -474,3 +474,61 @@ def test_own_scope_conflict_keeps_raw_and_accepts_nothing_despite_a_valid_donor(
     assert income_cells and all(c["acceptance"] == "HOLD" and c["raw"] is not None for c in income_cells)
     balance = next(i for i in result["instances"] if i["statement"] == "CDKT")
     assert balance["scope"] == "CONSOLIDATED"
+
+
+def _enumerator_fragment_rows(label_values):
+    # "I" (enumerator only) prints the cash amounts; the named row below it prints `label_values`.
+    rows = balance_sheet_rows()
+    rows[1:2] = [row("I", ["100", "90"], ["A TÀI SẢN", "I"]),
+                 row("Tiền mặt, vàng bạc, đá quý", list(label_values), ["A TÀI SẢN", "I", "Tiền mặt, vàng bạc, đá quý"])]
+    return rows
+
+
+def _cash_cell(result):
+    return next(c for c in result["cells"] if c["raw"] == "100" and c["lane"] == 0)
+
+
+def test_merged_enumerator_fragment_value_keeps_its_own_source_cell_through_store_and_excel(catalog, equations, tmp_path):
+    result = result_of(run_doc(catalog, equations, [bs_page(_enumerator_fragment_rows([None, None]))]), catalog)
+    cash = _cash_cell(result)
+    # Value printed on row 2 ("I"); label printed on row 3: two separate origins.
+    assert cash["locator"]["row_ordinal"] == 2 and cash["locator"]["column_ordinal"] == 1
+    assert cash["label_locator"]["row_ordinal"] == 3
+    assert cash["origin_status"] == "MERGED_FROM_ENUMERATOR_FRAGMENT"
+    assert not any(r.startswith("VALUE_ORIGIN") for r in cash["hold_reasons"])
+    store = tmp_path / "store.sqlite3"
+    write_result_store_v1(store, run_manifest={"run": 1}, results=[result])
+    _manifest, reloaded = reload_result_store_v1(store)
+    assert _cash_cell(reloaded[0])["locator"] == cash["locator"]
+    with sqlite3.connect(store) as connection:
+        rows = connection.execute("SELECT row_ordinal FROM mapped_cell WHERE raw_text='100' AND lane=0").fetchall()
+    assert rows == [(2,)]
+    payload, _ = build_workbook_v1(result, template_rows_v1(ROOT, catalog))
+    provenance = openpyxl.load_workbook(io.BytesIO(payload))["PROVENANCE"]
+    header = [c.value for c in provenance[1]]
+    refs = [r[header.index("source_ref")] for r in provenance.iter_rows(min_row=2, values_only=True)
+            if r[header.index("raw_text")] == "100" and r[header.index("lane")] == 0]
+    assert refs and all("/r2/c1@" in ref for ref in refs)
+
+
+def test_identical_values_on_both_fragments_are_not_a_bijection_and_hold(catalog, equations):
+    result = result_of(run_doc(catalog, equations, [bs_page(_enumerator_fragment_rows(["100", "90"]))]), catalog)
+    cash = _cash_cell(result)
+    assert cash["origin_status"] == "COMPETING_IDENTICAL_FRAGMENT_CELLS"
+    assert cash["acceptance"] == "HOLD" and "VALUE_ORIGIN_NOT_BIJECTIVE_IDENTICAL_FRAGMENTS" in cash["hold_reasons"]
+
+
+def test_printed_amount_without_a_source_cell_origin_holds(catalog, equations):
+    run = run_doc(catalog, equations, [bs_page(balance_sheet_rows())])
+    for items in run.dispositions.values():
+        for item in items:
+            for cell in item.row.cells:
+                if cell.raw == "910":
+                    cell.origin = None
+    loan = next(c for c in result_of(run, catalog)["cells"] if c["raw"] == "910")
+    assert loan["acceptance"] == "HOLD" and "VALUE_ORIGIN_MISSING" in loan["hold_reasons"]
+    assert loan["origin_status"] == "VALUE_ORIGIN_MISSING"
+    # Direct rows keep pointing at their own source cells.
+    direct = next(c for c in result_of(run_doc(catalog, equations, [bs_page(balance_sheet_rows())]), catalog)["cells"]
+                  if c["raw"] == "910")
+    assert direct["origin_status"] == "DIRECT_SOURCE_CELL" and direct["locator"]["row_ordinal"] == 7
