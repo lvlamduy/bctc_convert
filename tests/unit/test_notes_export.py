@@ -1,0 +1,64 @@
+"""Notes pilot workbook: TM template rows, dimensional view, exact readback and tamper detection."""
+
+from __future__ import annotations
+
+import io
+from pathlib import Path
+
+import openpyxl
+import pytest
+
+from bctc_ai.export.canonical_xlsx import deterministic_workbook_bytes
+from bctc_ai.notes.export_v1 import NotesWorkbookError, build_notes_workbook_v1, tm_template_rows_v1, verify_notes_workbook_v1
+
+ROOT = Path(__file__).resolve().parents[2]
+DOCUMENT = {"document_plan_id": "plan-1", "relative_path": "x.pdf", "source_sha256": "0" * 64}
+
+
+def cell(rnid, period, value, acceptance="ACCEPTED", member="G1", state="VALUE"):
+    return {"family": "CREDIT_QUALITY", "concept": "LOANS_TO_CUSTOMERS", "axis": "CREDIT_QUALITY_GROUP", "member": member,
+            "classification_basis": "AS_PRESENTED", "period_key": period, "period_basis": "EXPLICIT_HEADER_DATE",
+            "unit": "MILLION_VND", "unit_basis": "HEADER", "observation_state": state, "value": value, "raw": value,
+            "acceptance": acceptance, "hold_reasons": [] if acceptance != "HOLD" else ["UNIT_UNRESOLVED"],
+            "report_norm_id": rnid, "label_exact": "Nhóm 1",
+            "locator": {"physical_page": 3, "section_id": "s1", "table_id": "t1", "row_id": "r1", "column_id": "c1",
+                        "page_json_version_id": "v3"}}
+
+
+@pytest.fixture(scope="module")
+def template():
+    return tm_template_rows_v1(ROOT)
+
+
+def test_template_rows_are_pinned_and_complete(template):
+    assert len(template) == 1721 and template[0][0] and len({r for r, _ in template}) == 1721
+
+
+def test_workbook_reads_back_exactly_and_keeps_large_integers_exact(template):
+    cells = [cell(747, "INSTANT:2025-06-30", "9007199254740993"), cell(747, "INSTANT:2024-12-31", "800"),
+             cell(748, "INSTANT:2025-06-30", None, acceptance="HOLD", member="G2"),
+             cell(None, "INSTANT:2025-06-30", "5", member="SAVINGS_TERM")]
+    payload, receipt = build_notes_workbook_v1(DOCUMENT, cells, template, {"axes": "x"})
+    assert receipt["status"] == "PASS_EXACT_READBACK" and receipt["tm_cells_checked"] == 3 and receipt["dimensional_rows"] == 4
+    sheet = openpyxl.load_workbook(io.BytesIO(payload))["TM"]
+    header = [c.value for c in sheet[1]]
+    assert header[3] == "INSTANT:2025-06-30|value" and header[8] == "INSTANT:2024-12-31|value"
+    row = next(r for r in sheet.iter_rows(min_row=2) if r[1].value == 747)
+    assert row[3].value == "9007199254740993"  # beyond double precision: exact text
+
+
+def test_two_accepted_cells_for_one_template_cell_are_refused(template):
+    with pytest.raises(NotesWorkbookError):
+        build_notes_workbook_v1(DOCUMENT, [cell(747, "INSTANT:2025-06-30", "1"), cell(747, "INSTANT:2025-06-30", "2")],
+                                template, {})
+
+
+def test_tampered_value_is_detected(template):
+    cells = [cell(747, "INSTANT:2025-06-30", "900")]
+    payload, _ = build_notes_workbook_v1(DOCUMENT, cells, template, {})
+    workbook = openpyxl.load_workbook(io.BytesIO(payload))
+    row = next(r for r in workbook["TM"].iter_rows(min_row=2) if r[1].value == 747)
+    row[3].value = 901
+    tampered = deterministic_workbook_bytes(workbook, creator="tamper")
+    with pytest.raises(NotesWorkbookError):
+        verify_notes_workbook_v1(tampered, DOCUMENT, cells, template)
