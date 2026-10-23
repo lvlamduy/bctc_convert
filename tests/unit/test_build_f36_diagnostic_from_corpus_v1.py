@@ -157,6 +157,8 @@ def test_diagnostic_preserves_unresolved_and_coverage_violations_without_release
     assert output["gates"]["manual_pdf_visible_row_review"] == "NOT_PERFORMED"
     assert output["authority"]["release_authority"] is False
     assert output["authority"]["results_store_written"] is False
+    assert "primary_witness_application_receipt" not in output
+    assert "primary_witness_authentication" not in output["gates"]
     assert set(output["hashes"]["active_code_sha256"]) == set(producer.CODE_RELATIVES)
     assert fixture.calls == ["snapshot-enter", "query", "real-source-auth", "indexed",
                              "independent-source-replay", "sweep", "coverage", "snapshot-exit"]
@@ -268,6 +270,8 @@ def test_cli_help_and_runtime_binding_without_corpus_reads(tmp_path):
                                  env=environment, capture_output=True, text=True, check=False)
     assert help_result.returncode == 0
     assert "--source-pdf-root" in help_result.stdout
+    assert "--primary-witness-spec" in help_result.stdout
+    assert "--expected-primary-witness-sha256" in help_result.stdout
     assert "--results-database" not in help_result.stdout
 
 
@@ -371,3 +375,256 @@ def _run_real_sqlite_subprocess(tmp_path, *, check_runner=False):
 
 def test_real_sqlite_diagnostic_query_replay_and_coverage(tmp_path):
     _run_real_sqlite_subprocess(tmp_path)
+
+
+def _enable_witness_protocol(fixture):
+    """Test-only protocol doubles, never PDF/pixel authentication evidence.
+
+    Actual pixel admission and fresh-source replay are covered by the dedicated
+    witness modules. Here only producer forwarding, lifetime and publication
+    barriers are isolated; a serialized dict is never passed as the admission.
+    """
+    args, runner, calls = fixture.args, fixture.runner, fixture.calls
+    pdf = args.source_pdf_root / "witness.pdf"
+    pdf.write_bytes(b"test-only PDF bytes, not a real PDF")
+    declaration = {"witnesses": [{"source": {
+        "source_logical_name": pdf.name, "source_sha256": producer._hash(pdf),
+        "source_size_bytes": pdf.stat().st_size,
+    }}]}
+    spec = args.output.parent / "witness.json"
+    spec.write_bytes(canonical(declaration))
+    args.primary_witness_spec = spec
+    args.expected_primary_witness_sha256 = producer._hash(spec)
+    for relative in producer.WITNESS_CODE_RELATIVES:
+        path = args.repo_root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"test-only witness implementation\n")
+
+    class Admission:
+        active = True
+
+        def recheck(self):
+            assert self.active
+            calls.append("witness-recheck")
+
+        def close(self):
+            assert self.active
+            self.active = False
+            calls.append("witness-close")
+
+    admission = Admission()
+    seen = {}
+
+    def options(value):
+        path = getattr(value, "primary_witness_spec", None)
+        pin = getattr(value, "expected_primary_witness_sha256", None)
+        if (path is None) != (pin is None):
+            raise ValueError("paired witness options required")
+        return path, pin
+
+    def load(path, pin):
+        if producer._hash(path) != pin:
+            raise ValueError("explicit witness pin mismatch")
+        return json.loads(path.read_bytes())
+
+    def compile_specs(*specs, **kwargs):
+        assert len(specs) == 4
+        assert kwargs == {"primary_witness_spec": declaration}
+        seen["compile"] = kwargs
+        return {"family": "compiled", "test_only_witness": declaration}
+
+    def authenticate(**kwargs):
+        assert kwargs["path"] == spec
+        assert kwargs["expected_sha256"] == args.expected_primary_witness_sha256
+        assert kwargs["source_pdf_root"] == args.source_pdf_root
+        assert type(kwargs["pages"]) is defaultdict
+        assert "real-source-auth" in calls
+        seen["admission_inputs"] = kwargs
+        calls.append("witness-auth")
+        return admission
+
+    runner._primary_witness_options_v1 = options
+    runner._load_primary_witness_spec_v1 = load
+    runner.compile_gemini_json_operating_expense_family_specs_v1 = compile_specs
+    runner._authenticate_primary_witness_admission_v1 = authenticate
+    for name in (
+        "build_gemini_json_operating_expense_indexed_query_evidence_v1",
+        "build_gemini_json_operating_expense_trials_v1",
+        "validate_gemini_json_operating_expense_replay_v1",
+        "build_operating_expense_source_row_coverage_receipt_v1",
+    ):
+        original = getattr(runner, name)
+
+        def forwarded(*, _name=name, _original=original, **kwargs):
+            assert admission.active and kwargs["primary_witness_admission"] is admission
+            seen[_name] = kwargs
+            return _original(**kwargs)
+
+        setattr(runner, name, forwarded)
+    original_replay = runner.replay_operating_expense_trials_from_source_v1
+
+    def source_replay(**kwargs):
+        assert admission.active
+        assert "primary_witness_admission" not in kwargs
+        assert kwargs["primary_witness_spec_path"] == spec
+        assert kwargs["expected_primary_witness_sha256"] == args.expected_primary_witness_sha256
+        assert kwargs["primary_witness_index"] is seen["admission_inputs"]["index"]
+        assert kwargs["primary_witness_pdf_root"] == args.source_pdf_root
+        seen["cold_replay"] = kwargs
+        return original_replay(**kwargs)
+
+    def application(**kwargs):
+        assert admission.active
+        assert kwargs["indexed"]["query_evidence_id"] == "query:1"
+        calls.append("witness-application")
+        return {"receipt_id": "test-only-application:1", "all_statuses_checked": True}
+
+    runner.replay_operating_expense_trials_from_source_v1 = source_replay
+    runner._primary_witness_application_receipt_v1 = application
+    return SimpleNamespace(admission=admission, seen=seen, pdf=pdf, spec=spec)
+
+
+def test_optional_witness_forwards_live_admission_and_fresh_cold_inputs(fixture):
+    protocol = _enable_witness_protocol(fixture)
+    summary = producer.build(fixture.args)
+    output = json.loads(fixture.args.output.read_bytes())
+    assert protocol.admission.active is False
+    assert fixture.calls.index("witness-close") < fixture.calls.index("snapshot-exit")
+    assert "cold_replay" in protocol.seen
+    assert len(protocol.seen) == 7
+    assert output["primary_witness_application_receipt"]["all_statuses_checked"] is True
+    assert output["gates"]["primary_witness_authentication"] == "PASS"
+    assert output["gates"]["source_row_coverage"] == "FAIL"
+    assert output["source_row_coverage_receipt"]["violation_axis"] == ["visible-gap"]
+    assert output["metrics"]["unresolved_count"] == 1
+    assert output["authority"]["release_authority"] is False
+    assert output["authority"]["results_store_written"] is False
+    for key in ("pdf_residual_review", "manual_pdf_visible_row_review", "final_store_acceptance"):
+        assert summary["gates"][key] == "NOT_PERFORMED"
+    assert set(output["hashes"]["active_code_sha256"]) == set(
+        producer.CODE_RELATIVES + producer.WITNESS_CODE_RELATIVES
+    )
+    refs = output["hashes"]["input_references"]
+    for path in (protocol.spec, protocol.pdf):
+        assert refs[str(path)]["sha256"] == producer._hash(path)
+
+
+@pytest.mark.parametrize("missing", ["path", "pin"])
+def test_optional_witness_requires_paired_options_before_source_snapshot(fixture, missing):
+    _enable_witness_protocol(fixture)
+    if missing == "path":
+        fixture.args.primary_witness_spec = None
+    else:
+        fixture.args.expected_primary_witness_sha256 = None
+    with pytest.raises(ValueError, match="paired witness"):
+        producer.build(fixture.args)
+    assert "snapshot-enter" not in fixture.calls
+    assert not fixture.args.output.exists()
+
+
+def test_optional_witness_wrong_explicit_pin_cannot_reach_query(fixture):
+    _enable_witness_protocol(fixture)
+    fixture.args.expected_primary_witness_sha256 = "0" * 64
+    with pytest.raises(ValueError, match="pin mismatch"):
+        producer.build(fixture.args)
+    assert "query" not in fixture.calls
+    assert not fixture.args.output.exists()
+
+
+def test_optional_witness_authentication_failure_never_reaches_interpretation(fixture):
+    _enable_witness_protocol(fixture)
+
+    def refused(**kwargs):
+        raise ValueError("test-only pixel admission refused")
+
+    fixture.runner._authenticate_primary_witness_admission_v1 = refused
+    with pytest.raises(ValueError, match="pixel admission refused"):
+        producer.build(fixture.args)
+    assert "indexed" not in fixture.calls
+    assert "witness-close" not in fixture.calls  # No capability was returned.
+    assert not fixture.args.output.exists()
+
+
+def test_optional_witness_cold_trial_difference_is_not_hidden_by_warm_admission(fixture):
+    protocol = _enable_witness_protocol(fixture)
+    fixture.runner.replay_operating_expense_trials_from_source_v1 = lambda **kwargs: []
+    with pytest.raises(producer.DiagnosticError, match="different trials"):
+        producer.build(fixture.args)
+    assert protocol.admission.active is False
+    assert not fixture.args.output.exists()
+
+
+@pytest.mark.parametrize("phase", [
+    "indexed", "trials", "public-replay", "cold-replay", "coverage", "application", "recheck", "close",
+])
+def test_optional_witness_failures_close_admission_and_never_publish(fixture, phase):
+    protocol = _enable_witness_protocol(fixture)
+
+    def fail(**kwargs):
+        raise RuntimeError("test-only failure: " + phase)
+
+    names = {
+        "indexed": "build_gemini_json_operating_expense_indexed_query_evidence_v1",
+        "trials": "build_gemini_json_operating_expense_trials_v1",
+        "public-replay": "validate_gemini_json_operating_expense_replay_v1",
+        "cold-replay": "replay_operating_expense_trials_from_source_v1",
+        "coverage": "build_operating_expense_source_row_coverage_receipt_v1",
+        "application": "_primary_witness_application_receipt_v1",
+    }
+    if phase in names:
+        setattr(fixture.runner, names[phase], fail)
+    elif phase == "recheck":
+        protocol.admission.recheck = fail
+    else:
+        original_close = protocol.admission.close
+
+        def bad_close():
+            original_close()
+            fail()
+
+        protocol.admission.close = bad_close
+    with pytest.raises(RuntimeError, match="test-only failure"):
+        producer.build(fixture.args)
+    assert protocol.admission.active is False
+    assert fixture.calls.count("witness-close") == 1
+    assert not fixture.args.output.exists()
+
+
+@pytest.mark.parametrize("target", ["spec", "pdf", "witness-code", "snapshot-exit"])
+def test_optional_witness_post_snapshot_drift_or_exit_failure_never_publishes(fixture, target):
+    protocol = _enable_witness_protocol(fixture)
+    snapshot = fixture.runner.generic._authenticated_sqlite_snapshot
+
+    @contextmanager
+    def changed_after_snapshot(*args, **kwargs):
+        with snapshot(*args, **kwargs) as guard:
+            yield guard
+        assert protocol.admission.active is False
+        if target == "snapshot-exit":
+            raise RuntimeError("test-only snapshot exit failure")
+        path = {
+            "spec": protocol.spec,
+            "pdf": protocol.pdf,
+            "witness-code": fixture.args.repo_root / producer.WITNESS_CODE_RELATIVES[-1],
+        }[target]
+        path.write_bytes(b"changed after context exit")
+
+    fixture.runner.generic._authenticated_sqlite_snapshot = changed_after_snapshot
+    with pytest.raises((RuntimeError, ValueError)):
+        producer.build(fixture.args)
+    assert not fixture.args.output.exists()
+
+
+def test_optional_witness_cli_accepts_pair_without_store_or_release_flags(fixture, monkeypatch):
+    captured = []
+    monkeypatch.setattr(producer, "build", lambda args: captured.append(args) or {"diagnostic_only": True})
+    args = fixture.args
+    argv = []
+    for flag in ("repo-root", "corpus-index", "artifact-root", "source-pdf-root", "temporary-root", "output"):
+        argv.extend(["--" + flag, str(getattr(args, flag.replace("-", "_")))])
+    argv.extend(["--primary-witness-spec", str(args.output.parent / "witness.json"),
+                 "--expected-primary-witness-sha256", "a" * 64])
+    assert producer.main(argv) == 0
+    assert captured[0].primary_witness_spec == args.output.parent / "witness.json"
+    assert captured[0].expected_primary_witness_sha256 == "a" * 64
+    assert not args.output.exists()

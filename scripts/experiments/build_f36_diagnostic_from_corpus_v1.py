@@ -29,6 +29,10 @@ CODE_RELATIVES = (
     RUNNER_RELATIVE,
     "src/bctc_ai/evaluation/gemini_json_operating_expense_family_v1.py",
 )
+WITNESS_CODE_RELATIVES = (
+    "src/bctc_ai/evaluation/gemini_json_operating_expense_primary_witness_v1.py",
+    "src/bctc_ai/evaluation/gemini_json_operating_expense_primary_witness_admission_v1.py",
+)
 FORMAT_VERSION = "OPERATING_EXPENSE_OFFLINE_DIAGNOSTIC_V1"
 
 
@@ -75,9 +79,19 @@ def _load_runner(root: Path, support: ModuleType) -> ModuleType:
 
 
 def _evaluate(runner: ModuleType, index: dict, database: Path, selected_ids: list,
-              specs: list, source_pdf_root: Path) -> dict:
+              specs: list, source_pdf_root: Path, *, primary_witness_spec: Path | None = None,
+              expected_primary_witness_sha256: str | None = None) -> dict:
     topology, evaluation, schema, repairs = specs
-    compiled = runner.compile_gemini_json_operating_expense_family_specs_v1(*specs)
+    witness = None
+    if primary_witness_spec is not None or expected_primary_witness_sha256 is not None:
+        primary_witness_spec, expected_primary_witness_sha256 = runner._primary_witness_options_v1(
+            argparse.Namespace(primary_witness_spec=primary_witness_spec,
+                               expected_primary_witness_sha256=expected_primary_witness_sha256)
+        )
+        witness = runner._load_primary_witness_spec_v1(primary_witness_spec, expected_primary_witness_sha256)
+    compiled = runner.compile_gemini_json_operating_expense_family_specs_v1(
+        *specs, **({"primary_witness_spec": witness} if witness is not None else {})
+    )
     base = runner.query_selected_multitable_hierarchical_family_regions_v1(
         database, selected_page_json_version_ids=selected_ids, compiled_specs=compiled
     )
@@ -88,64 +102,90 @@ def _evaluate(runner: ModuleType, index: dict, database: Path, selected_ids: lis
     pages = runner.generic._load_selected_pages_by_document(
         database, selected_ids=selected_ids, selected_page_axis=base["selected_page_axis"]
     )
-    indexed = runner.build_gemini_json_operating_expense_indexed_query_evidence_v1(
-        base_indexed_query_evidence=base, page_json_by_document=pages, compiled_specs=compiled
-    )
-    trials = runner.build_gemini_json_operating_expense_trials_v1(
-        indexed_query_evidence=indexed, page_json_by_document=pages, compiled_specs=compiled
-    )
-    runner.validate_gemini_json_operating_expense_replay_v1(
-        indexed_query_evidence=indexed, trials=trials,
-        page_json_by_document=pages, compiled_specs=compiled,
-    )
-    replayed = runner.replay_operating_expense_trials_from_source_v1(
-        source_page_database=database, selected_page_json_version_ids=tuple(selected_ids),
-        compiled_specs=runner.compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
-        indexed_query_evidence=indexed,
-    )
-    if not runner.same_typed_json_v1(replayed, trials):
-        raise DiagnosticError("Independent source replay returned different trials")
-    sweep = runner.build_gemini_json_flat_family_sweep_v1(
-        corpus_manifest_index_id=index["corpus_manifest_index_id"], topology_spec=topology,
-        evaluation_spec=evaluation, schema_binding_spec=schema,
-        trials=trials, indexed_query_evidence=indexed,
-    )
-    runner.validate_gemini_json_flat_family_sweep_v1(sweep)
-    if sweep["family_id"] != "OPERATING_EXPENSE":
-        raise DiagnosticError("Evaluated sweep family identity drifted")
-    if sweep["metrics"].get("document_count") != len(index["documents"]):
-        raise DiagnosticError("Current corpus document denominator drifted")
-    observation = runner.validate_source_observation_mapping_contract_v1(sweep)
-    coverage = runner.build_operating_expense_source_row_coverage_receipt_v1(
-        indexed_query_evidence=indexed, trials=trials, page_json_by_document=dict(pages),
-        compiled_specs=compiled, fail_on_violation=False,
-    )
-    if coverage["violation_count"] == 0:
-        runner._validate_source_row_coverage_receipt_v1(coverage)
-    return {
-        "family_id": sweep["family_id"],
-        "corpus_manifest_index_id": index["corpus_manifest_index_id"],
-        "indexed_query_evidence": indexed,
-        "trials": trials,
-        "metrics": sweep["metrics"],
-        "evaluated_sweep_metadata": {
-            key: value for key, value in sweep.items()
-            if key not in {"family_id", "corpus_manifest_index_id", "indexed_query_evidence",
-                           "trials", "metrics"}
-        },
-        "evaluated_sweep_sha256": runner.canonical_json_sha256_v1(sweep),
-        "source_row_coverage_receipt": coverage,
-        "source_repair_authentication_receipt": source_repair_authentication,
-        "source_observation_contract": observation,
-        "gates": {
-            "independent_source_replay": "PASS",
-            "source_repair_authentication": "PASS",
-            "source_row_coverage": "PASS" if coverage["violation_count"] == 0 else "FAIL",
-            "pdf_residual_review": "NOT_PERFORMED",
-            "manual_pdf_visible_row_review": "NOT_PERFORMED",
-            "final_store_acceptance": "NOT_PERFORMED",
-        },
-    }
+    admission = None
+    try:
+        if witness is not None:
+            admission = runner._authenticate_primary_witness_admission_v1(
+                path=primary_witness_spec, expected_sha256=expected_primary_witness_sha256,
+                index=index, base=base, pages=pages, compiled=compiled, source_pdf_root=source_pdf_root,
+            )
+        indexed = runner.build_gemini_json_operating_expense_indexed_query_evidence_v1(
+            base_indexed_query_evidence=base, page_json_by_document=pages, compiled_specs=compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+        trials = runner.build_gemini_json_operating_expense_trials_v1(
+            indexed_query_evidence=indexed, page_json_by_document=pages, compiled_specs=compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+        runner.validate_gemini_json_operating_expense_replay_v1(
+            indexed_query_evidence=indexed, trials=trials,
+            page_json_by_document=pages, compiled_specs=compiled,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+        replayed = runner.replay_operating_expense_trials_from_source_v1(
+            source_page_database=database, selected_page_json_version_ids=tuple(selected_ids),
+            compiled_specs=runner.compile_gemini_json_flat_family_specs_v1(topology, evaluation, schema),
+            indexed_query_evidence=indexed,
+            **({"primary_witness_spec_path": primary_witness_spec,
+                "expected_primary_witness_sha256": expected_primary_witness_sha256,
+                "primary_witness_index": index, "primary_witness_pdf_root": source_pdf_root}
+               if admission is not None else {}),
+        )
+        if not runner.same_typed_json_v1(replayed, trials):
+            raise DiagnosticError("Independent source replay returned different trials")
+        sweep = runner.build_gemini_json_flat_family_sweep_v1(
+            corpus_manifest_index_id=index["corpus_manifest_index_id"], topology_spec=topology,
+            evaluation_spec=evaluation, schema_binding_spec=schema,
+            trials=trials, indexed_query_evidence=indexed,
+        )
+        runner.validate_gemini_json_flat_family_sweep_v1(sweep)
+        if sweep["family_id"] != "OPERATING_EXPENSE":
+            raise DiagnosticError("Evaluated sweep family identity drifted")
+        if sweep["metrics"].get("document_count") != len(index["documents"]):
+            raise DiagnosticError("Current corpus document denominator drifted")
+        observation = runner.validate_source_observation_mapping_contract_v1(sweep)
+        coverage = runner.build_operating_expense_source_row_coverage_receipt_v1(
+            indexed_query_evidence=indexed, trials=trials, page_json_by_document=dict(pages),
+            compiled_specs=compiled, fail_on_violation=False,
+            **({"primary_witness_admission": admission} if admission is not None else {}),
+        )
+        if coverage["violation_count"] == 0:
+            runner._validate_source_row_coverage_receipt_v1(coverage)
+        material = {
+            "family_id": sweep["family_id"],
+            "corpus_manifest_index_id": index["corpus_manifest_index_id"],
+            "indexed_query_evidence": indexed,
+            "trials": trials,
+            "metrics": sweep["metrics"],
+            "evaluated_sweep_metadata": {
+                key: value for key, value in sweep.items()
+                if key not in {"family_id", "corpus_manifest_index_id", "indexed_query_evidence",
+                               "trials", "metrics"}
+            },
+            "evaluated_sweep_sha256": runner.canonical_json_sha256_v1(sweep),
+            "source_row_coverage_receipt": coverage,
+            "source_repair_authentication_receipt": source_repair_authentication,
+            "source_observation_contract": observation,
+            "gates": {
+                "independent_source_replay": "PASS",
+                "source_repair_authentication": "PASS",
+                "source_row_coverage": "PASS" if coverage["violation_count"] == 0 else "FAIL",
+                "pdf_residual_review": "NOT_PERFORMED",
+                "manual_pdf_visible_row_review": "NOT_PERFORMED",
+                "final_store_acceptance": "NOT_PERFORMED",
+            },
+        }
+
+        if admission is not None:
+            material["primary_witness_application_receipt"] = runner._primary_witness_application_receipt_v1(
+                indexed=indexed, compiled=compiled
+            )
+            material["gates"]["primary_witness_authentication"] = "PASS"
+            admission.recheck()
+        return material
+    finally:
+        if admission is not None:
+            admission.close()
 
 
 def build(args: argparse.Namespace) -> dict[str, Any]:
@@ -154,7 +194,10 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         raise DiagnosticError("--repo-root must be the checkout containing this producer")
     if os.path.lexists(args.output):
         raise DiagnosticError("Refusing to overwrite an existing output or symlink")
-    code_hashes = {relative: _hash(root / relative) for relative in CODE_RELATIVES}
+    witness_requested = (getattr(args, "primary_witness_spec", None) is not None
+                         or getattr(args, "expected_primary_witness_sha256", None) is not None)
+    code_relatives = CODE_RELATIVES + (WITNESS_CODE_RELATIVES if witness_requested else ())
+    code_hashes = {relative: _hash(root / relative) for relative in code_relatives}
     support = _load_support(root)
     artifact_root, temporary_root, spec_paths = support._paths(args)
     source_pdf_root = args.source_pdf_root.resolve(strict=True)
@@ -168,6 +211,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         if path != expected.resolve():
             raise DiagnosticError("Diagnostic replay requires active registered family configs")
     runner = _load_runner(root, support)
+    witness_path, witness_pin = runner._primary_witness_options_v1(args) if witness_requested else (None, None)
     references: dict[str, dict[str, Any]] = {}
     index = runner.validate_current_corpus_manifest_index_v1(
         support._object(args.corpus_index, references)
@@ -182,7 +226,22 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     with support._temporary_directory_root(temporary_root), runner.generic._authenticated_sqlite_snapshot(
         database, reference=index["database_ref"]
     ) as guard:
-        material = _evaluate(runner, index, guard.path, selected_ids, specs, source_pdf_root)
+        material = _evaluate(
+            runner, index, guard.path, selected_ids, specs, source_pdf_root,
+            **({"primary_witness_spec": witness_path, "expected_primary_witness_sha256": witness_pin}
+               if witness_path is not None else {}),
+        )
+    if witness_path is not None:
+        witness = runner._load_primary_witness_spec_v1(witness_path, witness_pin)
+        references[str(witness_path)] = {
+            "sha256": witness_pin, "size_bytes": witness_path.stat().st_size,
+        }
+        for item in witness["witnesses"]:
+            source = item["source"]
+            source_path = runner._source_path(source_pdf_root, source["source_logical_name"])
+            references[str(source_path)] = {
+                "sha256": source["source_sha256"], "size_bytes": source["source_size_bytes"],
+            }
     for repair in material["source_repair_authentication_receipt"]["repair_axis"]:
         source = repair["source"]
         source_path = runner._source_path(source_pdf_root, source["source_logical_name"])
@@ -220,6 +279,8 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("repo-root", "corpus-index", "artifact-root", "source-pdf-root",
                  "temporary-root", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
+    parser.add_argument("--primary-witness-spec", type=Path)
+    parser.add_argument("--expected-primary-witness-sha256")
     args = parser.parse_args(argv)
     try:
         print(json.dumps(build(args), sort_keys=True))
