@@ -12,6 +12,11 @@ source, replay, integrity or ledger gate. F41 remains prohibited until the three
 unfinished families are terminal. Honor the assigned task-owned branch; do not
 push directly to the integration branch without the required review.
 
+The reviewed F36 integration checkpoint and its active diagnostic job are recorded
+in `docs/operations/F36_REVIEWED_WORKER_INTEGRATION_CHECKPOINT_2026-10-23.md`.
+That checkpoint is not a family seal; check the job's terminal receipt before
+starting another runtime job or changing its pinned runtime checkout.
+
 The authoritative worktree is this repository on branch
 `codex/27-bank-2025-current`. Preserve all committed family code, tests,
 registered evidence, and staging ledgers. Do not restart provider calls or
