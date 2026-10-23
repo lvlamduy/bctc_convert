@@ -113,6 +113,85 @@ def _numeric(family, value):
     return cell["coefficient"]
 
 
+def _original_blob_ref_v1(version, page, source_page_blob_refs):
+    raw_blob = canonical_json_bytes_v1(page) + b"\n"
+    expected = {"page_json_version_id": version, "stored_blob_sha256": sha256(raw_blob).hexdigest(),
+                "stored_blob_size_bytes": len(raw_blob), "original_object_sha256": digest(page)}
+    need(same(source_page_blob_refs.get(version), expected), "missing/wrong original BLOB versus object domain")
+    return clone(expected)
+
+
+def _fresh_unit_projection_v1(family, *, pages, page_axis, document, regions, compiled_specs, source_page_blob_refs):
+    need(all(same({k: axis.get(k) for k in LOCATOR[:4]}, document)
+             and positive(axis.get("physical_page")) and positive(axis.get("selected_page_ordinal"))
+             for axis in page_axis), "unit dependency selected source axis differs")
+    ordered = family._source_ordered_operating_expense_pages(
+        pages=pages, selected_page_axis=page_axis, regions=regions)
+    private, _repairs = family._apply_authenticated_source_repairs(
+        pages=ordered, regions=regions, compiled_specs=compiled_specs)
+    need(same(private, ordered), "changed source domain requires separate authenticated coordinate support")
+    receipts = family._bind_exact_primary_statement_unit(
+        pages=private, regions=regions, selected_page_axis=page_axis, compiled_specs=compiled_specs)
+    expected, dependencies = clone(ordered), {}
+    if receipts:
+        need(len(receipts) == 1, "unit projection receipt is not unique")
+        receipt, region = receipts[0], regions[0]
+        target = {k: region[k] for k in ("page_json_version_id", "physical_page", "section_id", "table_id")}
+        _section, table = family._source_table(expected[region["page_json_version_id"]],
+            section_id=region["section_id"], table_id=region["table_id"])
+        need(table.get("unit_exact") is None and receipt.get("target_unit_before_exact") is None
+             and same(receipt.get("target_region_axis"), [target])
+             and receipt.get("canonical_unit") in family._UNIT_SURFACE
+             and receipt.get("target_unit_exact") == family._UNIT_SURFACE[receipt["canonical_unit"]],
+             "unit projection does not bind the original unitless target")
+        table["unit_exact"] = receipt["target_unit_exact"]
+        for root in receipt["matched_primary_roots"]:
+            loc = root["locator"]
+            matches = [axis for axis in page_axis if axis["page_json_version_id"] == loc["page_json_version_id"]]
+            need(len(matches) == 1 and positive(loc.get("physical_page"))
+                 and matches[0]["physical_page"] == loc["physical_page"], "unit PRIMARY dependency is not selected")
+            version = loc["page_json_version_id"]
+            primary_section, primary_table = family._source_table(pages[version],
+                section_id=loc["section_id"], table_id=loc["table_id"])
+            local_unit = family._local_explicit_unit(primary_table, compiled_specs=compiled_specs)
+            need(pages[version].get("status") == "PRIMARY_FINANCIAL_STATEMENT"
+                 and primary_section.get("content_kind") == "PRIMARY_STATEMENT"
+                 and primary_section.get("statement_type") == "INCOME_STATEMENT"
+                 and local_unit is not None and local_unit["canonical_unit"] == receipt["canonical_unit"],
+                 "unit dependency needs its own explicit PRIMARY unit")
+            dependencies[version] = {"selected_page_axis": clone(matches[0]),
+                "stored_page_blob_ref": _original_blob_ref_v1(version, pages[version], source_page_blob_refs)}
+        need(dependencies, "unit projection has no original PRIMARY dependency")
+    need(same(private, expected), "unit projection changed fields other than target unit_exact")
+    return private, receipts, [dependencies[key] for key in sorted(dependencies)]
+
+
+def _null_generic_proof_v1(family, *, role, row, ordinal, printed, source_only_rows, locator, cols, compiled_specs):
+    child = compiled_specs["child_by_role"].get(role, {})
+    need(role == "GENERIC_PROVISION_SOURCE_ONLY" and role in compiled_specs["validation_only_roles"]
+         and role not in compiled_specs["bindings"] and child.get("role_kind") == "ADDITIVE_CHILD"
+         and row.get("row_kind") == "ITEM" and all(value is None for value in row["values_exact"]),
+         "noncanonical frontier row is not a declared all-NULL generic provision")
+    aliases = {family._normalized(alias) for matcher in child.get("matchers", [])
+               if matcher.get("within_role") is None for alias in matcher["aliases"]
+               if family._normalized(alias) == family._normalized(printed[2])}
+    need(len(aliases) == 1, "generic provision is not a whole configured literal")
+    matches = [item for item in source_only_rows if type(item.get("row_ordinal")) is int and item["row_ordinal"] == ordinal]
+    need(len(matches) == 1, "generic provision source-only row is absent or duplicated")
+    item, ref = matches[0], matches[0]["source_ref"]
+    need(item.get("declared_role") == item.get("declared_validation_role") == role
+         and item.get("consumed_by_exact_equation") is False
+         and same({k: ref.get("locator", {}).get(k) for k in LOCATOR}, locator)
+         and type(ref.get("row_ordinal")) is int and ref["row_ordinal"] == ordinal
+         and same(ref.get("money_column_ordinals"), cols)
+         and all(same(ref.get(key), row.get(key)) for key in ("label_exact", "hierarchy_path_exact", "row_kind")),
+         "generic provision original classifier/source-only identity differs")
+    return {"rule": "WHOLE_CONFIGURED_GENERIC_PROVISION_ALL_ORIGINAL_CELLS_LITERAL_NULL_NOT_NUMERIC",
+            "complete": True, "role": role, "matched_compiled_alias": next(iter(aliases)),
+            "source_only_row": clone(item), "original_row_exact": clone(row), "original_row_sha256": digest(row),
+            "numeric_role_or_mapping_permission_granted": False, "null_is_zero": False}
+
+
 def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_specs, source_page_blob_refs):
     """Initial scope: one original NOTE table, closed continuation, unchanged projection.
 
@@ -130,27 +209,28 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
     need(len(matches) == 1 and same({k: region[k] for k in LOCATOR[:7]}, matches[0])
          and same({k: region[k] for k in LOCATOR[:4]}, document), "frontier source axis mismatch")
     original = pages[region["page_json_version_id"]]
-    blob_ref = source_page_blob_refs.get(region["page_json_version_id"])
-    raw_blob = canonical_json_bytes_v1(original) + b"\n"
-    need(type(blob_ref) is dict and blob_ref == {
-        "page_json_version_id": region["page_json_version_id"], "stored_blob_sha256": sha256(raw_blob).hexdigest(),
-        "stored_blob_size_bytes": len(raw_blob), "original_object_sha256": digest(original)},
-        "missing/wrong original BLOB versus object domain")
-    private, _repairs = family._apply_authenticated_source_repairs(pages=pages, regions=regions, compiled_specs=compiled_specs)
+    blob_ref = _original_blob_ref_v1(region["page_json_version_id"], original, source_page_blob_refs)
+    original_section, original_table = family._source_table(original,
+        section_id=region["section_id"], table_id=region["table_id"])
+    need(original_section.get("content_kind") == "FINANCIAL_NOTE"
+         and original_section.get("statement_type") == "NOT_APPLICABLE"
+         and original_table.get("continuation") == "NONE", "wrong owner or open continuation")
+    private, unit_receipts, unit_dependencies = _fresh_unit_projection_v1(family,
+        pages=pages, page_axis=page_axis, document=document, regions=regions,
+        compiled_specs=compiled_specs, source_page_blob_refs=source_page_blob_refs)
     page = private[region["page_json_version_id"]]
-    need(same(page, original), "changed source domain requires separate authenticated coordinate support")
     section, table = family._source_table(page, section_id=region["section_id"], table_id=region["table_id"])
     need(section.get("content_kind") == "FINANCIAL_NOTE" and section.get("statement_type") == "NOT_APPLICABLE"
          and table.get("continuation") == "NONE", "wrong owner or open continuation")
     qualified = family._qualified_provision_literal_receipts_v1(
-        table=table, original_table=table, locator={k: region[k] for k in LOCATOR}, compiled_specs=compiled_specs)
+        table=table, original_table=original_table, locator={k: region[k] for k in LOCATOR}, compiled_specs=compiled_specs)
     need(all(item.get("complete") is True for item in qualified), "unproven whole qualified provision literal")
     payroll = family._literal_payroll_scope_receipts_v1(
-        table=table, original_table=table, locator={k: region[k] for k in LOCATOR}, compiled_specs=compiled_specs)
+        table=table, original_table=original_table, locator={k: region[k] for k in LOCATOR}, compiled_specs=compiled_specs)
     need(all(item.get("complete") is True for item in payroll), "unproven family-local payroll population")
     extracted = family._extract_table_local_records(
         page_json=page, section=section, table=table, region=region, compiled_specs=compiled_specs,
-        document_unit_context=family._document_unit_context_axis(pages, compiled_specs=compiled_specs),
+        document_unit_context=family._document_unit_context_axis(private, compiled_specs=compiled_specs),
         document_period_context={}, prior_fragment=None)
     facts = extracted["receipt"]
     classification, lane, unit = facts["classification"], facts["lane_axis"], facts["unit_axis"]
@@ -171,7 +251,7 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
     need(compiled_specs["evaluation"].get("root_component_equation_policy") == "DECLARED_DIRECT_SUM"
          and compiled_specs["evaluation"].get("direct_frontier_policy")
          == "CANONICAL_PROVEN_OR_CONTIGUOUS_NUMBERED_TOP_LEVEL_DIRECT_FRONTIER", "unsupported direct-frontier policy")
-    operands, dependency, parent_labels, numbered, operand_roles = [], [], {}, [], []
+    operands, dependency, parent_labels, numbered, operand_roles, null_generic = [], [], {}, [], [], []
     owner_aliases = family._parent_aliases(compiled_specs)
     for ordinal, row in enumerate(rows[:-1], 1):
         need(type(row.get("values_exact")) is list and len(row["values_exact"]) == len(table["columns"]), "raw width mismatch")
@@ -187,8 +267,12 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
             printed = re.fullmatch(r"([1-9][0-9]*)\. ([^\r\n]+)", row.get("label_exact", ""))
             need(printed is not None and printed[1] == str(len(operands) + 1), "top-level source numbering is not contiguous ASCII1..N")
             role = next(iter(roles[ordinal]))
-            need(role in compiled_specs["root_component_roles"] and role not in operand_roles,
-                 "top-level operand is not a unique configured root component")
+            need(role not in operand_roles, "top-level operand role is not unique")
+            if role not in compiled_specs["root_component_roles"]:
+                null_generic.append(_null_generic_proof_v1(family, role=role,
+                    row=original_table["rows"][ordinal - 1], ordinal=ordinal, printed=printed,
+                    source_only_rows=extracted["source_only_rows"], locator={k: region[k] for k in LOCATOR},
+                    cols=cols, compiled_specs=compiled_specs))
             need(label not in parent_labels, "duplicate top-level operand")
             operands.append(ordinal)
             operand_roles.append(role)
@@ -201,7 +285,8 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
     for equation in compiled_specs["evaluation"].get("derived_role_equations", []):
         need(not (equation["result_role"] in operand_roles and set(equation["component_roles"]) & set(operand_roles)),
              "aggregate and its flat detail cannot both be root operands")
-    need(len(operands) >= compiled_specs["evaluation"]["minimum_source_visible_root_component_count"], "incomplete source frontier")
+    need(sum(role in compiled_specs["root_component_roles"] for role in operand_roles)
+         >= compiled_specs["evaluation"]["minimum_source_visible_root_component_count"], "incomplete source frontier")
     unknown, numbers = [], []
     locator = {k: region[k] for k in LOCATOR}
     for ordinal in operands:
@@ -226,8 +311,8 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
         kind, equation = "PRINTED_CONTRADICTION", {"status": "MISMATCH", "component_sums": sums, "printed_result": result}
     proof = {"locator": locator, "stored_page_blob_ref": clone(blob_ref),
             "original_page_sha256": digest(original), "evaluation_page_sha256": digest(page),
-            "original_table_sha256": digest(table), "evaluation_table_sha256": digest(table),
-            "rows_exact": clone(rows), "columns_exact": clone(table["columns"]), "money_column_ordinals": clone(cols),
+            "original_table_sha256": digest(original_table), "evaluation_table_sha256": digest(table),
+            "rows_exact": clone(original_table["rows"]), "columns_exact": clone(original_table["columns"]), "money_column_ordinals": clone(cols),
             "operand_row_ordinals": operands, "result_row_ordinal": len(rows), "dependency_row_ordinals": [*dependency, len(rows)],
             "numbered_operand_axis": numbered, "literal_payroll_scope_receipts": clone(payroll),
             "classification_sha256": digest(classification), "unit_axis": clone(unit), "lane_axis": clone(lane),
@@ -235,6 +320,12 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
             "contradiction_proven": not bool(unknown), "imputation_performed": False}
     if qualified:
         proof["qualified_provision_literal_receipts"] = clone(qualified)
+    if unit_receipts:
+        proof["unit_corroboration_receipts"] = clone(unit_receipts)
+        proof["unit_source_page_blob_refs"] = unit_dependencies
+    if null_generic:
+        need(kind == "INCOMPLETE_PRINTED_FRONTIER", "NULL generic provision cannot prove a numeric contradiction")
+        proof["all_null_generic_validation_frontier"] = null_generic
     return proof
 
 

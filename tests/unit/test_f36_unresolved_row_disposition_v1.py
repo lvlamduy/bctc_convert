@@ -11,6 +11,7 @@ from test_gemini_json_operating_expense_family_v1 import (
     VERSION_ID,
     _base_rows,
     _operating_page,
+    _row,
     _source_row_coverage_inputs,
 )
 
@@ -440,3 +441,195 @@ def test_real_review_file_reader_requires_pin_and_stable_identity(tmp_path, atta
     else:
         with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
             runner._recheck_row_inputs_v1(refs)
+
+
+_PRIMARY_UNIT_VERSION = "gfpstorev1:json:" + "d" * 64
+_GENERIC_NULL_LABEL = (
+    "6. Chi phí dự phòng (không tính chi phí dự phòng rủi ro tín dụng nội và ngoại bảng; "
+    "chi phí dự phòng giảm giá chứng khoán)"
+)
+
+
+def _refresh_original_blob(kw, version):
+    page = kw["page_json_by_document"][1][version]
+    blob = canonical_json_bytes_v1(page) + b"\n"
+    kw["source_page_blob_refs"][version] = {
+        "page_json_version_id": version, "stored_blob_sha256": sha256(blob).hexdigest(),
+        "stored_blob_size_bytes": len(blob), "original_object_sha256": digest(page),
+    }
+
+
+def _rebuild_unit_generic_source(kw):
+    # Recoalesce actual source objects: no hand-edited component-role authority.
+    evidence = kw["indexed_query_evidence"]
+    base = family._fresh_original_primary_base_v1(evidence=evidence,
+        pages=kw["page_json_by_document"], compiled_specs=kw["compiled_specs"])
+    indexed = family.build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=base, page_json_by_document=kw["page_json_by_document"],
+        compiled_specs=kw["compiled_specs"])
+    trials = family.build_gemini_json_operating_expense_trials_v1(
+        indexed_query_evidence=indexed, page_json_by_document=kw["page_json_by_document"],
+        compiled_specs=kw["compiled_specs"])
+    kw["indexed_query_evidence"], kw["trials"] = indexed, trials
+    kw["raw_coverage"] = family.build_operating_expense_source_row_coverage_receipt_v1(
+        indexed_query_evidence=indexed, trials=trials, page_json_by_document=kw["page_json_by_document"],
+        compiled_specs=kw["compiled_specs"], fail_on_violation=False)
+
+
+def _unit_generic_inputs(*, local_unit=False):
+    """Synthetic original NOTE + explicit-unit PRIMARY; no visual/IO approval."""
+    kw = _fixture()
+    note = kw["page_json_by_document"][1][VERSION_ID]
+    table = note["sections"][0]["tables"][0]
+    table["rows"][-2]["label_exact"] = _GENERIC_NULL_LABEL
+    table["rows"][-2]["hierarchy_path_exact"] = [_GENERIC_NULL_LABEL]
+    table["unit_exact"] = "Triệu đồng" if local_unit else None
+    for year, column in zip((2026, 2025), table["columns"], strict=True):
+        column["header_path_exact"] = [f"Năm {year}"]
+    primary = _operating_page([_row("Chi phí hoạt động", "80", "70")])
+    primary["status"] = "PRIMARY_FINANCIAL_STATEMENT"
+    section = primary["sections"][0]
+    section.update(content_kind="PRIMARY_STATEMENT", statement_type="INCOME_STATEMENT",
+        title_exact="Báo cáo kết quả hoạt động kinh doanh riêng")
+    section["tables"][0]["title_exact"] = section["title_exact"]
+    for year, column in zip((2026, 2025), section["tables"][0]["columns"], strict=True):
+        column["header_path_exact"] = [f"Năm {year}"]
+    kw["page_json_by_document"][1][_PRIMARY_UNIT_VERSION] = primary
+    document = kw["indexed_query_evidence"]["selected_document_axis"][0]
+    kw["indexed_query_evidence"]["selected_page_axis"].append({**document,
+        "page_json_version_id": _PRIMARY_UNIT_VERSION, "physical_page": 2, "selected_page_ordinal": 2})
+    _refresh_original_blob(kw, VERSION_ID)
+    _refresh_original_blob(kw, _PRIMARY_UNIT_VERSION)
+    _rebuild_unit_generic_source(kw)
+    assert kw["trials"][0]["status"] == family.UNRESOLVED and kw["trials"][0]["mappings"] == []
+    return kw
+
+
+def _unit_generic_frontier(kw):
+    indexed = kw["indexed_query_evidence"]
+    return held.build_printed_frontier_v1(document=indexed["selected_document_axis"][0],
+        page_axis=indexed["selected_page_axis"], pages=kw["page_json_by_document"][1],
+        cluster=indexed["candidate_dispositions"][0]["cluster"], compiled_specs=kw["compiled_specs"],
+        source_page_blob_refs=kw["source_page_blob_refs"])
+
+
+def _bind_synthetic_review_to_fresh_outputs(kw, proof):
+    indexed, trial, raw = kw["indexed_query_evidence"], kw["trials"][0], kw["raw_coverage"]
+    review = kw["declaration"]["reviews"][0]
+    review.update(status=trial["status"], reasons=copy.deepcopy(trial["reasons"]),
+        trial_sha256=digest(trial), query_cluster_sha256=digest(indexed["candidate_dispositions"][0]["cluster"]),
+        printed_frontier=proof, finding_kind=proof["finding_kind"],
+        held_rows=[{"axis_name": axis, "raw_coverage_item_sha256": digest(item)}
+                   for axis in held.AXES for item in raw[axis] if item["coverage"].startswith("VIOLATION_")])
+    kw["declaration"]["raw_coverage_receipt_id"] = raw["receipt_id"]
+    kw["authenticated_pdf_residuals"][0].update(status=trial["status"], reasons=copy.deepcopy(trial["reasons"]))
+
+
+@pytest.mark.parametrize("local_unit", [False, True])
+def test_null_generic_frontier_preserves_unknown_and_fresh_unit_dependencies(local_unit):
+    kw = _unit_generic_inputs(local_unit=local_unit)
+    before = copy.deepcopy(kw)
+    proof = _unit_generic_frontier(kw)
+    assert kw == before
+    assert proof["finding_kind"] == "INCOMPLETE_PRINTED_FRONTIER"
+    assert proof["rows_exact"][-2]["values_exact"] == [None, None]
+    assert proof["equation"] == {"status": "INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"}
+    assert proof["all_null_generic_validation_frontier"][0]["null_is_zero"] is False
+    assert proof["all_null_generic_validation_frontier"][0]["numeric_role_or_mapping_permission_granted"] is False
+    assert kw["raw_coverage"]["violation_count"] > 0 and kw["trials"][0]["mappings"] == []
+    if local_unit:
+        assert "unit_corroboration_receipts" not in proof and "unit_source_page_blob_refs" not in proof
+    else:
+        assert proof["original_page_sha256"] != proof["evaluation_page_sha256"]
+        assert proof["original_table_sha256"] != proof["evaluation_table_sha256"]
+        assert kw["page_json_by_document"][1][VERSION_ID]["sections"][0]["tables"][0]["unit_exact"] is None
+        assert len(proof["unit_corroboration_receipts"]) == 1
+        assert proof["unit_source_page_blob_refs"] == [{
+            "selected_page_axis": kw["indexed_query_evidence"]["selected_page_axis"][1],
+            "stored_page_blob_ref": kw["source_page_blob_refs"][_PRIMARY_UNIT_VERSION]}]
+    _bind_synthetic_review_to_fresh_outputs(kw, proof)
+    assert held.reconcile_unresolved_rows_v1(**kw)["unjoined_violation_count"] == 0
+
+
+@pytest.mark.parametrize("value", ["0", "-", "", " ", False, "(7)"])
+def test_generic_validation_frontier_requires_every_original_cell_literal_null(value):
+    kw = _unit_generic_inputs()
+    kw["page_json_by_document"][1][VERSION_ID]["sections"][0]["tables"][0]["rows"][-2]["values_exact"][0] = value
+    _refresh_original_blob(kw, VERSION_ID)
+    with pytest.raises((held.UnresolvedRowsV1Error, GeminiJsonMultitableHierarchicalFamilyV1Error)):
+        _unit_generic_frontier(kw)
+
+
+@pytest.mark.parametrize("attack", ["undeclared", "bound-role", "nonadditive", "suffix", "minimum"])
+def test_null_generic_is_not_a_new_numeric_role_or_population_waiver(attack):
+    kw = _unit_generic_inputs()
+    compiled, role = kw["compiled_specs"], "GENERIC_PROVISION_SOURCE_ONLY"
+    if attack == "undeclared":
+        compiled["validation_only_roles"].remove(role)
+    elif attack == "bound-role":
+        compiled["bindings"][role] = copy.deepcopy(next(iter(compiled["bindings"].values())))
+    elif attack == "nonadditive":
+        compiled["child_by_role"][role]["role_kind"] = "NONADDITIVE_CHILD"
+    elif attack == "suffix":
+        row = kw["page_json_by_document"][1][VERSION_ID]["sections"][0]["tables"][0]["rows"][-2]
+        row["label_exact"] += "; số liệu riêng của công ty con"
+        row["hierarchy_path_exact"] = [row["label_exact"]]
+        _refresh_original_blob(kw, VERSION_ID)
+    else:
+        compiled["evaluation"]["minimum_source_visible_root_component_count"] = 6
+    with pytest.raises((held.UnresolvedRowsV1Error, GeminiJsonMultitableHierarchicalFamilyV1Error)):
+        _unit_generic_frontier(kw)
+
+
+@pytest.mark.parametrize("attack", ["missing-blob", "blob-drift", "foreign-axis", "bool-page", "float-selected", "unit", "vector", "inherited-unit"])
+def test_unit_corroboration_requires_original_primary_blob_and_exact_selected_axis(attack):
+    kw = _unit_generic_inputs()
+    primary = kw["page_json_by_document"][1][_PRIMARY_UNIT_VERSION]
+    axis = kw["indexed_query_evidence"]["selected_page_axis"][1]
+    if attack == "missing-blob":
+        del kw["source_page_blob_refs"][_PRIMARY_UNIT_VERSION]
+    elif attack == "blob-drift":
+        primary["sections"][0]["narratives_exact"].append("Changed original source")
+    elif attack == "foreign-axis":
+        axis["source_sha256"] = "e" * 64
+    elif attack == "bool-page":
+        axis["physical_page"] = True
+    elif attack == "float-selected":
+        axis["selected_page_ordinal"] = 2.0
+    elif attack == "unit":
+        primary["sections"][0]["tables"][0]["unit_exact"] = "Unsupported unit"
+        _refresh_original_blob(kw, _PRIMARY_UNIT_VERSION)
+    elif attack == "inherited-unit":
+        # The existing binder may inherit from a separate PRIMARY statement;
+        # this new finite dependency proof deliberately supports local units only.
+        primary["sections"][0]["tables"][0]["unit_exact"] = None
+        context_version = "gfpstorev1:json:" + "e" * 64
+        context = copy.deepcopy(primary)
+        context["sections"][0]["tables"][0]["unit_exact"] = "Triệu đồng"
+        context["sections"][0]["tables"][0]["rows"][0]["label_exact"] = "Khoản mục khác"
+        context["sections"][0]["tables"][0]["rows"][0]["hierarchy_path_exact"] = ["Khoản mục khác"]
+        kw["page_json_by_document"][1][context_version] = context
+        kw["indexed_query_evidence"]["selected_page_axis"].append({**axis,
+            "page_json_version_id": context_version, "physical_page": 3, "selected_page_ordinal": 3})
+        _refresh_original_blob(kw, _PRIMARY_UNIT_VERSION)
+        _refresh_original_blob(kw, context_version)
+    else:
+        primary["sections"][0]["tables"][0]["rows"][0]["values_exact"] = ["999", "998"]
+        _refresh_original_blob(kw, _PRIMARY_UNIT_VERSION)
+    with pytest.raises((held.UnresolvedRowsV1Error, GeminiJsonMultitableHierarchicalFamilyV1Error)):
+        _unit_generic_frontier(kw)
+
+
+@pytest.mark.parametrize("attack", ["unit-receipt", "primary-dependency"])
+def test_resealed_corroboration_metadata_cannot_replace_fresh_source_replay(attack):
+    kw = _unit_generic_inputs()
+    proof = _unit_generic_frontier(kw)
+    _bind_synthetic_review_to_fresh_outputs(kw, proof)
+    if attack == "unit-receipt":
+        receipt = proof["unit_corroboration_receipts"][0]
+        receipt["target_unit_exact"] = "VND"
+        receipt["receipt_id"] = "gjoefav1:unit:" + digest({k: v for k, v in receipt.items() if k != "receipt_id"})
+    else:
+        proof["unit_source_page_blob_refs"][0]["stored_page_blob_ref"]["stored_blob_sha256"] = "0" * 64
+    with pytest.raises(held.UnresolvedRowsV1Error, match="frontier"):
+        held.reconcile_unresolved_rows_v1(**kw)
