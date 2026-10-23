@@ -97,3 +97,32 @@ joins cannot become source authority without original-cell/source identity proof
 Fresh authoritative full271/common204, cold source replay, final SQLite store/
 integrity, observation, PDF/residual audit and terminal ledger are still required.
 Preserve old artifacts and failures. None of these checkpoints seals F36.
+
+## Immutable backup
+
+Pushed checkpoint `a381ac8bed6df7e247a6420b64267a76096dc483` has nine pinned
+artifact/input/helper objects and one nonterminal HEARTBEAT backed up under
+`s3://test-s3-duylv/bctc-ai/coordination/2025-current/v1/artifacts/LAPTOP_INTEGRATOR/f36-payroll-scope-checkpoint-20261023T144613552565Z-347e834d50764305ac2cf23134e275dd/`.
+Every create-only PUT used AES256/SHA checksum and exact-VersionId full-byte
+readback; no previous S3 object was overwritten or deleted.
+
+HEARTBEAT key:
+`bctc-ai/coordination/2025-current/v1/events/20261023T144613552565Z-LAPTOP_INTEGRATOR-HEARTBEAT-fb741ded44624e339e3b4d08cb484787.json`,
+VersionId `mz3qKBqSsOtTeP0g7_YH0DMtNoHKD0ir`, SHA
+`dfaf19b87d26ac535c05922d6f1cd2e6c4a398743e9d0d6144f6c849bfeae712`.
+Focused744 VersionId: `EsNgj3voqQleZqQhiOFX1493P1FD44oK`.
+Local final receipt
+`D:/bctc_bank/restore-receipts/f36-payroll-scope-checkpoint-20261023T144613552565Z-347e834d50764305ac2cf23134e275dd/final.json`,
+SHA `1a75ab9164f8596b6cad9457c0e494a73585f3ae55ed653f470a215b64d539e6`.
+Publisher SHA `7c4fb67fea47c12e2c8bef20be4fa9c44ea11a805ad8e8bbae59f7ec2558a2ed`;
+input manifest SHA `cf675d4f710d499b5b6f272e254074df4024e259db83982eb6f9474ddb920abf`.
+
+The one-document, pre-payroll baseline trial profile is also terminal PASS:
+`/srv/bctc-receipts/f36-full193-public-trial-profile-20261023T143100Z/F36_FULL193_PUBLIC_TRIAL_PROFILE_V1.json`,
+SHA `025ec5bb29f1fbb4965114044456e495e5c7963bc14ac64f6a70c2893f4aaacf`.
+The instrumented public trial call took1.048CPU seconds and fresh unprofiled
+public replay0.471CPU seconds, with equal trials/source/query and zero observation
+violations. This single easy document does not explain the old64-minute FULL
+job. No O(N²) cause or material speedup is established. Measure the complete
+untrimmed query/hydration/indexed axes separately before choosing another
+optimization; do not delete required replay passes just to lower elapsed time.
