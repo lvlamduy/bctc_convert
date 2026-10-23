@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from bctc_ai.notes.config_v1 import load_notes_config_v1
-from bctc_ai.notes.engine_v1 import run_family_v1, summarize_v1
+from bctc_ai.notes.engine_v1 import dispositions_v1, run_family_v1, summarize_v1
 from bctc_ai.notes.export_v1 import build_notes_workbook_v1, tm_template_rows_v1
 from bctc_ai.notes.kernel_v1 import NotesSource, load_primary_context_v1
 from bctc_ai.notes.store_v1 import cells_projection_sha256_v1, reload_notes_store_v1, write_notes_store_v1
@@ -54,12 +54,14 @@ def evaluate_v1(args, metrics: SourceMetrics, *, verify_db_bytes: bool) -> tuple
     config = load_notes_config_v1(PROJECT_ROOT)
     source = NotesSource(corpus, metrics)
     documents = set(map(int, args.documents.split(","))) if args.documents else None
-    cells, summaries = [], {}
+    cells, summaries, dispositions = [], {}, []
     for family in args.families.split(","):
         started = time.perf_counter()
         run = run_family_v1(family, config, source, contexts, document_ordinals=documents)
         summaries[family] = {**summarize_v1(run), "seconds": round(time.perf_counter() - started, 3)}
         cells += run.cells
+        dispositions += dispositions_v1(run)
+    args.dispositions = dispositions
     return cells, summaries, corpus, config
 
 
@@ -89,6 +91,9 @@ def main() -> int:
                 "families": args.families.split(","), "documents_requested": args.documents, "config_pins": config.pins,
                 "provider_calls_performed": False, "source_mutations_performed": False, "summaries": summaries}
     store = write_notes_store_v1(args.output_dir / "notes-results.sqlite3", manifest=manifest, cells=cells)
+    # Denominator artifact (every retrieved table and row disposition), written once beside the store.
+    with open(args.output_dir / "dispositions.json", "x", encoding="utf-8") as handle:
+        json.dump(args.dispositions, handle, ensure_ascii=False, sort_keys=True, default=str)
     _manifest, reloaded = reload_notes_store_v1(args.output_dir / "notes-results.sqlite3")
     reload_status = "PASS_EXACT" if reloaded == cells else "FAIL"
     command = [sys.executable, "-B", "-m", "bctc_ai.notes.run_v1", "--corpus", args.corpus, "--primary-store", args.primary_store,

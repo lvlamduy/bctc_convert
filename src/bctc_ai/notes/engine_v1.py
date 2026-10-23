@@ -124,6 +124,31 @@ def run_family_v1(
     return run
 
 
+def dispositions_v1(run: FamilyRun) -> list[dict[str, Any]]:
+    """Every retrieved table of a family run with its status/reasons and, when evaluated, every row's disposition.
+
+    The denominator artifact: rejected tables, unread (SOURCE_ONLY), ambiguous and
+    heading rows stay visible with their reason; nothing is silently dropped.
+    """
+
+    out = []
+    for evaluation in run.evaluations:
+        table = evaluation.table
+        out.append({
+            "family": run.family, "status": evaluation.status, "reasons": list(evaluation.reasons),
+            "locator": table.locator(), "fragments": list(table.fragments), "subject": evaluation.subject,
+            "rows": [{"row_id": table.rows[r.row_index].row_id, "label_exact": table.rows[r.row_index].label,
+                      "parent_row_id": table.rows[r.row_index].parent_row_id,
+                      "line": getattr(r, "role", None) or getattr(r, "coordinate", None), "disposition": r.disposition,
+                      "reason": r.reason, "candidates": list(getattr(r, "candidates", None) or [])} for r in evaluation.roles],
+            "lanes": [{"column_id": lane.column.column_id, "header": lane.column.header_text, "period_key": lane.period_key,
+                       "period_basis": lane.period_basis, "candidates": list(getattr(lane, "candidates", []) or []),
+                       "unit": lane.unit, "reasons": list(lane.reasons)} for lane in evaluation.lanes],
+            "equations": [{k: v for k, v in e.items()} for e in evaluation.equations],
+        })
+    return out
+
+
 def summarize_v1(run: FamilyRun) -> dict[str, Any]:
     acceptance = Counter((c["concept"], c["acceptance"]) for c in run.cells)
     reasons = Counter(r.split(":")[0] for c in run.cells for r in c["hold_reasons"])

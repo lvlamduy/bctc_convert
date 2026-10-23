@@ -115,6 +115,25 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
     return roles
 
 
+def _printed_under_member(table: NoteTable, roles: list[RowRole], index: int) -> bool:
+    """An unread row printed (parent_row_id chain) under a read line is that line's detail, not a missing term.
+
+    Only printed nesting counts, never position. Such a row does not open an
+    equation span: the line it details is already a term (or not) as a whole.
+    """
+
+    members = {role.row_index for role in roles if role.disposition == "MEMBER"}
+    position = {row.row_id: i for i, row in enumerate(table.rows)}
+    row, seen = table.rows[index], set()
+    while row.parent_row_id and row.parent_row_id in position and row.parent_row_id not in seen:
+        seen.add(row.parent_row_id)
+        parent = position[row.parent_row_id]
+        if parent in members:
+            return True
+        row = table.rows[parent]
+    return False
+
+
 def _number(parsed) -> Decimal | None:
     if parsed is None or parsed.state not in NUMERIC:
         return None
@@ -242,7 +261,9 @@ def evaluate_concept_table_v1(
         values = {role.role: parse_cell_v1(table, table.rows[role.row_index], lane.column, separators, document.separator_roles)
                   for role in roles if role.disposition == "MEMBER"}
         line_rows = {role.role: role.row_index for role in roles if role.disposition == "MEMBER"}
-        unmatched = [role.row_index for role in roles if role.disposition in {"SOURCE_ONLY", "AMBIGUOUS"}
+        unmatched = [role.row_index for role in roles
+                     if (role.disposition == "AMBIGUOUS"
+                         or (role.disposition == "SOURCE_ONLY" and not _printed_under_member(table, roles, role.row_index)))
                      and table.cells.get((table.rows[role.row_index].row_id, lane.column.column_id), (None, "BLANK"))[1] != "BLANK"]
         equations = evaluate_equations_v1(family, values, lane.unit, lane.column.column_id, line_rows, unmatched)
         evaluation.equations += equations

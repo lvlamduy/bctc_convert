@@ -91,3 +91,19 @@ def test_credit_provision_general_and_specific_need_a_printed_subject_parent(con
     result = cells(evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), []))
     assert result[("OFF_BALANCE_PROVISION", YEAR)]["value"] == "-5"  # sign as printed
     assert result[("TOTAL_CREDIT_PROVISION", YEAR)]["acceptance"] == "ACCEPTED"  # 300 + 40 - 5 = 335
+
+
+def test_dispositions_keep_rejected_tables_and_unread_rows():
+    from bctc_ai.notes.engine_v1 import FamilyRun, dispositions_v1
+    from bctc_ai.notes.concept_list_shape_v1 import evaluate_concept_table_v1 as evaluate
+    family = load_notes_config_v1(ROOT).families["OPERATING_EXPENSE"]
+    table = opex_table()
+    run = FamilyRun("OPERATING_EXPENSE")
+    run.evaluations = evaluate(table, family, document(quarter=4), context_of(table), [])
+    budget = make_table([("Chi lương", ["1", "1"])], [("Năm 2025",), ("Năm 2024",)], title="Tình hình thu nhập của cán bộ")
+    run.evaluations += evaluate(budget, family, document(quarter=4), context_of(budget), [])
+    records = dispositions_v1(run)
+    assert [r["status"] for r in records] == ["EVALUATED", "REJECTED"]
+    assert records[1]["reasons"] and records[1]["rows"] == []
+    assert {row["disposition"] for row in records[0]["rows"]} >= {"MEMBER"}
+    assert all({"row_id", "label_exact", "parent_row_id", "line", "disposition", "reason"} <= set(row) for row in records[0]["rows"])

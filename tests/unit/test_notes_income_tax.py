@@ -383,3 +383,17 @@ def test_raw_guard_runs_before_the_owned_context_parser():
     lanes = resolve_duration_lanes_v1(table, document(quarter=3), [], [table.section_title])
     assert lanes[0].period_key is None and "HEADER_RAW_DIGIT_OR_MARK_NOT_PLAIN" in lanes[0].reasons
     assert lanes[1].period_key == "DURATION:MONTHS_ENDED:9:2025-09-30"  # accented words stay valid
+
+
+def test_unread_row_printed_under_a_read_line_does_not_open_the_equation(family):
+    rows = [("Lợi nhuận trước thuế", ["100", "90"]), ("Chi phí không được khấu trừ", ["5", "5"]),
+            ("Chi phí tiếp khách vượt định mức", ["5", "5"]), ("Thu nhập chịu thuế", ["105", "95"])]
+    table = make_table(rows, [("Năm 2025",), ("Năm 2024",)])
+    row = table.rows[2]
+    table.rows[2] = NoteRow(row.row_id, row.order, row.label, row.kind, row.hierarchy, "r1")  # printed child of r1
+    evaluations = evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), [])
+    assert {e["status"] for e in evaluations[0].equations if e["name"] == "TAXABLE_FROM_PROFIT"} == {"PASS"}
+    # Without printed nesting the same row is an unread term: incomplete, lines held.
+    flat = make_table(rows, [("Năm 2025",), ("Năm 2024",)])
+    flat_eval = evaluate_concept_table_v1(flat, family, document(quarter=4), context_of(flat), [])
+    assert {e["status"] for e in flat_eval[0].equations if e["name"] == "TAXABLE_FROM_PROFIT"} == {"INCOMPLETE_UNREAD_ROWS_IN_SPAN"}
