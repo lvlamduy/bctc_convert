@@ -231,6 +231,62 @@ def test_actual_300dpi_pdf_render_binds_reviewed_png_without_mock_authentication
             runner._verify_reviewed_png_from_pdf_v1(**kwargs)
 
 
+@pytest.mark.parametrize("suffix", [None, "", " và chi phí khác", " theo tỷ lệ", " (Thuyết minh 15)"])
+def test_fresh_qualified_literal_guard_is_not_absorbed_by_an_incomplete_frontier(suffix):
+    kw = _fixture()
+    page = kw["page_json_by_document"][1][VERSION_ID]
+    table = page["sections"][0]["tables"][0]
+    row = table["rows"][-2]
+    if suffix is not None:
+        row["label_exact"] = (
+            "6. Trích lập/(hoàn nhập) dự phòng giảm giá đầu tư tài chính dài hạn "
+            "(Thuyết minh 11)" + suffix)
+        row["hierarchy_path_exact"] = [row["label_exact"]]
+    cluster = kw["indexed_query_evidence"]["candidate_dispositions"][0]["cluster"]
+    region = cluster["component_regions"][0]
+    receipts = family._qualified_provision_literal_receipts_v1(
+        table=table, original_table=table, locator=region, compiled_specs=kw["compiled_specs"])
+    assert bool(receipts) is (suffix is not None)
+    if receipts:
+        assert receipts[0]["complete"] is (suffix == "")
+        assert receipts[0]["original_row_exact"] == row
+        assert receipts[0]["evaluation_row_exact"] == row
+        assert receipts[0]["parent_unit_period_value_or_mapping_permission_granted"] is False
+    blob = canonical_json_bytes_v1(page) + b"\n"
+    kw["source_page_blob_refs"][VERSION_ID].update(stored_blob_sha256=sha256(blob).hexdigest(),
+        stored_blob_size_bytes=len(blob), original_object_sha256=digest(page))
+    before = copy.deepcopy(kw)
+    args = dict(document=kw["indexed_query_evidence"]["selected_document_axis"][0],
+        page_axis=kw["indexed_query_evidence"]["selected_page_axis"], pages=kw["page_json_by_document"][1],
+        cluster=cluster, compiled_specs=kw["compiled_specs"], source_page_blob_refs=kw["source_page_blob_refs"])
+    if suffix not in (None, ""):
+        with pytest.raises(ValueError, match="unproven whole qualified provision literal"):
+            held.build_printed_frontier_v1(**args)
+    else:
+        proof = held.build_printed_frontier_v1(**args)
+        assert proof["finding_kind"] == "INCOMPLETE_PRINTED_FRONTIER"
+        assert proof["contradiction_proven"] is False
+        if suffix is None:
+            assert "qualified_provision_literal_receipts" not in proof
+        else:
+            assert proof["qualified_provision_literal_receipts"] == receipts
+            assert proof["unknown_operand_axis"]
+    assert kw == before
+
+
+def test_resealed_caller_qualified_policy_does_not_authorize_a_frontier():
+    kw = _fixture()
+    compiled = kw["compiled_specs"]
+    policy = compiled["operating_expense_qualified_provision_literal_policy"]
+    policy["declarations"] = []
+    compiled["operating_expense_qualified_provision_literal_policy_sha256"] = digest(policy)
+    with pytest.raises(ValueError, match="qualified provision literal policy drifted"):
+        held.build_printed_frontier_v1(document=kw["indexed_query_evidence"]["selected_document_axis"][0],
+            page_axis=kw["indexed_query_evidence"]["selected_page_axis"], pages=kw["page_json_by_document"][1],
+            cluster=kw["indexed_query_evidence"]["candidate_dispositions"][0]["cluster"],
+            compiled_specs=compiled, source_page_blob_refs=kw["source_page_blob_refs"])
+
+
 def test_resealed_reconciliation_cannot_drop_an_unjoined_violation():
     kw = _fixture()
     result = held.reconcile_unresolved_rows_v1(**kw)

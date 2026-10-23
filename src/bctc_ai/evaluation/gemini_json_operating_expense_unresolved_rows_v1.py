@@ -138,11 +138,12 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
     section, table = family._source_table(page, section_id=region["section_id"], table_id=region["table_id"])
     need(section.get("content_kind") == "FINANCIAL_NOTE" and section.get("statement_type") == "NOT_APPLICABLE"
          and table.get("continuation") == "NONE", "wrong owner or open continuation")
+    qualified = family._qualified_provision_literal_receipts_v1(
+        table=table, original_table=table, locator={k: region[k] for k in LOCATOR}, compiled_specs=compiled_specs)
+    need(all(item.get("complete") is True for item in qualified), "unproven whole qualified provision literal")
     payroll = family._literal_payroll_scope_receipts_v1(
         table=table, original_table=table, locator={k: region[k] for k in LOCATOR}, compiled_specs=compiled_specs)
     need(all(item.get("complete") is True for item in payroll), "unproven family-local payroll population")
-    # This base has no qualified-literal alias policy. Its separate composition
-    # must also invoke that policy's fresh population guard before admission.
     extracted = family._extract_table_local_records(
         page_json=page, section=section, table=table, region=region, compiled_specs=compiled_specs,
         document_unit_context=family._document_unit_context_axis(pages, compiled_specs=compiled_specs),
@@ -219,7 +220,7 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
         sums = [sum(row[lane_no] for row in numbers) for lane_no in (0, 1)]
         need(sums != result, "complete numeric frontier is not contradictory")
         kind, equation = "PRINTED_CONTRADICTION", {"status": "MISMATCH", "component_sums": sums, "printed_result": result}
-    return {"locator": locator, "stored_page_blob_ref": clone(blob_ref),
+    proof = {"locator": locator, "stored_page_blob_ref": clone(blob_ref),
             "original_page_sha256": digest(original), "evaluation_page_sha256": digest(page),
             "original_table_sha256": digest(table), "evaluation_table_sha256": digest(table),
             "rows_exact": clone(rows), "columns_exact": clone(table["columns"]), "money_column_ordinals": clone(cols),
@@ -228,6 +229,9 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
             "classification_sha256": digest(classification), "unit_axis": clone(unit), "lane_axis": clone(lane),
             "finding_kind": kind, "unknown_operand_axis": unknown, "equation": equation,
             "contradiction_proven": not bool(unknown), "imputation_performed": False}
+    if qualified:
+        proof["qualified_provision_literal_receipts"] = clone(qualified)
+    return proof
 
 
 def reconcile_unresolved_rows_v1(*, corpus_manifest_index_id, raw_coverage, indexed_query_evidence, trials, page_json_by_document,
