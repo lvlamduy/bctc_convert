@@ -220,7 +220,10 @@ def test_first_quarter_reconciliation_accepted_with_equation_and_primary_proof(f
     all_cells = [c for e in evaluations for c in e.cells]
     _assign_legacy_ids(all_cells, config)
     ids = {c["member"]: c["report_norm_id"] for c in all_cells if c["period_key"] == Q1}
-    assert ids["PROFIT_BEFORE_TAX"] == 5728 and ids["NON_DEDUCTIBLE_EXPENSES"] == 5730
+    # 5729/5730 are held: the label alone proves neither the legacy base amount nor the population.
+    assert ids["PROFIT_BEFORE_TAX"] == 5728 and ids["NON_DEDUCTIBLE_EXPENSES"] is None
+    states = {c["member"]: c["semantic_state"] for c in all_cells if c["period_key"] == Q1}
+    assert states["NON_DEDUCTIBLE_EXPENSES"] == "BASE_OR_TAX_EFFECT_UNPROVEN" and states["PROFIT_BEFORE_TAX"] is None
 
 
 def test_primary_line_differing_for_the_period_vetoes_the_lane(family):

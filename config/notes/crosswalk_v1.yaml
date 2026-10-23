@@ -83,8 +83,9 @@ entries:
   # deferred tax and total tax in the legacy layout; the line values are under
   # DEFERRED_TAX_EXPENSE / TOTAL_TAX_EXPENSE.
   - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: PROFIT_BEFORE_TAX, report_norm_id: 5728}
-  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: NON_TAXABLE_INCOME, report_norm_id: 5729}
-  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: NON_DEDUCTIBLE_EXPENSES, report_norm_id: 5730}
+  # 5729/5730 are HELD (no legacy ID; Codex 0122): a printed 'không chịu thuế' / 'không được khấu trừ'
+  # line does not by itself prove the legacy BASE amount (vs its tax effect) nor the bank-only
+  # population. Cells keep semantic_state BASE_OR_TAX_EFFECT_UNPROVEN until source evidence resolves it.
   - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: TAXABLE_INCOME, report_norm_id: 5731}
   - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: TAX_AT_STATUTORY_RATE, report_norm_id: 5732}
   - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: PRIOR_YEAR_TAX_ADJUSTMENT, report_norm_id: 5733}

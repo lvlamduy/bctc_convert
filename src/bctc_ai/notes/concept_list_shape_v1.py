@@ -356,4 +356,6 @@ def _emit(evaluation: TableEvaluation, family: Family, document: DocumentContext
             "raw": parsed.raw, "acceptance": acceptance, "hold_reasons": reasons, "product_status": "PROTOTYPE_NOT_ACCEPTANCE",
             "locator": {**table.locator(), "row_id": row.row_id, "row_order": row.order, "column_id": lane.column.column_id},
             "label_exact": row.label, "header_text": lane.column.header_text,
+            # A line whose legacy meaning is not proven by its label alone (e.g. base vs tax effect).
+            "semantic_state": family.axis.members.get(role.role, {}).get("semantic_state"),
         })

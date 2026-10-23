@@ -109,6 +109,7 @@ axes:
         name: Thu nhập không chịu thuế / miễn thuế
         all_of: [[khong chiu thue], [mien thue], [khong phai chiu thue], [khong tinh thue]]
         none_of: [[chi phi], [thue suat], [tong thu nhap chiu thue]]
+        semantic_state: BASE_OR_TAX_EFFECT_UNPROVEN
       DIVIDEND_INCOME:
         name: Thu nhập từ cổ tức, góp vốn mua cổ phần (không chịu thuế)
         all_of: [[co tuc], [gop von, mua co phan], [loi nhuan duoc chia]]
@@ -126,6 +127,7 @@ axes:
         name: Chi phí không được khấu trừ khi xác định thu nhập chịu thuế
         all_of: [[khong duoc khau tru], [khong duoc tru], [khong duoc tinh tru], [khong hop le]]
         none_of: [[hoan nhap]]
+        semantic_state: BASE_OR_TAX_EFFECT_UNPROVEN
         dominates: [INCREASING_ADJUSTMENTS]
       LOSS_CARRIED_FORWARD:
         name: Lỗ các năm trước chuyển sang
