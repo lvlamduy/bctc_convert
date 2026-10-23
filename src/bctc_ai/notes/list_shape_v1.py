@@ -221,8 +221,13 @@ def axis_blocks_v1(table: NoteTable, family: Family) -> list[tuple[list[str], li
 
 
 def _sub_table(table: NoteTable, indices: list[int]) -> NoteTable:
-    # Same table (metadata, cells, fragments, source bridges), restricted to one block's rows.
-    return replace(table, rows=[table.rows[i] for i in indices])
+    # Same table (metadata, cells, fragments), restricted to one block's rows. The derivation is
+    # explicit: the block carries detached copies of the parent's proofs marked as a row subset,
+    # and original_cell_v1 admits only rows that are members of the block itself.
+    def derived(proof):
+        return dict(proof, derivation="AXIS_BLOCK_ROW_SUBSET") if proof else proof
+    return replace(table, rows=[table.rows[i] for i in indices], bridge=derived(table.bridge),
+                   fragment_bridges=[derived(b) for b in table.fragment_bridges])
 
 
 def evaluate_table_v1(

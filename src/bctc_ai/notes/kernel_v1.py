@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
@@ -37,7 +38,7 @@ from bctc_ai.primary_statements.periods_v1 import (
 from bctc_ai.primary_statements.source_v1 import CorpusSelection, SourceMetrics, connect_readonly, sha256_file
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese, label_key_v1
 from bctc_ai.evaluation.gemini_financial_page_json_v1 import validate_financial_page_json_v1
-from bctc_ai.notes.source_bridge_v1 import BRIDGE_VERSION, bridge_table_v1
+from bctc_ai.notes.source_bridge_v1 import bridge_table_v1, table_fingerprint_v1
 from bctc_ai.notes.source_bridge_v1 import EXACT as BRIDGE_EXACT
 from bctc_ai.notes.source_bridge_v1 import EXACT_SHIFT as BRIDGE_EXACT_SHIFT
 from bctc_ai.storage.gemini_income_tax_source_page_loader_v1 import load_income_tax_source_page_json_versions_v1
@@ -257,7 +258,7 @@ class NotesSource:
         }
         self._outline: dict[int, list[dict[str, Any]]] | None = None
         self._documents = {document.ordinal: document for document in corpus.documents}
-        self._bridges: dict[tuple[str, str, str], dict[str, Any]] = {}
+        self._bridges: dict[tuple[tuple[str, str, str], str], dict[str, Any]] = {}
         self._original_loader = original_loader or load_income_tax_source_page_json_versions_v1
 
     def _connect(self):
@@ -335,64 +336,56 @@ class NotesSource:
                 cell_count += 1
         self.metrics.sql_queries += 4
         self.metrics.rows_read += len(tables) + sum(len(t.rows) + len(t.columns) for t in tables.values()) + cell_count
+        _require(set(tables) == set(keys), "a requested note table is absent from the selected pages")
         self._attach_bridges(list(tables.values()))
-        return [tables[key] for key in keys if key in tables]
+        return [tables[key] for key in keys]
 
-    def _load_originals(self, version_ids: list[str]) -> dict[str, dict[str, Any] | str]:
-        """ORIGINAL page per VID through the authenticated loader; a failing VID is isolated, never guessed."""
+    def _load_originals(self, version_ids: list[str]) -> dict[str, dict[str, Any]]:
+        """ORIGINAL pages through the authenticated loader. Any loader failure (missing input, BLOB/VID
+        replay, provenance, SQLite, unsupported transform) propagates and fails the run: never retried
+        in smaller batches, never turned into a table outcome."""
 
-        result: dict[str, dict[str, Any] | str] = {}
-        try:
-            loaded = self._original_loader(self.corpus.db_path, page_json_version_ids=version_ids)
-            result.update({item["page_json_version_id"]: item for item in loaded})
-        except Exception:  # noqa: BLE001 - one bad page must not hide which page failed
-            for version_id in version_ids:
-                try:
-                    loaded = self._original_loader(self.corpus.db_path, page_json_version_ids=[version_id])
-                    result.update({item["page_json_version_id"]: item for item in loaded})
-                except Exception as exc:  # noqa: BLE001
-                    result[version_id] = "ORIGINAL_LOAD_" + type(exc).__name__
+        loaded = self._original_loader(self.corpus.db_path, page_json_version_ids=version_ids)
+        _require([item.get("page_json_version_id") for item in loaded] == list(version_ids),
+                 "authenticated original page load differs from the selected versions")
         self.metrics.sql_queries += 3
-        self.metrics.pages_loaded += sum(1 for item in result.values() if isinstance(item, dict))
-        return result
+        self.metrics.pages_loaded += len(loaded)
+        return {item["page_json_version_id"]: item for item in loaded}
 
     def _attach_bridges(self, tables: list[NoteTable]) -> None:
-        """Prove every loaded table against its ORIGINAL page once; cache the proofs, release the pages."""
+        """Prove every loaded table against its ORIGINAL page; reuse a proof only for the identical SQL payload.
 
-        pending = [t for t in tables if t.key not in self._bridges]
+        The cache key is the table key plus a typed fingerprint of every raw field the bridge
+        compares; each table receives a detached copy, so a caller cannot poison the cache.
+        """
+
+        fingerprints = {id(t): table_fingerprint_v1(t) for t in tables}
+        pending = [t for t in tables if (t.key, fingerprints[id(t)]) not in self._bridges]
         version_ids = sorted({t.page_json_version_id for t in pending}, key=lambda v: (self.page_of[v], v))
         for start in range(0, len(version_ids), 200):
             chunk = version_ids[start: start + 200]
             originals, validated = self._load_originals(chunk), {}
             for table in pending:
                 if table.page_json_version_id in originals:
-                    self._bridges[table.key] = self._bridge_one(table, originals[table.page_json_version_id], validated)
+                    proof = self._bridge_one(table, originals[table.page_json_version_id], validated)
+                    self._bridges[(table.key, fingerprints[id(table)])] = proof
             del originals, validated
         for table in tables:
-            table.bridge = self._bridges[table.key]
+            table.bridge = copy.deepcopy(self._bridges[(table.key, fingerprints[id(table)])])
 
-    def _bridge_one(self, table: NoteTable, item: dict[str, Any] | str, validated: dict | None = None) -> dict[str, Any]:
-        base = {"bridge_version": BRIDGE_VERSION, "page_json_version_id": table.page_json_version_id}
-        if not isinstance(item, dict):
-            return {**base, "status": "MISMATCH:" + item}
+    def _bridge_one(self, table: NoteTable, item: dict[str, Any], validated: dict[str, Any]) -> dict[str, Any]:
         ordinal, physical_page = self.page_of[table.page_json_version_id]
         document = self._documents[ordinal]
         # The loader's provenance must be the selected corpus page itself, not merely the same VID.
-        if (item.get("page_json_version_id"), item.get("source_logical_name"), item.get("source_sha256"),
-                item.get("physical_page")) != (table.page_json_version_id, document.relative_path,
-                                               document.source_sha256, physical_page):
-            return {**base, "status": "MISMATCH:PROVENANCE_NOT_SELECTED_PAGE"}
-        receipt = item.get("source_json_replay_receipt") or {}
-        validated = {} if validated is None else validated  # per-VID validation, shared by the page's tables
-        if table.page_json_version_id not in validated:
-            try:
-                validated[table.page_json_version_id] = validate_financial_page_json_v1(item["page_json"])
-            except Exception as exc:  # noqa: BLE001
-                validated[table.page_json_version_id] = "VALIDATION_REPLAY_" + type(exc).__name__
-        page = validated[table.page_json_version_id]
-        if isinstance(page, str):
-            return {**base, "status": "MISMATCH:" + page}
-        bridge = bridge_table_v1(table, page, item["page_json"], list(receipt.get("changed_tables") or []))
+        _require((item.get("page_json_version_id"), item.get("source_logical_name"), item.get("source_sha256"),
+                  item.get("physical_page")) == (table.page_json_version_id, document.relative_path,
+                                                 document.source_sha256, physical_page),
+                 f"original page provenance is not the selected page {table.page_json_version_id}")
+        receipt = item["source_json_replay_receipt"]
+        if table.page_json_version_id not in validated:  # once per page, shared by its tables
+            validated[table.page_json_version_id] = validate_financial_page_json_v1(item["page_json"])
+        bridge = bridge_table_v1(table, item["page_json"], validated[table.page_json_version_id],
+                                 list(receipt.get("changed_tables") or []))
         bridge.update({"physical_page": physical_page, "source_logical_name": document.relative_path,
                        "source_sha256": document.source_sha256,
                        "original_blob_sha256": receipt.get("canonical_json_sha256"),
@@ -563,7 +556,8 @@ def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) ->
                 if cell_column in column_map:
                     merged.cells[(f"p{fragment.physical_page}:{cell_row}", column_map[cell_column])] = value
         merged.fragments = [t.locator() for t in chain]
-        merged.fragment_bridges = [dict(t.bridge or {}, physical_page=t.physical_page) for t in chain]
+        merged.fragment_bridges = [dict(t.bridge or {}, physical_page=t.physical_page, derivation="CONTINUATION_FRAGMENT")
+                                   for t in chain]
         receipts.append({"head": head.locator(), "fragments": merged.fragments, "basis": "PAGE_CONTINUATION_DECLARED"})
         joined.append(merged)
     return joined, receipts
