@@ -94,29 +94,7 @@ def run_family_v1(
                 run.cells.append(cell)
     _assign_legacy_ids(run.cells, config)
     run.joins = joins
-    by_key = defaultdict(list)
-    for cell in run.cells:
-        if cell["acceptance"] != "HOLD" and None not in cell["write_key"]:
-            by_key[tuple(cell["write_key"])].append(cell)
-    for key, cells in by_key.items():
-        if len(cells) < 2:
-            continue
-        identical = len({(c["value"], c["unit"], c["observation_state"]) for c in cells}) == 1
-        if identical:
-            # The same fact printed in two tables (e.g. a quality table and a
-            # provision table): one cell is exported, the others are kept as
-            # value-identical controls with provenance; the choice cannot
-            # change any exported value. A dedicated breakdown table (no
-            # measure column) is preferred, then reading order.
-            ordered = sorted(cells, key=lambda c: (c.get("measure") not in (None, "BALANCE"), c["locator"]["physical_page"],
-                                                   c["locator"]["section_id"], c["locator"]["table_id"]))
-            for control in ordered[1:]:
-                control["acceptance"] = "DUPLICATE_IDENTICAL_CONTROL"
-                control["control_of"] = ordered[0]["locator"]
-            continue
-        for cell in cells:
-            cell["acceptance"] = "HOLD"
-            cell["hold_reasons"].append("WRITE_KEY_COLLISION_DIFFERENT_VALUES")
+    hold_write_key_collisions_v1(run.cells)
     ordinals = sorted(document_ordinals if document_ordinals is not None else contexts)
     for ordinal in ordinals:
         evaluated = [e for e in run.evaluations if e.table.document_ordinal == ordinal and e.status == "EVALUATED"]
@@ -137,6 +115,29 @@ def run_family_v1(
         "cells_sha256": stable_json_sha256(run.cells),
     }
     return run
+
+
+def hold_write_key_collisions_v1(cells: list[dict[str, Any]]) -> None:
+    """Hold every non-held cell sharing a write key with another (Codex 0123).
+
+    Equal amounts do not prove that two source occurrences have one population or meaning, and no
+    table order may choose a winner: every occurrence is held, keeping its own evidence and the
+    locators of the others it collided with.
+    """
+
+    by_key = defaultdict(list)
+    for cell in cells:
+        if cell["acceptance"] != "HOLD" and None not in cell["write_key"]:
+            by_key[tuple(cell["write_key"])].append(cell)
+    for colliding in by_key.values():
+        if len(colliding) < 2:
+            continue
+        identical = len({(c["value"], c["unit"], c["observation_state"]) for c in colliding}) == 1
+        reason = "WRITE_KEY_COLLISION_EQUAL_VALUES" if identical else "WRITE_KEY_COLLISION_DIFFERENT_VALUES"
+        for cell in colliding:
+            cell["acceptance"] = "HOLD"
+            cell["hold_reasons"].append(reason)
+            cell["collides_with"] = [other["locator"] for other in colliding if other is not cell]
 
 
 def dispositions_v1(run: FamilyRun) -> list[dict[str, Any]]:

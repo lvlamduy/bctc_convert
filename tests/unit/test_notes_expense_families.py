@@ -9,7 +9,7 @@ import pytest
 
 from bctc_ai.notes.concept_list_shape_v1 import assign_lines_v1, evaluate_concept_table_v1
 from bctc_ai.notes.config_v1 import load_notes_config_v1
-from bctc_ai.notes.engine_v1 import _assign_legacy_ids
+from bctc_ai.notes.engine_v1 import _assign_legacy_ids, hold_write_key_collisions_v1
 from bctc_ai.notes.kernel_v1 import NoteRow
 
 from test_notes_income_tax import cells, context_of, document, kqkd, make_table
@@ -171,3 +171,18 @@ def test_credit_provision_general_and_specific_reject_missing_ambiguous_or_cross
     claimed.rows[1] = replace(claimed.rows[1], parent_row_id="r0")
     assert _roles(claimed, family)[1][:2] == (None, "SOURCE_ONLY")
 
+
+def test_write_key_collisions_hold_every_occurrence_even_with_equal_values():
+    def cell(member, value, table_id, acceptance="ACCEPTED"):
+        return {"acceptance": acceptance, "value": value, "unit": "MILLION_VND", "observation_state": "VALUE",
+                "hold_reasons": [], "write_key": ["plan", "SEPARATE", "C", "A", member, "AS_PRESENTED", YEAR],
+                "locator": {"physical_page": 3, "section_id": "s1", "table_id": table_id}}
+    equal = [cell("M1", "10", "t1"), cell("M1", "10", "t2")]
+    different = [cell("M2", "10", "t1"), cell("M2", "11", "t2")]
+    single = [cell("M3", "10", "t1"), cell("M3", "10", "t2", acceptance="HOLD")]  # a held occurrence does not collide
+    hold_write_key_collisions_v1(equal + different + single)
+    assert all(c["acceptance"] == "HOLD" and c["hold_reasons"] == ["WRITE_KEY_COLLISION_EQUAL_VALUES"] for c in equal)
+    assert all(c["acceptance"] == "HOLD" and c["hold_reasons"] == ["WRITE_KEY_COLLISION_DIFFERENT_VALUES"] for c in different)
+    assert equal[0]["collides_with"] == [equal[1]["locator"]] and equal[1]["collides_with"] == [equal[0]["locator"]]
+    assert single[0]["acceptance"] == "ACCEPTED" and not single[0]["hold_reasons"]
+    assert not any(c["acceptance"] == "DUPLICATE_IDENTICAL_CONTROL" for c in equal + different + single)
