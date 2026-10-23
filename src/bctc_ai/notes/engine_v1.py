@@ -20,7 +20,6 @@ from bctc_ai.notes.kernel_v1 import (
     DocumentContext,
     NotesSource,
     assemble_continuations_v1,
-    bind_sibling_units_v1,
     continuation_neighbors_v1,
     page_texts_v1,
     stable_json_sha256,
@@ -61,7 +60,6 @@ def run_family_v1(
     wanted = set(candidates)
     tables = [t for t in tables
               if any((f["page_json_version_id"], f["section_id"], f["table_id"]) in wanted for f in (t.fragments or [t.locator()]))]
-    bind_sibling_units_v1(source, tables)
     t_load = time.perf_counter()
     outline = source.outline()
     run = FamilyRun(family_name)

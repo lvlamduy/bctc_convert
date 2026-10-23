@@ -162,7 +162,6 @@ class NoteTable:
     cells: dict[tuple[str, str], tuple[str | None, str]] = field(default_factory=dict)
     fragments: list[dict[str, Any]] = field(default_factory=list)
     section_table_count: int = 1
-    sibling_unit: dict[str, Any] | None = None   # inherited-unit proof from an earlier table of the same section
 
     @property
     def key(self) -> tuple[str, str, str]:
@@ -435,44 +434,6 @@ def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) ->
     return joined, receipts
 
 
-def bind_sibling_units_v1(source: "NotesSource", tables: list[NoteTable]) -> None:
-    """Inherit a unit printed once for the note on an earlier table of the same section.
-
-    A table that prints no unit takes the unit of a sibling only when: the
-    sibling is in the same page section and precedes it, prints a unit in its
-    unit field, has exactly the same money column headers (same lanes), and
-    every sibling of the section that prints a unit prints the same one. The
-    proof (sibling locator, unit text) is recorded on the table.
-    """
-
-    needy = [t for t in tables if not units_in_unit_field_v1(t.unit_exact, source_kind="TABLE_UNIT_FIELD")]
-    if not needy:
-        return
-    outline = source.outline()
-    keys = set()
-    for table in needy:
-        for entry in outline.get(table.document_ordinal, []):
-            if entry["table_id"] is not None and entry["version"] == table.page_json_version_id \
-                    and entry["section_id"] == table.section_id and entry["table_id"] != table.table_id:
-                keys.add((entry["version"], entry["section_id"], entry["table_id"]))
-    siblings = {}
-    for sibling in source.load_tables(keys):
-        siblings.setdefault((sibling.page_json_version_id, sibling.section_id), []).append(sibling)
-    for table in needy:
-        group = siblings.get((table.page_json_version_id, table.section_id), [])
-        printed = {s.key: {u.unit for u in units_in_unit_field_v1(s.unit_exact, source_kind="TABLE_UNIT_FIELD")
-                           if u.unit not in {PERCENT, VND_PER_SHARE}} for s in group}
-        units = {u for found in printed.values() for u in found}
-        if len(units) != 1:
-            continue
-        headers = [c.header_text for c in _money_columns(table)]
-        donors = [s for s in group if printed[s.key] and s.table_order < table.table_order
-                  and [c.header_text for c in _money_columns(s)] == headers]
-        if donors:
-            donor = donors[-1]
-            table.sibling_unit = {"unit": next(iter(units)), "unit_text": donor.unit_exact, "donor": donor.locator()}
-
-
 def table_context_v1(table: NoteTable, outline: list[dict[str, Any]], *, max_headings: int = 4) -> list[tuple[str, str]]:
     """Printed context of a table, nearest first: (source, text).
 
@@ -623,8 +584,6 @@ def resolve_instant_lanes_v1(
             money, basis = {u.unit for u in table_units if u.unit not in {PERCENT, VND_PER_SHARE}}, "TABLE_UNIT_FIELD"
         if not money:
             money, basis = {u.unit for u in prose_units if u.unit not in {PERCENT, VND_PER_SHARE}}, "NOTE_PAGE_TEXT"
-        if not money and table.sibling_unit:
-            money, basis = {table.sibling_unit["unit"]}, "SAME_SECTION_SIBLING_UNIT"
         if len(money) == 1:
             lane.unit, lane.unit_basis = next(iter(money)), basis
         else:
