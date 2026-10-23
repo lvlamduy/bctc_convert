@@ -571,7 +571,8 @@
             "Hoàn nhập dự phòng nợ phải thu khó đòi",
             "Hoàn nhập dự phòng các khoản phải thu khó đòi",
             "Trích lập/(Hoàn nhập) dự phòng nợ phải thu khó đòi",
-            "(Hoàn nhập)/trích lập dự phòng nợ phải thu khó đòi"
+            "(Hoàn nhập)/trích lập dự phòng nợ phải thu khó đòi",
+            "Trích lập/(hoàn nhập) dự phòng giảm giá đầu tư tài chính dài hạn (Thuyết minh 11)"
           ],
           "within_role": null
         }
@@ -620,7 +621,8 @@
             "(Hoàn nhập) dự phòng khác",
             "(Hoàn nhập) dự phòng",
             "Hoàn nhập chi phí dự phòng khác",
-            "(Hoàn nhập)/chi phí dự phòng rủi ro tài sản có khác"
+            "(Hoàn nhập)/chi phí dự phòng rủi ro tài sản có khác",
+            "Dự phòng rủi ro tài sản khác (Thuyết minh 14)"
           ],
           "within_role": null
         }
