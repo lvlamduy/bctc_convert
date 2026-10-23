@@ -378,7 +378,7 @@ def test_context_bound_year_is_not_relabelled_under_a_non_calendar_fiscal_year()
 
 
 def test_raw_guard_runs_before_the_owned_context_parser():
-    table = make_table(RECON[:1], [("30/09/2025́",), ("Kỳ này",)],
+    table = make_table(RECON[:1], [("30/09/2025\u0301",), ("Kỳ này",)],
                        section="Thuyết minh báo cáo tài chính cho kỳ 9 tháng kết thúc ngày 30/09/2025")
     lanes = resolve_duration_lanes_v1(table, document(quarter=3), [], [table.section_title])
     assert lanes[0].period_key is None and "HEADER_RAW_DIGIT_OR_MARK_NOT_PLAIN" in lanes[0].reasons
