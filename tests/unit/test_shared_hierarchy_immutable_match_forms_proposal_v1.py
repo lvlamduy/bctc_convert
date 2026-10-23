@@ -15,7 +15,9 @@ import json
 import re
 import unicodedata
 import unittest
+from collections import defaultdict
 from pathlib import Path
+from unittest.mock import patch
 
 from bctc_ai.evaluation import gemini_json_hierarchical_accounting_family_v1 as subject
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
@@ -92,6 +94,81 @@ def _old_matches(value, alias):
         )
         for suffix in suffixes
     )
+
+
+def _reference_row_modes(row, *, topology, aliases_by_role, fallback_within_role=None):
+    """Pre-provider row policy; EXACT uses the embedded old predicate.
+
+    Declared equivalences are disabled in this differential. Nonexact and scope
+    helpers are unchanged by this proposal and are used without a provider.
+    """
+    def self_contained(within, kind):
+        if not kind.startswith("EXACT_NORMALIZED"):
+            return False
+        label = subject._normalized(row.get("label_exact"))
+        return any(
+            len(alias.split()) >= 3 and (label == alias or label.startswith(alias + " "))
+            for raw in aliases_by_role[within]
+            if (alias := subject._normalized(raw))
+        )
+
+    explicit = subject._path_has_role(
+        row.get("hierarchy_path_exact"), aliases=topology["parent"]["aliases"],
+        label_exact=row.get("label_exact"),
+    ) or any(
+        child["role_kind"] == "STRUCTURAL_GROUP" and subject._path_has_role(
+            row.get("hierarchy_path_exact"), aliases=aliases_by_role[child["role"]],
+            label_exact=row.get("label_exact"),
+        ) for child in topology["children"]
+    )
+    scoped, unscoped = defaultdict(list), defaultdict(list)
+    for child in topology["children"]:
+        for matcher in child["matchers"]:
+            if matcher.get("match_mode", "EXACT_NORMALIZED") == "EXACT_NORMALIZED":
+                aliases = [subject._normalized(alias) for alias in matcher["aliases"]]
+                kind = "EXACT_NORMALIZED" if any(
+                    _old_matches(row.get("label_exact"), alias) for alias in aliases
+                ) else None
+            else:
+                kind = subject._matcher_match_kind(row.get("label_exact"), matcher)
+            if kind is None:
+                continue
+            role, within = child["role"], matcher["within_role"]
+            if within is None:
+                unscoped[role].append(kind)
+            elif ((within == fallback_within_role and not explicit)
+                  or subject._path_has_role(
+                      row.get("hierarchy_path_exact"), aliases=aliases_by_role[within],
+                      label_exact=row.get("label_exact"),
+                  ) or self_contained(within, kind)):
+                scoped[role].append(kind)
+    selected = scoped or unscoped
+    matches = sorted(selected)
+    kinds = {role: next(c["role_kind"] for c in topology["children"] if c["role"] == role)
+             for role in matches}
+    if len(matches) > 1 and set(kinds.values()) != {"STRUCTURAL_GROUP", "ADDITIVE_CHILD"}:
+        raise subject._error("Gemini JSON hierarchy row matches multiple incompatible roles")
+    rank = {"CONTAINS_NORMALIZED_PHRASE": 1, "CONTAINS_ORDERED_NORMALIZED_PHRASES": 2,
+            "EXACT_NORMALIZED": 3,
+            "EXACT_NORMALIZED_AFTER_DECORATIVE_PARENTHETICAL_REMOVAL": 2,
+            "EXACT_NORMALIZED_SINGLE_MEMBER_ABBREVIATION_EQUIVALENCE": 2,
+            "EXACT_NORMALIZED_WITH_TRAILING_ORGANIZATION_QUALIFIER": 2}
+    return {role: max(selected[role], key=lambda kind: rank[kind]) for role in matches}
+
+
+def _single_role(matchers):
+    return {"topology": {"parent": {"aliases": ["Printed root owner"]}, "children": [
+        {"role": "LINE", "role_kind": "ADDITIVE_CHILD", "matchers": [
+            {"within_role": None, **matcher} for matcher in matchers
+        ]},
+    ]}, "aliases_by_role": {"LINE": ["Cost"]}}
+
+
+def _row_outcome(operation, row, arguments):
+    try:
+        return "return", operation(row, **arguments)
+    except (ValueError, KeyError, TypeError) as error:
+        return "error", type(error), str(error)
 
 
 class ImmutableMatchFormsDifferentialTests(unittest.TestCase):
@@ -246,6 +323,118 @@ class ImmutableMatchFormsDifferentialTests(unittest.TestCase):
                     self.assertEqual(matcher, before)
         self.assertGreater(matcher_count, 0)
         self.assertGreater(alias_count, matcher_count)
+
+    def test_row_reuses_successful_forms_once_across_exact_matchers_only_per_invocation(self):
+        arguments = _single_role([{"aliases": []}, {"aliases": ["Unrelated"]},
+                                  {"aliases": ["Cost"]}, {"aliases": ["Other"]}])
+        row = {"label_exact": "Cost", "hierarchy_path_exact": None}
+        with patch.object(subject, "_match_value_forms_v1", wraps=subject._match_value_forms_v1) as prepare:
+            self.assertEqual(subject._row_role_match_modes(row, **arguments), {"LINE": "EXACT_NORMALIZED"})
+            self.assertEqual([call.args[0] for call in prepare.call_args_list], ["Cost"])
+            row["label_exact"] = "Other"  # same object, fresh invocation: never an identity/global cache
+            self.assertEqual(subject._row_role_match_modes(row, **arguments), {"LINE": "EXACT_NORMALIZED"})
+            self.assertEqual([call.args[0] for call in prepare.call_args_list], ["Cost", "Other"])
+
+    def test_row_empty_alias_and_nonexact_paths_never_call_value_forms_provider(self):
+        empty = _single_role([{"aliases": []}])
+        with patch.object(subject, "_match_value_forms_v1", wraps=subject._match_value_forms_v1) as prepare:
+            for value in ([], {}, None, "Cost"):
+                with self.subTest(value=value):
+                    self.assertEqual(subject._row_role_match_modes(
+                        {"label_exact": value, "hierarchy_path_exact": None}, **empty,
+                    ), {})
+            nonexact = _single_role([
+                {"aliases": [], "match_mode": "EXACT_NORMALIZED"},
+                {"aliases": ["cost"], "match_mode": "CONTAINS_NORMALIZED_PHRASE"},
+            ])
+            self.assertEqual(subject._row_role_match_modes(
+                {"label_exact": "Cost detail", "hierarchy_path_exact": None}, **nonexact,
+            ), {"LINE": "CONTAINS_NORMALIZED_PHRASE"})
+            self.assertEqual(prepare.call_count, 0)
+
+    def test_row_alias_validation_precedes_lazy_label_preparation_and_keeps_error_order(self):
+        arguments = _single_role([{"aliases": [{}]}])
+        row = {"label_exact": [], "hierarchy_path_exact": None}
+        with patch.object(subject, "_match_value_forms_v1", wraps=subject._match_value_forms_v1) as prepare:
+            with self.assertRaisesRegex(TypeError, "dict"):
+                _reference_row_modes(row, **arguments)
+            with self.assertRaisesRegex(TypeError, "dict"):
+                subject._row_role_match_modes(row, **arguments)
+            self.assertEqual(prepare.call_count, 0)  # invalid alias fails before the invalid list label
+        events = []
+        real_normalized, real_prepare = subject._normalized, subject._match_value_forms_v1
+
+        def normalize(value):
+            events.append(("normalized", repr(value)))
+            return real_normalized(value)
+
+        def prepare(value):
+            events.append(("prepare", repr(value)))
+            return real_prepare(value)
+
+        with patch.object(subject, "_normalized", side_effect=normalize), patch.object(
+            subject, "_match_value_forms_v1", side_effect=prepare,
+        ):
+            with self.assertRaisesRegex(TypeError, "list"):
+                subject._row_role_match_modes(row, **_single_role([{"aliases": ["Cost"]}]))
+        self.assertEqual(events, [("normalized", repr("Cost")), ("prepare", "[]"), ("normalized", "[]")])
+
+    def test_row_scope_errors_still_happen_before_alias_or_label_form_work(self):
+        row = {"label_exact": [], "hierarchy_path_exact": None}
+        arguments = _single_role([{"aliases": [{}]}])
+        del arguments["topology"]["parent"]
+        with patch.object(subject, "_match_value_forms_v1", wraps=subject._match_value_forms_v1) as prepare:
+            for operation in (_reference_row_modes, subject._row_role_match_modes):
+                with self.subTest(operation=operation.__name__):
+                    with self.assertRaisesRegex(KeyError, "parent"):
+                        operation(row, **arguments)
+            self.assertEqual(prepare.call_count, 0)
+
+    def test_row_decorative_forms_remain_fresh_and_secondary_to_exact(self):
+        matcher = {"aliases": ["Cost"], "allow_decorative_parenthetical_removal": True}
+        arguments = _single_role([matcher, copy.deepcopy(matcher)])
+        row = {"label_exact": "Cost (ABC)", "hierarchy_path_exact": None}
+        with patch.object(subject, "_match_value_forms_v1", wraps=subject._match_value_forms_v1) as prepare:
+            self.assertEqual(subject._row_role_match_modes(
+                row, **arguments, enable_declared_equivalences=True,
+            ), {"LINE": "EXACT_NORMALIZED_AFTER_DECORATIVE_PARENTHETICAL_REMOVAL"})
+            self.assertEqual([call.args[0] for call in prepare.call_args_list], ["Cost (ABC)", "Cost  ", "Cost  "])
+        arguments["topology"]["children"][0]["matchers"].append({"within_role": None, "aliases": ["Cost (ABC)"]})
+        self.assertEqual(subject._row_role_match_modes(
+            row, **arguments, enable_declared_equivalences=True,
+        ), {"LINE": "EXACT_NORMALIZED"})
+
+    def test_compiled_f36_f37_f39_row_role_outputs_match_old_exact_predicate(self):
+        root = Path(subject.__file__).resolve().parents[3]
+        checks = matched = 0
+        for name in ("tm-operating-expense-topology-v1.json", "tm-credit-risk-provision-expense-topology-v1.json",
+                     "tm-income-tax-topology-v1.json"):
+            topology = compile_accounting_family_topology_spec_v1(json.loads(
+                (root / "config/families" / name).read_bytes(),
+            ))
+            aliases = {child["role"]: sorted({alias for matcher in child["matchers"] for alias in matcher["aliases"]})
+                       for child in topology["children"]}
+            for child in topology["children"]:
+                for matcher in child["matchers"]:
+                    if not matcher["aliases"]:
+                        continue
+                    label, within = matcher["aliases"][0], matcher["within_role"]
+                    owner = aliases[within][0] if within is not None else topology["parent"]["aliases"][0]
+                    for value in (label, "Trong đó: " + label, label + " outside"):
+                        for path, fallback in (([], None), ([], within), ([owner, value], within)):
+                            row = {"label_exact": value, "hierarchy_path_exact": path}
+                            arguments = {"topology": topology, "aliases_by_role": aliases, "fallback_within_role": fallback}
+
+                            with self.subTest(config=name, role=child["role"], value=value, path=path, fallback=fallback):
+                                before = copy.deepcopy(row)
+                                expected = _row_outcome(_reference_row_modes, row, arguments)
+                                actual = _row_outcome(subject._row_role_match_modes, row, arguments)
+                                self.assertEqual(actual, expected)
+                                self.assertEqual(row, before)
+                                checks += 1
+                                matched += bool(actual[0] == "return" and actual[1])
+        self.assertGreater(checks, 0)
+        self.assertGreater(matched, 0)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
@@ -275,6 +275,7 @@ def _matcher_match_kind(
     matcher: dict[str, Any],
     *,
     enable_declared_equivalences: bool = False,
+    _value_forms_provider_v1: Callable[[], frozenset[str]] | None = None,
 ) -> str | None:
     mode = matcher.get("match_mode", "EXACT_NORMALIZED")
 
@@ -292,7 +293,15 @@ def _matcher_match_kind(
     # ``1TV``/``một thành viên`` equivalence.
     aliases = [_normalized(alias) for alias in matcher["aliases"]]
     if mode == "EXACT_NORMALIZED":
-        prepared_forms = _match_value_forms_v1(value) if aliases else frozenset()
+        prepared_forms = (
+            (
+                _value_forms_provider_v1()
+                if _value_forms_provider_v1 is not None
+                else _match_value_forms_v1(value)
+            )
+            if aliases
+            else frozenset()
+        )
         if any(_matches_prepared_forms_v1(prepared_forms, alias) for alias in aliases):
             return "EXACT_NORMALIZED"
         if enable_declared_equivalences and matcher.get(
@@ -2158,6 +2167,16 @@ def _row_role_match_modes(
     fallback_within_role: str | None = None,
     enable_declared_equivalences: bool = False,
 ) -> dict[str, str]:
+    prepared_label_forms: frozenset[str] | None = None
+
+    def value_forms() -> frozenset[str]:
+        nonlocal prepared_label_forms
+        # Invoked only after this matcher's alias normalization, for nonempty
+        # EXACT aliases. Keep empty/nonexact paths and their error order intact.
+        if prepared_label_forms is None:
+            prepared_label_forms = _match_value_forms_v1(row.get("label_exact"))
+        return prepared_label_forms
+
     def self_contained_scope_visible(within_role: str, match_kind: str) -> bool:
         """Admit an exact child label that embeds its structural parent.
 
@@ -2205,6 +2224,7 @@ def _row_role_match_modes(
                 row.get("label_exact"),
                 matcher,
                 enable_declared_equivalences=enable_declared_equivalences,
+                _value_forms_provider_v1=value_forms,
             )
             if match_kind is None:
                 continue
