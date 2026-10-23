@@ -192,7 +192,7 @@ def test_public_unrecognized_or_competing_owner_heading_cannot_close_sender(atta
     assert _snapshot(pages, compiled) == before
 
 
-@pytest.mark.parametrize("attack", ["unit", "period", "outgoing_receiver", "missing_sender_marker"])
+@pytest.mark.parametrize("attack", ["unit", "period", "outgoing_receiver", "missing_receiver_marker"])
 def test_public_owner_title_does_not_override_existing_unit_period_or_marker_veto(attack):
     _base, pages, compiled = _owned_fixture()
     prior, receiver = _sections(pages)
@@ -205,7 +205,7 @@ def test_public_owner_title_does_not_override_existing_unit_period_or_marker_vet
     elif attack == "outgoing_receiver":
         receiver["tables"][0]["continuation"] = "BOTH"
     else:
-        prior["tables"][0]["continuation"] = "NONE"
+        receiver["tables"][0]["continuation"] = "NONE"
     before = _snapshot(pages, compiled)
     _indexed, trial = _run(pages, compiled)
     assert trial["status"] == UNRESOLVED and trial["mappings"] == []
@@ -315,3 +315,45 @@ def test_shared_only_compiled_specs_cannot_manufacture_literal_title_authority()
     _indexed, trial = _run(pages, shared_specs)
     assert trial["status"] == UNRESOLVED and trial["mappings"] == []
     assert _snapshot(pages, shared_specs) == before
+
+
+def test_new_owner_title_preserves_existing_one_sided_sender_none_contract():
+    """Prior NONE is an old supported case, not a missing-receiver veto.
+
+    Frozen baseline tests ONE_SIDED_PRIOR_MARKER and the Roman-quarter matrix
+    already require this complete-owner behavior. A new whole owner title must
+    retain it, while receiver FROM_PREVIOUS and every independent proof remain
+    mandatory. The retained 719PASS/1FAIL witness exposed the bad V3 expectation;
+    production is unchanged by this test correction.
+    """
+    _base, pages, compiled = _owned_fixture()
+    prior, receiver = _sections(pages)
+    prior["tables"][0]["continuation"] = "NONE"
+    receiver["title_exact"] = TITLE
+    assert receiver["tables"][0]["continuation"] == "CONTINUES_FROM_PREVIOUS_PAGE"
+    before = _snapshot(pages, compiled)
+    indexed, trial = _run(pages, compiled)
+    assert trial["status"] == READY
+    candidate = trial["candidates"][0]
+    adapter = candidate["closure_receipt"]["operating_expense_adapter_receipt"]
+    assert adapter["source_root_authority_veto_receipts"] == []
+    assert len(adapter["continuation_projection_receipts"]) == 1
+    proof = adapter["continuation_projection_receipts"][0]
+    assert proof["prior_marker"] == "NONE"
+    assert proof["prior_locator"]["page_json_version_id"] == fixture.VERSION_ID
+    assert proof["receiver_locator"]["page_json_version_id"] == fixture.CONTINUATION_VERSION_ID
+    assert proof["receiver_header_axis_rule"] == "INHERITED_ONLY_FROM_COMPLETE_PRIOR_AXIS"
+    assert proof["period_alignment_receipt"]["compatible"] is True
+    assert proof["prior_unit"]["canonical_unit"] == proof["receiver_unit"]["canonical_unit"] == "MILLION_VND"
+    assert proof[FIELD]["receiver_section_title_exact"] == TITLE
+    assert proof[FIELD]["receiver_section_title_canonical_json_sha256"] == canonical_json_sha256_v1(TITLE)
+    root = next(item for item in trial["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL")
+    assert [cell["source_text"] for cell in root["values"]] == ["80", "64"]
+    assert [(ref["locator"]["physical_page"], ref["row_ordinal"]) for ref in root["source_refs"]] == [(2, 5)]
+    assert validate_source_observation_mapping_contract_v1(trial)["violation_count"] == 0
+    rebuilt = family.validate_gemini_json_operating_expense_replay_v1(
+        indexed_query_evidence=indexed, trials=[trial],
+        page_json_by_document=pages, compiled_specs=compiled,
+    )
+    assert canonical_json_bytes_v1(rebuilt) == canonical_json_bytes_v1([trial])
+    assert _snapshot(pages, compiled) == before
