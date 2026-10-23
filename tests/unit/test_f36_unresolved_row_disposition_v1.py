@@ -22,6 +22,17 @@ from scripts.experiments import run_gemini_json_operating_expense_accounting_fam
 
 def _fixture(kind="INCOMPLETE_PRINTED_FRONTIER"):
     rows = _base_rows()
+    # Real source-shaped positive: printed ASCII1..N identifies the top-level
+    # population, while the original raw parent paths retain all nested detail.
+    rows[3]["label_exact"] = "Chi đóng góp theo lương"
+    rows[3]["hierarchy_path_exact"][-1] = rows[3]["label_exact"]
+    renamed = {}
+    for row in rows[:-1]:
+        if row["hierarchy_path_exact"] == [row["label_exact"]]:
+            renamed[row["label_exact"]] = f"{len(renamed) + 1}. {row['label_exact']}"
+    for row in rows[:-1]:
+        row["label_exact"] = renamed.get(row["label_exact"], row["label_exact"])
+        row["hierarchy_path_exact"] = [renamed.get(item, item) for item in row["hierarchy_path_exact"]]
     if kind == "INCOMPLETE_PRINTED_FRONTIER":
         rows[-2]["values_exact"] = [None, None]
     rows[-1]["values_exact"] = ["80" if kind == "INCOMPLETE_PRINTED_FRONTIER" else "83", "70"]
@@ -155,6 +166,69 @@ def test_fresh_frontier_does_not_hide_unsupported_or_open_source(mutation):
         stored_blob_size_bytes=len(blob), original_object_sha256=digest(page))
     with pytest.raises((ValueError, KeyError)):
         held.reconcile_unresolved_rows_v1(**kw)
+
+
+@pytest.mark.parametrize("attack", ["flat-salary", "flat-depreciation", "duplicate-role", "number-hole", "number-duplicate",
+                                   "number-reversed", "number-unicode", "wrong-payroll-parent", "primary", "other", "unknown"])
+def test_numbered_population_and_existing_local_scope_are_positive_admission_gates(attack):
+    kw = _fixture()
+    page = kw["page_json_by_document"][1][VERSION_ID]
+    section, table = page["sections"][0], page["sections"][0]["tables"][0]
+    rows = table["rows"]
+    if attack in {"primary", "other", "unknown"}:
+        section["statement_type"] = {"primary": "INCOME_STATEMENT", "other": "OTHER", "unknown": "UNKNOWN"}[attack]
+    elif attack == "flat-salary":
+        rows[2]["hierarchy_path_exact"] = [rows[2]["label_exact"]]
+    elif attack == "flat-depreciation":
+        rows[5]["hierarchy_path_exact"] = [rows[5]["label_exact"]]
+    elif attack == "duplicate-role":
+        # The text differs, numbering stays valid, but both claim one role.
+        rows[11]["label_exact"] = "5. Chi nộp thuế và các khoản phí, lệ phí"
+        rows[11]["hierarchy_path_exact"] = [rows[11]["label_exact"]]
+    elif attack == "wrong-payroll-parent":
+        rows[3]["hierarchy_path_exact"][0] = rows[4]["label_exact"]
+        region = kw["indexed_query_evidence"]["candidate_dispositions"][0]["cluster"]["component_regions"][0]
+        scopes = family._literal_payroll_scope_receipts_v1(table=table, original_table=table,
+            locator=region, compiled_specs=kw["compiled_specs"])
+        assert scopes and any(not item["complete"] for item in scopes)
+    else:
+        old = rows[0]["label_exact"]
+        prefix = {"number-hole": "2", "number-duplicate": "2", "number-reversed": "6", "number-unicode": "１"}[attack]
+        rows[0]["label_exact"] = prefix + old[1:]
+        rows[0]["hierarchy_path_exact"] = [rows[0]["label_exact"]]
+    blob = canonical_json_bytes_v1(page) + b"\n"
+    kw["source_page_blob_refs"][VERSION_ID].update(stored_blob_sha256=sha256(blob).hexdigest(),
+        stored_blob_size_bytes=len(blob), original_object_sha256=digest(page))
+    with pytest.raises((ValueError, KeyError)):
+        held.build_printed_frontier_v1(document=kw["indexed_query_evidence"]["selected_document_axis"][0],
+            page_axis=kw["indexed_query_evidence"]["selected_page_axis"], pages=kw["page_json_by_document"][1],
+            cluster=kw["indexed_query_evidence"]["candidate_dispositions"][0]["cluster"],
+            compiled_specs=kw["compiled_specs"], source_page_blob_refs=kw["source_page_blob_refs"])
+
+
+@pytest.mark.parametrize("attack", [None, "wrong-image", "wrong-page", "wrong-dpi"])
+def test_actual_300dpi_pdf_render_binds_reviewed_png_without_mock_authentication(attack):
+    """Actual synthetic PDF/render/PIL boundary only, no financial/source approval."""
+    with runner.fitz.open() as pdf:
+        for text in ("synthetic one", "synthetic two"):
+            page = pdf.new_page(width=72, height=72)
+            page.insert_text((5, 30), text, fontsize=6)
+        pdf_bytes = pdf.tobytes()
+    source_sha = sha256(pdf_bytes).hexdigest()
+    with runner.fitz.open(stream=pdf_bytes, filetype="pdf") as pdf:
+        rendered = runner.render_full_pdf_page_v1(pdf[0], physical_page=1, dpi=300, source_sha256=source_sha)
+        other = runner.render_full_pdf_page_v1(pdf[1], physical_page=2, dpi=300, source_sha256=source_sha)
+    image_bytes = other.image if attack == "wrong-image" else rendered.image
+    with runner.Image.open(runner.BytesIO(image_bytes)) as png:
+        image = {"sha256": sha256(image_bytes).hexdigest(), "size_bytes": len(image_bytes),
+                 "width": png.width, "height": png.height, "dpi": 200 if attack == "wrong-dpi" else 300}
+    kwargs = {"pdf_bytes": pdf_bytes, "image_bytes": image_bytes, "image": image,
+              "source_sha256": source_sha, "physical_page": 2 if attack == "wrong-page" else 1}
+    if attack is None:
+        runner._verify_reviewed_png_from_pdf_v1(**kwargs)
+    else:
+        with pytest.raises(ValueError):
+            runner._verify_reviewed_png_from_pdf_v1(**kwargs)
 
 
 def test_resealed_reconciliation_cannot_drop_an_unjoined_violation():

@@ -228,6 +228,23 @@ def _recheck_row_inputs_v1(refs):
             raise _error("Family-36 row-disposition late input barrier drifted")
 
 
+def _verify_reviewed_png_from_pdf_v1(*, pdf_bytes, image_bytes, image, source_sha256, physical_page):
+    """Fresh fixed-profile render, not OCR or an approval/semantic classifier."""
+    if (type(physical_page) is not int or physical_page <= 0 or image.get("dpi") != 300
+            or type(image.get("dpi")) is not int or sha256(pdf_bytes).hexdigest() != source_sha256):
+        raise _error("Family-36 visual PDF/300dpi profile binding differs")
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as pdf:
+        if physical_page > len(pdf):
+            raise _error("Family-36 visually reviewed page is outside PDF")
+        rendered = render_full_pdf_page_v1(pdf[physical_page - 1], physical_page=physical_page,
+            dpi=300, source_sha256=source_sha256)
+    expected = {"image_sha256": image["sha256"], "image_size_bytes": image["size_bytes"],
+                "pixel_width": image["width"], "pixel_height": image["height"],
+                "render_dpi": 300, "physical_page": physical_page, "media_type": "image/png"}
+    if rendered.image != image_bytes or not same_typed_json_v1(rendered.page, expected):
+        raise _error("Family-36 reviewed PNG is not the fresh source PDF/page render")
+
+
 def _row_original_blob_refs_v1(database, indexed, pages, declaration):
     """Read only reviewed selected VIDs from the existing authenticated snapshot.
 
@@ -302,10 +319,12 @@ def _authenticate_unresolved_rows_v1(*, path, pin, residual_spec_path, index, in
         shown = manual.get("printed_top_level_frontier")
         if type(shown) is not list or len(shown) != len(frontier["operand_row_ordinals"]):
             raise _error("Family-36 visual operand frontier is incomplete")
-        for ordinal, visible in zip(frontier["operand_row_ordinals"], shown, strict=True):
+        for operand, visible in zip(frontier["numbered_operand_axis"], shown, strict=True):
+            ordinal = operand["row_ordinal"]
             row = frontier["rows_exact"][ordinal - 1]
             values = [row["values_exact"][c - 1] for c in frontier["money_column_ordinals"]]
-            if visible.get("label") != row["label_exact"]:
+            if (visible.get("label") != operand["label_without_number_exact"]
+                    or visible.get("printed_number") != operand["printed_number_exact"]):
                 raise _error("Family-36 visual/source label join is not exact")
             if any(v is None for v in values):
                 expected_states = ["PRINTED_BLANK_UNKNOWN" if value is None else "PRINTED_NUMERIC_LITERAL" for value in values]
@@ -316,7 +335,12 @@ def _authenticate_unresolved_rows_v1(*, path, pin, residual_spec_path, index, in
             elif not same_typed_json_v1(visible.get("source_texts"), values):
                 raise _error("Family-36 visual/source numeric observations differ")
         result_row = frontier["rows_exact"][frontier["result_row_ordinal"] - 1]
-        if not same_typed_json_v1(manual.get("printed_result", {}).get("source_texts"),
+        printed_result = manual.get("printed_result", {})
+        if (printed_result.get("label_visible") is False and result_row.get("label_exact") is not None
+                or printed_result.get("label_visible") is True and printed_result.get("label") != result_row.get("label_exact")
+                or type(printed_result.get("label_visible")) is not bool):
+            raise _error("Family-36 visual/source terminal label differs")
+        if not same_typed_json_v1(printed_result.get("source_texts"),
                 [result_row["values_exact"][c - 1] for c in frontier["money_column_ordinals"]]):
             raise _error("Family-36 visual printed result differs")
         image = manual.get("viewed_image", {})
@@ -325,9 +349,11 @@ def _authenticate_unresolved_rows_v1(*, path, pin, residual_spec_path, index, in
             if len(payload) != image["size_bytes"] or png.format != "PNG" or png.size != (image["width"], image["height"]):
                 raise _error("Family-36 inspected image byte/dimension binding differs")
         pdf_path = _source_path(source_pdf_root, doc["source_logical_name"])
-        _row_read_v1(pdf_path, refs, pin=doc["source_sha256"])
+        pdf_bytes = _row_read_v1(pdf_path, refs, pin=doc["source_sha256"])
         if refs[str(pdf_path)]["size_bytes"] != review["source_size_bytes"]:
             raise _error("Family-36 reviewed PDF size drifted")
+        _verify_reviewed_png_from_pdf_v1(pdf_bytes=pdf_bytes, image_bytes=payload, image=image,
+            source_sha256=doc["source_sha256"], physical_page=frontier["locator"]["physical_page"])
     _recheck_row_inputs_v1(refs)
     return reconciliation, refs
 

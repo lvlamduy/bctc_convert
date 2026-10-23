@@ -136,8 +136,13 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
     page = private[region["page_json_version_id"]]
     need(same(page, original), "changed source domain requires separate authenticated coordinate support")
     section, table = family._source_table(page, section_id=region["section_id"], table_id=region["table_id"])
-    need(section.get("content_kind") == "FINANCIAL_NOTE" and section.get("statement_type") == "NOTES"
+    need(section.get("content_kind") == "FINANCIAL_NOTE" and section.get("statement_type") == "NOT_APPLICABLE"
          and table.get("continuation") == "NONE", "wrong owner or open continuation")
+    payroll = family._literal_payroll_scope_receipts_v1(
+        table=table, original_table=table, locator={k: region[k] for k in LOCATOR}, compiled_specs=compiled_specs)
+    need(all(item.get("complete") is True for item in payroll), "unproven family-local payroll population")
+    # This base has no qualified-literal alias policy. Its separate composition
+    # must also invoke that policy's fresh population guard before admission.
     extracted = family._extract_table_local_records(
         page_json=page, section=section, table=table, region=region, compiled_specs=compiled_specs,
         document_unit_context=family._document_unit_context_axis(pages, compiled_specs=compiled_specs),
@@ -158,7 +163,10 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
     roles = {}
     for hit in classification.get("role_hits", []):
         roles.setdefault(hit["row_ordinal"], set()).add(hit["role"])
-    operands, dependency, parent_labels = [], [], {}
+    need(compiled_specs["evaluation"].get("root_component_equation_policy") == "DECLARED_DIRECT_SUM"
+         and compiled_specs["evaluation"].get("direct_frontier_policy")
+         == "CANONICAL_PROVEN_OR_CONTIGUOUS_NUMBERED_TOP_LEVEL_DIRECT_FRONTIER", "unsupported direct-frontier policy")
+    operands, dependency, parent_labels, numbered, operand_roles = [], [], {}, [], []
     owner_aliases = family._parent_aliases(compiled_specs)
     for ordinal, row in enumerate(rows[:-1], 1):
         need(type(row.get("values_exact")) is list and len(row["values_exact"]) == len(table["columns"]), "raw width mismatch")
@@ -171,12 +179,23 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
             continue
         need(label and path and path[-1] == label and len(roles.get(ordinal, set())) == 1, "unknown/unclassified frontier row")
         if len(path) == 1:
+            printed = re.fullmatch(r"([1-9][0-9]*)\. ([^\r\n]+)", row.get("label_exact", ""))
+            need(printed is not None and printed[1] == str(len(operands) + 1), "top-level source numbering is not contiguous ASCII1..N")
+            role = next(iter(roles[ordinal]))
+            need(role in compiled_specs["root_component_roles"] and role not in operand_roles,
+                 "top-level operand is not a unique configured root component")
             need(label not in parent_labels, "duplicate top-level operand")
             operands.append(ordinal)
+            operand_roles.append(role)
+            numbered.append({"row_ordinal": ordinal, "printed_number_exact": printed[1],
+                             "raw_label_exact": row["label_exact"], "label_without_number_exact": printed[2], "role": role})
             parent_labels[label] = ordinal
         else:
             need(len(path) == 2 and path[0] in parent_labels, "missing/ambiguous source parent")
         dependency.append(ordinal)
+    for equation in compiled_specs["evaluation"].get("derived_role_equations", []):
+        need(not (equation["result_role"] in operand_roles and set(equation["component_roles"]) & set(operand_roles)),
+             "aggregate and its flat detail cannot both be root operands")
     need(len(operands) >= compiled_specs["evaluation"]["minimum_source_visible_root_component_count"], "incomplete source frontier")
     unknown, numbers = [], []
     locator = {k: region[k] for k in LOCATOR}
@@ -205,6 +224,7 @@ def build_printed_frontier_v1(*, document, page_axis, pages, cluster, compiled_s
             "original_table_sha256": digest(table), "evaluation_table_sha256": digest(table),
             "rows_exact": clone(rows), "columns_exact": clone(table["columns"]), "money_column_ordinals": clone(cols),
             "operand_row_ordinals": operands, "result_row_ordinal": len(rows), "dependency_row_ordinals": [*dependency, len(rows)],
+            "numbered_operand_axis": numbered, "literal_payroll_scope_receipts": clone(payroll),
             "classification_sha256": digest(classification), "unit_axis": clone(unit), "lane_axis": clone(lane),
             "finding_kind": kind, "unknown_operand_axis": unknown, "equation": equation,
             "contradiction_proven": not bool(unknown), "imputation_performed": False}
