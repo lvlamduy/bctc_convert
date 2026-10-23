@@ -168,4 +168,3 @@ def test_declared_unit_source_dependency_fails_closed_without_source_mutation(tm
     with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error, match=match):
         _read(case)
     assert database.read_bytes() == before and case[1:4] == objects
-
