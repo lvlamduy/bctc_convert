@@ -44,6 +44,12 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
     validate_gemini_json_multitable_hierarchical_sweep_query_bindings_v1,
 )
+from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import (
+    HASH_KEY as PRIMARY_WITNESS_HASH_KEY,
+    SPEC_KEY as PRIMARY_WITNESS_SPEC_KEY,
+    _primary_witness_projection_v1 as _primary_witness_projection_v1,
+    validate_f36_primary_witness_spec_v1,
+)
 from bctc_ai.evaluation.gemini_json_other_long_term_investments_family_v1 import (
     _row_local_record,
 )
@@ -331,6 +337,7 @@ def compile_gemini_json_operating_expense_family_specs_v1(
     evaluation_spec: Any,
     schema_binding_spec: Any,
     source_repair_spec: Any | None = None,
+    primary_witness_spec: Any | None = None,
 ) -> dict[str, Any]:
     """Compile and seal the Family-36 declarative frontier."""
 
@@ -391,6 +398,13 @@ def compile_gemini_json_operating_expense_family_specs_v1(
         None if source_repair_spec is None else canonical_json_sha256_v1(source_repair_spec)
     )
     compiled["operating_expense_adapter_format_version"] = ADAPTER_FORMAT_VERSION
+    if primary_witness_spec is not None:
+        try:
+            checked_witness = validate_f36_primary_witness_spec_v1(primary_witness_spec)
+        except ValueError as exc:
+            raise _error("operating-expense PRIMARY witness spec is invalid") from exc
+        compiled[PRIMARY_WITNESS_SPEC_KEY] = checked_witness
+        compiled[PRIMARY_WITNESS_HASH_KEY] = canonical_json_sha256_v1(checked_witness)
     return compiled
 
 
@@ -4564,7 +4578,7 @@ def _titleless_primary_corroborated_region_recovery(
     }
 
 
-def build_gemini_json_operating_expense_indexed_query_evidence_v1(
+def _without_witness_build_gemini_json_operating_expense_indexed_query_evidence_v1(
     *,
     base_indexed_query_evidence: Any,
     page_json_by_document: Mapping[int, Mapping[str, dict[str, Any]]],
@@ -5044,7 +5058,7 @@ def _source_ordered_operating_expense_pages(
     }
 
 
-def evaluate_gemini_json_operating_expense_family_cluster_v1(
+def _without_witness_evaluate_gemini_json_operating_expense_family_cluster_v1(
     *,
     regions: Any,
     page_json_by_version: Mapping[str, dict[str, Any]],
@@ -5188,11 +5202,12 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
     )
 
 
-def build_gemini_json_operating_expense_trials_v1(
+def _without_witness_build_gemini_json_operating_expense_trials_v1(
     *,
     indexed_query_evidence: Any,
     page_json_by_document: Mapping[int, Mapping[str, dict[str, Any]]],
     compiled_specs: Mapping[str, Any],
+    primary_witness_admission: Any = None,
 ) -> list[dict[str, Any]]:
     """Evaluate every selected Family-36 cluster and preserve all dispositions."""
 
@@ -5209,10 +5224,17 @@ def build_gemini_json_operating_expense_trials_v1(
         source_pages = page_json_by_document.get(document_ordinal)
         if type(source_pages) is not dict:
             raise _error("operating-expense unit-rejection replay selected document is absent")
+        rejection_pages = source_pages
+        if _primary_witness_enabled_v1(compiled_specs):
+            rejection_pages, _axis = _admitted_primary_document_v1(
+                pages=source_pages, document=disposition,
+                page_axis=pages_by_document[document_ordinal],
+                compiled_specs=compiled_specs, admission=primary_witness_admission,
+            )
         expected_rejection_axes = _internal_owner_rejection_axes(
             document=cluster,
             selected_page_axis=pages_by_document[document_ordinal],
-            pages=source_pages,
+            pages=rejection_pages,
             compiled_specs=compiled_specs,
         )
         expected_reasons = sorted(
@@ -5244,6 +5266,7 @@ def build_gemini_json_operating_expense_trials_v1(
         if status == READY:
             regions = cluster["component_regions"]
             candidate = evaluate_gemini_json_operating_expense_family_cluster_v1(
+                **({"primary_witness_admission": primary_witness_admission} if primary_witness_admission is not None else {}),
                 regions=regions,
                 page_json_by_version=page_json_by_document[document_ordinal],
                 selected_page_axis=pages_by_document[document_ordinal],
@@ -5584,7 +5607,7 @@ def _coverage_candidate_receipt_sets(
     return equation_rows, source_only_roles, all_blank_roles
 
 
-def build_operating_expense_source_row_coverage_receipt_v1(
+def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
     *,
     indexed_query_evidence: Mapping[str, Any],
     trials: Sequence[Mapping[str, Any]],
@@ -6135,6 +6158,7 @@ def validate_gemini_json_operating_expense_candidate_replay_v1(
     page_json_by_version: Mapping[str, dict[str, Any]],
     selected_page_axis: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
+    primary_witness_admission: Any = None,
     query_receipt: Mapping[str, Any],
 ) -> dict[str, Any]:
     expected = evaluate_gemini_json_operating_expense_family_cluster_v1(
@@ -6142,6 +6166,7 @@ def validate_gemini_json_operating_expense_candidate_replay_v1(
         page_json_by_version=page_json_by_version,
         selected_page_axis=selected_page_axis,
         compiled_specs=compiled_specs,
+        **({"primary_witness_admission": primary_witness_admission} if primary_witness_admission is not None else {}),
         query_receipt=query_receipt,
     )
     if type(value) is not dict or not same_typed_json_v1(value, expected):
@@ -6155,12 +6180,156 @@ def validate_gemini_json_operating_expense_replay_v1(
     trials: Any,
     page_json_by_document: Mapping[int, Mapping[str, dict[str, Any]]],
     compiled_specs: Mapping[str, Any],
+    primary_witness_admission: Any = None,
 ) -> list[dict[str, Any]]:
     expected = build_gemini_json_operating_expense_trials_v1(
         indexed_query_evidence=indexed_query_evidence,
         page_json_by_document=page_json_by_document,
         compiled_specs=compiled_specs,
+        **({"primary_witness_admission": primary_witness_admission} if primary_witness_admission is not None else {}),
     )
     if type(trials) is not list or not same_typed_json_v1(trials, expected):
         raise _error("operating-expense sweep replay drifted")
     return expected
+
+def _primary_witness_enabled_v1(compiled_specs):
+    present = PRIMARY_WITNESS_SPEC_KEY in compiled_specs, PRIMARY_WITNESS_HASH_KEY in compiled_specs
+    if present[0] != present[1]:
+        raise _error("operating-expense partial PRIMARY witness compiled authority")
+    return present[0]
+
+
+# Optional PRIMARY witness admission is separate from ordinary DASH repair.
+# Default-None calls execute the original code path and emit no new fields.
+def _admitted_primary_document_v1(*, pages, document, page_axis, compiled_specs, admission):
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import require_admission_v1
+    doc = {key: document[key] for key in
+           ("document_id", "document_ordinal", "source_logical_name", "source_sha256")}
+    return require_admission_v1(admission).project(
+        pages=pages, document=doc, selected_page_axis=page_axis, compiled_specs=compiled_specs)
+
+
+def _admitted_primary_run_v1(*, evidence, pages, compiled_specs, admission):
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import require_admission_v1
+    capability = require_admission_v1(admission)
+    capability.require_run(evidence["selected_document_axis"], evidence["selected_page_axis"], compiled_specs)
+    private, facts = {}, {}
+    for document in evidence["selected_document_axis"]:
+        ordinal = document["document_ordinal"]
+        axis = [p for p in evidence["selected_page_axis"] if p["document_ordinal"] == ordinal]
+        private[ordinal], facts[ordinal] = _admitted_primary_document_v1(
+            pages=pages[ordinal], document=document, page_axis=axis,
+            compiled_specs=compiled_specs, admission=capability)
+    return private, facts
+
+
+def _fresh_original_primary_base_v1(*, evidence, pages, compiled_specs):
+    from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+        coalesce_gemini_json_multitable_hierarchical_document_v1,
+    )
+    clusters = []
+    for document in evidence["selected_document_axis"]:
+        ordinal = document["document_ordinal"]
+        records = [{**axis, "page_json": pages[ordinal][axis["page_json_version_id"]]}
+                   for axis in evidence["selected_page_axis"] if axis["document_ordinal"] == ordinal]
+        clusters.append(coalesce_gemini_json_multitable_hierarchical_document_v1(
+            page_records=records, compiled_specs=compiled_specs))
+    return build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        selected_document_axis=evidence["selected_document_axis"],
+        selected_page_axis=evidence["selected_page_axis"], document_clusters=clusters,
+        query_policy_sha256=canonical_json_sha256_v1(compiled_specs["query_policy"]))
+
+
+def build_gemini_json_operating_expense_indexed_query_evidence_v1(
+    *, base_indexed_query_evidence, page_json_by_document, compiled_specs,
+    primary_witness_admission=None,
+):
+    if not _primary_witness_enabled_v1(compiled_specs):
+        return _without_witness_build_gemini_json_operating_expense_indexed_query_evidence_v1(
+            base_indexed_query_evidence=base_indexed_query_evidence,
+            page_json_by_document=page_json_by_document, compiled_specs=compiled_specs)
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import AXIS_FIELD
+    original = validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        base_indexed_query_evidence, compiled_specs=compiled_specs)
+    private, facts = _admitted_primary_run_v1(
+        evidence=original, pages=page_json_by_document, compiled_specs=compiled_specs,
+        admission=primary_witness_admission)
+    built = _without_witness_build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=original, page_json_by_document=private, compiled_specs=compiled_specs)
+    clusters = []
+    for disposition in built["candidate_dispositions"]:
+        cluster = canonical_clone_v1(disposition["cluster"])
+        cluster[AXIS_FIELD] = facts[disposition["document_ordinal"]]
+        cluster["cluster_id"] = "gjmthfcv1:cluster:" + canonical_json_sha256_v1(
+            {k: v for k, v in cluster.items() if k != "cluster_id"})
+        clusters.append(cluster)
+    return build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        selected_document_axis=original["selected_document_axis"],
+        selected_page_axis=original["selected_page_axis"], document_clusters=clusters,
+        query_policy_sha256=canonical_json_sha256_v1(compiled_specs["query_policy"]))
+
+
+def _verify_primary_indexed_v1(*, evidence, pages, compiled_specs, admission):
+    checked = validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        evidence, compiled_specs=compiled_specs)
+    # Verifying the live scope happens before any caller-supplied axes are used.
+    _admitted_primary_run_v1(evidence=checked, pages=pages, compiled_specs=compiled_specs, admission=admission)
+    raw_base = _fresh_original_primary_base_v1(evidence=checked, pages=pages, compiled_specs=compiled_specs)
+    rebuilt = build_gemini_json_operating_expense_indexed_query_evidence_v1(
+        base_indexed_query_evidence=raw_base, page_json_by_document=pages,
+        compiled_specs=compiled_specs, primary_witness_admission=admission)
+    if not same_typed_json_v1(checked, rebuilt):
+        raise _error("operating-expense PRIMARY witness indexed source replay drifted")
+    return rebuilt
+
+
+def build_gemini_json_operating_expense_trials_v1(
+    *, indexed_query_evidence, page_json_by_document, compiled_specs, primary_witness_admission=None,
+):
+    evidence = indexed_query_evidence
+    if _primary_witness_enabled_v1(compiled_specs):
+        evidence = _verify_primary_indexed_v1(evidence=evidence, pages=page_json_by_document,
+            compiled_specs=compiled_specs, admission=primary_witness_admission)
+    return _without_witness_build_gemini_json_operating_expense_trials_v1(
+        indexed_query_evidence=evidence, page_json_by_document=page_json_by_document,
+        compiled_specs=compiled_specs, primary_witness_admission=primary_witness_admission)
+
+
+def evaluate_gemini_json_operating_expense_family_cluster_v1(
+    *, regions, page_json_by_version, selected_page_axis, compiled_specs, query_receipt,
+    primary_witness_admission=None,
+):
+    pages, facts = page_json_by_version, None
+    if _primary_witness_enabled_v1(compiled_specs):
+        if not selected_page_axis:
+            raise _error("operating-expense PRIMARY witness selected document is absent")
+        pages, facts = _admitted_primary_document_v1(
+            pages=pages, document=selected_page_axis[0], page_axis=selected_page_axis,
+            compiled_specs=compiled_specs, admission=primary_witness_admission)
+    candidate = _without_witness_evaluate_gemini_json_operating_expense_family_cluster_v1(
+        regions=regions, page_json_by_version=pages, selected_page_axis=selected_page_axis,
+        compiled_specs=compiled_specs, query_receipt=query_receipt)
+    if facts is not None:
+        from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import AXIS_FIELD
+        adapter = candidate["closure_receipt"]["operating_expense_adapter_receipt"]
+        adapter[AXIS_FIELD] = facts
+        adapter["adapter_receipt_id"] = adapter["adapter_receipt_id"].rsplit(":", 1)[0] + ":" + canonical_json_sha256_v1(
+            {k: v for k, v in adapter.items() if k != "adapter_receipt_id"})
+        candidate["candidate_id"] = candidate["candidate_id"].rsplit(":", 1)[0] + ":" + canonical_json_sha256_v1(
+            {k: v for k, v in candidate.items() if k != "candidate_id"})
+    return candidate
+
+
+def build_operating_expense_source_row_coverage_receipt_v1(
+    *, indexed_query_evidence, trials, page_json_by_document, compiled_specs,
+    fail_on_violation=True, primary_witness_admission=None,
+):
+    if _primary_witness_enabled_v1(compiled_specs):
+        _verify_primary_indexed_v1(evidence=indexed_query_evidence, pages=page_json_by_document,
+            compiled_specs=compiled_specs, admission=primary_witness_admission)
+    # Coverage's raw denominator stays ORIGINAL. Fresh witness replay above
+    # proves the private PRIMARY support; it never relabels a witness as NOTE.
+    return _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
+        indexed_query_evidence=indexed_query_evidence, trials=trials,
+        page_json_by_document=page_json_by_document, compiled_specs=compiled_specs,
+        fail_on_violation=fail_on_violation)
