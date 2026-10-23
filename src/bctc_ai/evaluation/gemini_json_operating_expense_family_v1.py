@@ -115,6 +115,7 @@ _QUALIFIED_PROVISION_LITERALS = (
     ),
     ("OTHER_ASSET_PROVISION", "Dự phòng rủi ro tài sản khác (Thuyết minh 14)"),
 )
+_SOURCE_HIERARCHY_DISCLOSURE_LITERALS = ("Chi xuất bản tài liệu, quảng cáo",)
 _EXACT_SOURCE_REF_DEDUPLICATION_STATES = frozenset(
     {
         "PARTIAL_SOURCE_OBSERVATION",
@@ -5750,6 +5751,197 @@ def _coverage_candidate_receipt_sets(
     return equation_rows, source_only_roles, all_blank_roles
 
 
+def _source_hierarchy_consumed_disclosure_axis_v1(
+    *, trial, document, page_axis, pages, cluster, compiled_specs,
+    primary_witness_admission=None,
+):
+    """Account one reviewed literal through fresh source hierarchy and closure.
+
+    This supplies coverage evidence only. It neither declares a classifier role
+    nor adds a mapping, operand, parent meaning or amount. The initial scope is
+    one unchanged closed NOTE table with a literal-NULL disclosure wrapper.
+    """
+    if trial.get("status") != READY or cluster.get("status") != READY:
+        return {}
+    regions = cluster.get("component_regions", [])
+    if len(regions) != 1:
+        return {}
+    region = regions[0]
+    version = region["page_json_version_id"]
+    section, table = _source_table(
+        pages[version], section_id=region["section_id"], table_id=region["table_id"],
+    )
+    literals = {_normalized(value) for value in _SOURCE_HIERARCHY_DISCLOSURE_LITERALS}
+    targets = [
+        number for number, row in enumerate(table.get("rows", []), 1)
+        if type(row) is dict and _normalized(row.get("label_exact")) in literals
+    ]
+    if not targets or section.get("content_kind") != "FINANCIAL_NOTE" or (
+        section.get("statement_type") != "NOT_APPLICABLE" or table.get("continuation") != "NONE"
+    ):
+        return {}
+    candidates = trial.get("candidates", [])
+    if len(candidates) != 1 or trial.get("selected_candidate_id") != candidates[0].get("candidate_id"):
+        return {}
+    # A receipt/hash supplied by a caller is not closure authority. Reuse the
+    # actual public source evaluator once for this eligible selected candidate.
+    fresh = validate_gemini_json_operating_expense_candidate_replay_v1(
+        candidates[0], regions=regions, page_json_by_version=pages,
+        selected_page_axis=list(page_axis.values()), compiled_specs=compiled_specs,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions),
+        **({"primary_witness_admission": primary_witness_admission}
+           if primary_witness_admission is not None else {}),
+    )
+    if fresh["status"] != READY or not same_typed_json_v1(trial.get("mappings"), fresh["mappings"]):
+        raise _error("operating-expense disclosure selected mappings differ from fresh closure")
+    repaired, _receipts = _apply_authenticated_source_repairs(
+        pages=pages, regions=regions, compiled_specs=compiled_specs,
+    )
+    _repaired_section, repaired_table = _source_table(
+        repaired[version], section_id=region["section_id"], table_id=region["table_id"],
+    )
+    if not same_typed_json_v1(table, repaired_table):
+        return {}  # Changed original/evaluation coordinates need a separate proof.
+    closure = fresh["closure_receipt"]
+    locator_keys = ("document_id", "document_ordinal", "source_logical_name", "source_sha256",
+                    "page_json_version_id", "physical_page", "selected_page_ordinal", "section_id", "table_id")
+    locator = {key: region[key] for key in locator_keys}
+    table_receipts = [item for item in closure.get("table_receipts", [])
+        if type(item.get("region")) is dict
+        and same_typed_json_v1({key: item["region"].get(key) for key in locator_keys}, locator)]
+    if len(table_receipts) != 1:
+        return {}
+    facts = table_receipts[0]
+    lane, unit = facts.get("lane_axis", {}), facts.get("unit_axis", {})
+    columns, rows = table.get("columns", []), table.get("rows", [])
+    money = lane.get("money_column_ordinals", [])
+    if (lane.get("complete") is not True or unit.get("complete") is not True
+            or len(money) != 2 or len(set(money)) != 2
+            or any(type(col) is not int or not 1 <= col <= len(columns) for col in money)):
+        return {}
+
+    def source_ordinal(ref):
+        if type(ref) is not dict or type(ref.get("locator")) is not dict:
+            return None
+        actual = ref["locator"]
+        number = ref.get("row_ordinal")
+        if (any(type(actual.get(key)) is not int or actual[key] <= 0
+                for key in ("document_ordinal", "physical_page", "selected_page_ordinal"))
+                or type(number) is not int or not 1 <= number <= len(rows)
+                or not same_typed_json_v1({key: actual.get(key) for key in locator_keys}, locator)
+                or not same_typed_json_v1(ref.get("money_column_ordinals"), money)):
+            return None
+        row = rows[number - 1]
+        if any(not same_typed_json_v1(ref.get(key), expected) for key, expected in (
+            ("label_exact", row.get("label_exact")), ("hierarchy_path_exact", row.get("hierarchy_path_exact", [])),
+            ("row_kind", row.get("row_kind")), ("row_id", row.get("row_id", f"r{number}")),
+        )):
+            return None
+        return number
+
+    def equation_axis(equation, kind):
+        if (equation.get("status") != "EXACT" or equation.get("equation_kind") != kind
+                or not same_typed_json_v1(equation.get("lane_keys"), lane.get("lane_keys"))
+                or not same_typed_json_v1(equation.get("component_sums"), equation.get("result_coefficients"))):
+            return None
+        groups, results = equation.get("component_source_refs", []), equation.get("result_source_refs", [])
+        if not groups or any(type(group) is not list or len(group) != 1 for group in groups) or len(results) != 1:
+            return None
+        operands = [source_ordinal(group[0]) for group in groups]
+        result = source_ordinal(results[0])
+        if (None in operands or result is None or len(set(operands)) != len(operands) or result in operands
+                or not same_typed_json_v1(equation.get("multipliers"), [1] * len(operands))):
+            return None
+        for number in [*operands, result]:
+            values = rows[number - 1].get("values_exact")
+            if type(values) is not list or len(values) != len(columns):
+                return None
+            try:
+                if any(_source_money(values[col - 1]).get("state") != "RAW_SIGNED_INTEGER" for col in money):
+                    return None  # No DASH, NULL, placeholder-zero or inferred operand.
+            except ValueError:
+                return None
+        return operands, result
+
+    roots = {
+        source_ordinal(ref)
+        for mapping in fresh["mappings"]
+        if mapping.get("role") == "FAMILY_ROOT_TOTAL"
+        and mapping.get("report_norm_id") == compiled_specs["schema"]["family_root_report_norm_id"]
+        for ref in mapping.get("source_refs", [])
+    } - {None}
+    equations = closure.get("equations", [])
+    result_axis = {}
+    for target in targets:
+        row = rows[target - 1]
+        if any(hit["row_ordinal"] == target for hit in facts["classification"].get("role_hits", [])):
+            continue  # A configured role must follow its own mapping/coverage policy.
+        if any(source_ordinal(ref) == target for mapping in fresh["mappings"] for ref in mapping.get("source_refs", [])):
+            continue
+        path = row.get("hierarchy_path_exact")
+        if type(path) is not list or len(path) != 3 or path[-1] != row.get("label_exact"):
+            continue
+        if _normalized(path[1]) != _normalized("Trong đó:"):
+            continue
+        parents = [number for number, other in enumerate(rows[:target - 1], 1)
+                   if other.get("label_exact") == path[0] and other.get("hierarchy_path_exact") == [path[0]]]
+        if len(parents) != 1:
+            continue
+        parent = parents[0]
+        parent_roles = {hit["role"] for hit in facts["classification"].get("role_hits", [])
+                        if hit["row_ordinal"] == parent}
+        if parent_roles != {"FLAT_OTHER_OPERATING_SOURCE_ONLY"}:
+            continue
+        wrappers = [number for number in range(parent + 1, target)
+                    if rows[number - 1].get("label_exact") == path[1]
+                    and rows[number - 1].get("hierarchy_path_exact") == path[:2]]
+        if len(wrappers) != 1:
+            continue
+        wrapper = wrappers[0]
+        wrapper_row = rows[wrapper - 1]
+        if (wrapper_row.get("row_kind") != "GROUP" or type(wrapper_row.get("values_exact")) is not list
+                or len(wrapper_row["values_exact"]) != len(columns)
+                or any(value is not None for value in wrapper_row["values_exact"])):
+            continue
+        descendants = []
+        for number in range(wrapper + 1, len(rows) + 1):
+            other = rows[number - 1]
+            other_path = other.get("hierarchy_path_exact", [])
+            if type(other_path) is not list or other_path[:2] != path[:2]:
+                break
+            if len(other_path) != 3 or other.get("row_kind") != "ITEM":
+                descendants = []
+                break
+            descendants.append(number)
+        if target not in descendants or wrapper != parent + 1:
+            continue
+        nested = [(eq, equation_axis(eq, "EXACT_VISIBLE_HIERARCHY_DIRECT_CHILDREN_EQUAL_CARRIER")) for eq in equations]
+        nested = [(eq, axis) for eq, axis in nested if axis == (descendants, parent)]
+        root_chain = [(eq, equation_axis(eq, "EXACT_VISIBLE_TOP_LEVEL_DIRECT_FRONTIER_EQUAL_PRINTED_TOTAL")) for eq in equations]
+        root_chain = [(eq, axis) for eq, axis in root_chain if axis is not None
+                      and parent in axis[0] and not set(descendants).intersection(axis[0]) and axis[1] in roots]
+        if len(nested) != 1 or len(root_chain) != 1:
+            continue
+        identity = _coverage_row_locator(source_sha256=document["source_sha256"], page_json_version_id=version,
+            section_id=region["section_id"], table_id=region["table_id"], row_ordinal=target)
+        policy = {"source_literals_exact": list(_SOURCE_HIERARCHY_DISCLOSURE_LITERALS),
+                  "owning_role": "FLAT_OTHER_OPERATING_SOURCE_ONLY", "rule": "EXACT_SOURCE_HIERARCHY_AND_TWO_LANE_NUMERIC_CHAIN_TO_MAPPED_ROOT"}
+        material = {"policy": policy, "policy_sha256": canonical_json_sha256_v1(policy),
+                    "locator": locator, "row_ordinal": target, "original_row_exact": canonical_clone_v1(row),
+                    "original_row_object_sha256": canonical_json_sha256_v1(row),
+                    "original_table_object_sha256": canonical_json_sha256_v1(table),
+                    "columns_exact": canonical_clone_v1(columns), "money_column_ordinals": canonical_clone_v1(money),
+                    "parent_row_ordinal": parent, "parent_row_exact": canonical_clone_v1(rows[parent - 1]),
+                    "wrapper_row_ordinal": wrapper, "wrapper_row_exact": canonical_clone_v1(wrapper_row),
+                    "descendant_row_ordinals": descendants, "fresh_candidate_id": fresh["candidate_id"],
+                    "nested_equation": canonical_clone_v1(nested[0][0]), "root_equation": canonical_clone_v1(root_chain[0][0]),
+                    "lane_axis": canonical_clone_v1(lane), "unit_axis": canonical_clone_v1(unit),
+                    "financial_mapping_permission_granted": False, "operand_or_role_permission_granted": False,
+                    "source_modified": False}
+        result_axis[identity] = [{**material, "receipt_id": "gjoefav1:source-hierarchy-disclosure:" + canonical_json_sha256_v1(material)}]
+    return result_axis
+
+
 def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
     *,
     indexed_query_evidence: Mapping[str, Any],
@@ -5757,6 +5949,7 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
     page_json_by_document: Mapping[int, Mapping[str, dict[str, Any]]],
     compiled_specs: Mapping[str, Any],
     fail_on_violation: bool = True,
+    primary_witness_admission: Any = None,
 ) -> dict[str, Any]:
     """Classify every configured or raw Family-36 source row and fail closed."""
 
@@ -5793,6 +5986,7 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
     equation_rows: set[tuple[str, str, str, str, int]] = set()
     source_only_roles: dict[tuple[str, str, str, str, int], set[str]] = {}
     all_blank_roles: dict[tuple[str, str, str, str, int], set[str]] = {}
+    disclosure_axis: dict[tuple[str, str, str, str, int], list[dict[str, Any]]] = {}
     for ordinal, (trial, document, disposition) in enumerate(
         zip(trials, documents, indexed["candidate_dispositions"], strict=True),
         start=1,
@@ -5855,6 +6049,11 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
             source_only_roles.setdefault(identity, set()).update(roles)
         for identity, roles in candidate_sets[2].items():
             all_blank_roles.setdefault(identity, set()).update(roles)
+        disclosure_axis.update(_source_hierarchy_consumed_disclosure_axis_v1(
+            trial=trial, document=document, page_axis=axes, pages=pages,
+            cluster=disposition["cluster"], compiled_specs=compiled_specs,
+            primary_witness_admission=primary_witness_admission,
+        ))
 
     source_rows: dict[str, dict[str, Any]] = {}
     total_rows: dict[str, dict[str, Any]] = {}
@@ -6222,6 +6421,8 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
                             coverage = "ACCOUNTED_MAPPED_TERMINAL_TOTAL_ROW"
                         elif identity in mapped_rows:
                             coverage = "ACCOUNTED_MAPPED_SOURCE_ROW"
+                        elif identity in disclosure_axis:
+                            coverage = "ACCOUNTED_SOURCE_HIERARCHY_CONSUMED_DISCLOSURE"
                         elif (
                             identity in equation_rows
                             and identity in source_only_roles
@@ -6255,6 +6456,8 @@ def _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
                             row_ordinal=row_ordinal,
                             evidence={
                                 **raw_target,
+                                **({"source_hierarchy_consumed_disclosure_axis": canonical_clone_v1(disclosure_axis[identity])}
+                                   if identity in disclosure_axis else {}),
                                 "inventory_disposition": inventory.get(
                                     "disposition"
                                 ),
@@ -6511,4 +6714,6 @@ def build_operating_expense_source_row_coverage_receipt_v1(
     return _without_witness_build_operating_expense_source_row_coverage_receipt_v1(
         indexed_query_evidence=indexed_query_evidence, trials=trials,
         page_json_by_document=page_json_by_document, compiled_specs=compiled_specs,
-        fail_on_violation=fail_on_violation)
+        fail_on_violation=fail_on_violation,
+        **({"primary_witness_admission": primary_witness_admission}
+           if primary_witness_admission is not None else {}))
