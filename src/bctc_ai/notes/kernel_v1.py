@@ -709,7 +709,9 @@ def resolve_duration_lanes_v1(
     year-to-date" open: it resolves only in a first-quarter report, where the
     two are the same period by definition; otherwise the lane keeps both
     candidates and is unresolved. "Kỳ trước"/"Năm trước" never get candidates.
-    Units as printed.
+    (5) In an annual report, a header printing only the report end date (or
+    the same day one year earlier), optionally as "Năm (tài chính) kết thúc
+    ngày D", is that reported year. Units as printed.
     """
 
     own_context = statement_period_context_v1(own_texts)
@@ -751,7 +753,8 @@ def resolve_duration_lanes_v1(
             else:
                 lane.candidates = _quarter_or_ytd_candidates(header, folded, report_context)
                 if lane.candidates and len(set(lane.candidates)) == 1:
-                    lane.period_key, lane.period_basis = lane.candidates[0], "FIRST_QUARTER_IS_YEAR_TO_DATE"
+                    basis = "ANNUAL_REPORT_END_DATE" if len(lane.candidates) == 1 else "FIRST_QUARTER_IS_YEAR_TO_DATE"
+                    lane.period_key, lane.period_basis = lane.candidates[0], basis
                     lane.candidates = []
                 elif lane.candidates:
                     lane.reasons.append("PERIOD_QUARTER_OR_YEAR_TO_DATE_NOT_PRINTED")
@@ -780,13 +783,27 @@ def _quarter_or_ytd_candidates(header: str, folded: str, context) -> list[str]:
 
     Needs the report's printed quarter and end date. A printed date must be
     the report end date or the same day one year earlier (the year is the
-    printed one). Returns [] for anything else, including "Kỳ trước".
+    printed one). In an annual report the only candidate is the reported
+    year. Returns [] for anything else, including "Kỳ trước".
     """
 
-    if context.conflict or not context.quarter or not context.reporting_date:
+    annual = context.annual and not context.quarter and not context.months and not context.first_months_of_fiscal_year
+    # "Cho năm tài chính kết thúc ngày D" prints D as the fiscal-year end of an annual report.
+    end = context.reporting_date or (context.fiscal_year_end if annual else None)
+    if context.conflict or not end:
+        return []
+    dates = printed_dates_v1(header)
+    if annual:
+        # An annual report: a column printing only the report end date (or the same day one year
+        # earlier), optionally as "Năm (tài chính) kết thúc ngày D", is that reported year.
+        if len(dates) == 1 and dates[0] in (end, _same_day_previous_year(end)):
+            core = re.sub(r"\b(?:cho|nam|tai chinh|ket thuc|vao|ngay|thang)\b", "", _header_core(fold_vietnamese(header)))
+            if not re.sub(r"[\d/.\-\s]", "", core):
+                return [f"DURATION:YEAR:{dates[0][:4]}"]
+        return []
+    if not context.quarter or not context.reporting_date:
         return []
     quarter = context.quarter
-    dates = printed_dates_v1(header)
     if len(dates) == 1:
         if dates[0] not in (context.reporting_date, _same_day_previous_year(context.reporting_date)):
             return []

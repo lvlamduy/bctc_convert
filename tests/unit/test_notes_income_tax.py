@@ -285,3 +285,19 @@ def test_unread_row_inside_the_equation_span_makes_it_incomplete(family):
     assert {e["status"] for e in evaluations[0].equations} == {"INCOMPLETE_UNREAD_ROWS_IN_SPAN"}
     assert all("VALIDATION_FAIL" not in c["hold_reasons"] for c in evaluations[0].cells)
     assert all(c["acceptance"] == "HOLD" and "EQUATION_SPAN_HAS_UNREAD_ROWS" in c["hold_reasons"] for c in evaluations[0].cells)
+
+
+def annual_document():
+    doc = document(quarter=4)
+    doc.income_context_texts = ["BÁO CÁO KẾT QUẢ HOẠT ĐỘNG\nCho năm tài chính kết thúc ngày 31 tháng 12 năm 2025"]
+    return doc
+
+
+def test_annual_report_end_date_headers_are_the_reported_years():
+    table = make_table(RECON[:1], [("31/12/2025",), ("Năm tài chính kết thúc ngày 31.12.2024",), ("30/06/2025",)])
+    lanes = resolve_duration_lanes_v1(table, annual_document(), [], [table.table_title])
+    assert [lane.period_key for lane in lanes] == [YEAR, YEAR_PRIOR, None]
+    assert lanes[0].period_basis == "ANNUAL_REPORT_END_DATE"
+    # The same bare date in a fourth-quarter report stays open between Q4 and the year.
+    q4 = resolve_duration_lanes_v1(make_table(RECON[:1], [("31/12/2025",)]), document(quarter=4), [], [table.table_title])
+    assert q4[0].period_key is None and q4[0].candidates == ["DURATION:QUARTER:4:2025", YEAR]
