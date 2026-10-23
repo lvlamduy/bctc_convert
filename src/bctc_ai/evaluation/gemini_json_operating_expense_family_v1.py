@@ -4931,6 +4931,9 @@ def _literal_payroll_scope_veto_v1(
     if any(not item["complete"] for item in receipts):
         candidate["status"] = UNRESOLVED
         candidate["mappings"] = []
+        structural_root = candidate.get("closure_receipt", {}).get("structural_root_receipt")
+        if type(structural_root) is dict:
+            structural_root["emitted_mapping"] = False
         candidate["reasons"] = sorted({
             *candidate["reasons"], "OPERATING_EXPENSE_LITERAL_PAYROLL_OWNER_NOT_PROVEN",
         })

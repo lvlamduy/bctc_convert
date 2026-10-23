@@ -4576,6 +4576,8 @@ def test_scoped_payroll_literal_alias_does_not_gain_role_under_other_owner(owner
     candidate, _cluster_value, _query_receipt = _evaluate_adapter(page)
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
+    assert candidate["closure_receipt"]["structural_root_receipt"]["emitted_mapping"] is False
+    assert validate_source_observation_mapping_contract_v1(candidate)["violation_count"] == 0
     assert "OPERATING_EXPENSE_LITERAL_PAYROLL_OWNER_NOT_PROVEN" in candidate["reasons"]
     scope = candidate["closure_receipt"]["operating_expense_adapter_receipt"]["literal_payroll_scope_receipts"]
     assert len(scope) == 1 and scope[0]["complete"] is False
