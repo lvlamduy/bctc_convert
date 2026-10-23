@@ -285,3 +285,37 @@ def test_shared_section_narrative_date_has_no_owner(family):
     table.section_table_count = 1
     owned = cells(evaluate_table_v1(table, family, document(), context, []))
     assert owned[("G1", "INSTANT:2025-12-31")]["period_basis"] == "OWN_CAPTION_PRINTED_DATE"
+
+
+def _pair(head_section="6. Cho vay khách hàng", follower_section=None, head_flag="CONTINUES_ON_NEXT_PAGE",
+          follower_flag="CONTINUES_FROM_PREVIOUS_PAGE", follower_unit=None):
+    head = make_table(FIVE[:3], title=None, section=head_section, unit="Triệu đồng", page=15)
+    follower = make_table(FIVE[3:], headers=((), ()), title=None, section=follower_section, unit=follower_unit, page=16)
+    source = _OutlineSource([_entry(15, "s1", "t1", None, head_flag), _entry(16, "s1", "t1", None, follower_flag)])
+    joined, receipts = assemble_continuations_v1(source, [head, follower])
+    return len(joined) == 1 and len(receipts) == 1
+
+
+def test_continuation_requires_both_flags():
+    assert _pair()
+    assert not _pair(follower_flag="NONE")
+    assert not _pair(head_flag="NONE")
+
+
+def test_continued_marker_does_not_erase_note_identity():
+    assert _pair(follower_section="6. Cho vay khách hàng (tiếp theo)")
+    assert _pair(follower_section="THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT (tiếp theo)")  # generic page header
+    assert not _pair(follower_section="7. Tiền gửi của khách hàng (tiếp theo)")
+
+
+def test_continuation_unit_conflict_is_not_joined():
+    assert not _pair(follower_unit="VND")
+
+
+def test_signing_date_in_a_single_table_section_is_not_a_reporting_date(family):
+    table = make_table(FIVE, headers=(("Dư nợ cho vay", "Triệu đồng"), ("Dự phòng cụ thể", "Triệu đồng")), title=None,
+                       section="11.1 Dự phòng rủi ro cho vay khách hàng")
+    table.narratives = ["Hà Nội, ngày 25 tháng 7 năm 2025"]
+    context = [("SECTION_TITLE", table.section_title), ("SECTION_NARRATIVE", table.narratives[0])]
+    result = cells(evaluate_table_v1(table, family, document(), context, []))
+    assert all(c["period_key"] is None for c in result.values())

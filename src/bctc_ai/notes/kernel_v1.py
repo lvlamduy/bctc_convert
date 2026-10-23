@@ -323,12 +323,27 @@ def _money_columns(table: NoteTable) -> list[NoteColumn]:
     return [c for c in table.columns if c.value_kind == "MONEY"]
 
 
+_CONTINUED_MARKER = re.compile(r"\(?\s*tiep theo\s*\)?")
+_GENERIC_REPORT_HEADER = re.compile(r"\bthuyet minh bao cao tai chinh\b")
+
+
+def _note_identity(title: str | None) -> str:
+    """A section title without the "(tiếp theo)" marker; a generic report page header has no identity."""
+
+    folded = re.sub(r"\s+", " ", _CONTINUED_MARKER.sub(" ", fold_vietnamese(title or ""))).strip()
+    if not folded or (_GENERIC_REPORT_HEADER.search(folded) and not _NOTE_HEADING.match(folded)):
+        return ""
+    return folded
+
+
 def _continuation_compatible(head: NoteTable, follower: NoteTable) -> bool:
     """Owner/reset fence and column bijection for a page continuation.
 
-    The follower prints no title of its own, its section is untitled or the
-    same note continued ("(tiếp theo)") or identical to the head's, and each
-    of its money columns has the head's header or no header at all.
+    The follower prints no title of its own; its section, once "(tiếp theo)"
+    is removed, is the head's note or carries no note identity (untitled or a
+    generic report page header) — another note "(tiếp theo)" is a reset; any
+    unit printed on both fragments agrees; and each follower money column has
+    the head's header or no header at all.
     """
 
     head_money, follower_money = _money_columns(head), _money_columns(follower)
@@ -336,8 +351,12 @@ def _continuation_compatible(head: NoteTable, follower: NoteTable) -> bool:
         return False
     if follower.table_title:
         return False
-    section = fold_vietnamese(follower.section_title or "")
-    if section and section != fold_vietnamese(head.section_title or "") and "tiep theo" not in section:
+    follower_note = _note_identity(follower.section_title)
+    if follower_note and follower_note != _note_identity(head.section_title):
+        return False
+    head_units = {u.unit for u in units_in_unit_field_v1(head.unit_exact, source_kind="TABLE_UNIT_FIELD")}
+    follower_units = {u.unit for u in units_in_unit_field_v1(follower.unit_exact, source_kind="TABLE_UNIT_FIELD")}
+    if head_units and follower_units and head_units != follower_units:
         return False
     return all(not f.header_text or f.header_text == h.header_text for h, f in zip(head_money, follower_money))
 
@@ -373,7 +392,9 @@ def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) ->
         follower = next((k for k in by_key if position[k][0] == ordinal and position[k][1] == page + 1 and position[k][2]), None)
         if follower is None:
             continue
-        declared = flags.get(key) in _ON_NEXT or flags.get(follower) in _FROM_PREVIOUS
+        # Both fragments must declare the page break (head: continues on next page;
+        # follower: continues from previous page); a single flag is not proof.
+        declared = flags.get(key) in _ON_NEXT and flags.get(follower) in _FROM_PREVIOUS
         if declared and _continuation_compatible(table, by_key[follower]):
             next_of[key] = follower
     followers = set(next_of.values())
@@ -480,13 +501,19 @@ def resolve_instant_lanes_v1(
     """
 
     context = statement_period_context_v1(document.context_texts)
-    own_dates = sorted({d for text in own_context or [] for d in printed_dates_v1(text)})
+    def reporting_dates(text: str) -> set[str]:
+        # Only a date introduced as a reporting point ("tại ngày", "đến ngày",
+        # "kết thúc ngày" ...); a signing line ("Hà Nội, ngày ...") is not one.
+        found = statement_period_context_v1([text])
+        return {found.reporting_date} if found.reporting_date and not found.conflict else set()
+
+    own_dates = sorted({d for text in own_context or [] for d in reporting_dates(text)})
     if len(own_dates) > 1 and date_intro_phrases:
         # Prefer the date of the sentence that introduces the breakdown
         # ("Kết quả phân loại nợ tại ngày ..."), when exactly one does.
         introduced = sorted({d for text in own_context or []
                              if any(all(p in fold_vietnamese(text) for p in g) for g in date_intro_phrases)
-                             for d in printed_dates_v1(text)})
+                             for d in reporting_dates(text)})
         if len(introduced) == 1:
             own_dates = introduced
     all_header_units = {u.unit for column in table.columns if column.value_kind == "MONEY"
