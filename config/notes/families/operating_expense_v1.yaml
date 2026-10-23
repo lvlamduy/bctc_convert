@@ -24,6 +24,13 @@ subjects:
 
 reject_context: [[ben lien quan], [bo phan], [thu nhap cua can bo], [tinh hinh thu nhap], [ngan sach nha nuoc], [quy luong]]
 
+# F36 opt-in (Codex 0150): an owner-bound line (payroll contributions) may reach its proven owner through ONE
+# GROUP wrapper printed exactly "Trong đó" (optional trailing colon) whose original value cells are all JSON null.
+# Both edges are raw-path proven; the owner must be the final unambiguous EMPLOYEE_EXPENSE. The literal is the
+# actual FULL193 form; other wrappers ("Bao gồm", "Chi tiết") are not admitted without source evidence.
+transparent_wrappers:
+  labels: ["Trong đó"]
+
 emit_lines: [TAX_FEES, EMPLOYEE_EXPENSE, SALARY_ALLOWANCE, PAYROLL_CONTRIBUTIONS, EMPLOYEE_BENEFIT, UNIFORM_EXPENSE,
              OTHER_EMPLOYEE_EXPENSE, ASSET_EXPENSE, DEPRECIATION_EXPENSE, RENT_EXPENSE,
              MAINTENANCE_EXPENSE, TOOLS_EQUIPMENT_EXPENSE, OTHER_ASSET_EXPENSE, ADMIN_EXPENSE,

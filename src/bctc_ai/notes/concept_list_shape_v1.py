@@ -105,6 +105,31 @@ def _proven_parent_line(table: NoteTable, index: int, family: Family) -> tuple[s
     return lines[0], "PROVEN_PARENT_LINE", parent_index
 
 
+def _owner_through_wrapper(table: NoteTable, wrapper_index: int, family: Family) -> tuple[str, int] | None:
+    """(owner line, owner row) when ``wrapper_index`` is ONE source-proven transparent wrapper, else None.
+
+    Family opt-in only (``transparent_wrappers``). The wrapper is a GROUP row whose folded label is exactly one
+    declared literal (an optional trailing colon aside); EVERY original value cell of it is JSON null (no DASH,
+    no blank string, no number); and its own parent edge is proven (``proven_parent_index_v1``: unique, printed
+    earlier, raw paths agree) to a row matching exactly one axis line. One level only: a wrapper's parent that is
+    itself a wrapper matches no line, so nesting never resolves. The wrapper is never a value or a zero; the
+    owner row's FINAL role must still be an unambiguous MEMBER (fixed point in ``assign_lines_v1``).
+    """
+
+    spec = family.raw.get("transparent_wrappers") or {}
+    literals = {fold_vietnamese(str(text)).strip() for text in spec.get("labels") or []}
+    wrapper = table.rows[wrapper_index]
+    label = fold_vietnamese(wrapper.label or "").strip()
+    label = label[:-1].rstrip() if label.endswith(":") else label
+    if not literals or wrapper.kind != "GROUP" or label not in literals:
+        return None
+    cells = [table.cells.get((wrapper.row_id, column.column_id)) for column in table.columns]
+    if not cells or any(cell is None or cell[0] is not None for cell in cells):
+        return None
+    owner_line, _reason, owner_index = _proven_parent_line(table, wrapper_index, family)
+    return (owner_line, owner_index) if owner_line is not None and owner_index is not None else None
+
+
 def _claims_parent(row) -> bool:
     return bool(row.parent_row_id) or len([part for part in row.hierarchy if part]) > 1
 
@@ -141,19 +166,29 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
         owned = [m for m in matches if members.get(m, {}).get("owner")]
         blocked: list[str] = []
         parent_index, by_parent = None, set()  # by_parent: members read only because of the proven parent
+        owner_index, via_wrapper = None, None
         if scoped or owned or any(members.get(m, {}).get("not_within") for m in matches):
             parent_line, parent_reason, parent_index = _proven_parent_line(table, index, family)
+            owner_line, owner_index = parent_line, parent_index
+            if owned and parent_line is None and parent_index is not None:
+                # F36 opt-in (Codex 0150): an owner reached through ONE source-proven transparent wrapper row.
+                # Only the owner rule may look through it; scoped / not_within keep the immediate parent.
+                through = _owner_through_wrapper(table, parent_index, family)
+                if through is not None:
+                    owner_line, owner_index, via_wrapper = through[0], through[1], parent_index
             excluded = [m for m in matches if members.get(m, {}).get("not_within")
                         and (parent_line in members[m]["not_within"] or (parent_line is None and _claims_parent(row)))]
             # An owner-bound line is read only under its proven printed owner (never by amount or position).
-            blocked = [m for m in owned if parent_line not in members[m]["owner"]] + excluded
+            blocked = [m for m in owned if owner_line not in members[m]["owner"]] + excluded
             matches = [m for m in matches if m not in blocked]
             # Only an explicit owner, or a member ADDED by the proven scoped fallback, depends on the parent;
             # a fully qualified direct label (e.g. "Dự phòng chung cho vay khách hàng") reads on its own.
-            by_parent = {m for m in owned if m in matches}
+            by_owner = {m for m in owned if m in matches}
             added = [m for m in scoped if parent_line in members[m]["scoped"]["within"] and m not in matches]
             matches += added
-            by_parent |= set(added)
+            by_parent = set(added)
+            if not by_owner:
+                via_wrapper = None
             if blocked and len(direct) > 1:
                 # A label matching several lines DIRECTLY stays ambiguous: a missing owner (or not_within) is not
                 # evidence selecting the remaining direct meaning (Codex 0151/0152: payroll + uniform composite).
@@ -161,14 +196,20 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
                 roles.append(RowRole(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES", direct))
                 continue
             if blocked and not matches:
-                why = parent_reason if parent_line is None else "PARENT_LINE_" + parent_line
+                why = parent_reason if owner_line is None else "PARENT_LINE_" + owner_line
                 roles.append(RowRole(index, None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:" + why, blocked))
                 continue
+        else:
+            by_owner = set()
         if len(matches) > 1:
             roles.append(RowRole(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES", matches))
         elif matches:
-            roles.append(RowRole(index, matches[0], "MEMBER", "LINE_RULE"))
-            if matches[0] in by_parent and parent_index is not None:
+            # The wrapper is recorded as the source proof of the owner edge, never as a value.
+            reason = "LINE_RULE" if via_wrapper is None else f"LINE_RULE_VIA_TRANSPARENT_WRAPPER:{table.rows[via_wrapper].row_id}"
+            roles.append(RowRole(index, matches[0], "MEMBER", reason))
+            if matches[0] in by_owner and owner_index is not None:
+                depends[index] = (owner_index, owner_line)
+            elif matches[0] in by_parent and parent_index is not None:
                 depends[index] = (parent_index, parent_line)
         else:
             roles.append(RowRole(index, None, "SOURCE_ONLY", "NO_LINE_RULE"))

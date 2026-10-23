@@ -256,3 +256,66 @@ def test_composite_label_matching_several_lines_stays_ambiguous_with_or_without_
     assert _roles(scoped, family)[1][:2] == (None, "SOURCE_ONLY")
     link(scoped, 1, 0)
     assert _roles(scoped, family)[1][:2] == ("OTHER_EMPLOYEE_EXPENSE", "MEMBER")
+
+
+def _wrapped(wrapper="Trong đó:", wrapper_values=(None, None), wrapper_kind="GROUP", owner="Chi phí cho nhân viên"):
+    """owner (r0) -> wrapper (r1) -> payroll (r2), both edges printed as the source does (parent id + raw path)."""
+
+    table = make_table([(owner, ["100", "90"]), (wrapper, list(wrapper_values)),
+                        ("Các khoản chi đóng góp theo lương", ["15", "14"])], [("Năm 2025",), ("Năm 2024",)],
+                       title="30. Chi phí hoạt động")
+    table.rows[1] = replace(table.rows[1], kind=wrapper_kind)
+    link(table, 1, 0)
+    link(table, 2, 1)
+    return table
+
+
+def test_payroll_reaches_its_owner_through_one_null_trong_do_wrapper(config):
+    # Codex 0150: F36 opt-in, literal "Trong đó", one GROUP layer whose original cells are all JSON null.
+    family = config.families["OPERATING_EXPENSE"]
+    table = _wrapped()
+    roles = assign_lines_v1(table, family)
+    assert (roles[1].disposition, roles[1].reason) == ("HEADING", "NO_VALUES")  # the wrapper is never a value
+    assert (roles[2].role, roles[2].disposition, roles[2].reason) == (
+        "PAYROLL_CONTRIBUTIONS", "MEMBER", "LINE_RULE_VIA_TRANSPARENT_WRAPPER:r1")
+    assert _roles(_wrapped(wrapper="Trong đó"), family)[2][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")
+    # The wrapper does not change the equation: EMPLOYEE = Σ printed detail still uses the payroll line only.
+    evaluations = evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), [])
+    assert any(c["member"] == "PAYROLL_CONTRIBUTIONS" for e in evaluations for c in e.cells)
+
+
+def test_wrapper_negatives_never_grant_the_owner(config):
+    family = config.families["OPERATING_EXPENSE"]
+    held = (None, "SOURCE_ONLY")
+    for table in (_wrapped(wrapper_values=("-", None)),             # a printed dash is not a null wrapper cell
+                  _wrapped(wrapper_values=("", None)),              # a blank string is not JSON null
+                  _wrapped(wrapper_values=("0", None)),             # a number is never a wrapper
+                  _wrapped(wrapper_kind="ITEM"),                    # only a GROUP row wraps
+                  _wrapped(wrapper="Bao gồm:"),                     # undeclared literal
+                  _wrapped(wrapper="Trong đó, chi phí"),            # not the exact literal
+                  _wrapped(owner="Chi về tài sản")):                # foreign owner
+        assert _roles(table, family)[2][:2] == held
+    # Nested wrappers (owner -> Trong đó -> Trong đó -> payroll): one layer only.
+    nested = make_table([("Chi phí cho nhân viên", ["100", "90"]), ("Trong đó:", [None, None]), ("Trong đó:", [None, None]),
+                         ("Các khoản chi đóng góp theo lương", ["15", "14"])], [("Năm 2025",), ("Năm 2024",)],
+                        title="30. Chi phí hoạt động")
+    for wrapper in (1, 2):
+        nested.rows[wrapper] = replace(nested.rows[wrapper], kind="GROUP")
+    link(nested, 1, 0)
+    link(nested, 2, 1)
+    link(nested, 3, 2)
+    assert _roles(nested, family)[3][:2] == held
+    # The wrapper edge must itself be raw-path proven (an id alone is not enough).
+    id_only = _wrapped()
+    id_only.rows[1] = replace(id_only.rows[1], hierarchy=())
+    assert _roles(id_only, family)[2][:2] == held
+    # An owner made AMBIGUOUS by a second EMPLOYEE population releases the wrapped child too.
+    dup = _wrapped()
+    dup.rows.append(replace(dup.rows[0], row_id="r3", order=3))
+    for column in dup.columns:
+        dup.cells[("r3", column.column_id)] = ("50", "VALUE")
+    roles = _roles(dup, family)
+    assert roles[2] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER")
+    # Opt-in only: a family without transparent_wrappers keeps the immediate-owner rule.
+    plain = replace(family, raw={k: v for k, v in family.raw.items() if k != "transparent_wrappers"})
+    assert _roles(_wrapped(), plain)[2] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_IS_NOT_A_LINE")
