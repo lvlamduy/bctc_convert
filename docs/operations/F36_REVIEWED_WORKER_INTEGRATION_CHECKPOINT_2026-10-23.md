@@ -112,3 +112,59 @@ The frozen shared SHA-256 pins remain:
 Blank is not numeric zero; unit is not inferred from magnitude; source values
 are not backsolved. All remaining fixes must preserve original source coordinates,
 owner/period/unit/basis evidence and deterministic authenticated replay.
+
+## Completed FULL stage and narrowly bounded result inventory
+
+The FULL271 diagnostic finished at 2026-10-23 10:10:32 UTC: 250 READY,
+0 NOT_OBSERVED, 21 UNRESOLVED and 2,975 mappings. These remain proposals:
+source-row coverage **FAILS with 307 violations**. Independent source replay and
+registered PDF-repair authentication passed; manual/residual/final-store gates
+remain not performed. The migration's anticipated 269/2 counts are not proved.
+`full271/diagnostic.json` is 81,278,595 bytes, SHA-256
+`2fecaf5f4876b1f8592c1430f8620f1821a3b3d30b4bb48f4c4658441ca1e2d9`.
+Its stage `outcome.json` SHA-256 is
+`3b708d32d0a334aeb6c7a7fb9b5db3f5f642896e56f00792ef5aac31cc1e6f88`.
+Wall time was 1:04:29, maximum RSS 1,953,268 KiB, zero swaps, exit zero.
+COMMON204 then started under time/group PID 7609 and the original wrapper 3418;
+the pair is still not a completed/accepted family.
+
+Messages `0066-codex-to-claude-full271-result-and-bounded-analysis-proposal.md`
+and `0067-claude-to-codex-ack-bounded-root-reader.md` explicitly amend only the
+earlier blanket scheduling rule for one root-owned, finished-output inventory.
+The reader must be reviewed, read-only, streaming, Python 3.12, capped at
+384 MiB address space/60 CPU seconds, nice 19, with sufficient actual available
+memory checked before launch and between records. Hold the original file FD and
+verify its identity/size/SHA before and after. Output only fresh exclusive
+inventory evidence; no project imports, original database/PDF, tests, profiler
+or providers. No automatic retry/cap increase. This is not permission for peer
+jobs or retroactive approval of previously unleased analysis. Live code/source
+remain immutable, and no financial or source gate is waived.
+
+A separate inactive performance candidate is prepared locally at
+`/srv/bctc-receipts/f36-performance-candidate-20261023T100700Z/repo`, commit
+`5806cea2c227dd4d86a0d9b4ff00d4d0233481b2`, parent `6f158cc7aef4675a3cbe6b34b1e09815e6bd1c81`.
+It contains reviewed coverage-copy/export-byte changes plus proposed regressions.
+It is not promoted or pushed and has not been compiled, linted or tested.
+It does not fix the 307 coverage findings; exact baseline coverage comparison
+and focused regression are required before promotion. The active runtime remains
+the original `f3d251e` clone.
+
+The bounded reader then completed once with status
+`PASS_COMPLETED_DIAGNOSTIC_METADATA_INVENTORY_NOT_FINANCIAL_ACCEPTANCE`.
+It used 4.231328 CPU seconds, about 4.65 seconds wall and maximum RSS
+103,136 KiB, nice 19; all held-file identity/SHA barriers passed. Its output is
+`/srv/bctc-receipts/f36-full-inventory-20261023T102800Z/F36_COMPLETED_FULL_METADATA_INVENTORY_V1.json`,
+371,220 bytes, SHA-256
+`729714cba133d1c2d3351d653f4e1507fc409d00e1d37fd741b2b65193f9883c`.
+No source database, PDF, project import, test or provider was accessed by it.
+
+The 307 violations comprise 176 unmapped selected-schema-role rows, 113
+unclassified visible rows, 14 unmapped terminal totals and four selected-root
+rows. There are 219 violations on the 21 unresolved documents and 88 on 30
+READY documents. READY therefore does not establish complete source coverage.
+Nineteen unresolved candidates were rejected because their required printed
+root was only derived; ten also retain an open-continuation reason. A late
+veto versus earlier retry scheduling gap is under static review, but the retry's
+admitted reasons also differ. Metadata alone proves neither a usable printed
+total/frontier nor a safe fix. Original source probes and meaningful regressions
+remain required; no source guard or coverage obligation is waived.

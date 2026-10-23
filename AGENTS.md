@@ -17,6 +17,14 @@ in `docs/operations/F36_REVIEWED_WORKER_INTEGRATION_CHECKPOINT_2026-10-23.md`.
 That checkpoint is not a family seal; check the job's terminal receipt before
 starting another runtime job or changing its pinned runtime checkout.
 
+One bounded scheduling exception was agreed in exchange messages 0066/0067:
+root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
+runs, using a reviewed read-only streaming reader capped at 384 MiB address
+space and 60 CPU seconds, nice 19, with immediate memory-headroom checks and
+held-FD SHA/identity barriers. It grants no source-DB/PDF/test/profiler/provider
+access, peer execution, acceptance waiver or automatic retry. Other runtime jobs
+still require the explicit lease; never change the live pinned checkout.
+
 The authoritative worktree is this repository on branch
 `codex/27-bank-2025-current`. Preserve all committed family code, tests,
 registered evidence, and staging ledgers. Do not restart provider calls or
