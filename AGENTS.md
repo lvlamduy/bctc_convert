@@ -64,6 +64,12 @@ It retains the earlier failures and records the018cd914S3 backup plus Claude's
 completed experimental FULL271 run. No actual held-row declaration is registered,
 no notes code is integrated, and no family is sealed by this checkpoint.
 
+Read `docs/operations/F36_PUBLICATION_SOURCE_PROOF_AND_BORROW_CHECKPOINT_2026-10-24.md`
+for1021normal/4327subtest PASS, actual193coverage1→0 with13financial mappings
+unchanged, six-original opt-in witness equality and the complete48-page253visual
+review. The small A/B did not demonstrate a speed/RSS gain. Actual253API/cold and
+fresh full/common acceptance remain pending; preserve every earlier FAIL.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
