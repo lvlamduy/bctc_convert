@@ -25,6 +25,14 @@ held-FD SHA/identity barriers. It grants no source-DB/PDF/test/profiler/provider
 access, peer execution, acceptance waiver or automatic retry. Other runtime jobs
 still require the explicit lease; never change the live pinned checkout.
 
+Messages 0072/0073 agree a second root-only bounded reader: at most 16 selected
+original page-JSON IDs for the named F36 cases, stdlib only, no evaluation or
+PDF. Exact original index/database FD hashes, identities and no-sidecar checks
+are required before/after. Cap 192 MiB AS and 45/50 CPU seconds, nice 19,
+MemAvailable at least 1.5 GiB and active swap at least 4 GiB before/every page;
+fresh exclusive output, no retry/cap increase. Independently review the exact
+helper first. This grants no peer/test/profiler/provider execution or acceptance.
+
 The authoritative worktree is this repository on branch
 `codex/27-bank-2025-current`. Preserve all committed family code, tests,
 registered evidence, and staging ledgers. Do not restart provider calls or

@@ -168,3 +168,51 @@ veto versus earlier retry scheduling gap is under static review, but the retry's
 admitted reasons also differ. Metadata alone proves neither a usable printed
 total/frontier nor a safe fix. Original source probes and meaningful regressions
 remain required; no source guard or coverage obligation is waived.
+
+## Bounded original-table evidence and isolated accuracy draft
+
+Exchange0072/0073 and DECISIONS13 permit one additional root-only original raw
+table reader while COMMON runs. Its independently reviewed helper SHA-256 is
+`86bc871986094ee52e57304bbf6ffaa16b872ae19a0e77a75bf653b25ff0b55a`.
+The actual reader completed EXIT0: 12 original selected pages, 14 tables and
+10 exact source documents. Index/manifest/selection/VID/raw two-LF BLOB hashes,
+held-file identities, code/helper and source SQLite before/after barriers,
+quick_check and foreign_key_check passed. No evaluator, PDF, repair replay or
+provider was run. CPU through final barriers was 10.204974 seconds; external
+wall11.47 seconds, peak RSS27,272KiB, zero swaps. The agreed192MiB AS,
+45/50 CPU seconds, nice19, MemAvailable1.5GiB and active-swap4GiB guards held.
+
+Receipt:
+`/srv/bctc-receipts/f36-bounded-original-tables-20261023T105500Z/F36_BOUNDED_ORIGINAL_TABLE_EXTRACTION_V1.json`,
+75,672 bytes, SHA-256
+`72d1504c013262c2b1b39491b865cb4aaf61e5e4232c37e7616a5fd2b3e6fece`.
+This proves raw extraction only, not semantic or financial approval. An earlier
+shell prelaunch failed before time/Python started because the Windows/WSL shell
+consumed a variable; the first actual reader used direct `wsl --exec` arguments.
+No data-reader retry or raised resource cap occurred.
+
+Concrete source findings now guide the next bounded probes:
+
+- FULL57 has a terminal printed Cộng and local unit. FULL237 has terminal Tổng
+  and local unit. The new printed-root route is not yet tested on either.
+- FULL149's receiver SECTION explicitly says `28. Chi phí hoạt động (tiếp theo)`;
+  the current complete-owner continuation gate accepts only a generic report
+  heading there. This is a definite gate mismatch, not proof all later gates pass.
+- FULL92/98 have `Chi phí quản lý chung` as an actual child of
+  `Chi phí hoạt động khác`, so a literal root alias alone is insufficient.
+  FULL98 also retains a malformed raw hierarchy segment; never silently repair it.
+- FULL193's exact payroll-contribution wording is source-owned by EMPLOYEE.
+  Its publication/advertising row belongs to OTHER, so do not map it as ADMIN.
+- FULL243/253 both have Kỳ này/Kỳ trước and no local unit. Do not infer unit
+  or invent a new period grammar; actual document-context/unit receipts are needed.
+  FULL157's selected table has no terminal TOTAL; do not manufacture one.
+
+An isolated accuracy draft is clean at
+`/srv/bctc-receipts/f36-printed-root-candidate-20261023T105700Z/repo`, HEAD
+`6f0c39e3dfffa03670ea9093267b5c485a28c011`, descendant of this checkpoint's
+prior6698b26. It contains the early printed-root proof route and20 proposed
+regression cases. It is not tested, promoted or pushed; the performance5806
+candidate remains separate. Initial local commit80ead6df was followed by a
+test-file mode correction; frozen content remains unchanged/read-only with
+its original tracked execute bit preserved. The active diagnostic still uses
+exactf3d. No new code is covered by the earlier666-test PASS.
