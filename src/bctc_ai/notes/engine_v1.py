@@ -29,7 +29,8 @@ from functools import partial
 
 from bctc_ai.notes.concept_list_shape_v1 import evaluate_concept_table_v1
 from bctc_ai.notes.coordinate_shape_v1 import evaluate_coordinate_table_v1
-from bctc_ai.notes.list_shape_v1 import evaluate_table_v1
+from bctc_ai.notes.list_shape_v1 import TableEvaluation, evaluate_table_v1
+from bctc_ai.notes.source_bridge_v1 import original_cell_v1
 
 SHAPES = {"LIST_BY_AXIS": evaluate_table_v1, "COORDINATE_LIST": evaluate_coordinate_table_v1,
           "CONCEPT_LIST": evaluate_concept_table_v1}
@@ -65,8 +66,18 @@ def run_family_v1(
     t_load = time.perf_counter()
     outline = source.outline()
     run = FamilyRun(family_name)
+    corpus_documents = {document.ordinal: document for document in source.corpus.documents}
+    corpus_identity = source.corpus.identity()
     for table in tables:
-        document = contexts[table.document_ordinal]
+        # PRIMARY context only by exact source + corpus identity, never by ordinal alone.
+        document = contexts.get(table.document_ordinal)
+        mismatch = ("PRIMARY_CONTEXT_MISSING" if document is None
+                    else document.identity_mismatch(corpus_documents[table.document_ordinal], corpus_identity))
+        # Every source fragment must be proven against its ORIGINAL page before any reading.
+        mismatch = mismatch or table.bridge_failure()
+        if mismatch:
+            run.evaluations.append(TableEvaluation(table, "REJECTED", [mismatch]))
+            continue
         context = table_context_v1(table, outline.get(table.document_ordinal, []))
         table.section_table_count = sum(1 for e in outline.get(table.document_ordinal, [])
                                         if e["table_id"] is not None and e["version"] == table.page_json_version_id
@@ -74,6 +85,10 @@ def run_family_v1(
         for evaluation in evaluate(table, family, document, context, page_texts_v1(source, table)):
             run.evaluations.append(evaluation)
             for cell in evaluation.cells:
+                cell["original_cell"] = original_cell_v1(evaluation.table, cell["locator"])
+                if cell["original_cell"] is None and cell["acceptance"] != "HOLD":
+                    cell["acceptance"] = "HOLD"
+                    cell["hold_reasons"].append("SOURCE_BRIDGE_CELL_NOT_BIJECTIVE")
                 cell["write_key"] = [cell["document_plan_id"], cell["scope"], cell["concept"], cell["axis"], cell["member"],
                                      cell["classification_basis"], cell["period_key"]]
                 run.cells.append(cell)
@@ -137,6 +152,7 @@ def dispositions_v1(run: FamilyRun) -> list[dict[str, Any]]:
         out.append({
             "family": run.family, "status": evaluation.status, "reasons": list(evaluation.reasons),
             "locator": table.locator(), "fragments": list(table.fragments), "subject": evaluation.subject,
+            "source_bridges": list(table.fragment_bridges) if table.fragments else [table.bridge],
             "rows": [{"row_id": table.rows[r.row_index].row_id, "label_exact": table.rows[r.row_index].label,
                       "parent_row_id": table.rows[r.row_index].parent_row_id,
                       "line": getattr(r, "role", None) or getattr(r, "coordinate", None), "disposition": r.disposition,

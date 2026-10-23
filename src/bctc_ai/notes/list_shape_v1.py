@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from typing import Any
 
@@ -221,11 +221,8 @@ def axis_blocks_v1(table: NoteTable, family: Family) -> list[tuple[list[str], li
 
 
 def _sub_table(table: NoteTable, indices: list[int]) -> NoteTable:
-    sub = NoteTable(table.document_ordinal, table.physical_page, table.page_json_version_id, table.section_id, table.table_id,
-                    table.section_order, table.table_order, table.content_kind, table.section_title, table.table_title,
-                    table.unit_exact, table.continuation, table.narratives, table.columns,
-                    [table.rows[i] for i in indices], table.cells, table.fragments)
-    return sub
+    # Same table (metadata, cells, fragments, source bridges), restricted to one block's rows.
+    return replace(table, rows=[table.rows[i] for i in indices])
 
 
 def evaluate_table_v1(

@@ -4,7 +4,9 @@
   (index SHA, selection heads, manifests, database SHA). Note tables are then
   read from the normalized nodes of that pinned, immutable database with a few
   batched SQL queries: retrieval first (indexed folded labels), then only the
-  candidate tables are loaded.
+  candidate tables are loaded. Every loaded table is then proven against its
+  ORIGINAL page through the authenticated loader (source_bridge_v1); a table
+  without an exact bridge is rejected, never read from the normalized rows.
 * Document context comes from the accepted PRIMARY result store (pinned SHA):
   scope, balance-sheet lane periods and accepted primary cells, so notes use
   the same scope/period identities as the statements they explain.
@@ -34,6 +36,11 @@ from bctc_ai.primary_statements.periods_v1 import (
 )
 from bctc_ai.primary_statements.source_v1 import CorpusSelection, SourceMetrics, connect_readonly, sha256_file
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese, label_key_v1
+from bctc_ai.evaluation.gemini_financial_page_json_v1 import validate_financial_page_json_v1
+from bctc_ai.notes.source_bridge_v1 import BRIDGE_VERSION, bridge_table_v1
+from bctc_ai.notes.source_bridge_v1 import EXACT as BRIDGE_EXACT
+from bctc_ai.notes.source_bridge_v1 import EXACT_SHIFT as BRIDGE_EXACT_SHIFT
+from bctc_ai.storage.gemini_income_tax_source_page_loader_v1 import load_income_tax_source_page_json_versions_v1
 from bctc_ai.primary_statements.units_v1 import (
     PERCENT,
     VND_PER_SHARE,
@@ -78,6 +85,20 @@ class DocumentContext:
     income_lane_keys: list[str] = field(default_factory=list)
     statement_pages: frozenset[str] = frozenset()
     notes_start_page: int | None = None
+    # Identity of the PRIMARY result this context came from: the notes run must bind the same
+    # source document AND the same corpus before using any scope/period/unit/anchor from it.
+    corpus_identity: dict[str, Any] = field(default_factory=dict)
+
+    def identity_mismatch(self, document, corpus_identity: dict[str, Any]) -> str | None:
+        """Why this PRIMARY context must not be used for ``document`` of the given corpus, else None."""
+
+        if (self.relative_path, self.source_sha256, self.document_plan_id) != (
+                document.relative_path, document.source_sha256, document.document_plan_id):
+            return "PRIMARY_CONTEXT_DOCUMENT_IDENTITY_MISMATCH"
+        keys = ("corpus_name", "index_sha256", "corpus_manifest_index_id", "database_sha256")
+        if any(self.corpus_identity.get(key) != corpus_identity.get(key) for key in keys):
+            return "PRIMARY_CONTEXT_CORPUS_IDENTITY_MISMATCH"
+        return None
 
     def balance_lane_keys(self, role: str) -> list[str]:
         return [lane["key"] for lane in self.balance_lanes if lane["role"] == role and lane["key"]]
@@ -132,7 +153,7 @@ def load_primary_context_v1(store_path: Path, expected_sha256: str) -> dict[int,
                 reporting_date=next(iter(dates)) if len(dates) == 1 else None,
                 balance_lanes=lanes, context_texts=texts, primary_cells=cells, separator_roles=roles,
                 income_context_texts=income_texts, income_lane_keys=income_keys, statement_pages=statement_pages,
-                notes_start_page=result.get("notes_start_page"),
+                notes_start_page=result.get("notes_start_page"), corpus_identity=dict(result.get("corpus") or {}),
             )
     return contexts
 
@@ -146,6 +167,7 @@ class NoteColumn:
     ordinal: int
     header_path: tuple[str, ...]
     value_kind: str
+    header_raw: Any = None  # the stored header JSON before string filtering (source bridge input)
 
     @property
     def header_text(self) -> str:
@@ -160,6 +182,7 @@ class NoteRow:
     kind: str
     hierarchy: tuple[str, ...]
     parent_row_id: str | None
+    hierarchy_raw: Any = None  # the stored hierarchy JSON before string filtering (source bridge input)
 
     @property
     def key(self) -> str:
@@ -186,6 +209,22 @@ class NoteTable:
     cells: dict[tuple[str, str], tuple[str | None, str]] = field(default_factory=dict)
     fragments: list[dict[str, Any]] = field(default_factory=list)
     section_table_count: int = 1
+    narratives_raw: Any = None
+    # ORIGINAL-source bridge (source_bridge_v1): one for a single table; a continuation-merged
+    # table keeps every fragment's bridge plus its head-column -> fragment-column map per page.
+    bridge: dict[str, Any] | None = None
+    fragment_bridges: list[dict[str, Any]] = field(default_factory=list)
+    fragment_column_maps: dict[int, dict[str, str]] = field(default_factory=dict)
+
+    def bridge_failure(self) -> str | None:
+        """None when every source fragment is bridged exactly to its ORIGINAL, else the first failure."""
+
+        bridges = self.fragment_bridges if self.fragments else [self.bridge]
+        for bridge in bridges:
+            status = (bridge or {}).get("status") or "MISSING"
+            if status not in (BRIDGE_EXACT, BRIDGE_EXACT_SHIFT):
+                return "SOURCE_BRIDGE:" + status
+        return None
 
     @property
     def key(self) -> tuple[str, str, str]:
@@ -209,7 +248,7 @@ _NOTE_HEADING = re.compile(r"\A\s*(?:[ivxlc]+|\d+(?:\.\d+)*)\s*[.)]?\s+\S", re.I
 class NotesSource:
     """Batched, read-only access to the selected pages of one authenticated corpus."""
 
-    def __init__(self, corpus: CorpusSelection, metrics: SourceMetrics | None = None):
+    def __init__(self, corpus: CorpusSelection, metrics: SourceMetrics | None = None, original_loader=None):
         self.corpus = corpus
         self.metrics = metrics or SourceMetrics()
         self.page_of: dict[str, tuple[int, int]] = {
@@ -217,6 +256,9 @@ class NotesSource:
             for document in corpus.documents for page in document.pages
         }
         self._outline: dict[int, list[dict[str, Any]]] | None = None
+        self._documents = {document.ordinal: document for document in corpus.documents}
+        self._bridges: dict[tuple[str, str, str], dict[str, Any]] = {}
+        self._original_loader = original_loader or load_income_tax_source_page_json_versions_v1
 
     def _connect(self):
         connection = connect_readonly(self.corpus.db_path)
@@ -256,9 +298,11 @@ class NotesSource:
                    JOIN section_node AS n ON n.page_json_version_id = t.page_json_version_id AND n.section_id = t.section_id"""
             ):
                 ordinal, page = self.page_of[row[0]]
-                narratives = [text for text in json.loads(row[10] or "[]") if isinstance(text, str)]
+                narratives_raw = json.loads(row[10] or "[]")
+                narratives = [text for text in narratives_raw if isinstance(text, str)]
                 tables[(row[0], row[1], row[2])] = NoteTable(
                     ordinal, page, row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], narratives,
+                    narratives_raw=narratives_raw,
                 )
             for row in connection.execute(
                 """SELECT c.page_json_version_id, c.section_id, c.table_id, c.column_id, c.column_ordinal,
@@ -267,8 +311,9 @@ class NotesSource:
                      ON c.page_json_version_id = k.v AND c.section_id = k.s AND c.table_id = k.t
                    ORDER BY c.column_ordinal"""
             ):
-                header = tuple(part for part in json.loads(row[5]) if isinstance(part, str))
-                tables[(row[0], row[1], row[2])].columns.append(NoteColumn(row[3], row[4], header, row[6]))
+                header_raw = json.loads(row[5])
+                header = tuple(part for part in header_raw if isinstance(part, str))
+                tables[(row[0], row[1], row[2])].columns.append(NoteColumn(row[3], row[4], header, row[6], header_raw))
             for row in connection.execute(
                 """SELECT r.page_json_version_id, r.section_id, r.table_id, r.row_id, r.source_order, r.label_exact,
                           r.row_kind, r.hierarchy_path_exact_json, r.parent_row_id
@@ -276,8 +321,10 @@ class NotesSource:
                      ON r.page_json_version_id = k.v AND r.section_id = k.s AND r.table_id = k.t
                    ORDER BY r.source_order"""
             ):
-                hierarchy = tuple(part for part in json.loads(row[7]) if isinstance(part, str))
-                tables[(row[0], row[1], row[2])].rows.append(NoteRow(row[3], row[4], row[5], row[6], hierarchy, row[8]))
+                hierarchy_raw = json.loads(row[7])
+                hierarchy = tuple(part for part in hierarchy_raw if isinstance(part, str))
+                tables[(row[0], row[1], row[2])].rows.append(
+                    NoteRow(row[3], row[4], row[5], row[6], hierarchy, row[8], hierarchy_raw))
             cell_count = 0
             for row in connection.execute(
                 """SELECT v.page_json_version_id, v.section_id, v.table_id, v.row_id, v.column_id, v.source_text, v.visual_state
@@ -288,7 +335,69 @@ class NotesSource:
                 cell_count += 1
         self.metrics.sql_queries += 4
         self.metrics.rows_read += len(tables) + sum(len(t.rows) + len(t.columns) for t in tables.values()) + cell_count
+        self._attach_bridges(list(tables.values()))
         return [tables[key] for key in keys if key in tables]
+
+    def _load_originals(self, version_ids: list[str]) -> dict[str, dict[str, Any] | str]:
+        """ORIGINAL page per VID through the authenticated loader; a failing VID is isolated, never guessed."""
+
+        result: dict[str, dict[str, Any] | str] = {}
+        try:
+            loaded = self._original_loader(self.corpus.db_path, page_json_version_ids=version_ids)
+            result.update({item["page_json_version_id"]: item for item in loaded})
+        except Exception:  # noqa: BLE001 - one bad page must not hide which page failed
+            for version_id in version_ids:
+                try:
+                    loaded = self._original_loader(self.corpus.db_path, page_json_version_ids=[version_id])
+                    result.update({item["page_json_version_id"]: item for item in loaded})
+                except Exception as exc:  # noqa: BLE001
+                    result[version_id] = "ORIGINAL_LOAD_" + type(exc).__name__
+        self.metrics.sql_queries += 3
+        self.metrics.pages_loaded += sum(1 for item in result.values() if isinstance(item, dict))
+        return result
+
+    def _attach_bridges(self, tables: list[NoteTable]) -> None:
+        """Prove every loaded table against its ORIGINAL page once; cache the proofs, release the pages."""
+
+        pending = [t for t in tables if t.key not in self._bridges]
+        version_ids = sorted({t.page_json_version_id for t in pending}, key=lambda v: (self.page_of[v], v))
+        for start in range(0, len(version_ids), 200):
+            chunk = version_ids[start: start + 200]
+            originals, validated = self._load_originals(chunk), {}
+            for table in pending:
+                if table.page_json_version_id in originals:
+                    self._bridges[table.key] = self._bridge_one(table, originals[table.page_json_version_id], validated)
+            del originals, validated
+        for table in tables:
+            table.bridge = self._bridges[table.key]
+
+    def _bridge_one(self, table: NoteTable, item: dict[str, Any] | str, validated: dict | None = None) -> dict[str, Any]:
+        base = {"bridge_version": BRIDGE_VERSION, "page_json_version_id": table.page_json_version_id}
+        if not isinstance(item, dict):
+            return {**base, "status": "MISMATCH:" + item}
+        ordinal, physical_page = self.page_of[table.page_json_version_id]
+        document = self._documents[ordinal]
+        # The loader's provenance must be the selected corpus page itself, not merely the same VID.
+        if (item.get("page_json_version_id"), item.get("source_logical_name"), item.get("source_sha256"),
+                item.get("physical_page")) != (table.page_json_version_id, document.relative_path,
+                                               document.source_sha256, physical_page):
+            return {**base, "status": "MISMATCH:PROVENANCE_NOT_SELECTED_PAGE"}
+        receipt = item.get("source_json_replay_receipt") or {}
+        validated = {} if validated is None else validated  # per-VID validation, shared by the page's tables
+        if table.page_json_version_id not in validated:
+            try:
+                validated[table.page_json_version_id] = validate_financial_page_json_v1(item["page_json"])
+            except Exception as exc:  # noqa: BLE001
+                validated[table.page_json_version_id] = "VALIDATION_REPLAY_" + type(exc).__name__
+        page = validated[table.page_json_version_id]
+        if isinstance(page, str):
+            return {**base, "status": "MISMATCH:" + page}
+        bridge = bridge_table_v1(table, page, item["page_json"], list(receipt.get("changed_tables") or []))
+        bridge.update({"physical_page": physical_page, "source_logical_name": document.relative_path,
+                       "source_sha256": document.source_sha256,
+                       "original_blob_sha256": receipt.get("canonical_json_sha256"),
+                       "replay_receipt_id": receipt.get("replay_receipt_id")})
+        return bridge
 
     def outline(self) -> dict[int, list[dict[str, Any]]]:
         """Every section and table title of every selected page, in reading order."""
@@ -445,6 +554,7 @@ def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) ->
         head_money = _money_columns(head)
         for fragment in chain:
             column_map = {c.column_id: h.column_id for c, h in zip(_money_columns(fragment), head_money)}
+            merged.fragment_column_maps[fragment.physical_page] = {h: c for c, h in column_map.items()}
             for row in fragment.rows:
                 row_id = f"p{fragment.physical_page}:{row.row_id}"
                 parent = f"p{fragment.physical_page}:{row.parent_row_id}" if row.parent_row_id else None
@@ -453,6 +563,7 @@ def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) ->
                 if cell_column in column_map:
                     merged.cells[(f"p{fragment.physical_page}:{cell_row}", column_map[cell_column])] = value
         merged.fragments = [t.locator() for t in chain]
+        merged.fragment_bridges = [dict(t.bridge or {}, physical_page=t.physical_page) for t in chain]
         receipts.append({"head": head.locator(), "fragments": merged.fragments, "basis": "PAGE_CONTINUATION_DECLARED"})
         joined.append(merged)
     return joined, receipts
