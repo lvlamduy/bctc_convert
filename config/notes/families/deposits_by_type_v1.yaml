@@ -35,6 +35,13 @@ subjects:
 
 reject_context: [[ty le], [lai suat], [du tru bat buoc], [tuong duong tien]]
 
+# Column meaning (Codex 0206): see by_customer_entity_type_v1.yaml. Row subjects come from the subject phrases above.
+non_balance_column_measures:
+  PROVISION: {aliases: [du phong]}
+  NET_VALUE: {aliases: [gia tri thuan, so du thuan]}
+  ACCRUED_INTEREST: {aliases: [lai du thu, lai phai thu, lai phai tra]}
+  SHARE: {aliases: [ty trong, co cau]}
+
 primary_corroboration:
   CUSTOMER_DEPOSITS: {statement: CDKT, report_norm_id: 4320, compare_to: [TOTAL]}
   DEPOSITS_AT_OTHER_CIS: {statement: CDKT, report_norm_id: 4344, compare_to: [TOTAL]}

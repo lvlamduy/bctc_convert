@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from bctc_ai.notes.config_v1 import Family
+from bctc_ai.notes.config_v1 import Family, all_phrases
 from bctc_ai.notes.kernel_v1 import DocumentContext, NoteLane, NoteTable, parse_cell_v1, resolve_instant_lanes_v1
 from bctc_ai.notes.list_shape_v1 import TOTAL_KEYS, classification_basis_v1, owned_date_texts_v1, resolve_subject_v1
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese
@@ -69,6 +69,17 @@ def _has_values(table: NoteTable, row) -> bool:
                for c in table.columns if c.value_kind == "MONEY")
 
 
+def _row_subjects(family: Family, label: str) -> set[str]:
+    """Subjects a row label itself prints: the family subject phrases, plus its declared ``row_subject_markers``."""
+
+    folded = fold_vietnamese(label)
+    found = set(family.subjects_in(folded))
+    for subject, groups in (family.raw.get("row_subject_markers") or {}).items():
+        if all_phrases([[fold_vietnamese(str(p)) for p in group] for group in groups], folded):
+            found.add(subject)
+    return found
+
+
 def assign_coordinates_v1(table: NoteTable, family: Family, axes, table_subject: str | None) -> list[CoordinateRow]:
     axis_names = [axis.name for axis in axes]
     rows: list[CoordinateRow] = []
@@ -85,6 +96,12 @@ def assign_coordinates_v1(table: NoteTable, family: Family, axes, table_subject:
         if closed and (own or heading_subjects):
             # After a total, axis rows start another breakdown of the same subject.
             block, parent, closed = block + 1, None, False
+        named = _row_subjects(family, row.label) if (own or ambiguous) and row.label and not is_total_label else set()
+        if named and subject is not None and named != {subject}:
+            # An axis match never erases the population the row prints ("Tiền gửi tại các TCTD không kỳ hạn" under
+            # customer deposits; "Tiền gửi của Công ty TNHH" under loans): no member, and the table is held (Codex 0206).
+            rows.append(CoordinateRow(index, None, "SOURCE_ONLY", "ROW_SUBJECT_CONFLICT:" + ",".join(sorted(named)), subject, block))
+            continue
         if len(heading_subjects) == 1 and not own:
             # "Tiền gửi tại các TCTD khác" / "Cho vay các TCTD khác" heading: new subject block.
             subject, parent, block = heading_subjects[0], None, block + 1
@@ -161,7 +178,10 @@ def evaluate_coordinate_table_v1(
         return [evaluation]
     evaluation.rows = rows
     own = owned_date_texts_v1(table, context)
-    evaluation.lanes = resolve_instant_lanes_v1(table, document, page_texts, own)
+    # A column naming a measure other than the gross balance keeps that meaning (Codex 0206); see ``_cell``.
+    measures = {m: [fold_vietnamese(str(a)) for a in spec["aliases"]]
+                for m, spec in (family.raw.get("non_balance_column_measures") or {}).items()}
+    evaluation.lanes = resolve_instant_lanes_v1(table, document, page_texts, own, measures or None)
     if not evaluation.lanes:
         evaluation.status, evaluation.reasons = "REJECTED", ["NO_MONEY_LANES"]
         return [evaluation]
@@ -175,6 +195,11 @@ def evaluate_coordinate_table_v1(
             parsed = parse_cell_v1(table, table.rows[row.row_index], lane.column, separator_roles, document.separator_roles)
             values[(row.block, coordinate_key(row.coordinate, axis_names))] = (row, parsed)
         proven, failed = set(), set()
+        # A valued row printing another subject's population puts the whole table's population in doubt, wherever
+        # it is printed; no total, equation or primary agreement excludes it without a proven source partition.
+        foreign = any(row.reason.startswith("ROW_SUBJECT_CONFLICT:")
+                      and table.cells.get((table.rows[row.row_index].row_id, lane.column.column_id), (None, "BLANK"))[1] != "BLANK"
+                      for row in rows)
         for block in sorted({row.block for row in rows}):
             block_values = {k[1]: v for k, v in values.items() if k[0] == block}
             subject = next((r.subject for r, _ in block_values.values() if r.subject), evaluation.subject)
@@ -183,7 +208,7 @@ def evaluate_coordinate_table_v1(
                 _check(evaluation, lane, block, parent_key, children, block_values, proven, failed)
         for (block, key), (row, parsed) in values.items():
             evaluation.cells.append(_cell(evaluation, family, document, lane, row, parsed, key, basis,
-                                          proven, failed, block))
+                                          proven, failed, block, foreign))
     return [evaluation]
 
 
@@ -279,8 +304,8 @@ def _check(evaluation, lane, block, parent_key, children, block_values, proven, 
 
 def _corroborate_block(evaluation, family, document, lane, subject, block, block_values, proven):
     spec = (family.raw.get("primary_corroboration") or {}).get(subject or "")
-    if not spec or TOTAL not in block_values or not lane.period_key:
-        return
+    if not spec or TOTAL not in block_values or not lane.period_key or lane.measure is not None:
+        return  # a provision/net/other measure column is never compared with a balance-sheet balance
     parsed = block_values[TOTAL][1]
     primary = document.primary_cells.get((spec["statement"], spec["report_norm_id"], lane.period_key))
     if primary is None or parsed.value is None:
@@ -299,7 +324,7 @@ def _corroborate_block(evaluation, family, document, lane, subject, block, block
         proven.add((block, TOTAL))
 
 
-def _cell(evaluation, family, document, lane, row, parsed, key, basis, proven, failed, block):
+def _cell(evaluation, family, document, lane, row, parsed, key, basis, proven, failed, block, foreign=False):
     reasons = []
     subject = row.subject or evaluation.subject
     if document.scope is None:
@@ -307,6 +332,10 @@ def _cell(evaluation, family, document, lane, row, parsed, key, basis, proven, f
     if subject is None:
         reasons.append("SUBJECT_UNRESOLVED")
     reasons += lane.reasons
+    if lane.measure is not None:
+        reasons.append("COLUMN_MEASURE_NOT_A_BALANCE:" + lane.measure)
+    if foreign:
+        reasons.append("TABLE_CONTAINS_ROW_OF_ANOTHER_SUBJECT")
     if (block, key) in failed:
         reasons.append("VALIDATION_FAIL")
     state, value = parsed.state, parsed.value
@@ -323,7 +352,7 @@ def _cell(evaluation, family, document, lane, row, parsed, key, basis, proven, f
     source_row = evaluation.table.rows[row.row_index]
     return {
         "document_ordinal": document.ordinal, "document_plan_id": document.document_plan_id, "scope": document.scope,
-        "family": family.name, "concept": subject, "measure": None, "axis": "x".join(family.raw.get("axes") or [family.axis.name]),
+        "family": family.name, "concept": subject, "measure": lane.measure, "axis": "x".join(family.raw.get("axes") or [family.axis.name]),
         "member": key, "classification_basis": basis, "period_key": lane.period_key, "period_basis": lane.period_basis,
         "unit": lane.unit, "unit_basis": lane.unit_basis, "observation_state": state,
         "value": None if value is None else format(value, "f"), "raw": parsed.raw, "acceptance": acceptance,

@@ -19,19 +19,19 @@ def config():
     return load_notes_config_v1(ROOT)
 
 
-def document():
+def document(primary=None):
     return DocumentContext(
         ordinal=1, document_plan_id="plan", relative_path="x.pdf", source_sha256="0" * 64, scope="SEPARATE",
         scope_basis="PRIMARY_DOCUMENT_SCOPE", reporting_date="2025-06-30",
         balance_lanes=[{"key": "INSTANT:2025-06-30", "role": "CURRENT", "header": "30/06/2025"},
                        {"key": "INSTANT:2024-12-31", "role": "COMPARATIVE", "header": "31/12/2024"}],
-        context_texts=["Tại ngày 30 tháng 6 năm 2025"], primary_cells={},
+        context_texts=["Tại ngày 30 tháng 6 năm 2025"], primary_cells=primary or {},
         separator_roles=SeparatorRoles(thousands=frozenset({"."})),
     )
 
 
-def table(rows, *, title="Tiền gửi của khách hàng", section=None):
-    columns = [NoteColumn("c1", 1, ("30/06/2025", "Triệu VND"), "MONEY"), NoteColumn("c2", 2, ("31/12/2024", "Triệu VND"), "MONEY")]
+def table(rows, *, title="Tiền gửi của khách hàng", section=None, headers=(("30/06/2025", "Triệu VND"), ("31/12/2024", "Triệu VND"))):
+    columns = [NoteColumn(f"c{i}", i, tuple(h), "MONEY") for i, h in enumerate(headers, 1)]
     result = NoteTable(1, 20, "v20", "s1", "t1", 0, 0, "FINANCIAL_NOTE", section, title, None, "NONE", [], columns)
     for index, spec in enumerate(rows):
         label, values, kind = spec[0], spec[1], (spec[2] if len(spec) > 2 else None)
@@ -44,12 +44,12 @@ def table(rows, *, title="Tiền gửi của khách hàng", section=None):
     return result
 
 
-def run(config, family_name, rows, **kwargs):
+def run(config, family_name, rows, primary=None, **kwargs):
     family = config.families[family_name]
     axes = [config.axes[name] for name in family.raw["axes"]]
     t = table(rows, **kwargs)
     context = [(s, x) for s, x in (("TABLE_TITLE", t.table_title), ("SECTION_TITLE", t.section_title)) if x]
-    evaluations = evaluate_coordinate_table_v1(t, family, document(), context, [], axes=axes)
+    evaluations = evaluate_coordinate_table_v1(t, family, document(primary), context, [], axes=axes)
     return {(c["member"], c["period_key"]): c for e in evaluations for c in e.cells}, evaluations
 
 
@@ -112,3 +112,72 @@ def test_savings_term_is_its_own_member_not_term_or_savings(config):
     axis = config.axes["DEPOSIT_TYPE"]
     assert axis.match("tien gui tiet kiem co ky han bang vnd") == ["SAVINGS_TERM"]
     assert axis.match("tien gui khong ky han") == ["DEMAND"]
+
+
+JUN, DEC = "INSTANT:2025-06-30", "INSTANT:2024-12-31"
+
+
+def primary_balance(report_norm_id, current, comparative):
+    from decimal import Decimal
+    return {("CDKT", report_norm_id, JUN): (Decimal(current), "MILLION_VND"),
+            ("CDKT", report_norm_id, DEC): (Decimal(comparative), "MILLION_VND")}
+
+
+def test_an_axis_match_never_erases_the_population_a_deposit_row_prints(config):
+    # Codex 0206: "Tiền gửi tại các TCTD …" rows under a customer-deposit title are asset placements, not 1056/1057/1060.
+    placements = [("Tiền gửi tại các TCTD không kỳ hạn", ["100", "90"]), ("Tiền gửi tại các TCTD có kỳ hạn", ["200", "150"]),
+                  ("Tổng", ["300", "240"])]
+    cells, evaluations = run(config, "DEPOSITS_BY_TYPE", placements, primary=primary_balance(4320, "300", "240"))
+    assert not [c for c in cells.values() if c["acceptance"] == "ACCEPTED"]
+    # Printed after a closed total, the foreign row still holds the table, against an agreeing primary total.
+    mixed = [("Tiền gửi không kỳ hạn", ["100", "90"]), ("Tiền gửi có kỳ hạn", ["200", "150"]), ("Tổng", ["300", "240"]),
+             ("Tiền gửi tại các TCTD có kỳ hạn", ["50", "40"])]
+    cells, evaluations = run(config, "DEPOSITS_BY_TYPE", mixed, primary=primary_balance(4320, "300", "240"))
+    assert evaluations[0].rows[3].reason == "ROW_SUBJECT_CONFLICT:DEPOSITS_AT_OTHER_CIS"
+    assert any(c["status"] == "AGREES_WITH_PRIMARY" for c in evaluations[0].corroboration)  # overridden, not absent
+    for key in ("TOTAL", "DEPOSIT_TYPE=DEMAND", "DEPOSIT_TYPE=TERM"):
+        assert cells[(key, JUN)]["acceptance"] == "HOLD"
+        assert "TABLE_CONTAINS_ROW_OF_ANOTHER_SUBJECT" in cells[(key, JUN)]["hold_reasons"], key
+    # Positives: the same rows without the foreign row, and rows naming the table's own subject.
+    cells, _ = run(config, "DEPOSITS_BY_TYPE", mixed[:3], primary=primary_balance(4320, "300", "240"))
+    assert cells[("TOTAL", JUN)]["acceptance"] == "ACCEPTED"
+    cells, _ = run(config, "DEPOSITS_BY_TYPE", placements, primary=primary_balance(4344, "300", "240"),
+                   title="Tiền gửi tại các TCTD khác")
+    assert cells[("DEPOSIT_TYPE=DEMAND", JUN)]["acceptance"] == "ACCEPTED"
+    assert cells[("DEPOSIT_TYPE=DEMAND", JUN)]["concept"] == "DEPOSITS_AT_OTHER_CIS"
+
+
+LOANS_TITLE = "Cho vay khách hàng theo loại hình doanh nghiệp"
+LOAN_ROWS = [("Công ty TNHH khác", ["10", "9"]), ("Công ty cổ phần khác", ["20", "19"]),
+             ("Doanh nghiệp tư nhân và công ty hợp danh", ["30", "29"]), ("Cộng", ["60", "57"])]
+
+
+def test_deposit_labelled_entity_rows_are_never_loans(config):
+    cells, _ = run(config, "BY_CUSTOMER_ENTITY_TYPE", LOAN_ROWS, primary=primary_balance(4348, "60", "57"), title=LOANS_TITLE)
+    assert cells[("CUSTOMER_ENTITY_TYPE=LLC_OTHER", JUN)]["acceptance"] == "ACCEPTED"
+    assert cells[("TOTAL", JUN)]["acceptance"] == "ACCEPTED" and cells[("TOTAL", JUN)]["concept"] == "LOANS_TO_CUSTOMERS"
+    deposits = [("Tiền gửi của " + label[0].lower() + label[1:], values) for label, values in LOAN_ROWS[:3]] + [LOAN_ROWS[3]]
+    cells, _ = run(config, "BY_CUSTOMER_ENTITY_TYPE", deposits, primary=primary_balance(4348, "60", "57"), title=LOANS_TITLE)
+    assert not [c for c in cells.values() if c["acceptance"] == "ACCEPTED"]
+    mixed = LOAN_ROWS + [("Tiền gửi của cá nhân", ["5", "5"])]
+    cells, evaluations = run(config, "BY_CUSTOMER_ENTITY_TYPE", mixed, primary=primary_balance(4348, "60", "57"), title=LOANS_TITLE)
+    assert evaluations[0].rows[4].reason == "ROW_SUBJECT_CONFLICT:CUSTOMER_DEPOSITS"
+    assert all(c["acceptance"] == "HOLD" and "TABLE_CONTAINS_ROW_OF_ANOTHER_SUBJECT" in c["hold_reasons"]
+               for c in cells.values() if c["period_key"] == JUN)
+
+
+def test_a_provision_column_is_never_a_gross_balance(config):
+    # Codex 0206: "Dự phòng rủi ro 30/06/2025" sums 10 + 20 + 30 = 60 but is not the loan balance.
+    rows = [(label, values[:1]) for label, values in LOAN_ROWS]
+    cells, evaluations = run(config, "BY_CUSTOMER_ENTITY_TYPE", rows, primary=primary_balance(4348, "60", "57"),
+                             title=LOANS_TITLE, headers=(("Dự phòng rủi ro 30/06/2025", "Triệu VND"),))
+    assert cells and all(c["acceptance"] == "HOLD" and c["measure"] == "PROVISION"
+                         and "COLUMN_MEASURE_NOT_A_BALANCE:PROVISION" in c["hold_reasons"] for c in cells.values())
+    assert not evaluations[0].corroboration  # never compared with the balance-sheet loan balance
+    for header in ("Giá trị thuần 30/06/2025", "Lãi dự thu 30/06/2025"):
+        cells, _ = run(config, "BY_CUSTOMER_ENTITY_TYPE", rows, title=LOANS_TITLE, headers=((header, "Triệu VND"),))
+        assert all(c["acceptance"] == "HOLD" and c["measure"] is not None for c in cells.values()), header
+    # The plain dated column is the balance and still reads.
+    cells, _ = run(config, "BY_CUSTOMER_ENTITY_TYPE", rows, primary=primary_balance(4348, "60", "57"),
+                   title=LOANS_TITLE, headers=(("30/06/2025", "Triệu VND"),))
+    assert cells[("TOTAL", JUN)]["acceptance"] == "ACCEPTED" and cells[("TOTAL", JUN)]["measure"] is None
