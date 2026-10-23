@@ -1,0 +1,44 @@
+# Plugin: deposit balances by deposit type and currency, for every subject that
+# notes break down this way (customer deposits, deposits at/from other credit
+# institutions, deposits at the SBV, interbank loans/borrowings by currency).
+format_version: NOTES_FAMILY_V1
+family: DEPOSITS_BY_TYPE
+shape: COORDINATE_LIST
+axis: DEPOSIT_TYPE            # first axis; rows of this axis are parents
+axes: [DEPOSIT_TYPE, CURRENCY]
+period_basis: INSTANT
+
+retrieval:
+  row_label_like: ['%khong ky han%', '%co ky han%', '%tiet kiem%', '%ky quy%', '%von chuyen dung%']
+  min_distinct_members: 2
+
+subjects:
+  CUSTOMER_DEPOSITS:
+    any: [[tien gui cua khach hang], [tien gui khach hang]]
+    none: [[to chuc tin dung], [tctd], [ty le]]
+  # A combined "Tiền gửi và cho vay/vay ..." caption names the deposits first;
+  # a printed "Cho vay…"/"Tiền vay…" heading inside the table switches subject.
+  DEPOSITS_AT_OTHER_CIS:
+    any: [[tien gui tai cac tctd], [tien gui tai tctd], [tien gui tai cac to chuc tin dung], [vang gui tai cac tctd], [tien vang gui tai],
+          [tien gui va cho vay cac], [tien gui tai va cho vay]]
+  DEPOSITS_FROM_OTHER_CIS:
+    any: [[tien gui cua cac tctd], [tien gui cua cac to chuc tin dung], [tien gui cua tctd], [tien gui cua cac to chuc tai chinh],
+          [tien gui va vay cac], [tien gui va tien vay cac], [tien gui va vay cua cac]]
+  LOANS_TO_OTHER_CIS:
+    any: [[cho vay cac tctd], [cho vay cac to chuc tin dung], [cho vay tctd]]
+    none: [[tien gui va cho vay], [tien gui tai va cho vay]]
+  BORROWINGS_FROM_OTHER_CIS:
+    any: [[vay cac tctd], [vay cac to chuc tin dung], [tien vay]]
+    none: [[cho vay], [tien gui va vay], [tien gui va tien vay]]
+  DEPOSITS_AT_SBV:
+    any: [[tien gui tai ngan hang nha nuoc], [tien gui tai nhnn]]
+
+reject_context: [[ty le], [lai suat], [du tru bat buoc], [tuong duong tien]]
+
+primary_corroboration:
+  CUSTOMER_DEPOSITS: {statement: CDKT, report_norm_id: 4320, compare_to: [TOTAL]}
+  DEPOSITS_AT_OTHER_CIS: {statement: CDKT, report_norm_id: 4344, compare_to: [TOTAL]}
+  DEPOSITS_FROM_OTHER_CIS: {statement: CDKT, report_norm_id: 4359, compare_to: [TOTAL]}
+  LOANS_TO_OTHER_CIS: {statement: CDKT, report_norm_id: 4326, compare_to: [TOTAL]}
+  BORROWINGS_FROM_OTHER_CIS: {statement: CDKT, report_norm_id: 4360, compare_to: [TOTAL]}
+  DEPOSITS_AT_SBV: {statement: CDKT, report_norm_id: 4311, compare_to: [TOTAL]}

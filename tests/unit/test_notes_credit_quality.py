@@ -99,17 +99,21 @@ def test_unit_never_inferred_from_magnitude(family):
     assert all("UNIT_UNRESOLVED" in c["hold_reasons"] for c in result.values())
 
 
-def test_unit_proven_only_by_agreement_with_printed_primary_figure(family):
-    primary = {("CDKT", 4348, "INSTANT:2025-06-30"): (Decimal("1000000400"), "VND")}
-    rows = list(FIVE)
-    rows[0] = ("Nhóm 1 - Nợ đủ tiêu chuẩn", ["900.000", "800"])
-    rows[5] = ("Tổng", ["1.000.000", "870"])
-    table = make_table(rows, headers=(("30/06/2025",), ("31/12/2024",)))
-    result = cells(evaluate_table_v1(table, family, document(primary), context_of(table), []))
-    # 1.000.000 (7 digits) agrees with 1.000.000.400 VND within one unit only at the thousand scale: proven.
-    assert result[("G1", "INSTANT:2025-06-30")]["unit"] == "THOUSAND_VND"
-    assert result[("G1", "INSTANT:2025-06-30")]["unit_basis"] == "PRIMARY_SCALED_AGREEMENT"
-    assert "UNIT_UNRESOLVED" in result[("G1", "INSTANT:2024-12-31")]["hold_reasons"]
+def test_primary_agreement_never_supplies_a_unit(family):
+    # Codex 0009: matching the primary line (even exactly) corroborates numbers only.
+    primary = {("CDKT", 4348, "INSTANT:2025-06-30"): (Decimal("1000"), "MILLION_VND")}
+    table = make_table(FIVE, headers=(("30/06/2025",), ("31/12/2024",)))
+    evaluations = evaluate_table_v1(table, family, document(primary), context_of(table), [])
+    result = cells(evaluations)
+    assert all("UNIT_UNRESOLVED" in c["hold_reasons"] and c["unit"] is None for c in result.values())
+    assert not any(c["status"].startswith(("EXACT", "EQUAL")) for e in evaluations for c in e.corroboration)
+
+
+def test_primary_agreement_corroborates_when_both_units_printed(family):
+    primary = {("CDKT", 4348, "INSTANT:2025-06-30"): (Decimal("1000400000"), "VND")}
+    table = make_table(FIVE, headers=(("30/06/2025", "Triệu VND"), ("31/12/2024", "Triệu VND")))
+    evaluations = evaluate_table_v1(table, family, document(primary), context_of(table), [])
+    assert any(c["status"] == "EQUAL_TO_PRIMARY_WITHIN_ONE_UNIT" for e in evaluations for c in e.corroboration)
 
 
 def test_relative_headers_align_to_primary_balance_lanes(family):

@@ -261,7 +261,6 @@ def _evaluate_block(
                 lane.reasons = [r for r in lane.reasons if not r.startswith("PERIOD_UNRESOLVED")]
             kept.append(lane)
         evaluation.lanes = kept
-        _period_from_primary_total(table, family, document, evaluation.lanes, roles)
     if not evaluation.lanes:
         evaluation.status, evaluation.reasons = "REJECTED", ["NO_MONEY_LANES"]
         return evaluation
@@ -280,10 +279,6 @@ def _evaluate_block(
             corroboration = _corroborate(family, lane.subject or evaluation.subject, document, lane, values)
         if corroboration:
             evaluation.corroboration.append(corroboration)
-            if lane.unit is None and corroboration.get("unit_proof"):
-                lane.unit, lane.unit_basis = corroboration["primary_unit"] if corroboration["status"] == "EXACT_EQUAL_TO_PRIMARY" \
-                    else corroboration["note_unit"], corroboration["unit_proof"]
-                lane.reasons = [r for r in lane.reasons if r != "UNIT_UNRESOLVED"]
         lane_equations = []
         for equation in family.raw.get("equations", []):
             if equation["equals"] not in values:
@@ -313,50 +308,11 @@ def _evaluate_block(
     return evaluation
 
 
-_MIN_SIGNIFICANT_DIGITS_FOR_SCALED_PROOF = 6
-
-
-def _period_from_primary_total(table: NoteTable, family: Family, document: DocumentContext, lanes, roles) -> None:
-    """A period-less table takes the one balance period whose primary line its total equals.
-
-    Every lane of one table shares one date. When a subject lane with a primary
-    corroboration line prints a total exactly equal (same unit) to the
-    accepted primary value of exactly one balance-sheet period of the same
-    document, that period is the table's (``PRIMARY_TOTAL_IDENTIFIES_PERIOD``).
-    """
-
-    if any(lane.period_key for lane in lanes):
-        return
-    found = set()
-    for lane in lanes:
-        spec = (family.raw.get("primary_corroboration") or {}).get(lane.subject or "")
-        if not spec:
-            continue
-        for role in roles:
-            if role.role not in spec["compare_to"]:
-                continue
-            parsed = parse_cell_v1(table, table.rows[role.row_index], lane.column, table.separator_roles(), document.separator_roles)
-            if parsed.value is None or parsed.value == 0:
-                continue
-            for (statement, rnid, period_key), (value, unit) in document.primary_cells.items():
-                if statement == spec["statement"] and rnid == spec["report_norm_id"] and value == parsed.value \
-                        and (lane.unit is None or lane.unit == unit):
-                    found.add(period_key)
-    if len(found) == 1:
-        period_key = next(iter(found))
-        for lane in lanes:
-            lane.period_key, lane.period_basis = period_key, "PRIMARY_TOTAL_IDENTIFIES_PERIOD"
-            lane.reasons = [r for r in lane.reasons if not r.startswith("PERIOD_UNRESOLVED")]
-
-
 def _corroborate(family: Family, subject, document: DocumentContext, lane: NoteLane, values) -> dict[str, Any] | None:
     """Compare a printed note total with the accepted primary line of the same period.
 
-    Exact equality in the primary unit, or agreement within one coarse unit
-    when both units are printed, corroborates the table. When the note prints
-    no unit, a unit is proven only by agreement with an independently printed
-    primary figure: exactly one scale s with |note * s - primary| < s and at
-    least six significant digits in the note figure (``PRIMARY_SCALED_AGREEMENT``).
+    Corroboration only: it can support or veto the note's arithmetic, never
+    supply a unit or a period (Codex 0009). Both units must be printed.
     """
 
     spec = (family.raw.get("primary_corroboration") or {}).get(subject)
@@ -366,30 +322,19 @@ def _corroborate(family: Family, subject, document: DocumentContext, lane: NoteL
     if primary is None:
         return {"lane": lane.column.column_id, "status": "PRIMARY_CELL_ABSENT"}
     primary_value, primary_unit = primary
-    primary_vnd = primary_value * SCALE[primary_unit] if primary_unit in SCALE else None
+    if lane.unit not in SCALE or primary_unit not in SCALE:
+        return {"lane": lane.column.column_id, "status": "NOT_COMPARABLE_UNIT_NOT_PRINTED"}
     for role in spec["compare_to"]:
         cell = values.get(role)
         if cell is None or cell.value is None or cell.value == 0:
             continue
         base = {"lane": lane.column.column_id, "role": role, "primary_report_norm_id": spec["report_norm_id"],
                 "primary_unit": primary_unit, "value": str(cell.value), "primary_value": str(primary_value)}
-        if lane.unit is None:
-            if cell.value == primary_value:
-                return {**base, "status": "EXACT_EQUAL_TO_PRIMARY", "unit_proof": "PRIMARY_EXACT_EQUALITY"}
-            if primary_vnd is None:
-                continue
-            digits = len(str(abs(int(cell.value))))
-            scales = [unit for unit, scale in SCALE.items() if abs(cell.value * scale - primary_vnd) < scale]
-            if len(scales) == 1 and digits >= _MIN_SIGNIFICANT_DIGITS_FOR_SCALED_PROOF:
-                return {**base, "status": "EQUAL_TO_PRIMARY_WITHIN_ONE_UNIT", "note_unit": scales[0],
-                        "unit_proof": "PRIMARY_SCALED_AGREEMENT"}
-            continue
         if lane.unit == primary_unit and cell.value == primary_value:
             return {**base, "status": "EXACT_EQUAL_TO_PRIMARY"}
-        if lane.unit in SCALE and primary_vnd is not None:
-            coarse = max(SCALE[lane.unit], SCALE[primary_unit])
-            if abs(cell.value * SCALE[lane.unit] - primary_vnd) < coarse:
-                return {**base, "status": "EQUAL_TO_PRIMARY_WITHIN_ONE_UNIT"}
+        coarse = max(SCALE[lane.unit], SCALE[primary_unit])
+        if abs(cell.value * SCALE[lane.unit] - primary_value * SCALE[primary_unit]) < coarse:
+            return {**base, "status": "EQUAL_TO_PRIMARY_WITHIN_ONE_UNIT"}
     return {"lane": lane.column.column_id, "status": "DIFFERS_FROM_PRIMARY",
             "primary_value": str(primary_value), "primary_unit": primary_unit}
 

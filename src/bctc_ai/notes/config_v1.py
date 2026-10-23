@@ -45,12 +45,15 @@ class Axis:
 
         found = []
         for member, spec in self.members.items():
-            if any(key == alias or phrase_in(alias, key) for alias in spec.get("aliases", [])):
+            if any(key == alias or phrase_in(alias, key) for alias in spec.get("aliases", [])) \
+                    or all_phrases(spec.get("all_of", []), key):
                 found.append(member)
         for member, spec in self.outside_members.items():
             if all_phrases(spec.get("contains_all", []), key):
                 found.append(member)
-        return found
+        # A more specific member printed with a broader one wins ("tiết kiệm có kỳ hạn" is savings).
+        dominated = {d for member in found for d in (self.members.get(member) or {}).get("dominates", [])}
+        return [member for member in found if member not in dominated]
 
 
 @dataclass(frozen=True)
@@ -100,7 +103,10 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
     _require(axes_raw.get("format_version") == "NOTES_AXES_V1", "axes format")
     axes = {}
     for name, spec in axes_raw["axes"].items():
-        members = {m: {**s, "aliases": [fold_vietnamese(a) for a in s.get("aliases", [])]} for m, s in spec["members"].items()}
+        members = {m: {**s, "aliases": [fold_vietnamese(a) for a in s.get("aliases", [])],
+                       "all_of": [[fold_vietnamese(p) for p in g] for g in s.get("all_of", [])]}
+                   for m, s in spec["members"].items()}
+        _require(all(s.get("parent") in (None, *members) for s in members.values()), f"axis {name}: unknown member parent")
         outside = {m: {**s, "contains_all": [[fold_vietnamese(p) for p in g] for g in s.get("contains_all", [])]}
                    for m, s in (spec.get("outside_members") or {}).items()}
         _require(not set(members) & set(outside), f"axis {name}: member defined twice")
@@ -111,6 +117,8 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
         raw, sha = _load(path)
         _require(raw.get("format_version") == "NOTES_FAMILY_V1", f"{path.name}: format")
         _require(raw["axis"] in axes, f"{path.name}: unknown axis")
+        _require(all(name in axes for name in raw.get("axes", [])) and (not raw.get("axes") or raw["axes"][0] == raw["axis"]),
+                 f"{path.name}: axes must exist and start with the family axis")
         for subject, spec in raw["subjects"].items():
             spec["any"] = [[fold_vietnamese(p) for p in g] for g in spec.get("any", [])]
             spec["none"] = [[fold_vietnamese(p) for p in g] for g in spec.get("none", [])]

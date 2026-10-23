@@ -33,3 +33,25 @@ axes:
       MARGIN_AND_SECURITIES_ADVANCE:
         name: Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán
         contains_all: [[ky quy], [ung truoc tien ban chung khoan]]
+
+  DEPOSIT_TYPE:
+    description: Loại tiền gửi (không kỳ hạn, có kỳ hạn, tiết kiệm, ký quỹ, vốn chuyên dùng, đảm bảo thanh toán khác)
+    members:
+      DEMAND: {name: Tiền gửi không kỳ hạn, aliases: [khong ky han, tien gui thanh toan]}
+      TERM: {name: Tiền gửi có kỳ hạn, aliases: [co ky han]}
+      SAVINGS: {name: Tiền gửi tiết kiệm, aliases: [tiet kiem], dominates: [DEMAND, TERM]}
+      SAVINGS_DEMAND: {name: Tiền gửi tiết kiệm không kỳ hạn, all_of: [[tiet kiem, khong ky han]], parent: SAVINGS,
+                       dominates: [SAVINGS, DEMAND, TERM]}
+      SAVINGS_TERM: {name: Tiền gửi tiết kiệm có kỳ hạn, all_of: [[tiet kiem, co ky han]], parent: SAVINGS,
+                     dominates: [SAVINGS, DEMAND, TERM]}
+      MARGIN: {name: Tiền ký quỹ, aliases: [ky quy]}
+      SPECIAL_PURPOSE: {name: Tiền gửi vốn chuyên dùng, aliases: [von chuyen dung]}
+      OTHER_PAYMENT_GUARANTEE: {name: Tiền gửi đảm bảo thanh toán khác, aliases: [dam bao thanh toan]}
+
+  CURRENCY:
+    description: Đồng tiền của số dư
+    members:
+      VND: {name: Bằng VND, aliases: [vnd, bang dong viet nam, bang tien dong, bang dong]}
+      FOREIGN_CURRENCY: {name: Bằng ngoại tệ, aliases: [ngoai te]}
+      GOLD: {name: Bằng vàng, aliases: [bang vang]}
+      FOREIGN_CURRENCY_AND_GOLD: {name: Bằng ngoại tệ và vàng, aliases: [ngoai te va vang], dominates: [FOREIGN_CURRENCY]}

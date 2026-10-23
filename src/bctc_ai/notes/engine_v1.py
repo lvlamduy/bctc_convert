@@ -26,9 +26,12 @@ from bctc_ai.notes.kernel_v1 import (
     stable_json_sha256,
     table_context_v1,
 )
+from functools import partial
+
+from bctc_ai.notes.coordinate_shape_v1 import evaluate_coordinate_table_v1
 from bctc_ai.notes.list_shape_v1 import evaluate_table_v1
 
-SHAPES = {"LIST_BY_AXIS": evaluate_table_v1}
+SHAPES = {"LIST_BY_AXIS": evaluate_table_v1, "COORDINATE_LIST": evaluate_coordinate_table_v1}
 
 
 @dataclass
@@ -46,6 +49,8 @@ def run_family_v1(
 ) -> FamilyRun:
     family = config.families[family_name]
     evaluate = SHAPES[family.shape]
+    if family.shape == "COORDINATE_LIST":
+        evaluate = partial(evaluate, axes=[config.axes[name] for name in family.raw["axes"]])
     started = time.perf_counter()
     candidates = source.candidate_tables(family.retrieval_patterns)
     if document_ordinals is not None:
@@ -122,7 +127,7 @@ def summarize_v1(run: FamilyRun) -> dict[str, Any]:
     acceptance = Counter((c["concept"], c["acceptance"]) for c in run.cells)
     reasons = Counter(r.split(":")[0] for c in run.cells for r in c["hold_reasons"])
     statuses = Counter((e.status, tuple(e.reasons)) for e in run.evaluations)
-    equations = Counter((e["name"], e["status"]) for ev in run.evaluations for e in ev.equations)
+    equations = Counter((e.get("name") or "PARENT_EQUALS_CHILDREN", e["status"]) for ev in run.evaluations for e in ev.equations)
     corroboration = Counter(c.get("status") for ev in run.evaluations for c in ev.corroboration)
     coverage = Counter(v["status"] for v in run.coverage.values())
     loans_docs = sum(1 for v in run.coverage.values() if v["accepted_cells_by_concept"].get("LOANS_TO_CUSTOMERS"))
