@@ -267,6 +267,16 @@ def _wrapped(wrapper="Trong đó:", wrapper_values=(None, None), wrapper_kind="G
     table.rows[1] = replace(table.rows[1], kind=wrapper_kind)
     link(table, 1, 0)
     link(table, 2, 1)
+    return bridged(table)
+
+
+def bridged(table, status="EXACT", column_map=None):
+    """Attach a source-bridge proof: EXACT with the identity column map = SQL columns ARE the ORIGINAL axis."""
+
+    columns = sorted(table.columns, key=lambda column: column.ordinal)
+    table.bridge = {"status": status, "page_json_version_id": table.page_json_version_id, "section_ordinal": 1,
+                    "table_ordinal": 1, "row_count": len(table.rows),
+                    "column_map": column_map or {c.column_id: i for i, c in enumerate(columns, 1)}}
     return table
 
 
@@ -277,7 +287,7 @@ def test_payroll_reaches_its_owner_through_one_null_trong_do_wrapper(config):
     roles = assign_lines_v1(table, family)
     assert (roles[1].disposition, roles[1].reason) == ("HEADING", "NO_VALUES")  # the wrapper is never a value
     assert (roles[2].role, roles[2].disposition, roles[2].reason) == (
-        "PAYROLL_CONTRIBUTIONS", "MEMBER", "LINE_RULE_VIA_TRANSPARENT_WRAPPER:r1")
+        "PAYROLL_CONTRIBUTIONS", "MEMBER", "LINE_RULE_VIA_TRANSPARENT_WRAPPER:r1:ORIGINAL_EXACT_UNSHIFTED_SINGLE_TABLE")
     assert _roles(_wrapped(wrapper="Trong đó"), family)[2][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")
     # The wrapper does not change the equation: EMPLOYEE = Σ printed detail still uses the payroll line only.
     evaluations = evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), [])
@@ -304,7 +314,7 @@ def test_wrapper_negatives_never_grant_the_owner(config):
     link(nested, 1, 0)
     link(nested, 2, 1)
     link(nested, 3, 2)
-    assert _roles(nested, family)[3][:2] == held
+    assert _roles(bridged(nested), family)[3][:2] == held
     # The wrapper edge must itself be raw-path proven (an id alone is not enough).
     id_only = _wrapped()
     id_only.rows[1] = replace(id_only.rows[1], hierarchy=())
@@ -319,3 +329,20 @@ def test_wrapper_negatives_never_grant_the_owner(config):
     # Opt-in only: a family without transparent_wrappers keeps the immediate-owner rule.
     plain = replace(family, raw={k: v for k, v in family.raw.items() if k != "transparent_wrappers"})
     assert _roles(_wrapped(), plain)[2] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_IS_NOT_A_LINE")
+
+
+def test_wrapper_needs_the_complete_original_value_axis(config):
+    # Codex 0155: with a proven TEXT-column shift the SQL row is a projection (the removed original cell may hold
+    # "Trong đó:"), so "all SQL cells null" does not prove "every ORIGINAL cell null". Merged tables are excluded too.
+    family = config.families["OPERATING_EXPENSE"]
+    held = (None, "SOURCE_ONLY")
+    assert _roles(_wrapped(), family)[2][:2] == ("PAYROLL_CONTRIBUTIONS", "MEMBER")      # EXACT, identity axis
+    shifted = bridged(_wrapped(), status="EXACT_WITH_PROVEN_TEXT_COLUMN_SHIFT", column_map={"c1": 2, "c2": 3})
+    no_bridge = _wrapped()
+    no_bridge.bridge = None
+    partial = bridged(_wrapped(), column_map={"c1": 1})                                 # not the whole SQL axis
+    moved = bridged(_wrapped(), column_map={"c1": 2, "c2": 1})                          # not the identity map
+    merged = _wrapped()
+    merged.fragments = [merged.locator(), {**merged.locator(), "physical_page": 38}]   # continuation domain
+    for table in (shifted, no_bridge, partial, moved, merged):
+        assert _roles(table, family)[2][:2] == held

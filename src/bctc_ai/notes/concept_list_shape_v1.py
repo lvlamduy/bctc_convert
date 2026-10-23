@@ -39,6 +39,7 @@ from bctc_ai.notes.kernel_v1 import (
     parse_cell_v1,
     resolve_duration_lanes_v1,
 )
+from bctc_ai.notes.source_bridge_v1 import EXACT
 from bctc_ai.notes.list_shape_v1 import (
     OWNER_SOURCES,
     RowRole,
@@ -105,6 +106,29 @@ def _proven_parent_line(table: NoteTable, index: int, family: Family) -> tuple[s
     return lines[0], "PROVEN_PARENT_LINE", parent_index
 
 
+WRAPPER_SOURCE_DOMAIN = "ORIGINAL_EXACT_UNSHIFTED_SINGLE_TABLE"
+
+
+def _original_axis_domain(table: NoteTable) -> str | None:
+    """WRAPPER_SOURCE_DOMAIN when the SQL columns ARE the complete ORIGINAL column axis, else None (Codex 0155).
+
+    Only a single (not continuation-merged) table whose source bridge is EXACT with the identity column map
+    over every SQL column: then a SQL row's cells are every ORIGINAL value cell of that row. A proven TEXT
+    shift (EXACT_WITH_PROVEN_TEXT_COLUMN_SHIFT) removed an original cell, so "all SQL cells null" would not
+    prove "every original cell null"; merged and shifted domains stay outside this rule (HOLD).
+    """
+
+    bridge = table.bridge or {}
+    if table.fragments or bridge.get("status") != EXACT:
+        return None
+    columns = sorted(table.columns, key=lambda column: column.ordinal)
+    column_map = bridge.get("column_map") or {}
+    if set(column_map) != {column.column_id for column in columns} or any(
+            column_map[column.column_id] != position for position, column in enumerate(columns, 1)):
+        return None
+    return WRAPPER_SOURCE_DOMAIN
+
+
 def _owner_through_wrapper(table: NoteTable, wrapper_index: int, family: Family) -> tuple[str, int] | None:
     """(owner line, owner row) when ``wrapper_index`` is ONE source-proven transparent wrapper, else None.
 
@@ -122,6 +146,8 @@ def _owner_through_wrapper(table: NoteTable, wrapper_index: int, family: Family)
     label = fold_vietnamese(wrapper.label or "").strip()
     label = label[:-1].rstrip() if label.endswith(":") else label
     if not literals or wrapper.kind != "GROUP" or label not in literals:
+        return None
+    if _original_axis_domain(table) is None:
         return None
     cells = [table.cells.get((wrapper.row_id, column.column_id)) for column in table.columns]
     if not cells or any(cell is None or cell[0] is not None for cell in cells):
@@ -205,7 +231,8 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
             roles.append(RowRole(index, None, "AMBIGUOUS", "ROW_MATCHES_SEVERAL_LINES", matches))
         elif matches:
             # The wrapper is recorded as the source proof of the owner edge, never as a value.
-            reason = "LINE_RULE" if via_wrapper is None else f"LINE_RULE_VIA_TRANSPARENT_WRAPPER:{table.rows[via_wrapper].row_id}"
+            reason = "LINE_RULE" if via_wrapper is None else (
+                f"LINE_RULE_VIA_TRANSPARENT_WRAPPER:{table.rows[via_wrapper].row_id}:{WRAPPER_SOURCE_DOMAIN}")
             roles.append(RowRole(index, matches[0], "MEMBER", reason))
             if matches[0] in by_owner and owner_index is not None:
                 depends[index] = (owner_index, owner_line)
