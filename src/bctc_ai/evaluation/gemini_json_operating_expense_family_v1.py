@@ -46,8 +46,14 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
 )
 from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import (
     HASH_KEY as PRIMARY_WITNESS_HASH_KEY,
+)
+from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import (
     SPEC_KEY as PRIMARY_WITNESS_SPEC_KEY,
+)
+from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import (
     _primary_witness_projection_v1 as _primary_witness_projection_v1,
+)
+from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import (
     validate_f36_primary_witness_spec_v1,
 )
 from bctc_ai.evaluation.gemini_json_other_long_term_investments_family_v1 import (
@@ -6202,7 +6208,9 @@ def _primary_witness_enabled_v1(compiled_specs):
 # Optional PRIMARY witness admission is separate from ordinary DASH repair.
 # Default-None calls execute the original code path and emit no new fields.
 def _admitted_primary_document_v1(*, pages, document, page_axis, compiled_specs, admission):
-    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import require_admission_v1
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import (
+        require_admission_v1,
+    )
     doc = {key: document[key] for key in
            ("document_id", "document_ordinal", "source_logical_name", "source_sha256")}
     return require_admission_v1(admission).project(
@@ -6210,7 +6218,9 @@ def _admitted_primary_document_v1(*, pages, document, page_axis, compiled_specs,
 
 
 def _admitted_primary_run_v1(*, evidence, pages, compiled_specs, admission):
-    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import require_admission_v1
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import (
+        require_admission_v1,
+    )
     capability = require_admission_v1(admission)
     capability.require_run(evidence["selected_document_axis"], evidence["selected_page_axis"], compiled_specs)
     private, facts = {}, {}
@@ -6248,7 +6258,9 @@ def build_gemini_json_operating_expense_indexed_query_evidence_v1(
         return _without_witness_build_gemini_json_operating_expense_indexed_query_evidence_v1(
             base_indexed_query_evidence=base_indexed_query_evidence,
             page_json_by_document=page_json_by_document, compiled_specs=compiled_specs)
-    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import AXIS_FIELD
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import (
+        AXIS_FIELD,
+    )
     original = validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
         base_indexed_query_evidence, compiled_specs=compiled_specs)
     private, facts = _admitted_primary_run_v1(
@@ -6310,7 +6322,9 @@ def evaluate_gemini_json_operating_expense_family_cluster_v1(
         regions=regions, page_json_by_version=pages, selected_page_axis=selected_page_axis,
         compiled_specs=compiled_specs, query_receipt=query_receipt)
     if facts is not None:
-        from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import AXIS_FIELD
+        from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import (
+            AXIS_FIELD,
+        )
         adapter = candidate["closure_receipt"]["operating_expense_adapter_receipt"]
         adapter[AXIS_FIELD] = facts
         adapter["adapter_receipt_id"] = adapter["adapter_receipt_id"].rsplit(":", 1)[0] + ":" + canonical_json_sha256_v1(

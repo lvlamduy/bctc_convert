@@ -5,29 +5,34 @@ No provider, actual source corpus, financial-admission mock or shared patch.
 """
 from __future__ import annotations
 
+import json
+import sqlite3
 from copy import deepcopy
 from hashlib import sha256
 from io import BytesIO
-import json
 from pathlib import Path
-import sqlite3
 from types import SimpleNamespace
 
 import fitz
-from PIL import Image
 import pytest
 import test_gemini_json_operating_expense_family_v1 as fixture
+from PIL import Image
 from test_gemini_financial_page_store_v1 import _result
 
 from bctc_ai.evaluation import gemini_json_operating_expense_family_v1 as family
+from bctc_ai.evaluation import (
+    gemini_json_operating_expense_primary_witness_admission_v1 as admission,
+)
 from bctc_ai.evaluation import gemini_json_operating_expense_primary_witness_v1 as primitive
-from bctc_ai.evaluation import gemini_json_operating_expense_primary_witness_admission_v1 as admission
 from bctc_ai.evaluation.gemini_financial_page_json_v1 import (
-    build_financial_page_json_prompt_v1, financial_page_json_response_schema_v1,
+    build_financial_page_json_prompt_v1,
+    financial_page_json_response_schema_v1,
 )
 from bctc_ai.evaluation.gemini_json_first_page_render_v1 import render_full_pdf_page_v1
 from bctc_ai.source_structure.contracts_v1 import (
-    canonical_json_bytes_v1, canonical_json_sha256_v1, same_typed_json_v1,
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+    same_typed_json_v1,
 )
 from bctc_ai.storage import gemini_financial_page_store_v1 as page_store
 from bctc_ai.storage.gemini_accounting_family_store_v1 import _run_checked_source_replay_adapter_v1

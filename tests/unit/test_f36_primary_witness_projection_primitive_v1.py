@@ -18,7 +18,6 @@ from bctc_ai.source_structure.contracts_v1 import (
     same_typed_json_v1,
 )
 
-
 VID = "gfpstorev1:json:" + "1" * 64
 
 

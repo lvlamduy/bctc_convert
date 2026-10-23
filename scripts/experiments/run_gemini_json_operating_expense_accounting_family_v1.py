@@ -184,7 +184,9 @@ def _primary_witness_options_v1(args):
 
 def _load_primary_witness_spec_v1(path, expected_sha256):
     from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import _read
-    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import validate_f36_primary_witness_spec_v1
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import (
+        validate_f36_primary_witness_spec_v1,
+    )
     payload, reference = _read(path)
     if reference["sha256"] != expected_sha256:
         raise _error("Family-36 PRIMARY witness file pin drifted")
@@ -199,7 +201,9 @@ def _load_primary_witness_spec_v1(path, expected_sha256):
 
 
 def _authenticate_primary_witness_admission_v1(*, path, expected_sha256, index, base, pages, compiled, source_pdf_root):
-    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import authenticate_primary_witness_admission_v1
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import (
+        authenticate_primary_witness_admission_v1,
+    )
     return authenticate_primary_witness_admission_v1(
         spec_path=path, expected_sha256=expected_sha256, index=index,
         selected_document_axis=base["selected_document_axis"], selected_page_axis=base["selected_page_axis"],
@@ -207,8 +211,13 @@ def _authenticate_primary_witness_admission_v1(*, path, expected_sha256, index, 
 
 
 def _primary_witness_application_receipt_v1(*, indexed, compiled):
-    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import AXIS_FIELD
-    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import SPEC_KEY, HASH_KEY
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import (
+        AXIS_FIELD,
+    )
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import (
+        HASH_KEY,
+        SPEC_KEY,
+    )
     spec = compiled[SPEC_KEY]
     documents = indexed["selected_document_axis"]
     sources = {(d["source_logical_name"], d["source_sha256"]) for d in documents}
