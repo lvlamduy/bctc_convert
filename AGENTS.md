@@ -70,6 +70,13 @@ unchanged, six-original opt-in witness equality and the complete48-page253visual
 review. The small A/B did not demonstrate a speed/RSS gain. Actual253API/cold and
 fresh full/common acceptance remain pending; preserve every earlier FAIL.
 
+The later held-frontier source-unit checkpoint is recorded in
+`docs/operations/F36_UNIT_CORROBORATED_HELD_FRONTIER_CHECKPOINT_2026-10-24.md`.
+It records1065normal/4327subtest PASS, the retained nine-case failure and the
+actual48-page253 warm/cold PDF/row proof. Original blanks/raw violations remain;
+no full-corpus declaration or family seal is granted. Check any later FULL271
+producer job's terminal receipt before starting another runtime job.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
