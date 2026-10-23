@@ -60,6 +60,11 @@ def proven_parent_index_v1(table: NoteTable, index: int) -> tuple[int | None, st
     ``parent_row_id`` must name a unique row of this table printed BEFORE the row, and the raw
     hierarchy paths must agree: the child's path minus its own label equals the parent's path, which
     ends in the parent's printed label. No fallback to a hierarchy component, a position or an amount.
+
+    Known, deliberate coverage gap (Codex 0127): an owner reached only through an intermediate wrapper
+    (e.g. an all-NULL GROUP "Trong đó" row between the employee line and payroll) is not the immediate
+    parent and is held. A later transparent-wrapper rule must use the recorded source proof of that
+    wrapper; never a numeric or PRIMARY-equality owner grant.
     """
 
     ids = [row.row_id for row in table.rows]

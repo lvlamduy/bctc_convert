@@ -732,6 +732,9 @@ def _resolve_lane_unit(lane: NoteLane, header_units: list[Any], sources: tuple[s
     """
 
     all_header_units, table_units, prose_units, owned = sources
+    if len(owned) > 1:  # the table's own unit field and own title disagree: before any header or fallback choice
+        lane.reasons.append("UNIT_CONFLICT_TABLE_OWNED_UNITS")
+        return
     money = {u.unit for u in header_units if u.unit not in {PERCENT, VND_PER_SHARE}}
     basis = "HEADER"
     if not money and len(all_header_units) == 1:

@@ -110,6 +110,19 @@ def test_header_unit_contradicting_the_tables_own_unit_is_a_conflict_never_a_cho
     agreeing = make_table(FIVE, headers=(("30/06/2025", "Triệu VND"), ("31/12/2024", "Triệu VND")), unit="Đơn vị: Triệu đồng")
     result = cells(evaluate_table_v1(agreeing, family, document(), context_of(agreeing), []))
     assert result[("G2", "INSTANT:2025-06-30")]["unit"] == "MILLION_VND"
+    # No header unit: the table's own unit field and own title disagree -> held before any fallback (Codex 0127).
+    bare = (("30/06/2025",), ("31/12/2024",))
+    owned_conflict = make_table(FIVE, headers=bare, unit="Đơn vị: VND",
+                                title="Phân tích chất lượng nợ cho vay (Đơn vị: triệu đồng)")
+    result = cells(evaluate_table_v1(owned_conflict, family, document(), context_of(owned_conflict), []))
+    assert all("UNIT_CONFLICT_TABLE_OWNED_UNITS" in c["hold_reasons"] and c["unit"] is None for c in result.values())
+    # Field and own title agreeing still resolve; a conflicting unit in shared section prose stays outside the guard.
+    owned_agree = make_table(FIVE, headers=bare, unit="Đơn vị: Triệu đồng",
+                             title="Phân tích chất lượng nợ cho vay (Đơn vị: triệu đồng)")
+    owned_agree.narratives = ["Đơn vị: VND"]
+    owned_agree.section_table_count = 2
+    result = cells(evaluate_table_v1(owned_agree, family, document(), context_of(owned_agree), []))
+    assert result[("G2", "INSTANT:2025-06-30")]["unit"] == "MILLION_VND"
     # A unit printed only in a shared section narrative does not contradict the table's own header.
     shared = make_table(FIVE, headers=vnd)
     shared.narratives = ["Đơn vị: triệu đồng"]
