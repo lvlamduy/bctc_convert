@@ -335,9 +335,15 @@ def compile_gemini_json_operating_expense_family_specs_v1(
     """Compile and seal the Family-36 declarative frontier."""
 
     try:
+        literal_owner_aliases = canonical_clone_v1(
+            topology_spec["parent"].get("aliases")
+            if type(topology_spec) is dict and type(topology_spec.get("parent")) is dict
+            else None
+        )
         compiled = compile_gemini_json_multitable_hierarchical_family_specs_v1(
             topology_spec, evaluation_spec, schema_binding_spec
         )
+        compiled["operating_expense_owner_title_aliases_exact"] = literal_owner_aliases
     except ValueError as exc:
         raise _error("operating-expense declarative family specs are invalid") from exc
     expected_bindings = {
@@ -1433,6 +1439,86 @@ def _generic_financial_note_report_header(value: Any) -> bool:
     return bool(type(value) is str and "thuyet minh bao cao tai chinh" in _normalized(value))
 
 
+def _receiver_owner_continuation_section_title(
+    *,
+    prior_section: Mapping[str, Any],
+    prior_table: Mapping[str, Any],
+    receiver_section: Mapping[str, Any],
+    receiver_table: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Read one whole configured owner heading, never strip unknown prose."""
+
+    if receiver_section.get("content_kind") != "FINANCIAL_NOTE":
+        return None
+
+    def parsed(value: Any, *, marker_required: bool) -> dict[str, Any] | None:
+        if type(value) is not str or any(
+            unicode_category(char) in {"Cf", "Cs"}
+            or (unicode_category(char) == "Cc" and char not in "\t\r\n")
+            for char in value
+        ):
+            return None
+        surface = " ".join(unicode_normalize("NFC", value).casefold().split())
+        matches = []
+        for alias in compiled_specs.get("operating_expense_owner_title_aliases_exact", []):
+            # Only the F36 wrapper retains these literal aliases. Shared-only
+            # specs provide no literal title authority and return no match.
+            if _normalized(alias) not in _parent_aliases(compiled_specs):
+                continue
+            owner = " ".join(unicode_normalize("NFC", alias).casefold().split())
+            match = re.fullmatch(
+                r"(?:(?P<ordinal>[1-9][0-9]{0,2})[.)] )?"
+                + re.escape(owner)
+                + (r" \(tiếp theo\)" if marker_required else r"(?: \(tiếp theo\))?"),
+                surface,
+            )
+            if match is not None:
+                matches.append({"alias_exact": alias, "owner": owner, "ordinal": match["ordinal"]})
+        return matches[0] if len(matches) == 1 else None
+
+    title = receiver_section.get("title_exact")
+    receiver = parsed(title, marker_required=True)
+    if receiver is None:
+        return None
+    owners = []
+    for source_kind, value in (
+        ("PRIOR_SECTION_TITLE", prior_section.get("title_exact")),
+        ("PRIOR_TABLE_TITLE", prior_table.get("title_exact")),
+    ):
+        if value is None:
+            continue
+        match = parsed(value, marker_required=False)
+        if match is None:
+            return None
+        owners.append({"source_kind": source_kind, "source_exact": value, **match})
+    if not owners:
+        return None
+    receiver_table_title = receiver_table.get("title_exact")
+    if receiver_table_title is not None:
+        match = parsed(receiver_table_title, marker_required=True)
+        if match is None:
+            return None
+        owners.append({"source_kind": "RECEIVER_TABLE_TITLE", "source_exact": receiver_table_title, **match})
+    if any(item["owner"] != receiver["owner"] for item in owners) or len({
+        item["ordinal"] for item in [receiver, *owners] if item["ordinal"] is not None
+    }) > 1:
+        return None
+    return {
+        "receiver_section_title_exact": title,
+        "receiver_section_title_canonical_json_sha256": canonical_json_sha256_v1(title),
+        "configured_owner_alias_exact": receiver["alias_exact"],
+        "printed_note_ordinal_exact": receiver["ordinal"],
+        "continuation_marker_normalized": "(tiếp theo)",
+        "coherent_owned_title_surfaces": owners,
+        "rule": (
+            "WHOLE_NFC_CASEFOLD_LAYOUT_EXACT_CONFIGURED_OWNER_OPTIONAL_POSITIVE_"
+            "ASCII_NOTE_ORDINAL_AND_PARENTHESIZED_PRINTED_CONTINUATION_MARKER_"
+            "NO_COMPETING_OWNER_OR_PRINTED_NOTE_ORDINAL_NO_UNIT_PERIOD_SCOPE_VALUE_GRANT"
+        ),
+    }
+
+
 def _duration_axis_with_optional_owner_prefix_projection(
     table: Mapping[str, Any], *, compiled_specs: Mapping[str, Any]
 ) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]] | None:
@@ -1744,10 +1830,19 @@ def _complete_owner_continuation_projection(
     ):
         return None
     receiver_section_title = receiver_section.get("title_exact")
+    receiver_owner_title = None
     if receiver_section_title is not None and not _generic_financial_note_report_header(
         receiver_section_title
     ):
-        return None
+        receiver_owner_title = _receiver_owner_continuation_section_title(
+            prior_section=prior_section,
+            prior_table=prior_table,
+            receiver_section=receiver_section,
+            receiver_table=receiver_table,
+            compiled_specs=compiled_specs,
+        )
+        if receiver_owner_title is None:
+            return None
     prior_axis_result = _duration_axis_with_optional_owner_prefix_projection(
         prior_table, compiled_specs=compiled_specs
     )
@@ -2102,6 +2197,8 @@ def _complete_owner_continuation_projection(
             "NORMALIZATION_PRIVATE_CLONE_NO_SOURCE_VALUE_CHANGE"
         ),
     }
+    if receiver_owner_title is not None:
+        material["receiver_owner_continuation_section_title_receipt"] = receiver_owner_title
     return (
         projected_pages,
         projected_regions,
