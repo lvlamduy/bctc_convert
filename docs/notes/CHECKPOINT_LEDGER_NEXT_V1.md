@@ -49,6 +49,24 @@
   - F37: `changed_documents` rỗng; cả 34 document ở trạng thái OBSERVED_UNRESOLVED ở hai phía (cùng một luật áp cho cả hai lượt).
   - Năm family còn lại không đổi.
 
+## COMMON204 (corpus riêng, ordinal riêng; không dùng lại ordinal của FULL271)
+
+| Lượt | HEAD | Kết quả | terminal / store |
+|---|---|---|---|
+| PRIMARY `common204-20261023T201701Z` (root, `primary_common204_v2.sh` `ef3fa2ed…`) | PRIMARY `07eb7a5` | PASS: 204 result ID khớp chính xác; A 2:39, RSS 1,04 GB; B 1:21 | `d496a6a4…` / `35fde24a…` (215.445.504 B) |
+| notes `common204-20261023T203411Z` (root, `common204_notes_v1.sh` `cb8f55fc…`) | notes `f03c5d2` | PASS_DIAGNOSTIC: 23.108 cell, 204 workbook, reload và rebuild khớp chính xác; wall 3:25.13; RSS 509 MB; 0 bảng bị REJECTED vì SOURCE_BRIDGE / PRIMARY_CONTEXT | `7b9804a3…` / `38299376…` |
+
+Coverage của COMMON204, theo family (FOUND / OBSERVED_UNRESOLVED / NOT_OBSERVED):
+
+- INCOME_TAX: 94 / 22 / 88
+- OPERATING_EXPENSE: 196 / – / 8
+- CREDIT_PROVISION_EXPENSE: 89 / 23 / 92
+- CREDIT_QUALITY: 204 / – / 0
+- DEPOSITS_BY_TYPE: 200 / – / 4
+- BY_CUSTOMER_ENTITY_TYPE: 130 / – / 74
+
+Đây là số đếm ở mức cell, mang tính thử nghiệm, không phải độ chính xác tài chính. So sánh FULL271 với COMMON204 cần một kế hoạch có kiểm identity riêng.
+
 ## Việc còn mở
 
 - Luật marker gạch đầu dòng ("- ") cho leaf/label (43 dòng): cần kế hoạch đọc ORIGINAL được duyệt trước.
