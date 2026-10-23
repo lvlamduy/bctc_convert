@@ -26,6 +26,16 @@ subjects:
 # Provision balances and movements are other notes (roll-forwards).
 reject_context: [[bien dong du phong], [thay doi du phong], [so du dau], [so du cuoi], [phan loai no], [chat luong no]]
 
+# Row-level meaning (Codex 0199): the table context does not establish each row's flow basis. A row printing a
+# stock or movement basis ("Số dư … cuối kỳ", "Sử dụng dự phòng") or an explicit non-credit asset population
+# ("… cho tài sản cố định") is never a line of this note, nor a parent of one, whatever the arithmetic.
+# Charges and reversals ("Trích lập", "Hoàn nhập") and printed signs are untouched.
+row_vetoes:
+  STOCK_OR_MOVEMENT_BASIS: [[so du], [dau ky], [cuoi ky], [dau nam], [cuoi nam], [bien dong], [su dung du phong],
+                            [da su dung], [chenh lech ty gia]]
+  NON_CREDIT_ASSET_POPULATION: [[tai san co dinh], [bat dong san dau tu], [hang ton kho], [gop von], [dau tu dai han],
+                                [giam gia]]
+
 emit_lines: [INTERBANK_PROVISION, INTERBANK_GENERAL, INTERBANK_SPECIFIC,
              CUSTOMER_PROVISION, CUSTOMER_GENERAL, CUSTOMER_SPECIFIC,
              PURCHASED_DEBT_PROVISION, VAMC_PROVISION, OFF_BALANCE_PROVISION, CORPORATE_BOND_PROVISION, OTHER_PROVISION,

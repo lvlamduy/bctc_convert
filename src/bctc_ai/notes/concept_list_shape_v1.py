@@ -100,6 +100,9 @@ def _proven_parent_line(table: NoteTable, index: int, family: Family) -> tuple[s
     if parent_index is None:
         return None, reason, None
     parent = table.rows[parent_index]
+    veto = family.row_veto(parent.key) if parent.key else None
+    if veto:
+        return None, "PARENT_ROW_VETO:" + veto, parent_index
     lines = family.axis.match(parent.key) if parent.key else []
     if len(lines) != 1:
         return None, "PARENT_LINE_AMBIGUOUS" if lines else "PARENT_IS_NOT_A_LINE", parent_index
@@ -185,6 +188,12 @@ def assign_lines_v1(table: NoteTable, family: Family) -> list[RowRole]:
         key = row.key
         if not _has_values(table, row):
             roles.append(RowRole(index, None, "HEADING", "NO_VALUES"))
+            continue
+        veto = family.row_veto(key) if key else None
+        if veto:
+            # A printed stock/movement basis or a foreign population is never one of the family's lines, before any
+            # role, owner or equation participates; arithmetic cannot grant it (Codex 0199). Kept as source only.
+            roles.append(RowRole(index, None, "SOURCE_ONLY", "ROW_VETO:" + veto, family.axis.match(key)))
             continue
         matches = family.axis.match(key) if key else []
         direct = list(matches)  # competing DIRECT axis matches, before any owner/not_within filtering

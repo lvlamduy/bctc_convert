@@ -172,6 +172,54 @@ def test_credit_provision_general_and_specific_reject_missing_ambiguous_or_cross
     assert _roles(claimed, family)[1][:2] == (None, "SOURCE_ONLY")
 
 
+CUSTOMER_LINES = {"CUSTOMER_PROVISION", "CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC"}
+
+
+def test_stock_or_movement_rows_and_their_children_are_never_credit_provision_lines(config):
+    # Codex 0199: a closing balance 300 = chung 20 + cụ thể 280 passes the components arithmetic, but a stock is not
+    # the expense 6031/1224/1225; the family title does not establish each row's flow basis.
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    headers, title = [("Năm 2025",), ("Năm 2024",)], "29. Chi phí dự phòng rủi ro tín dụng"
+    rows = [("Số dư dự phòng cho vay khách hàng cuối kỳ", ["300", "250"]), ("Dự phòng chung", ["20", "10"]),
+            ("Dự phòng cụ thể", ["280", "240"]), ("Trích lập dự phòng trái phiếu đặc biệt VAMC", ["40", "50"]),
+            ("Tổng cộng", ["340", "300"])]
+    table = make_table(rows, headers, title=title)
+    for child in (1, 2):
+        link(table, child, 0)
+    roles = _roles(table, family)
+    assert roles[0] == (None, "SOURCE_ONLY", "ROW_VETO:STOCK_OR_MOVEMENT_BASIS")
+    assert roles[1][:2] == roles[2][:2] == (None, "SOURCE_ONLY")  # a vetoed row is no parent of a scoped line
+    result = cells(evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), []))
+    assert not {member for member, _period in result} & CUSTOMER_LINES
+    assert result.get(("TOTAL_CREDIT_PROVISION", YEAR), {}).get("acceptance") != "ACCEPTED"
+    for label in ("Dự phòng cho vay khách hàng đầu kỳ", "Sử dụng dự phòng cho vay khách hàng",
+                  "Chênh lệch tỷ giá dự phòng cho vay khách hàng", "Biến động dự phòng cho vay khách hàng"):
+        assert _roles(make_table([(label, ["1", "1"])], headers, title=title), family)[0] == (
+            None, "SOURCE_ONLY", "ROW_VETO:STOCK_OR_MOVEMENT_BASIS"), label
+    # Genuine charges and reversals keep their line and their printed sign.
+    for label in ("Trích lập dự phòng cho vay khách hàng", "Hoàn nhập dự phòng cho vay khách hàng",
+                  "Chi phí dự phòng rủi ro cho vay khách hàng trong kỳ"):
+        assert _roles(make_table([(label, ["(5)", "1"])], headers, title=title), family)[0][:2] == (
+            "CUSTOMER_PROVISION", "MEMBER"), label
+
+
+def test_explicit_non_credit_population_never_closes_a_credit_total(config):
+    # Codex 0199: "Chi phí dự phòng khác cho tài sản cố định" 5 must not become OTHER_PROVISION to close 305 = 300 + 5.
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    headers, title = [("Năm 2025",), ("Năm 2024",)], "29. Chi phí dự phòng rủi ro tín dụng"
+    rows = [("Chi phí dự phòng rủi ro cho vay khách hàng", ["300", "250"]),
+            ("Chi phí dự phòng khác cho tài sản cố định", ["5", "4"]), ("Tổng cộng", ["305", "254"])]
+    table = make_table(rows, headers, title=title)
+    assert _roles(table, family)[1] == (None, "SOURCE_ONLY", "ROW_VETO:NON_CREDIT_ASSET_POPULATION")
+    result = cells(evaluate_concept_table_v1(table, family, document(quarter=4), context_of(table), []))
+    assert ("OTHER_PROVISION", YEAR) not in result
+    assert all(result[(line, YEAR)]["acceptance"] != "ACCEPTED" for line in ("TOTAL_CREDIT_PROVISION", "CUSTOMER_PROVISION")
+               if (line, YEAR) in result)
+    # Credit populations of "other provision" still read.
+    for label in ("Dự phòng tài sản Có khác", "Chi phí dự phòng khác"):
+        assert _roles(make_table([(label, ["5", "4"])], headers, title=title), family)[0][:2] == ("OTHER_PROVISION", "MEMBER"), label
+
+
 def test_write_key_collisions_hold_every_occurrence_even_with_equal_values():
     def cell(member, value, table_id, acceptance="ACCEPTED"):
         return {"acceptance": acceptance, "value": value, "unit": "MILLION_VND", "observation_state": "VALUE",

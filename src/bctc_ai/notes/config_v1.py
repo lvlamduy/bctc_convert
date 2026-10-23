@@ -85,6 +85,14 @@ class Family:
     def rejects(self, folded: str) -> bool:
         return all_phrases(self.raw.get("reject_context", []), folded)
 
+    def row_veto(self, key: str) -> str | None:
+        """The first declared row veto (a printed stock/movement basis, a foreign population) the row key carries."""
+
+        for name, groups in self.raw.get("row_vetoes", {}).items():
+            if all_phrases(groups, key):
+                return name
+        return None
+
 
 @dataclass(frozen=True)
 class NotesConfig:
@@ -127,6 +135,8 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
             spec["any"] = [[fold_vietnamese(str(p)) for p in g] for g in spec.get("any", [])]
             spec["none"] = [[fold_vietnamese(str(p)) for p in g] for g in spec.get("none", [])]
         raw["reject_context"] = [[fold_vietnamese(str(p)) for p in g] for g in raw.get("reject_context", [])]
+        raw["row_vetoes"] = {str(name): [[fold_vietnamese(str(p)) for p in g] for g in groups]
+                             for name, groups in (raw.get("row_vetoes") or {}).items()}
         raw["retrieval"]["explicit_title_phrases"] = [
             [fold_vietnamese(str(p)) for p in g] for g in raw["retrieval"].get("explicit_title_phrases", [])
         ]
