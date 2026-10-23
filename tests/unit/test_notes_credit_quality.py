@@ -99,6 +99,25 @@ def test_unit_never_inferred_from_magnitude(family):
     assert all("UNIT_UNRESOLVED" in c["hold_reasons"] for c in result.values())
 
 
+def test_header_unit_contradicting_the_tables_own_unit_is_a_conflict_never_a_choice(family):
+    # Codex 0122: a "VND" header under a printed "Triệu đồng" table unit field (or own title) is held.
+    vnd = (("30/06/2025", "VND"), ("31/12/2024", "VND"))
+    for table in (make_table(FIVE, headers=vnd, unit="Đơn vị: Triệu đồng"),
+                  make_table(FIVE, headers=vnd, title="Phân tích chất lượng nợ cho vay (Đơn vị: triệu đồng)")):
+        result = cells(evaluate_table_v1(table, family, document(), context_of(table), []))
+        assert all("UNIT_CONFLICT_HEADER_VS_TABLE_OWNED_UNIT" in c["hold_reasons"] and c["unit"] is None
+                   for c in result.values())
+    agreeing = make_table(FIVE, headers=(("30/06/2025", "Triệu VND"), ("31/12/2024", "Triệu VND")), unit="Đơn vị: Triệu đồng")
+    result = cells(evaluate_table_v1(agreeing, family, document(), context_of(agreeing), []))
+    assert result[("G2", "INSTANT:2025-06-30")]["unit"] == "MILLION_VND"
+    # A unit printed only in a shared section narrative does not contradict the table's own header.
+    shared = make_table(FIVE, headers=vnd)
+    shared.narratives = ["Đơn vị: triệu đồng"]
+    shared.section_table_count = 2
+    result = cells(evaluate_table_v1(shared, family, document(), context_of(shared), []))
+    assert not any("UNIT_CONFLICT_HEADER_VS_TABLE_OWNED_UNIT" in c["hold_reasons"] for c in result.values())
+
+
 def test_primary_agreement_never_supplies_a_unit(family):
     # Codex 0009: matching the primary line (even exactly) corroborates numbers only.
     primary = {("CDKT", 4348, "INSTANT:2025-06-30"): (Decimal("1000"), "MILLION_VND")}

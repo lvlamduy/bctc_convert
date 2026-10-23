@@ -709,7 +709,7 @@ def resolve_instant_lanes_v1(
     return lanes
 
 
-def _unit_sources(table: NoteTable, page_texts: list[str]) -> tuple[set[str], list[Any], list[Any]]:
+def _unit_sources(table: NoteTable, page_texts: list[str]) -> tuple[set[str], list[Any], list[Any], set[str]]:
     all_header_units = {u.unit for column in table.columns if column.value_kind == "MONEY"
                         for part in column.header_path for u in units_in_header_component_v1(part)
                         if u.unit not in {PERCENT, VND_PER_SHARE}}
@@ -717,17 +717,28 @@ def _unit_sources(table: NoteTable, page_texts: list[str]) -> tuple[set[str], li
     prose_units = []
     for text in [table.section_title, table.table_title, *table.narratives, *page_texts]:
         prose_units += units_in_prose_v1(text, source_kind="NOTE_PAGE_TEXT")
-    return all_header_units, table_units, prose_units
+    # Units the table itself owns outside its headers: its own unit field and its own title. Section
+    # titles/narratives and page text may be shared by other tables, so they never contradict a header.
+    owned = {u.unit for u in [*table_units, *units_in_prose_v1(table.table_title, source_kind="TABLE_TITLE")]
+             if u.unit not in {PERCENT, VND_PER_SHARE}}
+    return all_header_units, table_units, prose_units, owned
 
 
-def _resolve_lane_unit(lane: NoteLane, header_units: list[Any], sources: tuple[set[str], list[Any], list[Any]]) -> None:
-    """Printed unit only: own header, one unit shared by the table's headers, table unit field, page text."""
+def _resolve_lane_unit(lane: NoteLane, header_units: list[Any], sources: tuple[set[str], list[Any], list[Any], set[str]]) -> None:
+    """Printed unit only: own header, one unit shared by the table's headers, table unit field, page text.
 
-    all_header_units, table_units, prose_units = sources
+    A header-derived unit must agree with every money unit the table itself owns (its unit field and its
+    own title): "VND" in a header under a printed "Triệu đồng" table field is a conflict, never a choice.
+    """
+
+    all_header_units, table_units, prose_units, owned = sources
     money = {u.unit for u in header_units if u.unit not in {PERCENT, VND_PER_SHARE}}
     basis = "HEADER"
     if not money and len(all_header_units) == 1:
         money, basis = set(all_header_units), "SAME_TABLE_HEADER"
+    if money and owned and owned != money:
+        lane.reasons.append("UNIT_CONFLICT_HEADER_VS_TABLE_OWNED_UNIT")
+        return
     if not money:
         money, basis = {u.unit for u in table_units if u.unit not in {PERCENT, VND_PER_SHARE}}, "TABLE_UNIT_FIELD"
     if not money:
