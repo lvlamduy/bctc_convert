@@ -256,8 +256,8 @@ def reconcile_unresolved_rows_v1(*, corpus_manifest_index_id, raw_coverage, inde
              and trial.get("status") in {"READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY", "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY", "UNRESOLVED_GEMINI_JSON_FAMILY"},
              "all-status source identity drift")
         if trial["status"] != "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY":
-            need(trial.get("mappings") == [] and type(trial.get("mapping_count")) is int
-                 and trial["mapping_count"] == 0, "nonREADY trial leaked mappings")
+            need(type(trial.get("mappings")) is list and len(trial["mappings"]) == 0,
+                 "nonREADY trial leaked mappings")
     row_index = {(axis, digest(item)): item for axis in AXES for item in raw[axis]}
     held, seen = [], set()
     for review in declared["reviews"]:
@@ -267,7 +267,7 @@ def reconcile_unresolved_rows_v1(*, corpus_manifest_index_id, raw_coverage, inde
         cluster = indexed_query_evidence["candidate_dispositions"][ordinal - 1]["cluster"]
         need(same(doc, review["document"]) and trial.get("document_ordinal") == ordinal
              and trial.get("status") == review["status"] and same(trial.get("reasons"), review["reasons"])
-             and trial.get("mappings") == [] and type(trial.get("mapping_count")) is int and trial["mapping_count"] == 0
+             and type(trial.get("mappings")) is list and len(trial["mappings"]) == 0
              and trial.get("source_sha256") == doc["source_sha256"] and trial.get("source_logical_name") == doc["source_logical_name"]
              and digest(trial) == review["trial_sha256"] and digest(cluster) == review["query_cluster_sha256"], "review trial/source/status binding drift")
         residuals = [item for item in authenticated_pdf_residuals if item["document_ordinal"] == ordinal]

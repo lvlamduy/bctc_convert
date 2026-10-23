@@ -195,7 +195,7 @@ def test_audit_rejects_unpaired_or_resealed_primary_application(attack):
     else:
         value["spec_refs"]["unapproved"] = value["spec_refs"]["primary_witness"].copy()
     _reseal(value)
-    with pytest.raises(ValueError):
+    with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
         runner.validate_operating_expense_experimental_audit_v1(value)
 
 

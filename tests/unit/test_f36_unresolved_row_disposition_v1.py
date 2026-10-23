@@ -16,6 +16,9 @@ from test_gemini_json_operating_expense_family_v1 import (
 
 from bctc_ai.evaluation import gemini_json_operating_expense_family_v1 as family
 from bctc_ai.evaluation import gemini_json_operating_expense_unresolved_rows_v1 as held
+from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+    GeminiJsonMultitableHierarchicalFamilyV1Error,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1 as digest
 from scripts.experiments import run_gemini_json_operating_expense_accounting_family_v1 as runner
@@ -39,7 +42,8 @@ def _fixture(kind="INCOMPLETE_PRINTED_FRONTIER"):
     rows[-1]["values_exact"] = ["80" if kind == "INCOMPLETE_PRINTED_FRONTIER" else "83", "70"]
     indexed, trials, pages, compiled = _source_row_coverage_inputs(_operating_page(rows))
     assert len(trials) == 1 and trials[0]["status"] == family.UNRESOLVED
-    assert trials[0]["mappings"] == [] and trials[0]["mapping_count"] == 0
+    assert type(trials[0]["mappings"]) is list and trials[0]["mappings"] == []
+    assert "mapping_count" not in trials[0]
     raw = family.build_operating_expense_source_row_coverage_receipt_v1(
         indexed_query_evidence=indexed, trials=trials, page_json_by_document=pages,
         compiled_specs=compiled, fail_on_violation=False)
@@ -84,7 +88,7 @@ def test_real_family_unresolved_rows_reconcile_without_numeric_mapping_or_raw_mu
     raw = kwargs["raw_coverage"]
     assert raw["violation_count"] > 0
     assert runner._validate_source_row_coverage_receipt_v1(raw, reconciliation=result) == raw
-    with pytest.raises(ValueError, match="coverage gate failed"):
+    with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error, match="coverage gate failed"):
         runner._validate_source_row_coverage_receipt_v1(raw)
     proof = kwargs["declaration"]["reviews"][0]["printed_frontier"]
     if kind == "INCOMPLETE_PRINTED_FRONTIER":
@@ -100,13 +104,17 @@ def test_real_family_unresolved_rows_reconcile_without_numeric_mapping_or_raw_mu
 @pytest.mark.parametrize("attack", [
     "status-ready", "status-n", "reasons", "source", "trial-hash", "cluster", "raw-id",
     "finding-kind", "frontier-value", "frontier-column", "frontier-null-mask", "held-missing", "held-extra",
-    "held-duplicate", "residual", "boolean-doc", "float-doc", "boolean-row", "blob-domain",
+    "held-duplicate", "residual", "boolean-doc", "float-doc", "boolean-row", "blob-domain", "nonready-mapping-leak",
 ])
 def test_declaration_or_source_tamper_never_becomes_a_hold_waiver(attack):
     kw = _fixture()
     review = kw["declaration"]["reviews"][0]
     if attack.startswith("status-"):
         review["status"] = family.READY if attack == "status-ready" else family.NOT_OBSERVED
+    elif attack == "nonready-mapping-leak":
+        # Even a self-consistent review digest cannot waive a final U mapping.
+        kw["trials"][0]["mappings"] = [{"forged_mapping": True}]
+        review["trial_sha256"] = digest(kw["trials"][0])
     elif attack == "reasons":
         review["reasons"] = ["different-reason"]
     elif attack == "source":
@@ -139,7 +147,7 @@ def test_declaration_or_source_tamper_never_becomes_a_hold_waiver(attack):
         kw["raw_coverage"]["source_row_axis"][0]["row_ordinal"] = True
     else:
         kw["source_page_blob_refs"][VERSION_ID]["stored_blob_sha256"] = "0" * 64
-    with pytest.raises((ValueError, KeyError)):
+    with pytest.raises(held.UnresolvedRowsV1Error):
         held.reconcile_unresolved_rows_v1(**kw)
 
 
@@ -165,7 +173,7 @@ def test_fresh_frontier_does_not_hide_unsupported_or_open_source(mutation):
     blob = canonical_json_bytes_v1(page) + b"\n"
     kw["source_page_blob_refs"][VERSION_ID].update(stored_blob_sha256=sha256(blob).hexdigest(),
         stored_blob_size_bytes=len(blob), original_object_sha256=digest(page))
-    with pytest.raises((ValueError, KeyError)):
+    with pytest.raises((held.UnresolvedRowsV1Error, GeminiJsonMultitableHierarchicalFamilyV1Error)):
         held.reconcile_unresolved_rows_v1(**kw)
 
 
@@ -200,7 +208,7 @@ def test_numbered_population_and_existing_local_scope_are_positive_admission_gat
     blob = canonical_json_bytes_v1(page) + b"\n"
     kw["source_page_blob_refs"][VERSION_ID].update(stored_blob_sha256=sha256(blob).hexdigest(),
         stored_blob_size_bytes=len(blob), original_object_sha256=digest(page))
-    with pytest.raises((ValueError, KeyError)):
+    with pytest.raises((held.UnresolvedRowsV1Error, GeminiJsonMultitableHierarchicalFamilyV1Error)):
         held.build_printed_frontier_v1(document=kw["indexed_query_evidence"]["selected_document_axis"][0],
             page_axis=kw["indexed_query_evidence"]["selected_page_axis"], pages=kw["page_json_by_document"][1],
             cluster=kw["indexed_query_evidence"]["candidate_dispositions"][0]["cluster"],
@@ -228,7 +236,7 @@ def test_actual_300dpi_pdf_render_binds_reviewed_png_without_mock_authentication
     if attack is None:
         runner._verify_reviewed_png_from_pdf_v1(**kwargs)
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
             runner._verify_reviewed_png_from_pdf_v1(**kwargs)
 
 
@@ -269,7 +277,7 @@ def test_fresh_qualified_literal_guard_is_not_absorbed_by_an_incomplete_frontier
         page_axis=kw["indexed_query_evidence"]["selected_page_axis"], pages=kw["page_json_by_document"][1],
         cluster=cluster, compiled_specs=kw["compiled_specs"], source_page_blob_refs=kw["source_page_blob_refs"])
     if suffix not in (None, ""):
-        with pytest.raises(ValueError, match="unproven whole qualified provision literal"):
+        with pytest.raises(held.UnresolvedRowsV1Error, match="unproven whole qualified provision literal"):
             held.build_printed_frontier_v1(**args)
     else:
         proof = held.build_printed_frontier_v1(**args)
@@ -289,7 +297,7 @@ def test_resealed_caller_qualified_policy_does_not_authorize_a_frontier():
     policy = compiled["operating_expense_qualified_provision_literal_policy"]
     policy["declarations"] = []
     compiled["operating_expense_qualified_provision_literal_policy_sha256"] = digest(policy)
-    with pytest.raises(ValueError, match="qualified provision literal policy drifted"):
+    with pytest.raises(family.GeminiJsonOperatingExpenseFamilyV1Error, match="qualified provision literal policy drifted"):
         held.build_printed_frontier_v1(document=kw["indexed_query_evidence"]["selected_document_axis"][0],
             page_axis=kw["indexed_query_evidence"]["selected_page_axis"], pages=kw["page_json_by_document"][1],
             cluster=kw["indexed_query_evidence"]["candidate_dispositions"][0]["cluster"],
@@ -302,7 +310,7 @@ def test_resealed_reconciliation_cannot_drop_an_unjoined_violation():
     result["held_row_axis"].pop()
     result["held_row_axis_sha256"] = digest(result["held_row_axis"])
     result["receipt_id"] = "gjoeurd1:reconciliation:" + digest({k: v for k, v in result.items() if k != "receipt_id"})
-    with pytest.raises(ValueError):
+    with pytest.raises(held.UnresolvedRowsV1Error):
         held.validate_reconciliation_v1(kw["raw_coverage"], result)
 
 
@@ -336,7 +344,7 @@ def test_selected_original_blob_binding_is_read_only_and_rejects_validator_proje
         actual = runner._row_original_blob_refs_v1(database, kw["indexed_query_evidence"], kw["page_json_by_document"], kw["declaration"])
         assert actual == kw["source_page_blob_refs"]
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
             runner._row_original_blob_refs_v1(database, kw["indexed_query_evidence"], kw["page_json_by_document"], kw["declaration"])
     assert database.read_bytes() == before
 
@@ -398,7 +406,7 @@ def test_cold_adapter_reopens_inputs_and_cannot_use_warm_receipt_as_authority(tm
         assert call() == kw["trials"]
         assert seen == ["fresh-pdf-residual", "fresh-row-IO-boundary"]
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
             call()
         if attack == "residual-file":
             assert seen == []
@@ -412,12 +420,12 @@ def test_real_review_file_reader_requires_pin_and_stable_identity(tmp_path, atta
     pin = sha256(path.read_bytes()).hexdigest()
     refs = {}
     if attack == "wrong-pin":
-        with pytest.raises(ValueError):
+        with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
             runner._row_json_v1(path, refs, pin="0" * 64)
         return
     if attack == "duplicate-key":
         path.write_bytes(b'{"finding":1,"finding":2}\n')
-        with pytest.raises(ValueError):
+        with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
             runner._row_json_v1(path, refs, pin=sha256(path.read_bytes()).hexdigest())
         return
     assert runner._row_json_v1(path, refs, pin=pin) == {"finding": "fixture"}
@@ -430,5 +438,5 @@ def test_real_review_file_reader_requires_pin_and_stable_identity(tmp_path, atta
     if attack is None:
         runner._recheck_row_inputs_v1(refs)
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(runner.RunGeminiJsonOperatingExpenseV1Error):
             runner._recheck_row_inputs_v1(refs)
