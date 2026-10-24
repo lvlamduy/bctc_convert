@@ -177,6 +177,8 @@ def _matches_prepared_forms_v1(forms: frozenset[str], alias: str) -> bool:
     if alias in forms:
         return True
     suffixes = {form.removeprefix(alias).strip() for form in forms if form.startswith(alias + " ")}
+    if not suffixes:
+        return False
     allowed_suffix_tokens = {
         "1",
         "2",

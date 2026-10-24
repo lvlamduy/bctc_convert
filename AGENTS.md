@@ -98,9 +98,12 @@ another project execution; keep the fixed experimental snapshots unchanged.
 
 Read `docs/operations/F36_PERIOD_ADMISSION_AND_RETAINED_RUNTIME_FAILURES_2026-10-24.md`
 for actual145/147/149 notes gates, original3 ADMIN/OTHER boundaries, retained
-profiler and ADMIN-pair limit failures, the38-test empty-suffix draft and the
-exact-Version nonterminal HEARTBEAT. These drafts remain unpromoted. Read any
-later matcher/corpus terminal before executing another job; no family is sealed.
+profiler and ADMIN-pair limit failures and the exact-Version nonterminal
+HEARTBEAT. The empty-suffix matcher is now separately promoted after1103normal/
+4327sub and352cross-family PASS; read
+`docs/operations/F36_EMPTY_SUFFIX_MATCHER_PROMOTION_2026-10-24.md`.
+ADMIN/notes drafts remain unpromoted. Read later corpus terminals and the current
+lease before executing another job; no family is sealed.
 
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
