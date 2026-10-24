@@ -12,9 +12,13 @@ No amount is read or reconstructed: a cell is BLANK exactly when its ORIGINAL va
 
 A lane is ROOT_CLOSED only when ALL hold:
 1. the table is evaluable here: notes EVALUATED, one EXACT single-table source bridge (no continuation merge, no
-   proven column shift - both are named UNRESOLVED reasons, kept with their evidence), no unsupported ORIGINAL shape,
-   and the notes and inventory row / column axes agree positionally (row id rN = ORIGINAL row N; label, kind and
-   null/valued state equal);
+   proven column shift - both are named UNRESOLVED reasons, kept with their evidence), the page bound in ONE domain
+   (inventory ``page.source_proof.stored_blob_two_lf_sha256`` == bridge ``original_blob_sha256``, same VID; the
+   one-LF / no-LF table digests are never compared), no unsupported ORIGINAL shape, and the notes and inventory row
+   axes agree positionally (row id rN = ORIGINAL row N, equal labels). Numeric presence is read ONLY in the ORIGINAL
+   MONEY columns the notes lanes occupy through the bridge's proven column map (a TEXT note reference never makes a
+   row valued); it must agree with the notes HEADING disposition. Parent edges are re-proven from the ORIGINAL
+   hierarchy and labels (unique earlier row) and must agree with the notes parent ids;
 2. exactly one ROOT row (a MEMBER of the family root line by label, or the T route), printed as the FINAL source row;
 3. every earlier row is partitioned without refusal (the reviewed T prefix partition, generalized to any root):
    a valued source top-level root-term MEMBER is FRONTIER; a valued non-root MEMBER or SOURCE_ONLY row (never a
@@ -94,14 +98,32 @@ def root_closure_v1(inventory: dict[str, Any], disposition: dict[str, Any], fami
     if not match or (bridge.get("page_json_version_id"), bridge.get("section_ordinal"), bridge.get("table_ordinal")) != (
             table.get("page_json_version_id"), int(match.group(1)) + 1, int(match.group(2)) + 1):
         return unresolved("BRIDGE_AND_INVENTORY_NAME_DIFFERENT_TABLES")
+    page = inventory.get("page") or {}
+    if ((page.get("axis") or {}).get("page_json_version_id") != bridge.get("page_json_version_id")
+            or not bridge.get("original_blob_sha256")
+            or (page.get("source_proof") or {}).get("stored_blob_two_lf_sha256") != bridge.get("original_blob_sha256")):
+        # One domain only: the actual stored two-LF page bytes on both sides (Codex 0326/0328).
+        return unresolved("PAGE_BINDING_DIFFERS")
     if inventory.get("unsupported"):
         return unresolved("UNSUPPORTED_ORIGINAL_SHAPE:" + str(inventory["unsupported"][0].get("pointer")))
 
     columns, inv_rows, notes_rows = inventory.get("columns") or [], inventory.get("rows") or [], disposition.get("rows") or []
     if [c.get("column_ordinal") for c in columns] != list(range(1, len(columns) + 1)):
         return unresolved("COLUMN_AXIS_NOT_POSITIONAL")
-    money = {c["column_ordinal"] for c in columns if isinstance(c.get("column_exact"), dict)
-             and c["column_exact"].get("value_kind") == "MONEY"}
+    # Numeric presence is read ONLY in the ORIGINAL MONEY columns the notes lanes occupy through the proven bridge column
+    # map; a non-null TEXT cell (e.g. a note reference "28") never makes a row valued (Codex 0328).
+    lanes, column_map = disposition.get("lanes") or [], bridge.get("column_map") or {}
+    if not lanes:
+        return unresolved("NO_PROVEN_MONEY_LANES")
+    money = set()
+    for lane in lanes:
+        ordinal = column_map.get(lane.get("column_id"))
+        if not isinstance(ordinal, int) or not 1 <= ordinal <= len(columns):
+            return unresolved("LANE_COLUMN_NOT_IN_PROVEN_COLUMN_MAP:" + str(lane.get("column_id")))
+        exact = columns[ordinal - 1].get("column_exact")
+        if not isinstance(exact, dict) or exact.get("value_kind") != "MONEY":
+            return unresolved("LANE_COLUMN_NOT_ORIGINAL_MONEY:" + str(lane.get("column_id")))
+        money.add(ordinal)
     if not (len(inv_rows) == len(notes_rows) == bridge.get("row_count")):
         return unresolved("ROW_COUNT_DIFFERS")
     rows = []
@@ -117,26 +139,30 @@ def root_closure_v1(inventory: dict[str, Any], disposition: dict[str, Any], fami
         if (note.get("disposition") == "HEADING") == valued:
             return unresolved(f"VALUE_STATE_DISAGREES:r{ordinal}")
         rows.append({"ordinal": ordinal, "label": fields.get("label_exact"), "kind": fields.get("row_kind"),
-                     "path": fields.get("hierarchy_path_exact"), "parent": note.get("parent_row_id"),
+                     "path": fields.get("hierarchy_path_exact"), "notes_parent": note.get("parent_row_id"),
                      "line": note.get("line"), "disposition": note.get("disposition"), "reason": note.get("reason") or "",
                      "valued": valued, "all_null": len(nulls) == len(columns)})
-    by_id = {f"r{row['ordinal']}": row for row in rows}
+    # Parent edges are re-proven from the exact ORIGINAL hierarchy and labels: the parent is the UNIQUE earlier row whose
+    # printed path is the child's path minus its own label and ends in that row's label. The notes parent_row_id is
+    # only cross-checked against it (Codex 0328).
+    for row in rows:
+        path = _strings(row["path"])
+        candidates = [] if len(path) < 2 or path[-1] != row["label"] else [
+            earlier for earlier in rows[:row["ordinal"] - 1]
+            if _strings(earlier["path"]) == path[:-1] and path[:-1] and path[:-1][-1] == earlier["label"]]
+        row["parent"] = candidates[0] if len(candidates) == 1 else None
+        expected = f"r{row['parent']['ordinal']}" if row["parent"] else None
+        if (row["notes_parent"] or None) != expected and not (len(candidates) > 1 and row["notes_parent"] is None):
+            return unresolved(f"PARENT_EDGE_DIFFERS_FROM_ORIGINAL:r{row['ordinal']}")
 
     def top_level(row: dict[str, Any]) -> bool:
-        return not row["parent"] and _strings(row["path"]) in ([], [row["label"]])
+        return row["parent"] is None and not row["notes_parent"] and _strings(row["path"]) in ([], [row["label"]])
 
     def frontier(row: dict[str, Any] | None) -> bool:
         return bool(row) and row["disposition"] == "MEMBER" and row["line"] in terms and top_level(row)
 
     def proven_parent(row: dict[str, Any]) -> dict[str, Any] | None:
-        parent = by_id.get(row["parent"] or "")
-        if parent is None or parent["ordinal"] >= row["ordinal"]:
-            return None
-        child_path, parent_path = _strings(row["path"]), _strings(parent["path"])
-        if len(child_path) < 2 or child_path[-1] != row["label"] or child_path[:-1] != parent_path \
-                or not parent_path or parent_path[-1] != parent["label"]:
-            return None
-        return parent
+        return row["parent"]
 
     def exact_wrapper_owner(wrapper: dict[str, Any]) -> dict[str, Any] | None:
         if wrapper["kind"] != "GROUP" or not wrapper["all_null"] or not _wrapper_literal(family, wrapper["label"]):
