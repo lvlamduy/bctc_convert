@@ -1,7 +1,8 @@
-"""Notes engine: document-owned annual-policy evidence for "Năm kết thúc ngày 31/12/Y" lanes (Codex 0250)."""
+"""Notes engine: document-owned annual-policy evidence for "Năm kết thúc ngày 31/12/Y" lanes (Codex 0250/0254)."""
 
 from __future__ import annotations
 
+import copy
 from dataclasses import replace
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from test_gemini_financial_page_store_v1 import _ingest
 from test_notes_income_tax import RECON, cells, context_of, document, kqkd, make_table
 from test_notes_source_bridge import corpus
 
-from bctc_ai.notes.annual_policy_v1 import policy_assertions_v1, resolve_annual_policy_v1
+from bctc_ai.notes.annual_policy_v1 import policy_assertions_v1, resolve_annual_policy_v1, verify_annual_policy_v1
 from bctc_ai.notes.concept_list_shape_v1 import evaluate_concept_table_v1
 from bctc_ai.notes.config_v1 import load_notes_config_v1
 from bctc_ai.notes.kernel_v1 import NotesKernelError, NotesSource, resolve_duration_lanes_v1, year_ended_policy_v1
@@ -19,9 +20,15 @@ from bctc_ai.storage import gemini_financial_page_store_v1 as shared
 
 ROOT = Path(__file__).resolve().parents[2]
 INTERIM_Q4 = ["Báo cáo kết quả hoạt động giữa niên độ cho giai đoạn từ ngày 01/1/2025 đến ngày 31/12/2025"]
-CALENDAR = "Năm tài chính của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12."
+# Actual LPB FULL69 p12 /sections/0/narratives_exact/5 wording (raw ORIGINAL discovery 6ff8b778...).
+LPB = ("(c) Kỳ kế toán\nKỳ kế toán năm của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12. "
+       "Báo cáo tài chính giữa niên độ quý IV năm 2025 của Ngân hàng được lập cho kỳ kết thúc ngày 31 tháng 12 năm 2025.")
+CALENDAR = "Kỳ kế toán năm của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12."
 YEAR_ENDED = [("Năm kết thúc ngày 31/12/2025 Triệu VND",), ("Năm kết thúc\nngày 31/12/2024\nTriệu VND",)]
-PROVENANCE = {"page_json_version_id": "v12", "physical_page": 12, "document_ordinal": 1}
+# The test document of test_notes_income_tax.document(): ordinal 1, x.pdf, "0"*64, SEPARATE.
+BINDING = {"document_ordinal": 1, "source_logical_name": "x.pdf", "source_sha256": "0" * 64, "scope": "SEPARATE"}
+PROVENANCE = {"document_ordinal": 1, "source_logical_name": "x.pdf", "source_sha256": "0" * 64,
+              "page_json_version_id": "v12", "physical_page": 12}
 
 
 def policy_page(*narratives):
@@ -31,8 +38,8 @@ def policy_page(*narratives):
             "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []}}
 
 
-def resolved(*narratives):
-    return resolve_annual_policy_v1(policy_assertions_v1(policy_page(*narratives), PROVENANCE))
+def resolved(*narratives, scope="SEPARATE"):
+    return resolve_annual_policy_v1(policy_assertions_v1(policy_page(*narratives), PROVENANCE), {**BINDING, "scope": scope})
 
 
 @pytest.fixture(scope="module")
@@ -44,40 +51,74 @@ def interim(policy, **override):
     return replace(document(quarter=4), income_context_texts=INTERIM_Q4, annual_policy=policy, **override)
 
 
-# --------------------------------------------------------------------------- evidence and resolution
+# --------------------------------------------------------------------------- evidence, resolution, verification
 
 
-def test_policy_assertions_keep_pointer_entire_clause_hashes_owner_and_window():
-    narrative = "(c) Kỳ kế toán năm. " + CALENDAR + " Báo cáo này lập cho Quý IV năm 2025 kết thúc ngày 31 tháng 12 năm 2025."
-    [assertion] = policy_assertions_v1(policy_page("Không liên quan.", narrative), PROVENANCE)
-    assert assertion["pointer"] == "/sections/0/narratives_exact/1" and assertion["narrative_exact"] == narrative
-    assert assertion["window"] == {"start": "01-01", "end": "12-31"} and assertion["owner"] == "DOCUMENT_ENTITY"
-    assert assertion["qualifiers"] == [] and len(assertion["section_sha256"]) == 64 and assertion["physical_page"] == 12
-    policy = resolve_annual_policy_v1([assertion])
-    assert policy["status"] == "CALENDAR_YEAR" and policy["pointers"] == [
-        {"page_json_version_id": "v12", "physical_page": 12, "pointer": "/sections/0/narratives_exact/1"}]
-    worded = resolved("Kỳ kế toán năm của Tập đoàn bắt đầu từ ngày 01/01 và kết thúc vào ngày 31/12 hàng năm.")
-    assert worded["status"] == "CALENDAR_YEAR"
+def test_the_actual_lpb_clause_is_a_scope_bound_calendar_definition():
+    eps = ("Theo hướng dẫn …, bao gồm những thay đổi xảy ra sau ngày kết thúc năm tài chính nhưng trước ngày phát hành "
+           "báo cáo tài chính.")
+    assertions = policy_assertions_v1(policy_page("(d) Tổng số nhân viên", LPB, eps), PROVENANCE)
+    [assertion] = assertions  # the Q4 endpoint sentence and the EPS sentence are not policy candidates
+    assert assertion["pointer"] == "/sections/0/narratives_exact/1" and assertion["narrative_exact"] == LPB
+    assert assertion["sentence_exact"] == CALENDAR and assertion["kind"] == "DEFINITION" and assertion["owner"] == "BANK"
+    assert assertion["window"] == {"start": "01-01", "end": "12-31"} and assertion["printed_years"] == []
+    policy = resolve_annual_policy_v1(assertions, BINDING)
+    assert policy["status"] == "CALENDAR_YEAR" and policy["binding"] == BINDING
+    assert verify_annual_policy_v1(policy, BINDING) == (True, "VERIFIED")
+    group = resolved("Năm tài chính của Tập đoàn bắt đầu từ ngày 01/01 và kết thúc vào ngày 31/12 hàng năm.", scope="CONSOLIDATED")
+    assert group["status"] == "CALENDAR_YEAR"
 
 
-@pytest.mark.parametrize("narratives,reason", [
-    ((), "NO_PRINTED_ANNUAL_POLICY"),
-    (("Năm tài chính bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12.",), "POLICY_OWNER_UNKNOWN_OR_FOREIGN"),
-    (("Năm tài chính của công ty con bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12.",), "POLICY_OWNER_UNKNOWN_OR_FOREIGN"),
-    ((CALENDAR + " Năm tài chính đầu tiên ngắn hơn 12 tháng.",), "POLICY_QUALIFIED_FIRST_SHORT_LONG_OR_CHANGED_YEAR"),
-    ((CALENDAR, "Năm tài chính của Ngân hàng bắt đầu từ ngày 1 tháng 4 và kết thúc vào ngày 31 tháng 3."), "POLICY_WINDOWS_CONFLICT"),
-    (("Năm tài chính của Ngân hàng bắt đầu từ ngày 1 tháng 7 và kết thúc vào ngày 30 tháng 6.",), "POLICY_NOT_A_CALENDAR_YEAR"),
+@pytest.mark.parametrize("narratives,scope,reason", [
+    ((), "SEPARATE", "NO_PRINTED_ANNUAL_POLICY"),
+    (("Kỳ kế toán năm bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12.",), "SEPARATE", "POLICY_OWNER_NOT_THE_DOCUMENT_SCOPE_ENTITY"),
+    (("Năm tài chính của Tập đoàn bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12.",), "SEPARATE",
+     "POLICY_OWNER_NOT_THE_DOCUMENT_SCOPE_ENTITY"),
+    ((CALENDAR,), "CONSOLIDATED", "POLICY_OWNER_NOT_THE_DOCUMENT_SCOPE_ENTITY"),
+    ((CALENDAR,), None, "POLICY_OWNER_NOT_THE_DOCUMENT_SCOPE_ENTITY"),
+    (("Năm tài chính của Ngân hàng Nhà nước bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12.",), "SEPARATE",
+     "POLICY_OWNER_NOT_THE_DOCUMENT_SCOPE_ENTITY"),
+    (("Năm tài chính của công ty con của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12.",), "SEPARATE",
+     "POLICY_OWNER_NOT_THE_DOCUMENT_SCOPE_ENTITY"),
+    (("Năm tài chính của Ngân hàng bắt đầu từ ngày 1 tháng 1 năm 2024 và kết thúc vào ngày 31 tháng 12 năm 2025.",), "SEPARATE",
+     "POLICY_ABSOLUTE_INTERVAL_NOT_A_RECURRENCE"),
+    (("Năm tài chính của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12 theo quyết định của Hội đồng.",),
+     "SEPARATE", "UNSUPPORTED_POLICY_WORDING"),
+    ((CALENDAR, "Năm tài chính đầu tiên của Ngân hàng ngắn hơn 12 tháng."), "SEPARATE",
+     "POLICY_QUALIFIED_FIRST_SHORT_LONG_OR_CHANGED_YEAR"),
+    ((CALENDAR, "Năm tài chính của Ngân hàng bắt đầu từ ngày 1 tháng 4 và kết thúc vào ngày 31 tháng 3."), "SEPARATE",
+     "POLICY_WINDOWS_CONFLICT"),
+    ((CALENDAR, "KỲ KẾ TOÁN NĂM CỦA NGÂN HÀNG BẮT ĐẦU TỪ NGÀY 1 THÁNG 4 VÀ KẾT THÚC VÀO NGÀY 31 THÁNG 3."), "SEPARATE",
+     "POLICY_WINDOWS_CONFLICT"),
+    (("Năm tài chính của Ngân hàng bắt đầu từ ngày 1 tháng 7 và kết thúc vào ngày 30 tháng 6.",), "SEPARATE",
+     "POLICY_NOT_A_CALENDAR_YEAR"),
 ])
-def test_unknown_foreign_qualified_conflicting_or_non_calendar_policy_stays_unresolved(narratives, reason):
-    policy = resolved(*narratives)
+def test_unknown_foreign_compound_scoped_absolute_unsupported_qualified_or_conflicting_policy_stays_unresolved(
+        narratives, scope, reason):
+    policy = resolved(*narratives, scope=scope)
     assert policy["status"] == "UNRESOLVED" and reason in policy["reasons"]
-    assert len(policy["assertions"]) == len([n for n in narratives if "bắt đầu" in n])  # every occurrence is kept
+    assert verify_annual_policy_v1(policy, {**BINDING, "scope": scope}) == (False, "DOCUMENT_ANNUAL_POLICY_UNRESOLVED")
+
+
+def test_a_status_tag_another_documents_policy_or_a_tampered_assertion_never_verifies():
+    policy = resolved(CALENDAR)
+    assert verify_annual_policy_v1({"status": "CALENDAR_YEAR"}, BINDING) == (False, "POLICY_NOT_A_RECORD")
+    assert verify_annual_policy_v1(policy, {**BINDING, "source_sha256": "9" * 64})[1] == "POLICY_BINDING_IS_ANOTHER_DOCUMENT_OR_SCOPE"
+    tampered = copy.deepcopy(policy)
+    tampered["assertions"][0]["window"]["start"] = "04-01"
+    assert verify_annual_policy_v1(tampered, BINDING)[1] == "POLICY_ASSERTION_DOES_NOT_REDERIVE_FROM_ITS_SENTENCE"
+    unbound = copy.deepcopy(policy)
+    unbound["assertions"][0]["sentence_exact"] = "Năm tài chính của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12."
+    assert verify_annual_policy_v1(unbound, BINDING)[1] == "POLICY_ASSERTION_SOURCE_BINDING_INVALID"
+    relabelled = copy.deepcopy(resolved())
+    relabelled.update(status="CALENDAR_YEAR", reasons=[])
+    assert verify_annual_policy_v1(relabelled, BINDING)[1] == "POLICY_STATUS_DOES_NOT_REDERIVE"
 
 
 # --------------------------------------------------------------------------- lanes
 
 
-def test_year_ended_lanes_take_their_own_printed_year_under_a_calendar_policy():
+def test_year_ended_lanes_take_their_own_printed_year_under_a_verified_calendar_policy():
     table = make_table(RECON[:1], YEAR_ENDED)
     lanes = resolve_duration_lanes_v1(table, interim(resolved(CALENDAR)), [], [table.table_title])
     assert [lane.period_key for lane in lanes] == ["DURATION:YEAR:2025", "DURATION:YEAR:2024"]  # 2024 printed, not minus one
@@ -88,10 +129,15 @@ def test_year_ended_lanes_take_their_own_printed_year_under_a_calendar_policy():
 @pytest.mark.parametrize("header,policy,why", [
     ("Năm kết thúc ngày 31/12/2025", None, "DOCUMENT_ANNUAL_POLICY_ABSENT"),
     ("Năm kết thúc ngày 31/12/2025", "unresolved", "DOCUMENT_ANNUAL_POLICY_UNRESOLVED"),
+    ("Năm kết thúc ngày 31/12/2025", "status_only", "POLICY_NOT_A_RECORD"),
+    ("Năm kết thúc ngày 31/12/2025", "foreign", "POLICY_BINDING_IS_ANOTHER_DOCUMENT_OR_SCOPE"),
     ("Năm kết thúc ngày 30/06/2025", "calendar", "YEAR_END_NOT_31_DECEMBER"),
 ])
-def test_absent_unresolved_or_non_december_policy_keeps_the_hold(header, policy, why):
-    policies = {None: None, "unresolved": resolved(), "calendar": resolved(CALENDAR)}
+def test_absent_unresolved_untrusted_foreign_or_non_december_policy_keeps_the_hold(header, policy, why):
+    foreign = resolve_annual_policy_v1(policy_assertions_v1(policy_page(CALENDAR), {**PROVENANCE, "source_sha256": "9" * 64}),
+                                       {**BINDING, "source_sha256": "9" * 64})
+    policies = {None: None, "unresolved": resolved(), "status_only": {"status": "CALENDAR_YEAR"}, "foreign": foreign,
+                "calendar": resolved(CALENDAR)}
     table = make_table(RECON[:1], [(header,)])
     [lane] = resolve_duration_lanes_v1(table, interim(policies[policy]), [], [table.table_title])
     assert lane.period_key is None
@@ -99,30 +145,31 @@ def test_absent_unresolved_or_non_december_policy_keeps_the_hold(header, policy,
 
 
 def test_a_contradictory_own_six_month_caption_keeps_the_hold():
-    # A report-level Q4 frame does not veto; a table's OWN six-month caption does (Codex 0250). The kernel already
-    # holds such a lane earlier (own vs report window); the policy rule refuses it on its own as well.
     own = "Chi phí thuế cho giai đoạn sáu tháng kết thúc ngày 30 tháng 6 năm 2025"
     table = make_table(RECON[:1], YEAR_ENDED[:1], title=own)
     [lane] = resolve_duration_lanes_v1(table, interim(resolved(CALENDAR)), [], [table.table_title])
     assert lane.period_key is None and not lane.period_basis.startswith("PRINTED_YEAR_ENDED") and lane.reasons
-    granted, why = year_ended_policy_v1("Năm kết thúc ngày 31/12/2025", resolved(CALENDAR), statement_period_context_v1([own]))
-    assert granted is None and why == "OWN_CAPTION_WINDOW_CONFLICT"
-    granted, why = year_ended_policy_v1("Năm kết thúc ngày 31/12/2025", resolved(CALENDAR), statement_period_context_v1([]))
-    assert granted == ("DURATION:YEAR:2025",
-                       "PRINTED_YEAR_ENDED_WITH_DOCUMENT_ANNUAL_POLICY:v12@p12/sections/0/narratives_exact/0") and why is None
+    doc = interim(resolved(CALENDAR))
+    assert year_ended_policy_v1("Năm kết thúc ngày 31/12/2025", doc, statement_period_context_v1([own])) == (
+        None, "OWN_CAPTION_WINDOW_CONFLICT")
+    assert year_ended_policy_v1("Năm kết thúc ngày 31/12/2025", doc, statement_period_context_v1([])) == (
+        ("DURATION:YEAR:2025", "PRINTED_YEAR_ENDED_WITH_DOCUMENT_ANNUAL_POLICY:v12@p12/sections/0/narratives_exact/0"), None)
 
 
-def test_bare_dates_relative_quarter_ytd_and_annotated_headers_gain_nothing():
+def test_other_headers_resolve_exactly_as_without_the_policy():
+    # Codex 0254: the interim fixture prints an explicit 01/01..31/12 range, so e.g. "Kỳ này" already resolves by its
+    # independent route; the policy must change nothing for any header that is not a YEAR_ENDED 31/12 lane.
     headers = [("31/12/2025",), ("Kỳ này",), ("Quý 4/2025",), ("Lũy kế 31/12/2025",),
                ("Năm kết thúc ngày 31/12/2025 (trình bày lại)",), ("Năm kết thúc ngày 31/12/2025 và 31/12/2024",)]
     table = make_table(RECON[:1], headers)
-    lanes = resolve_duration_lanes_v1(table, interim(resolved(CALENDAR)), [], [table.table_title])
-    assert [lane.period_key for lane in lanes] == [None, None, "DURATION:QUARTER:4:2025", None, None, None]
-    assert not any(lane.period_basis.startswith("PRINTED_YEAR_ENDED") for lane in lanes)
+    with_policy = resolve_duration_lanes_v1(table, interim(resolved(CALENDAR)), [], [table.table_title])
+    without = resolve_duration_lanes_v1(table, interim(None), [], [table.table_title])
+    assert [(lane.period_key, lane.period_basis) for lane in with_policy] == [(lane.period_key, lane.period_basis) for lane in without]
+    assert not any(lane.period_basis.startswith("PRINTED_YEAR_ENDED") for lane in with_policy)
+    assert with_policy[2].period_key == "DURATION:QUARTER:4:2025"
 
 
 def test_primary_amounts_never_change_the_policy_period(family):
-    # The same note under agreeing, differing or absent PRIMARY lines gets the same printed-policy period keys.
     keys = []
     for primary in ({}, kqkd({"DURATION:YEAR:2025": {"CURRENT": "87808"}}), kqkd({"DURATION:YEAR:2025": {"CURRENT": "1"}})):
         table = make_table(RECON, YEAR_ENDED)
@@ -135,25 +182,29 @@ def test_primary_amounts_never_change_the_policy_period(family):
 # --------------------------------------------------------------------------- authenticated ORIGINAL collection
 
 
-def _two_page_store(tmp_path, first, second):
+def _store(tmp_path, *pages):
     db = tmp_path / "source.sqlite3"
     shared.initialize_gemini_financial_page_store_v1(db)
-    one = _ingest(db, page_json=first, physical_page=1, image_sha256="c" * 64)["page_json_version_id"]
-    two = _ingest(db, page_json=second, physical_page=2, image_sha256="f" * 64)["page_json_version_id"]
-    return db, one, two
+    vids = [_ingest(db, page_json=page, physical_page=number, image_sha256=f"{number:x}" * 64)["page_json_version_id"]
+            for number, page in enumerate(pages, 1)]
+    return db, vids
 
 
-def test_policies_are_read_from_authenticated_selected_original_pages_only(tmp_path):
-    db, one, two = _two_page_store(tmp_path, policy_page("Thuyết minh chung."), policy_page("Ghi chú. " + CALENDAR))
-    policies = NotesSource(corpus(db, [(1, one), (2, two)])).annual_policies_v1([1])
-    assert policies[1]["status"] == "CALENDAR_YEAR"
-    [pointer] = policies[1]["pointers"]
-    assert pointer == {"page_json_version_id": two, "physical_page": 2, "pointer": "/sections/0/narratives_exact/0"}
-    assertion = policies[1]["assertions"][0]
-    assert assertion["source_logical_name"] == "report.pdf" and assertion["original_blob_sha256"] and assertion["replay_receipt_id"]
+def test_the_complete_frontier_is_read_from_authenticated_selected_original_pages(tmp_path):
+    db, (one, two, three) = _store(tmp_path, policy_page("Thuyết minh chung."), policy_page("Ghi chú. " + CALENDAR),
+                                   policy_page("KỲ KẾ TOÁN NĂM CỦA NGÂN HÀNG BẮT ĐẦU TỪ NGÀY 1 THÁNG 4 VÀ KẾT THÚC VÀO NGÀY 31 THÁNG 3."))
+    binding = {"document_ordinal": 1, "source_logical_name": "report.pdf", "source_sha256": "b" * 64, "scope": "SEPARATE"}
+    single = NotesSource(corpus(db, [(1, one), (2, two)])).annual_policies_v1({1: "SEPARATE"})[1]
+    assert single["status"] == "CALENDAR_YEAR" and single["binding"] == binding
+    assert single["pointers"] == [{"page_json_version_id": two, "physical_page": 2, "pointer": "/sections/0/narratives_exact/0"}]
+    assert single["assertions"][0]["original_blob_sha256"] and single["assertions"][0]["replay_receipt_id"]
+    assert verify_annual_policy_v1(single, binding) == (True, "VERIFIED")
+    # An uppercase competing definition on another selected page is part of the frontier and vetoes the grant.
+    complete = NotesSource(corpus(db, [(1, one), (2, two), (3, three)])).annual_policies_v1({1: "SEPARATE"})[1]
+    assert complete["status"] == "UNRESOLVED" and "POLICY_WINDOWS_CONFLICT" in complete["reasons"]
     # A policy printed on a page the corpus did not select is not this document's evidence.
-    unselected = NotesSource(corpus(db, [(1, one)])).annual_policies_v1([1])
-    assert unselected[1]["status"] == "UNRESOLVED" and unselected[1]["reasons"] == ["NO_PRINTED_ANNUAL_POLICY"]
-    # A loader provenance that is not the selected document's page fails the invocation.
+    assert NotesSource(corpus(db, [(1, one)])).annual_policies_v1({1: "SEPARATE"})[1]["reasons"] == ["NO_PRINTED_ANNUAL_POLICY"]
+    # Unrequested documents are not read; a loader provenance that is not the selected page fails the invocation.
+    assert NotesSource(corpus(db, [(1, one), (2, two)])).annual_policies_v1({}) == {}
     with pytest.raises(NotesKernelError):
-        NotesSource(corpus(db, [(1, one), (2, two)], relative_path="other.pdf")).annual_policies_v1([1])
+        NotesSource(corpus(db, [(1, one), (2, two)], relative_path="other.pdf")).annual_policies_v1({1: "SEPARATE"})
