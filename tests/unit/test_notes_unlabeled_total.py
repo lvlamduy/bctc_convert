@@ -16,7 +16,11 @@ import pytest
 from test_notes_expense_families import bridged, link
 from test_notes_income_tax import cells, context_of, document, make_table
 
-from bctc_ai.notes.concept_list_shape_v1 import assign_lines_v1, evaluate_concept_table_v1, unlabeled_total_row_v1
+from bctc_ai.notes.concept_list_shape_v1 import (
+    assign_lines_v1,
+    evaluate_concept_table_v1,
+    unlabeled_total_row_v1,
+)
 from bctc_ai.notes.config_v1 import NotesConfigError, load_notes_config_v1
 
 ROOT = Path(__file__).resolve().parents[2]
