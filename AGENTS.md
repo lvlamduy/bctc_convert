@@ -131,6 +131,15 @@ is still unpromoted; acquire the current root-only lease before another runtime.
 This supersedes the older LIVE22643/92272 states, not their retained evidence;
 no notes integration, family seal or automatic retry.
 
+The F36 batch-authority and live-admission ORIGINAL query-base reuse is now
+promoted after20 targeted,1140normal/4327subtest,352cross-family and actual
+six-ORIGINAL typed-equality gates. Read
+`docs/operations/F36_BATCH_AUTHORITY_ORIGINAL_BASE_MEMO_CHECKPOINT_2026-10-24.md`.
+The one measured pair is not a wholeFULL speed guarantee; the old CPU failure
+has no phase proof that it reached admission. No automatic full retry or seal.
+The separate notes integration candidate retained its Ruff-before-tests failure
+and lint correction; its corrected-tree tests/corpus gates remain pending.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address

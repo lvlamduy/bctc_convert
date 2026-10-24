@@ -18,7 +18,9 @@ from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_v1 import 
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    decode_canonical_json_bytes_v1,
     same_typed_json_v1,
 )
 
@@ -73,7 +75,7 @@ class PrimaryWitnessAdmissionV1:
     memory mutation/reflection. JSON facts, hashes and approval booleans cannot
     be passed as this object. All persisted facts below are deterministic.
     """
-    __slots__ = ("_data", "_seal", "_active")
+    __slots__ = ("_data", "_seal", "_active", "_original_query_memo_v1")
 
     def __new__(cls, *args, **kwargs):
         raise PrimaryWitnessAdmissionError("live pixel authentication factory required")
@@ -89,6 +91,8 @@ class PrimaryWitnessAdmissionV1:
         _need(compiled_specs.get(HASH_KEY) == self._data["spec_sha256"]
               and canonical_json_sha256_v1(compiled_specs.get(SPEC_KEY)) == self._data["spec_sha256"],
               "witness admission/spec scope mismatch")
+        _need(canonical_json_sha256_v1(compiled_specs) == self._data["compiled_specs_sha256"],
+              "witness admission compiled policy changed")
         for reference in self._data["authority_refs"]:
             path = Path(reference["path"])
             _need(_identity(path.stat()) == tuple(reference["identity"]),
@@ -113,6 +117,50 @@ class PrimaryWitnessAdmissionV1:
 
     def _project_v1(self, *, pages, document, selected_page_axis, compiled_specs,
                     _borrow_nonapplicable_pages_v1):
+        private, facts = self._project_document_facts_v1(
+            pages=pages, document=document, selected_page_axis=selected_page_axis,
+            compiled_specs=compiled_specs,
+            _borrow_nonapplicable_pages_v1=_borrow_nonapplicable_pages_v1)
+        self.recheck()
+        return private, facts
+
+    def _project_run_v1(self, *, pages, documents, selected_page_axis, compiled_specs):
+        """Private, non-yielding run projection with full authority checks at both boundaries.
+
+        Document capabilities/fingerprints remain fresh. Only repeated file-byte
+        reads move to the enclosing batch boundaries; no financial result is held
+        or reused. Public project() and the single-document path stay unchanged.
+        """
+        self.require_run(documents, selected_page_axis, compiled_specs)
+        policy_sha256 = canonical_json_sha256_v1(compiled_specs)
+        axes = {document["document_ordinal"]: [] for document in documents}
+        _need(set(pages) == set(axes), "witness batch ORIGINAL document frontier differs")
+        for page in selected_page_axis:
+            axes[page["document_ordinal"]].append(page)
+        private, facts = {}, {}
+        self.recheck()
+        try:
+            for document in documents:
+                _need(canonical_json_sha256_v1(compiled_specs) == policy_sha256,
+                      "witness batch compiled policy changed")
+                ordinal = document["document_ordinal"]
+                private[ordinal], facts[ordinal] = self._project_document_facts_v1(
+                    pages=pages[ordinal], document=document, selected_page_axis=axes[ordinal],
+                    compiled_specs=compiled_specs, _borrow_nonapplicable_pages_v1=True)
+            _need(canonical_json_sha256_v1(compiled_specs) == policy_sha256,
+                  "witness batch compiled policy changed")
+            self.require_run(documents, selected_page_axis, compiled_specs)
+            for binding in self._data["bindings"]:
+                ordinal = binding["document"]["document_ordinal"]
+                _need(binding["original_fingerprint"] == _fingerprint(pages[ordinal], axes[ordinal]),
+                      "witness batch ORIGINAL document changed before return")
+        finally:
+            # No private result escapes when a late file/capability check fails.
+            self.recheck()
+        return private, facts
+
+    def _project_document_facts_v1(self, *, pages, document, selected_page_axis, compiled_specs,
+                                   _borrow_nonapplicable_pages_v1):
         self._check(compiled_specs)
         document = _document(document)
         ordinal = document["document_ordinal"]
@@ -134,8 +182,71 @@ class PrimaryWitnessAdmissionV1:
             "mapping_permission": False, "unit_permission": False,
             "period_permission": False, "scope_permission": False, "financial_acceptance": False,
         }
-        self.recheck()
         return private, {**facts, "receipt_id": "gjoepwa1:document:" + canonical_json_sha256_v1(facts)}
+
+    def _original_query_scope_v1(self, *, pages, documents, selected_page_axis, compiled_specs):
+        self.require_run(documents, selected_page_axis, compiled_specs)
+        axes = {document["document_ordinal"]: [] for document in documents}
+        _need(set(pages) == set(axes), "ORIGINAL query memo document frontier differs")
+        for page in selected_page_axis:
+            axes[page["document_ordinal"]].append(page)
+        fingerprints = []
+        for binding in self._data["bindings"]:
+            ordinal = binding["document"]["document_ordinal"]
+            bundle = pages[ordinal]
+            _need(type(bundle) is dict and set(bundle) == {p["page_json_version_id"] for p in axes[ordinal]},
+                  "ORIGINAL query memo page frontier differs")
+            actual = _fingerprint(bundle, axes[ordinal])
+            _need(actual == binding["original_fingerprint"], "ORIGINAL query memo source fingerprint changed")
+            fingerprints.append([ordinal, actual])
+        return canonical_json_sha256_v1({
+            "compiled_specs_sha256": self._data["compiled_specs_sha256"],
+            "documents": list(documents), "page_axis": list(selected_page_axis),
+            "original_fingerprints": fingerprints,
+        })
+
+    def _original_query_base_v1(self, *, pages, documents, selected_page_axis, compiled_specs):
+        """Fresh decoded generic ORIGINAL query facts, never caller evidence or financial results.
+
+        One immutable bytes entry belongs only to this live admission. It stays
+        outside _data, which is checked on every document. A miss constructs from
+        actual ORIGINAL pages through the fixed family helper; all scope and file
+        barriers must pass before publication. Recovery/trials still run afresh.
+        """
+        from bctc_ai.evaluation.gemini_json_operating_expense_family_v1 import (
+            _fresh_original_primary_base_v1,
+        )
+        try:
+            self.recheck()
+            try:
+                scope = self._original_query_scope_v1(pages=pages, documents=documents,
+                    selected_page_axis=selected_page_axis, compiled_specs=compiled_specs)
+                entry = self._original_query_memo_v1
+                if entry is None:
+                    base = _fresh_original_primary_base_v1(
+                        evidence={"selected_document_axis": canonical_clone_v1(self._data["documents"]),
+                                  "selected_page_axis": canonical_clone_v1(self._data["page_axis"])},
+                        pages=pages, compiled_specs=compiled_specs)
+                    payload = canonical_json_bytes_v1(base)
+                    del base
+                    candidate = (scope, sha256(payload).hexdigest(), payload)
+                else:
+                    _need(type(entry) is tuple and len(entry) == 3 and entry[0] == scope
+                          and type(entry[2]) is bytes and sha256(entry[2]).hexdigest() == entry[1],
+                          "ORIGINAL query memo immutable scope/payload differs")
+                    candidate = entry
+                result = decode_canonical_json_bytes_v1(candidate[2])
+                _need(self._original_query_scope_v1(pages=pages, documents=documents,
+                    selected_page_axis=selected_page_axis, compiled_specs=compiled_specs) == scope,
+                    "ORIGINAL query memo source scope changed before return")
+            finally:
+                self.recheck()
+        except BaseException:
+            object.__setattr__(self, "_original_query_memo_v1", None)
+            raise
+        if entry is None:
+            object.__setattr__(self, "_original_query_memo_v1", candidate)
+        return result
 
     def recheck(self):
         _need(getattr(self, "_active", False) is True
@@ -149,6 +260,7 @@ class PrimaryWitnessAdmissionV1:
         try:
             self.recheck()
         finally:
+            object.__setattr__(self, "_original_query_memo_v1", None)
             object.__setattr__(self, "_active", False)
 
 
@@ -254,11 +366,13 @@ def authenticate_primary_witness_admission_v1(*, spec_path, expected_sha256, ind
         bindings.append({"document": document, "original_fingerprint": _fingerprint(page_json_by_document[ordinal], axis),
                          "pixel_receipts": [pixels[wid] for wid in ids]})
     data = {"documents": docs, "page_axis": axes, "bindings": bindings, "spec_ref": spec_ref,
+            "compiled_specs_sha256": canonical_json_sha256_v1(compiled_specs),
             "spec_sha256": expected_sha256, "authority_refs": references}
     admission = object.__new__(PrimaryWitnessAdmissionV1)
     object.__setattr__(admission, "_data", canonical_clone_v1(data))
     object.__setattr__(admission, "_seal", canonical_json_sha256_v1(data))
     object.__setattr__(admission, "_active", True)
+    object.__setattr__(admission, "_original_query_memo_v1", None)
     admission.recheck()
     return admission
 

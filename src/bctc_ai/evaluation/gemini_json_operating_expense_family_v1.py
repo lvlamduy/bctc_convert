@@ -6590,15 +6590,9 @@ def _admitted_primary_run_v1(*, evidence, pages, compiled_specs, admission):
         require_admission_v1,
     )
     capability = require_admission_v1(admission)
-    capability.require_run(evidence["selected_document_axis"], evidence["selected_page_axis"], compiled_specs)
-    private, facts = {}, {}
-    for document in evidence["selected_document_axis"]:
-        ordinal = document["document_ordinal"]
-        axis = [p for p in evidence["selected_page_axis"] if p["document_ordinal"] == ordinal]
-        private[ordinal], facts[ordinal] = capability._project_for_run_v1(
-            pages=pages[ordinal], document=document, selected_page_axis=axis,
-            compiled_specs=compiled_specs)
-    return private, facts
+    return capability._project_run_v1(
+        pages=pages, documents=evidence["selected_document_axis"],
+        selected_page_axis=evidence["selected_page_axis"], compiled_specs=compiled_specs)
 
 
 def _fresh_original_primary_base_v1(*, evidence, pages, compiled_specs):
@@ -6650,11 +6644,16 @@ def build_gemini_json_operating_expense_indexed_query_evidence_v1(
 
 
 def _verify_primary_indexed_v1(*, evidence, pages, compiled_specs, admission):
+    from bctc_ai.evaluation.gemini_json_operating_expense_primary_witness_admission_v1 import (
+        require_admission_v1,
+    )
     checked = validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
         evidence, compiled_specs=compiled_specs)
     # Verifying the live scope happens before any caller-supplied axes are used.
     _admitted_primary_run_v1(evidence=checked, pages=pages, compiled_specs=compiled_specs, admission=admission)
-    raw_base = _fresh_original_primary_base_v1(evidence=checked, pages=pages, compiled_specs=compiled_specs)
+    raw_base = require_admission_v1(admission)._original_query_base_v1(
+        pages=pages, documents=checked["selected_document_axis"],
+        selected_page_axis=checked["selected_page_axis"], compiled_specs=compiled_specs)
     rebuilt = build_gemini_json_operating_expense_indexed_query_evidence_v1(
         base_indexed_query_evidence=raw_base, page_json_by_document=pages,
         compiled_specs=compiled_specs, primary_witness_admission=admission)
