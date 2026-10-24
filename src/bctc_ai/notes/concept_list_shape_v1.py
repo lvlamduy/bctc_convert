@@ -322,11 +322,16 @@ def unlabeled_total_row_v1(table: NoteTable, family: Family, roles: list[RowRole
         return None, "TOTAL_ROW_ALREADY_DISPOSED:" + roles[index].reason
     if any(role.role == line or line in (role.candidates or []) for role in roles):
         return None, "PRINTED_TOTAL_LINE_ALREADY_PRESENT"
-    # Codex 0302: the equation's unread-row span starts at its first recognized term, so a valued row printed BEFORE
-    # it would escape. The unlabeled total is admitted only when the COMPLETE pre-total valued population is
-    # accounted for by printed structure: a read line, or detail inside a read line's printed population.
+    # Codex 0302/0304: the equation's unread-row span starts at its first recognized term, and recognition alone does
+    # not place a row in the root population. The unlabeled total is admitted only when EVERY valued pre-total row is
+    # a source top-level root-frontier term, or proven detail of one; a root-term label printed nested is refused.
+    terms = root_terms_v1(family, line)
     for earlier, other in enumerate(table.rows[:index]):
-        if _has_values(table, other) and _accounted_owner_v1(table, family, roles, earlier) is None:
+        if not _has_values(table, other):
+            continue
+        if roles[earlier].disposition == "MEMBER" and roles[earlier].role in terms and not _source_top_level_v1(other):
+            return None, "ROOT_TERM_NOT_AT_SOURCE_TOP_LEVEL:" + other.row_id
+        if _root_frontier_owner_v1(table, family, roles, earlier, terms) is None:
             return None, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:" + other.row_id
     return index, "UNLABELED_ORIGINAL_ROW_KIND_TOTAL:" + ("NULL_LABEL" if row.label is None else "EMPTY_LABEL")
 
@@ -334,28 +339,50 @@ def unlabeled_total_row_v1(table: NoteTable, family: Family, roles: list[RowRole
 T_ROUTE_REASON = "UNLABELED_ORIGINAL_ROW_KIND_TOTAL:"
 
 
-def _accounted_owner_v1(table: NoteTable, family: Family, roles: list[RowRole], index: int) -> int | None:
-    """Row index of the read line whose printed population contains valued row ``index``, else None (Codex 0302).
+def root_terms_v1(family: Family, line: str) -> set[str]:
+    """The terms of the family equation(s) whose target is ``line``: the configured root frontier (Codex 0304)."""
 
-    A MEMBER row accounts for itself. A SOURCE_ONLY row (never a ROW_VETO foreign row, never AMBIGUOUS) is detail of
-    a MEMBER by proven printed edges only: its immediate proven parent (``proven_parent_index_v1``) is a MEMBER, or
-    that parent is ONE source-proven transparent wrapper (``_owner_through_wrapper``: family literal, GROUP, every
-    ORIGINAL value cell null, EXACT single-table domain, its own proven parent edge) whose owner row is the MEMBER
-    of that line. Detail is inside its owner's amount: it is accounted for, never a component of the total.
+    return {term for equation in family.raw.get("equations") or [] if equation.get("equals") == line
+            for term in _equation_terms(equation)}
+
+
+def _source_top_level_v1(row) -> bool:
+    """No printed parent: no ``parent_row_id`` and no printed hierarchy component other than the row's own label."""
+
+    hierarchy = row.hierarchy_raw if row.hierarchy_raw is not None else row.hierarchy
+    parts = [part for part in hierarchy or () if isinstance(part, str) and part.strip()]
+    return not row.parent_row_id and parts in ([], [row.label])
+
+
+def _root_frontier_owner_v1(table: NoteTable, family: Family, roles: list[RowRole], index: int,
+                            terms: set[str]) -> int | None:
+    """Row index of the ROOT-FRONTIER term whose printed population contains valued row ``index``, else None.
+
+    Codex 0302/0304. The frontier is a MEMBER of one of the root equation's ``terms`` printed at SOURCE top level
+    (``_source_top_level_v1``); it accounts for itself. Any other valued row - a non-root MEMBER (a flat "Khấu hao"
+    row is recognized, but not in the root population) or a SOURCE_ONLY row (never a ROW_VETO foreign row, never
+    AMBIGUOUS) - is accounted for only as detail of a frontier row by proven printed edges: its immediate proven parent
+    (``proven_parent_index_v1``) is a frontier row, or that parent is ONE source-proven transparent wrapper
+    (``_owner_through_wrapper``: family literal, GROUP, every ORIGINAL value cell null, EXACT single-table domain, its
+    own proven parent edge) whose owner row is a frontier row of exactly that line. No longer chains. Detail is inside
+    its owner's amount: accounted for once, never a component of the total.
     """
 
+    def frontier(i: int) -> bool:
+        return roles[i].disposition == "MEMBER" and roles[i].role in terms and _source_top_level_v1(table.rows[i])
+
     role = roles[index]
-    if role.disposition == "MEMBER":
+    if frontier(index):
         return index
-    if role.disposition != "SOURCE_ONLY" or role.reason.startswith("ROW_VETO:"):
+    if role.disposition not in {"MEMBER", "SOURCE_ONLY"} or role.reason.startswith("ROW_VETO:") or role.role in terms:
         return None
     parent_index, _reason = proven_parent_index_v1(table, index)
     if parent_index is None:
         return None
-    if roles[parent_index].disposition == "MEMBER":
+    if frontier(parent_index):
         return parent_index
     through = _owner_through_wrapper(table, parent_index, family)
-    if through is not None and roles[through[1]].disposition == "MEMBER" and roles[through[1]].role == through[0]:
+    if through is not None and roles[through[1]].role == through[0] and frontier(through[1]):
         return through[1]
     return None
 
@@ -564,6 +591,7 @@ def evaluate_concept_table_v1(
     # Only a table closed by the unlabeled-total route (proposal T) also excuses detail reached through one proven
     # transparent wrapper; every other table keeps the immediate-parent rule unchanged (Codex 0302).
     t_route = any(role.reason.startswith(T_ROUTE_REASON) for role in roles)
+    t_terms = root_terms_v1(family, family.raw["unlabeled_total_line"]) if t_route else set()
     for lane in evaluation.lanes:
         values = {role.role: parse_cell_v1(table, table.rows[role.row_index], lane.column, separators, document.separator_roles)
                   for role in roles if role.disposition == "MEMBER"}
@@ -579,7 +607,7 @@ def evaluate_concept_table_v1(
             if role.disposition == "SOURCE_ONLY" and role.row_index not in vetoed_rows:
                 parent, _reason = detail_parent_line_v1(table, roles, role.row_index)
                 if parent is None and t_route:
-                    owner = _accounted_owner_v1(table, family, roles, role.row_index)
+                    owner = _root_frontier_owner_v1(table, family, roles, role.row_index, t_terms)
                     parent = roles[owner].role if owner is not None and owner != role.row_index else None
                 # The parent must itself carry a parsed amount in this lane to contain its detail.
                 if parent is not None and (parent not in values or values[parent].state not in NUMERIC):

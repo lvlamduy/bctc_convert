@@ -247,11 +247,44 @@ def test_detail_under_a_proven_wrapper_is_accounted_inside_its_owner_never_as_a_
 
 
 def test_without_the_original_axis_proof_a_wrapper_accounts_for_nothing(family):
-    table = lpb_wrapped(bridge=False)  # no EXACT single-table bridge: "all wrapper cells null" is not proven
+    # No EXACT single-table bridge: "all wrapper cells null" is not proven, so even the recognized salary line under the
+    # first wrapper (r3, a non-root MEMBER) reaches no root-frontier owner.
+    table = lpb_wrapped(bridge=False)
     assigned = roles(table, family)
+    assert assigned[3].role == "SALARY_ALLOWANCE"
     assert unlabeled_total_row_v1(table, family, assigned, owned_subject=True) == (
-        None, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:r13")
+        None, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:r3")
     assert assigned[17].disposition == "SOURCE_ONLY"
+
+
+def _flat_depreciation(table):
+    # Codex 0304: amounts unchanged; only the printed parent edge of r6 is removed. "Khấu hao" is still recognized
+    # (a MEMBER), but it is not a root term and no longer printed inside ASSET's population.
+    table.rows[6] = replace(table.rows[6], parent_row_id=None, hierarchy=(), hierarchy_raw=None)
+
+
+def _detail_under_a_non_root_line(table):
+    link(table, 10, 9)  # the unread admin detail printed under "Công tác phí" (a non-root line), not under ADMIN
+
+
+def _nested_root_term(table):
+    link(table, 11, 8)  # the deposit-insurance root term printed INSIDE the admin group
+
+
+@pytest.mark.parametrize("mutate,why", [
+    (_flat_depreciation, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:r6"),
+    (_detail_under_a_non_root_line, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:r10"),
+    (_nested_root_term, "ROOT_TERM_NOT_AT_SOURCE_TOP_LEVEL:r11"),
+])
+def test_recognition_alone_never_places_a_row_in_the_root_population(family, mutate, why):
+    table = lpb_like()  # printed totals 221 / 196 unchanged
+    mutate(table)
+    assigned = roles(table, family)
+    assert unlabeled_total_row_v1(table, family, assigned, owned_subject=True) == (None, why)
+    assert assigned[14].disposition == "SOURCE_ONLY"
+    [evaluation] = evaluate(table, family)
+    assert not any(e["name"] == "TOTAL_FROM_TOP_LEVEL_LINES" for e in evaluation.equations)
+    assert cells([evaluation])[("EMPLOYEE_EXPENSE", YEAR)]["acceptance"] == "ACCEPTED"
 
 
 def test_a_labeled_total_keeps_the_immediate_parent_rule_unchanged(family):
