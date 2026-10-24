@@ -94,3 +94,29 @@ def test_lazy_row_insertion_still_rejects_duplicate_accepted_write_keys(tmp_path
     duplicate = cell(row=2)  # Different locator, same accepted canonical write key.
     with pytest.raises(NotesStoreError, match="two accepted cells share a write key"):
         write_notes_store_v1(tmp_path / "duplicate.sqlite3", manifest={"synthetic": True}, cells=[original, duplicate])
+
+
+@pytest.mark.parametrize("attack,reason", [
+    ("late_raw", "stored cell 3 differs from its canonical JSON record"),
+    ("reordered_late", "stored cells differ from the recorded projection"),
+    ("missing_last", "stored cells differ from the recorded projection"),
+])
+def test_reload_must_validate_late_rows_and_the_complete_ordered_projection(tmp_path, attack, reason):
+    path = tmp_path / "late-tamper.sqlite3"
+    original = _cells()
+    write_notes_store_v1(path, manifest={"synthetic": True}, cells=original)
+    assert canonical_json_bytes_v1(reload_notes_store_v1(path)[1]) == canonical_json_bytes_v1(original)
+    with closing(sqlite3.connect(path)) as connection:
+        if attack == "late_raw":
+            connection.execute("UPDATE note_cell SET raw_text = 'different' WHERE cell_ordinal = 3")
+        elif attack == "reordered_late":
+            # Remain contiguous and keep every normalized row consistent with
+            # its JSON; only the stored full ordered projection detects this.
+            connection.execute("UPDATE note_cell SET cell_ordinal = 9 WHERE cell_ordinal = 2")
+            connection.execute("UPDATE note_cell SET cell_ordinal = 2 WHERE cell_ordinal = 3")
+            connection.execute("UPDATE note_cell SET cell_ordinal = 3 WHERE cell_ordinal = 9")
+        else:
+            connection.execute("DELETE FROM note_cell WHERE cell_ordinal = 3")
+        connection.commit()
+    with pytest.raises(NotesStoreError, match=reason):
+        reload_notes_store_v1(path)
