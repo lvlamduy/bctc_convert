@@ -142,6 +142,18 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
                              for name, groups in (raw.get("row_vetoes") or {}).items()}
         _require(all(line in axes[raw["axis"]].members for line in raw.get("foreign_row_holds") or []),
                  f"{path.name}: foreign_row_holds must name lines of the family axis")
+        if "unlabeled_total_line" in raw:
+            # Proposal T (Codex 0296): only a CONCEPT_LIST family's own emitted ROOT total - the target of a declared
+            # equation that is itself no equation's term - may be closed by an unlabeled ORIGINAL TOTAL row.
+            line = raw["unlabeled_total_line"]
+            equations = raw.get("equations") or []
+            terms = {term for equation in equations for key in ("plus", "minus", "plus_present") for term in equation.get(key, [])}
+            terms |= {term for equation in equations for key in ("plus_first_present", "minus_first_present")
+                      for group in equation.get(key, []) for term in group}
+            _require(raw["shape"] == "CONCEPT_LIST" and line in axes[raw["axis"]].members
+                     and line in raw.get("emit_lines", []) and line not in terms
+                     and any(equation.get("equals") == line for equation in equations),
+                     f"{path.name}: unlabeled_total_line must be an emitted CONCEPT_LIST root total validated by an equation")
         raw["retrieval"]["explicit_title_phrases"] = [
             [fold_vietnamese(str(p)) for p in g] for g in raw["retrieval"].get("explicit_title_phrases", [])
         ]

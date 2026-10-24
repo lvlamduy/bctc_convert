@@ -187,3 +187,5 @@ must not be restored, uploaded, or reintroduced into the production path.
 Do not restore or commit credentials. Authenticate again on the new machine.
 Large corpus, audit, and Codex-session material belongs in the private,
 versioned S3 migration prefix recorded in the migration document.
+
+Read `docs/operations/F36_NOTES_UNLABELED_TOTAL_AND_ORIGINAL_INVENTORY_CHECKPOINT_2026-10-25.md` for the later opt-in T integration: actual214, controlled FULL271/COMMON204 and complete typed deltas retain every old accepted observation. Complete neutral ORIGINAL inventories and historical legacy field inventories passed separately on isolated sources; they grant no financial permission. The unpromoted pure root-closure draft has a real inventory-envelope schema blocker. F36 WHOLE_TABLE/root, canonical/source/residual/PDF/ledger gates remain; no family seal. Prefer affected-family/document development replay before terminal broad gates. Preserve all earlier failures and artifact provenance.
