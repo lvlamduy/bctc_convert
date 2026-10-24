@@ -9,6 +9,7 @@ from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
 
+import pytest
 from test_f36_notes_core_adapter_v1 import example as example
 from test_gemini_income_tax_raw_money_census_v1 import _fixture
 
@@ -49,16 +50,19 @@ def _put(root, relative, value):
     return {**_ref(path), "path": relative}
 
 
-def _source_fixture(tmp_path, monkeypatch):
+def _source_fixture(tmp_path, monkeypatch, *, interim_q4):
     labels = ["Chi nộp thuế và các khoản phí, lệ phí", "Chi phí cho nhân viên", "Chi về tài sản",
               "Tổng chi phí hoạt động"]
     values = [("10", "9"), ("20", "18"), ("30", "27"), ("60", "54")]
     page = {"status": "FINANCIAL_NOTE_CONTENT",
             "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
             "sections": [{"content_kind": "FINANCIAL_NOTE", "statement_type": "NOT_APPLICABLE",
-                "title_exact": "Chi phí hoạt động", "narratives_exact": [], "tables": [{
+                "title_exact": "Chi phí hoạt động", "narratives_exact": ([
+                    "Kỳ kế toán năm của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12."
+                ] if interim_q4 else []), "tables": [{
                     "title_exact": "Chi phí hoạt động", "unit_exact": "Triệu đồng", "continuation": "NONE",
-                    "columns": [{"header_path_exact": [f"Năm {year}"], "value_kind": "MONEY"}
+                    "columns": [{"header_path_exact": [f"Năm kết thúc ngày 31/12/{year}" if interim_q4 else f"Năm {year}"],
+                                 "value_kind": "MONEY"}
                                 for year in (2025, 2024)],
                     "rows": [{"label_exact": label, "row_kind": "TOTAL" if i == 3 else "ITEM",
                               "hierarchy_path_exact": [label], "values_exact": list(amounts)}
@@ -100,23 +104,28 @@ def _source_fixture(tmp_path, monkeypatch):
     return corpus, page
 
 
-def test_real_f36_source_replay_precedes_experimental_store_and_exact_readback(example, tmp_path, monkeypatch):
+@pytest.mark.parametrize("interim_q4", [False, True])
+def test_real_f36_source_replay_precedes_experimental_store_and_exact_readback(example, tmp_path, monkeypatch, interim_q4):
     """No saved trial is returned by the checked callback: it reconstructs source rules."""
-    corpus, original = _source_fixture(tmp_path, monkeypatch)
+    corpus, original = _source_fixture(tmp_path, monkeypatch, interim_q4=interim_q4)
     production, _, _ = example
     topology = deepcopy(production["topology"])
     topology["source"] = {"corpus_name": corpus.name, "artifact_root": str(corpus.root),
         "index_ref": _ref(corpus.index_path), "database_ref": _ref(corpus.db_path),
         "corpus_identity": corpus.identity(), "document_axis": adapter._document_axis(corpus)}
     evaluation = deepcopy(production["evaluation"])
-    # This declared PRIMARY fixture supplies source-bound scope and printed annual
-    # duration, not amounts, financial decisions, ROOT closures or notes trials.
+    # This declared PRIMARY fixture supplies source-bound scope and its printed
+    # report context, not amounts, financial decisions, ROOT closures or notes trials.
     primary = tmp_path / "primary.sqlite3"
     result = {"document": corpus.documents[0].identity(), "corpus": corpus.identity(), "notes_start_page": 1,
               "cells": [], "instances": [{"presentation_role": "PRIMARY", "scope": "SEPARATE",
                 "statement": "KQKD", "period_context": {"evidence": [
-                    "Cho năm tài chính kết thúc ngày 31 tháng 12 năm 2025"]}, "tables": [],
-                "lanes": [{"period": {"key": f"DURATION:YEAR:{year}"}} for year in (2025, 2024)]}]}
+                    # Exact positive INTERIM_Q4 frame from the existing annual-policy tests;
+                    # it is an interim window, not a manufactured annual report title.
+                    "Báo cáo kết quả hoạt động giữa niên độ cho giai đoạn từ ngày 01/1/2025 đến ngày 31/12/2025" if interim_q4
+                    else "Cho năm tài chính kết thúc ngày 31 tháng 12 năm 2025"]}, "tables": [],
+                "lanes": [] if interim_q4 else [{"period": {"key": f"DURATION:YEAR:{year}"}}
+                                                for year in (2025, 2024)]}]}
     with sqlite3.connect(primary) as connection:
         connection.execute("CREATE TABLE document_result(document_ordinal INTEGER PRIMARY KEY, result_json TEXT NOT NULL)")
         connection.execute("INSERT INTO document_result VALUES (?,?)", (1, json.dumps(result, ensure_ascii=False)))
@@ -141,6 +150,11 @@ def test_real_f36_source_replay_precedes_experimental_store_and_exact_readback(e
     assert {m["role"]: [v["coefficient"] for v in m["values"]] for m in trials[0]["mappings"]} == {
         "TAX_FEES": [10, 9], "EMPLOYEE_EXPENSE": [20, 18], "ASSET_EXPENSE": [30, 27],
         "FAMILY_ROOT_TOTAL": [60, 54]}
+    assert all([p["period_key"] for p in mapping["period_axis"]] == ["DURATION:YEAR:2025", "DURATION:YEAR:2024"]
+               for mapping in trials[0]["mappings"])
+    if interim_q4:
+        assert all(c["period_basis"].startswith("PRINTED_YEAR_ENDED_WITH_DOCUMENT_ANNUAL_POLICY")
+                   for c in trials[0]["notes_ledger"]["cells"])
     query = adapter.build_f36_notes_query_evidence_v1(trials=trials, compiled_specs=compiled)
     sweep = adapter.build_f36_notes_core_sweep_v1(corpus_manifest_index_id=corpus.corpus_manifest_index_id,
         topology_spec=topology, evaluation_spec=evaluation, schema_binding_spec=production["schema"],

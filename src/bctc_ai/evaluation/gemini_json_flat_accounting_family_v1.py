@@ -5425,7 +5425,9 @@ def validate_gemini_json_flat_family_sweep_v1(value: Any) -> dict[str, Any]:
     """Rebuild one persisted sweep envelope and reject coherent drift."""
 
     if type(value) is dict and value.get("format_version") == "GEMINI_JSON_F36_NOTES_STRICT_CORE_SWEEP_V1":
-        from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import validate_f36_notes_core_sweep_v1
+        from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
+            validate_f36_notes_core_sweep_v1,
+        )
 
         return validate_f36_notes_core_sweep_v1(value)
 

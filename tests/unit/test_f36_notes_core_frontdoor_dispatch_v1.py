@@ -8,8 +8,12 @@ from test_f36_notes_core_adapter_v1 import ref, sweep_of
 from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
     replay_f36_notes_core_trials_from_source_v1,
 )
-from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import build_gemini_json_flat_family_sweep_v1
-from bctc_ai.storage.gemini_accounting_family_store_v1 import ingest_gemini_accounting_family_sweep_v1
+from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+    build_gemini_json_flat_family_sweep_v1,
+)
+from bctc_ai.storage.gemini_accounting_family_store_v1 import (
+    ingest_gemini_accounting_family_sweep_v1,
+)
 
 
 def test_generic_builder_cannot_mint_new_engine_evidence_without_the_owned_builder(example):
