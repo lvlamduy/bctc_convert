@@ -64,7 +64,11 @@ def _canonical(value: Any) -> str:
 
 
 def cells_projection_sha256_v1(cells: list[dict[str, Any]]) -> str:
-    return hashlib.sha256(_canonical(cells).encode("utf-8")).hexdigest()
+    digest = hashlib.sha256()
+    encoder = json.JSONEncoder(ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+    for chunk in encoder.iterencode(cells):
+        digest.update(chunk.encode("utf-8"))
+    return digest.hexdigest()
 
 
 def _cell_row_v1(index: int, c: dict[str, Any]) -> tuple[Any, ...]:
@@ -98,7 +102,7 @@ def write_notes_store_v1(path: Path, *, manifest: dict[str, Any], cells: list[di
         try:
             connection.executemany(
                 "INSERT INTO note_cell VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [_cell_row_v1(index, c) for index, c in enumerate(cells)],
+                (_cell_row_v1(index, c) for index, c in enumerate(cells)),
             )
         except sqlite3.IntegrityError as error:
             raise NotesStoreError(f"two accepted cells share a write key: {error}") from error
