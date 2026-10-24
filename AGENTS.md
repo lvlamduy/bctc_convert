@@ -140,6 +140,16 @@ has no phase proof that it reached admission. No automatic full retry or seal.
 The separate notes integration candidate retained its Ruff-before-tests failure
 and lint correction; its corrected-tree tests/corpus gates remain pending.
 
+The experimental notes command is now integrated as a separate opt-in entrypoint after
+actual181 tests, FULL271/COMMON204 controlled diagnostics and all475 output-pair
+checks. Read `docs/operations/NOTES_OPTIN_INTEGRATION_STABLE_PERIOD_EXPORT_CHECKPOINT_2026-10-25.md`.
+The stable full-period-key tiebreak corrects hashseed-dependent Excel column order;
+all existing source files/frozen hashes remain unchanged. Retain the raw-comparator
+and CPU-limit failures and the optional visual-preview failure. Notes acceptance
+is experimental: it does not waive F36 whole-table/root policy or close F39/F36,
+claim legacyF37, open F41, or retire the legacy authority. T remains an isolated
+unrun candidate pending source-frontier review. Acquire the runtime lease first.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address

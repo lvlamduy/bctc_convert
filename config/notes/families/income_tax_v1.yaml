@@ -1,0 +1,60 @@
+# Plugin: the income-tax note (F39 "Chi phí thuế thu nhập doanh nghiệp").
+# Shape CONCEPT_LIST: each row is one line of the INCOME_TAX_LINE axis, each
+# money column one reporting window. Nothing here is bank-specific: lines are
+# phrase rules on the printed label, periods come from printed headers or the
+# report's printed period, units are printed. A lane is accepted only when
+# its reading is proven: by the note's own arithmetic, or by its profit
+# before tax / tax expense lines equalling the report's own income statement
+# for the same printed period. A differing income statement line vetoes the
+# lane; the income statement never selects a period. Prototype, not acceptance.
+format_version: NOTES_FAMILY_V1
+family: INCOME_TAX
+shape: CONCEPT_LIST
+axis: INCOME_TAX_LINE
+period_basis: DURATION
+concept: INCOME_TAX_NOTE
+
+retrieval:
+  row_label_like: ['%truoc thue%', '%thu nhap chiu thue%', '%thu nhap tinh thue%', '%loi nhuan chiu thue%', '%chi phi thue%',
+                   '%thue tndn%', '%thue thu nhap doanh nghiep%']
+  # Lines that identify a reconciliation when the note title is not printed.
+  anchor_lines: [PROFIT_BEFORE_TAX, TAXABLE_INCOME, TAX_AT_STATUTORY_RATE, CURRENT_TAX_EXPENSE, NON_DEDUCTIBLE_EXPENSES]
+  min_anchor_lines_without_title: 2
+  min_emitted_lines: 2
+
+# The note's printed title (table, section, narratives, nearest headings).
+subjects:
+  INCOME_TAX_NOTE:
+    any: [[thue thu nhap doanh nghiep], [thue tndn], [chi phi thue thu nhap], [thue thu nhap]]
+    none: [[tai san thue thu nhap hoan lai], [thue thu nhap hoan lai phai tra]]
+
+# Owner context that is another note printing tax lines (budget obligations,
+# related parties, segments, deferred tax balances).
+reject_context: [[ngan sach nha nuoc], [nghia vu voi ngan sach], [nghia vu doi voi ngan sach], [ben lien quan], [bo phan],
+                 [tai san thue thu nhap hoan lai], [thue thu nhap hoan lai phai tra], [thue gia tri gia tang]]
+
+# Duration lines emitted as cells (instant payable balances and the rate row are kept as source rows).
+emit_lines: [PROFIT_BEFORE_TAX, NON_TAXABLE_INCOME, DIVIDEND_INCOME, DECREASING_ADJUSTMENTS, INCREASING_ADJUSTMENTS,
+             NON_DEDUCTIBLE_EXPENSES, LOSS_CARRIED_FORWARD, TAXABLE_INCOME, TAX_AT_STATUTORY_RATE, CURRENT_TAX_EXPENSE,
+             CURRENT_YEAR_PORTION, PRIOR_YEAR_TAX_ADJUSTMENT, FOREIGN_BRANCH_TAX, SUBSIDIARY_TAX, DEFERRED_TAX_EXPENSE,
+             TOTAL_TAX_EXPENSE, TAX_PAID]
+
+# Fixed structure, declared per family: a printed total is used before its
+# components; deductions are the lines declared below, signed by their
+# printed sign (negative: added as printed; positive: subtracted). PASS
+# proves the lane, FAIL holds the lines it involves, a valued unread row inside
+# the equation's printed span makes it INCOMPLETE (no proof, no hold).
+equations:
+  - {name: TAXABLE_FROM_PROFIT, equals: TAXABLE_INCOME, plus: [PROFIT_BEFORE_TAX],
+     plus_first_present: [[INCREASING_ADJUSTMENTS], [NON_DEDUCTIBLE_EXPENSES]],
+     minus_first_present: [[DECREASING_ADJUSTMENTS], [NON_TAXABLE_INCOME], [DIVIDEND_INCOME]]}
+  - {name: CURRENT_FROM_COMPONENTS, equals: CURRENT_TAX_EXPENSE, plus: [TAX_AT_STATUTORY_RATE],
+     plus_present: [PRIOR_YEAR_TAX_ADJUSTMENT, FOREIGN_BRANCH_TAX, SUBSIDIARY_TAX]}
+  - {name: TOTAL_FROM_CURRENT_AND_DEFERRED, equals: TOTAL_TAX_EXPENSE, plus: [CURRENT_TAX_EXPENSE, DEFERRED_TAX_EXPENSE]}
+
+# Same-period lines of the report's own income statement (KQKD ReportNormIds): support or veto only.
+primary_anchors:
+  PROFIT_BEFORE_TAX: {statement: KQKD, report_norm_id: 4377}
+  CURRENT_TAX_EXPENSE: {statement: KQKD, report_norm_id: 4383}
+  DEFERRED_TAX_EXPENSE: {statement: KQKD, report_norm_id: 4384}
+  TOTAL_TAX_EXPENSE: {statement: KQKD, report_norm_id: 4382}

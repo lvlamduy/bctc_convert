@@ -1,0 +1,65 @@
+# Plugin: credit-quality breakdown (phân tích chất lượng nợ) of every subject
+# that notes classify into the five debt groups. One plugin, one axis, several
+# subject concepts: the subject is read from the table's printed context.
+format_version: NOTES_FAMILY_V1
+family: CREDIT_QUALITY
+shape: LIST_BY_AXIS          # rows = axis members (+ total), columns = period lanes
+axis: CREDIT_QUALITY_GROUP
+period_basis: INSTANT
+
+# SQL retrieval: a table is a candidate when it has a row whose folded label
+# matches any pattern. Retrieval is recall-oriented; acceptance is decided by
+# the shape matcher, the subject resolver and the equations.
+retrieval:
+  row_label_like: ['%no can chu y%', '%nhom 2%', '%no duoi tieu chuan%']
+  min_distinct_members: 4
+  # Securities/other exposures often print only the groups that are non-empty.
+  min_distinct_members_with_explicit_title: 2
+  explicit_title_phrases: [[phan tich chat luong], [phan loai no], [ket qua phan loai]]
+
+# A column may name a measure instead of a period; its period then comes from
+# the single date printed in the table's own context.
+column_measures:
+  BALANCE: {aliases: [du no cho vay, du no, so du, gia tri ghi so]}
+  SPECIFIC_PROVISION: {aliases: [du phong cu the], concept_suffix: SPECIFIC_PROVISION}
+  GENERAL_PROVISION: {aliases: [du phong chung], concept_suffix: GENERAL_PROVISION}
+  TOTAL_PROVISION: {aliases: [tong so du phong, tong du phong, tong cong du phong], concept_suffix: TOTAL_PROVISION}
+  # Not the gross balance although "dư nợ" is printed (Codex 0210): the column keeps this basis and is held.
+  NET_OF_PROVISION: {aliases: [du no thuan, so du thuan, gia tri thuan, sau du phong, sau khi tru du phong, sau tru du phong],
+                     not_gross_balance: true}
+  ACCRUED_INTEREST: {aliases: [lai du thu, lai phai thu], not_gross_balance: true}
+
+# Subject concept from the printed context (table title, section title, the
+# nearest preceding note heading). Exactly one subject must match; the most
+# specific context source wins (table title > section title > note heading).
+subjects:
+  LOANS_TO_CUSTOMERS:
+    any: [[cho vay khach hang], [chat luong no cho vay], [chat luong du no cho vay], [no cho vay]]
+    none: [[chung khoan], [mua no], [tai san co khac], [tien gui], [to chuc tin dung khac], [tctd khac], [ty le]]
+  INTERBANK_DEPOSITS_AND_LOANS:
+    any: [[to chuc tin dung khac], [tctd khac]]
+    none: [[chung khoan]]
+  TRADING_SECURITIES_DEBT:
+    any: [[chung khoan kinh doanh]]
+  INVESTMENT_SECURITIES_DEBT:
+    any: [[chung khoan dau tu], [chung khoan no, dau tu], [san sang de ban], [giu den ngay dao han]]
+    none: [[chung khoan kinh doanh]]
+  PURCHASED_DEBT:
+    any: [[mua no]]
+  OTHER_ASSETS_CREDIT_EXPOSURE:
+    any: [[tai san co khac]]
+
+# Context that disqualifies a table (not an outstanding-balance breakdown).
+reject_context: [[ty le trich lap], [ty le du phong], [ty le lap du phong], [du phong cu the]]
+
+equations:
+  - name: FIVE_GROUPS_EQUAL_TOTAL
+    sum_of: [G1, G2, G3, G4, G5]
+    equals: TOTAL_FIVE_GROUPS
+  - name: FIVE_GROUPS_PLUS_OUTSIDE_EQUAL_GRAND_TOTAL
+    sum_of: [G1, G2, G3, G4, G5, PENDING_WITH_FORECLOSED_COLLATERAL, MARGIN_AND_SECURITIES_ADVANCE]
+    equals: GRAND_TOTAL
+
+# Corroboration with the primary balance sheet (same document, scope, period).
+primary_corroboration:
+  LOANS_TO_CUSTOMERS: {statement: CDKT, report_norm_id: 4348, compare_to: [TOTAL_FIVE_GROUPS, GRAND_TOTAL]}
