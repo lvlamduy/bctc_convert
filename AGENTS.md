@@ -124,8 +124,10 @@ for the later legacy V4 CPU-limit FAIL/reaped processes, retained V14 regression
 corrected06e actual179 PASS, fresh original FULL/COMMON SQL integrity, both annual
 corpus diagnostics and complete V7 deltas PASS, plus LPB69 OPEX20 visual/rule
 review. Target17 batch-authority is actual17PASS; broad attempt1 failed before
-collection from a wrong case filename. Corrected broad V2 session54694 is LIVE,
-NOT PROVEN pending its actual result; keep the root-only lease and fixed inputs.
+collection from a wrong case filename. Corrected broad V2 actually passed1120
+normal/4327subtests; the cross-family352 also passed. All three jobs are terminal,
+and the c599258c nonterminal HEARTBEAT has exact-Version readback. The batch draft
+is still unpromoted; acquire the current root-only lease before another runtime.
 This supersedes the older LIVE22643/92272 states, not their retained evidence;
 no notes integration, family seal or automatic retry.
 

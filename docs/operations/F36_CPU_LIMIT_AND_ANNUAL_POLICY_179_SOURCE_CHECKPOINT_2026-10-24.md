@@ -156,12 +156,32 @@ The actual case is `F36_BATCH_ADMISSION_COMPOSED_CASE_20261024_V1.json`, SHA
 `dfed20718eae70ac68f9940abc386def4303426337ddcdd874a654310c5bcfd4`.
 Root corrected only the control invocation, with fresh output
 `/srv/bctc-receipts/f36-batch-admission-composed1120-v2-20261024/` and the same caps.
-Broad V2 is root-only LIVE session54694/initialPID487621; Broad1120 remains
-NOT PROVEN pending its actual result, not PASS.
+Broad V2 actually PASSED1120 normal/4327subtests,5447declaredJUnit/1120elements,
+0failures/errors/skips. Ruff/compile/import origins/complete call axis passed;
+all2126tracked source inputs and2controls stayed unchanged. Terminal receipt
+5199440bytes, SHA `0bf9f3317b549eb76dbbfae782bbc33f541ae7889631249d550b89ac983663d3`.
+Cross-family352 also actually PASSED0failures/errors/skips with the same guards:
+`/srv/bctc-receipts/f36-batch-admission-cross352-v1-20261024/REVIEWED_CASE_MANIFEST_FOCUSED_V2.json`,
+1820183bytes, SHA `616c1de19f0a00e7f39804f8df466154d244b45ffe0ec9a2fbc167e24983593a`.
+Sessions54694 and41313 are closed0; the tested6ee clone remains read-only.
+These are fixture/regression gates, not actual-original A/B or family acceptance.
+
+The c599258c documentation checkpoint was pushed cleanly on the owned F36 branch.
+One new nonterminal HEARTBEAT was conditionally created, with exact-Version full
+byte/checksum readback and188-to189 event review, no competing F36 owner:
+`bctc-ai/coordination/2025-current/v1/events/20261024T125204687344Z-LAPTOP_INTEGRATOR-HEARTBEAT-0d21d45931b74257b1f8a6e53f9903d5.json`,
+VersionId `V2sr6WOJp3oE.ReQc39ITVrWDCKccbCe`,70404bytes,
+SHA `f21d1b3c2d11beb46bbc939ffd0dfee9e2fb0500fe761fd6ce303648b1251896`.
+The event describes the checkpoint-time LIVE broad job, not its later PASS.
+Local publisher final891bytes:
+`D:/bctc_bank/restore-receipts/f36-heartbeat-c599258c-20261024-v1/final.json`,
+SHA `d86a783fc2261cce561982621c4914e93c8678f84faa1556dafdc0cceaa3f0b0`.
+No artifact uploads or complete-project backup claim; all proof refs are LOCAL_ONLY.
 The closed old six-document profile recorded classifier95.537s cumulative in a
 105.037s instrumented coverage call versus authority reads1.672s. Cumulative
 times overlap and profiler overhead exists; this is not a wholeFULL CPU share
 or speed promise. It cannot justify an automatic legacy retry or fewer guards.
 No family ledger/seal, actual held-row registration or production notes promotion
 is supplied by these diagnostics. Keep all failures and original comparative lanes.
-Honor the current root-only broad-gate lease and keep its pinned snapshot fixed.
+Acquire the current root-only runtime lease before another execution; no project
+runtime job remains live at this checkpoint. Keep every pinned snapshot fixed.
