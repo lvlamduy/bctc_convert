@@ -12,7 +12,7 @@ import os
 import re
 import stat
 from collections import defaultdict
-from dataclasses import asdict, replace
+from dataclasses import replace
 from decimal import Decimal
 from hashlib import sha256
 from pathlib import Path
@@ -306,6 +306,18 @@ def _production_table_policy_v1(inventory: dict[str, Any], disposition: dict[str
             "reasons": sorted(set(reasons))}
 
 
+def _annual_capture_json_v1(capture: PolicyCapture) -> dict[str, Any]:
+    """Transport the fixed immutable capture axes as native JSON lists."""
+    _need(type(capture) is PolicyCapture and all(type(page) is PolicyPage for page in capture.pages),
+          "Annual transport requires a typed capture")
+    return canonical_clone_v1({"binding": list(capture.binding),
+        "frontier": [list(item) for item in capture.frontier],
+        "pages": [{"page_json_version_id": page.page_json_version_id, "physical_page": page.physical_page,
+            "original_blob_sha256": page.original_blob_sha256, "replay_receipt_id": page.replay_receipt_id,
+            "narratives": [list(item) for item in page.narratives], "narratives_sha256": page.narratives_sha256}
+            for page in capture.pages]})
+
+
 def _annual_context_v1(payload: Any, doc: dict[str, Any], primary_texts: list[str]) -> dict[str, Any] | None:
     """Recheck a serialized capture's consistency only; checked IO must rebuild it.
 
@@ -533,7 +545,7 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
             if table.document_ordinal == ordinal:
                 table_texts.append({"table": [table.page_json_version_id, table.section_id, table.table_id],
                     "texts": owned_date_texts_v1(table, table_context_v1(table, []))})
-        annual_payloads[ordinal] = canonical_clone_v1({"capture": asdict(context.annual_policy),
+        annual_payloads[ordinal] = canonical_clone_v1({"capture": _annual_capture_json_v1(context.annual_policy),
                                                       "owned_table_texts": table_texts})
     inventories = {}
     # Bounded per-page parsing; no whole-corpus ORIGINAL object cache.

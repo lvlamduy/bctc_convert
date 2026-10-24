@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
 
@@ -19,6 +18,7 @@ from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
     SCHEMA_FORMAT,
     TOPOLOGY_FORMAT,
     F36NotesCoreAdapterError,
+    _annual_capture_json_v1,
     _annual_context_v1,
     _fragments,
     _inventory,
@@ -428,7 +428,13 @@ def annual_example(example):
     capture = PolicyCapture((1, "synthetic.pdf", "1" * 64, "SEPARATE"), ((policy_vid, 1), (VID, 0)), (page,))
     ledger = trial["notes_ledger"]
     ledger["primary_income_context_texts"] = INTERIM_Q4
-    ledger["annual_period_context"] = {"capture": json.loads(json.dumps(asdict(capture))),
+    serialized = _annual_capture_json_v1(capture)
+    assert type(serialized["binding"]) is list and type(serialized["frontier"]) is list
+    assert all(type(item) is list for item in serialized["frontier"])
+    assert type(serialized["pages"][0]["narratives"]) is list
+    assert all(type(item) is list for item in serialized["pages"][0]["narratives"])
+    assert canonical_json_bytes_v1(serialized) == canonical_json_bytes_v1(json.loads(json.dumps(serialized)))
+    ledger["annual_period_context"] = {"capture": serialized,
         "owned_table_texts": [{"table": [VID, "s1", "t1"], "texts": ["Chi phí hoạt động"]}]}
     for c, header in zip(ledger["cells"], YEAR_ENDED, strict=True):
         c["header_text"] = header[0]
