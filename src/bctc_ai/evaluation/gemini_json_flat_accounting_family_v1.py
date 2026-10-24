@@ -80,6 +80,12 @@ def _compile_specs(
     evaluation_spec: Any,
     schema_binding_spec: Any,
 ) -> dict[str, Any]:
+    if type(evaluation_spec) is dict and evaluation_spec.get("format_version") == "F36_NOTES_STRICT_CORE_EVALUATION_SPEC_V1":
+        from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
+            compile_f36_notes_core_specs_v1,
+        )
+
+        return compile_f36_notes_core_specs_v1(topology_spec, evaluation_spec, schema_binding_spec)
     if (
         type(evaluation_spec) is dict
         and evaluation_spec.get("format_version")
@@ -5100,6 +5106,9 @@ def build_gemini_json_flat_family_sweep_v1(
 ) -> dict[str, Any]:
     """Seal a complete ordered document disposition axis."""
 
+    if type(evaluation_spec) is dict and evaluation_spec.get("format_version") == "F36_NOTES_STRICT_CORE_EVALUATION_SPEC_V1":
+        raise _error("F36 notes sweeps require the family-owned frontier builder")
+
     if (
         type(corpus_manifest_index_id) is not str
         or not corpus_manifest_index_id.startswith("gjfccmiv1:index:")
@@ -5414,6 +5423,11 @@ def build_gemini_json_flat_family_sweep_v1(
 
 def validate_gemini_json_flat_family_sweep_v1(value: Any) -> dict[str, Any]:
     """Rebuild one persisted sweep envelope and reject coherent drift."""
+
+    if type(value) is dict and value.get("format_version") == "GEMINI_JSON_F36_NOTES_STRICT_CORE_SWEEP_V1":
+        from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import validate_f36_notes_core_sweep_v1
+
+        return validate_f36_notes_core_sweep_v1(value)
 
     if (
         type(value) is not dict
