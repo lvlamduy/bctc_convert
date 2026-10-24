@@ -70,8 +70,7 @@ def _nodes(page):
         if type(value) is not list:
             yield _node("unsupported_shape", pointer, value, field_present=type(owner) is dict and field in owner)
         else:
-            for number, item in enumerate(value):
-                yield number, item
+            yield from enumerate(value)
 
     for section_item in axis(page, "sections", "/sections"):
         if type(section_item) is dict:
