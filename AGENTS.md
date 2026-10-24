@@ -105,6 +105,13 @@ HEARTBEAT. The empty-suffix matcher is now separately promoted after1103normal/
 ADMIN/notes drafts remain unpromoted. Read later corpus terminals and the current
 lease before executing another job; no family is sealed.
 
+Read `docs/operations/NOTES_88_CORPUS_PAIR_AND_PRINTED_POLICY_CHECKPOINT_2026-10-24.md`
+for the actual composed88 FULL271/COMMON204 diagnostic PASS pair, unreviewed
+184/160 observation deltas, retained unrun NO-GO comparators and the bounded
+LPB69 ORIGINAL/PDF policy check. Annual-policy work remains a separate candidate;
+do not grant periods/units from a QIV endpoint or promote experimental notes.
+The reviewed V4 legacyFULL wrapper is UNRUN; short pending gates precede it.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
