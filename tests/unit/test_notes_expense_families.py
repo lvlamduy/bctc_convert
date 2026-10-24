@@ -570,3 +570,19 @@ def test_an_own_table_position_schedule_is_not_a_credit_provision_flow(config):
                                   [("Tỷ lệ trích lập",), ("Chi phí dự phòng",)], title=None, section=None), {"c1": "PERCENT"})
     assert evaluate_concept_table_v1(rate_flow, family, document(quarter=4), [], [])[0].reasons[:1] != [
         "OWN_TABLE_IS_A_POSITION_SCHEDULE:money=c2;schedule=c1"]
+
+
+def test_a_position_header_beside_a_flow_money_header_is_not_a_schedule(config):
+    # Codex 0236: condition (c) scans EVERY MONEY header. A stock "Giá trị đầu tư" column and a COUNT column next to a
+    # second MONEY header printing a flow period ("Chi phí dự phòng năm 2025") is not an own-table position schedule.
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    rows = [("Trích lập dự phòng trái phiếu đặc biệt VAMC", ["100", "1.000", "40"]), ("Tổng cộng", [None, "1.000", "40"])]
+    mixed = _kinds(make_table(rows, [("Số lượng trái phiếu",), ("Giá trị đầu tư",), ("Chi phí dự phòng năm 2025",)],
+                              title=None, section=None), {"c1": "COUNT"})
+    evaluation = evaluate_concept_table_v1(mixed, family, document(quarter=4), [], [])[0]
+    assert not any(reason.startswith("OWN_TABLE_IS_A_POSITION_SCHEDULE") for reason in evaluation.reasons)
+    # The same columns without the flow MONEY header are the schedule (all three conditions hold).
+    stock = _kinds(make_table([(label, values[:2]) for label, values in rows], [("Số lượng trái phiếu",), ("Giá trị đầu tư",)],
+                              title=None, section=None), {"c1": "COUNT"})
+    assert evaluate_concept_table_v1(stock, family, document(quarter=4), [], [])[0].reasons == [
+        "OWN_TABLE_IS_A_POSITION_SCHEDULE:money=c2;schedule=c1"]

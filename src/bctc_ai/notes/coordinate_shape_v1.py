@@ -230,11 +230,14 @@ def evaluate_coordinate_table_v1(
     return [evaluation]
 
 
-def related_party_owner_v1(table: NoteTable, family: Family, context: list[tuple[str, str]]) -> str | None:
-    """Opt-in family rule (``related_party_owner``; deposits only, Codex 0234 E2).
+_RELATED_PARTY_HEADINGS = OWNER_SOURCES - {"SECTION_NARRATIVE"}  # narrative authority deferred (Codex 0236)
 
-    Only the table's OWN context (block heading, table title, section title, section narrative; never another
-    section of the page) can name related parties. Then a table with its own counterparty TEXT column or its own
+
+def related_party_owner_v1(table: NoteTable, family: Family, context: list[tuple[str, str]]) -> str | None:
+    """Opt-in family rule (``related_party_owner``; deposits only, Codex 0234/0236 E2).
+
+    Only the table's OWN headings (block heading, table title, section title; never a narrative, which may merely
+    cross-reference the related-party note, and never another section of the page) can name related parties. Then a table with its own counterparty TEXT column or its own
     flow / receivable-payable MONEY column is related-party transactions (REJECTED); otherwise it is an explicitly
     related-party subset (RELATED_PARTY_SUBSET_NOT_GROSS_TOTAL). None when the owner names no related party.
     """
@@ -246,7 +249,7 @@ def related_party_owner_v1(table: NoteTable, family: Family, context: list[tuple
     def groups(key):
         return [[fold_vietnamese(str(p)) for p in g] for g in spec.get(key, [])]
 
-    owner = " ".join(fold_vietnamese(text) for source, text in context if source in OWNER_SOURCES)
+    owner = " ".join(fold_vietnamese(text) for source, text in context if source in _RELATED_PARTY_HEADINGS)
     if not all_phrases(groups("owner_phrases"), owner):
         return None
     counterparty = [c.column_id for c in table.columns

@@ -35,7 +35,8 @@ subjects:
 
 reject_context: [[ty le], [lai suat], [du tru bat buoc], [tuong duong tien]]
 
-# Owner is related parties (Codex 0234, deposits gross-total admission only): read from the table's OWN context only.
+# Owner is related parties (Codex 0234/0236, deposits gross-total admission only): read from the table's OWN headings
+# only (block heading, table title, section title); a narrative cross-reference never makes a gross table a subset.
 # With its own counterparty TEXT column or flow / receivable-payable MONEY column the table is related-party
 # transactions (REJECTED, reason kept in the audit); otherwise it is a related-party subset, held SUBJECT_UNRESOLVED.
 related_party_owner:

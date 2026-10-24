@@ -248,3 +248,22 @@ def test_related_party_ownership_is_never_the_gross_deposit_total(config):
     context = [("TABLE_TITLE", gross.table_title), ("PRECEDING_SECTION_TITLE", "33. GIAO DỊCH VỚI CÁC BÊN LIÊN QUAN")]
     other = evaluate_coordinate_table_v1(gross, family, document(primary_balance(4320, "300", "240")), context, [], axes=axes)
     assert {(c["member"], c["period_key"]): c for e in other for c in e.cells}[("TOTAL", JUN)]["acceptance"] == "ACCEPTED"
+
+
+def test_a_narrative_cross_reference_to_related_parties_does_not_make_a_gross_table_a_subset(config):
+    # Codex 0236: an ordinary customer-deposit table whose own section narrative only points to the related-party note
+    # stays the gross total (narrative authority deferred); a related-party HEADING still decides.
+    family = config.families["DEPOSITS_BY_TYPE"]
+    axes = [config.axes[name] for name in family.raw["axes"]]
+    rows = [("Tiền gửi không kỳ hạn", ["100", "90"]), ("Tiền gửi có kỳ hạn", ["200", "150"]), ("Tổng", ["300", "240"])]
+    gross = table(rows)
+    context = [("TABLE_TITLE", gross.table_title),
+               ("SECTION_NARRATIVE", "Giao dịch với các bên liên quan được trình bày tại Thuyết minh 33.")]
+    evaluations = evaluate_coordinate_table_v1(gross, family, document(primary_balance(4320, "300", "240")), context, [], axes=axes)
+    result = {(c["member"], c["period_key"]): c for e in evaluations for c in e.cells}
+    assert result[("TOTAL", JUN)]["acceptance"] == "ACCEPTED" and result[("TOTAL", JUN)]["concept"] == "CUSTOMER_DEPOSITS"
+    assert not any("RELATED_PARTY_SUBSET_NOT_GROSS_TOTAL" in c["hold_reasons"] for c in result.values())
+    headed = table(rows, section="Tiền gửi của các bên liên quan")
+    context = [("TABLE_TITLE", headed.table_title), ("SECTION_TITLE", headed.section_title)]
+    held = evaluate_coordinate_table_v1(headed, family, document(primary_balance(4320, "300", "240")), context, [], axes=axes)
+    assert all("RELATED_PARTY_SUBSET_NOT_GROSS_TOTAL" in c["hold_reasons"] for e in held for c in e.cells)
