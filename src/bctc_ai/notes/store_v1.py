@@ -64,7 +64,11 @@ def _canonical(value: Any) -> str:
 
 
 def cells_projection_sha256_v1(cells: list[dict[str, Any]]) -> str:
-    return hashlib.sha256(_canonical(cells).encode("utf-8")).hexdigest()
+    digest = hashlib.sha256()
+    encoder = json.JSONEncoder(ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+    for chunk in encoder.iterencode(cells):
+        digest.update(chunk.encode("utf-8"))
+    return digest.hexdigest()
 
 
 def _cell_row_v1(index: int, c: dict[str, Any]) -> tuple[Any, ...]:
@@ -98,7 +102,7 @@ def write_notes_store_v1(path: Path, *, manifest: dict[str, Any], cells: list[di
         try:
             connection.executemany(
                 "INSERT INTO note_cell VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                [_cell_row_v1(index, c) for index, c in enumerate(cells)],
+                (_cell_row_v1(index, c) for index, c in enumerate(cells)),
             )
         except sqlite3.IntegrityError as error:
             raise NotesStoreError(f"two accepted cells share a write key: {error}") from error
@@ -119,22 +123,21 @@ def reload_notes_store_v1(path: Path) -> tuple[dict[str, Any], list[dict[str, An
         schema = _schema_objects(connection)
         identities = connection.execute(
             "SELECT singleton, format_version, manifest_sha256, manifest_json, cells_sha256 FROM store_identity").fetchall()
-        rows = connection.execute("SELECT * FROM note_cell ORDER BY cell_ordinal").fetchall()
-    if schema != _expected_schema_objects():
-        raise NotesStoreError("store schema differs from the notes store schema (tables, columns, index)")
-    if len(identities) != 1 or identities[0][0] != 1 or identities[0][1] != NOTES_STORE_FORMAT:
-        raise NotesStoreError("store identity missing or of another format")
-    identity = identities[0][1:]
-    if hashlib.sha256(identity[2].encode()).hexdigest() != identity[1]:
-        raise NotesStoreError("run manifest was edited")
-    cells = []
-    for index, row in enumerate(rows):
-        cell = json.loads(row[-1])
-        expected = _cell_row_v1(index, cell)
-        # Every normalized column, the contiguous ordinal and the canonical JSON itself, with exact types (Codex 0222).
-        if len(row) != len(expected) or any(type(a) is not type(b) or a != b for a, b in zip(row, expected, strict=False)):
-            raise NotesStoreError(f"stored cell {index} differs from its canonical JSON record")
-        cells.append(cell)
-    if cells_projection_sha256_v1(cells) != identity[3]:
-        raise NotesStoreError("stored cells differ from the recorded projection")
-    return json.loads(identity[2]), cells
+        if schema != _expected_schema_objects():
+            raise NotesStoreError("store schema differs from the notes store schema (tables, columns, index)")
+        if len(identities) != 1 or identities[0][0] != 1 or identities[0][1] != NOTES_STORE_FORMAT:
+            raise NotesStoreError("store identity missing or of another format")
+        identity = identities[0][1:]
+        if hashlib.sha256(identity[2].encode()).hexdigest() != identity[1]:
+            raise NotesStoreError("run manifest was edited")
+        cells = []
+        for index, row in enumerate(connection.execute("SELECT * FROM note_cell ORDER BY cell_ordinal")):
+            cell = json.loads(row[-1])
+            expected = _cell_row_v1(index, cell)
+            # Every normalized column, the contiguous ordinal and the canonical JSON itself, with exact types (Codex 0222).
+            if len(row) != len(expected) or any(type(a) is not type(b) or a != b for a, b in zip(row, expected, strict=False)):
+                raise NotesStoreError(f"stored cell {index} differs from its canonical JSON record")
+            cells.append(cell)
+        if cells_projection_sha256_v1(cells) != identity[3]:
+            raise NotesStoreError("stored cells differ from the recorded projection")
+        return json.loads(identity[2]), cells
