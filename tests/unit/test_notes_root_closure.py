@@ -62,7 +62,9 @@ def build(spec, *, statuses=("PASS", "PASS"), terms=None, reasons=None, disposit
         original = [texts.get(i), *values]
         inv_rows.append({"record_type": "row", "document_ordinal": 69, "page_json_version_id": "v64",
                          "pointer": f"/sections/0/tables/0/rows/{i}", "row_ordinal": i + 1,
-                         "fields": {"row_kind": kind, "label_exact": label, "hierarchy_path_exact": path},
+                         # The producer's real envelope (inventory _fields): {"present": bool, "value": raw}.
+                         "fields": {key: {"present": True, "value": value} for key, value in
+                                    (("row_kind", kind), ("label_exact", label), ("hierarchy_path_exact", path))},
                          "value_axis": {"count": 3, "item_types": [type(v).__name__ for v in original],
                                         "null_column_ordinals": [c for c, v in enumerate(original, 1) if v is None]}})
         valued = any(v is not None for v in values)
@@ -178,6 +180,16 @@ def test_a_wrapper_needs_every_original_cell_null_not_only_its_money_cells(famil
     assert lane_status(result) == ["NOT_ROOT_CLOSED:UNACCOUNTED_VALUED_ROW:r11"] * 2
 
 
+def test_an_explicit_null_label_is_kept_distinct_from_a_missing_one(family):
+    # LPB's unlabeled root prints label_exact = null: {"present": true, "value": null} closes; the same field ABSENT
+    # from the ORIGINAL row is a different source fact and is never read as that null (Codex 0330/0332).
+    inventory, disposition = build(lpb())
+    assert inventory["rows"][15]["fields"]["label_exact"] == {"present": True, "value": None}
+    assert lane_status(root_closure_v1(inventory, disposition, family)) == ["ROOT_CLOSED", "ROOT_CLOSED"]
+    inventory["rows"][15]["fields"]["label_exact"] = {"present": False, "value": None}
+    assert root_closure_v1(inventory, disposition, family)["status"] == "UNRESOLVED:ORIGINAL_ROW_FIELD_ABSENT:label_exact:r16"
+
+
 def test_root_equation_terms_must_be_exactly_the_frontier(family):
     result = root_closure_v1(*build(lpb(), terms=[t for t in TOP if t != "TAX_FEES"]), family)
     assert lane_status(result) == ["NOT_ROOT_CLOSED:ROOT_EQUATION_TERMS_DIFFER_FROM_FRONTIER"] * 2
@@ -231,6 +243,14 @@ def _parent_edge(inv, disp):
     disp["rows"][3]["parent_row_id"] = "r2"  # notes says EMPLOYEE; the ORIGINAL path proves the r3 wrapper
 
 
+def _field_absent(inv, disp):
+    inv["rows"][0]["fields"]["label_exact"] = {"present": False, "value": None}  # missing is not an explicit null
+
+
+def _field_flat(inv, disp):
+    inv["rows"][0]["fields"]["label_exact"] = "Chi nộp thuế và các khoản phí, lệ phí"  # an unenveloped raw value
+
+
 @pytest.mark.parametrize("mutate,why", [
     (_merged, "CONTINUATION_MERGED_TABLE_NOT_SUPPORTED_V1"),
     (_shifted, "SOURCE_BRIDGE_NOT_EXACT:EXACT_WITH_PROVEN_TEXT_COLUMN_SHIFT"),
@@ -244,6 +264,8 @@ def _parent_edge(inv, disp):
     (_lane_outside_map, "LANE_COLUMN_NOT_IN_PROVEN_COLUMN_MAP:c4"),
     (_lane_on_text, "LANE_COLUMN_NOT_ORIGINAL_MONEY:c1"),
     (_parent_edge, "PARENT_EDGE_DIFFERS_FROM_ORIGINAL:r4"),
+    (_field_absent, "ORIGINAL_ROW_FIELD_ABSENT:label_exact:r1"),
+    (_field_flat, "ORIGINAL_ROW_FIELD_ENVELOPE_MALFORMED:label_exact:r1"),
 ])
 def test_unprovable_inputs_are_named_unresolved_never_closed(family, mutate, why):
     inventory, disposition = build(lpb())
