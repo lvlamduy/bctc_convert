@@ -96,6 +96,12 @@ notes404 FULL271/COMMON204 stores/workbooks and source13 findings. These do not
 seal F36. Check the current runtime lease and any later A/B terminal before
 another project execution; keep the fixed experimental snapshots unchanged.
 
+Read `docs/operations/F36_PERIOD_ADMISSION_AND_RETAINED_RUNTIME_FAILURES_2026-10-24.md`
+for actual145/147/149 notes gates, original3 ADMIN/OTHER boundaries, retained
+profiler and ADMIN-pair limit failures, the38-test empty-suffix draft and the
+exact-Version nonterminal HEARTBEAT. These drafts remain unpromoted. Read any
+later matcher/corpus terminal before executing another job; no family is sealed.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
