@@ -60,7 +60,9 @@ def example():
                                   "index_sha256": "a" * 64, "database_sha256": "a" * 64}}
     topology = {"format_version": TOPOLOGY_FORMAT, "family_id": FAMILY, "source": source, "documents_requested": [1]}
     evaluation = {"format_version": EVALUATION_FORMAT, "family_id": FAMILY, "notes_config_pins": config.pins,
-                  "notes_family": {"raw": config.families[FAMILY].raw, "sha256": config.families[FAMILY].sha256},
+                  "notes_family": {"raw": config.families[FAMILY].raw, "sha256": config.families[FAMILY].sha256,
+                      "axis": {"name": config.families[FAMILY].axis.name, "members": config.families[FAMILY].axis.members,
+                               "outside_members": config.families[FAMILY].axis.outside_members}},
                   "production_policy": json.loads(policy_raw),
                   "production_policy_ref": {"path": str(policy_path), "sha256": sha256(policy_raw).hexdigest(), "size_bytes": len(policy_raw)},
                   "primary_store_ref": ref("primary.sqlite3"),

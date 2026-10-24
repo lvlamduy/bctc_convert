@@ -181,13 +181,18 @@ def compile_f36_notes_core_specs_v1(topology_spec: Any, evaluation_spec: Any,
 
 def _family(evaluation: dict[str, Any]) -> Family:
     descriptor = evaluation["notes_family"]
-    _need(type(descriptor) is dict and set(descriptor) == {"raw", "sha256"}
+    _need(type(descriptor) is dict and set(descriptor) == {"raw", "sha256", "axis"}
           and type(descriptor["sha256"]) is str and _SHA.fullmatch(descriptor["sha256"]) is not None,
           "Notes family declaration")
     raw = descriptor["raw"]
     _need(type(raw) is dict and raw.get("family") == FAMILY and raw.get("shape") == "CONCEPT_LIST"
           and raw.get("period_basis") == "DURATION", "Notes family/basis declaration")
-    return Family(FAMILY, "CONCEPT_LIST", Axis(raw["axis"], {}, {}), "DURATION", raw, descriptor["sha256"])
+    axis = descriptor["axis"]
+    _need(type(axis) is dict and set(axis) == {"name", "members", "outside_members"}
+          and axis["name"] == raw["axis"] and type(axis["members"]) is dict
+          and bool(axis["members"]) and type(axis["outside_members"]) is dict, "Complete notes role axis")
+    return Family(FAMILY, "CONCEPT_LIST", Axis(axis["name"], axis["members"], axis["outside_members"]),
+                  "DURATION", raw, descriptor["sha256"])
 
 
 def _document_axis(corpus: Any) -> list[dict[str, Any]]:
@@ -313,6 +318,9 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
     _need(_same(config.pins, evaluation["notes_config_pins"]), "Fresh notes config differs")
     _need(_same(config.families[FAMILY].raw, evaluation["notes_family"]["raw"])
           and config.families[FAMILY].sha256 == evaluation["notes_family"]["sha256"], "Fresh family rules differ")
+    axis = config.families[FAMILY].axis
+    _need(_same({"name": axis.name, "members": axis.members, "outside_members": axis.outside_members},
+                evaluation["notes_family"]["axis"]), "Fresh role axis differs")
     crosswalk = [{"concept": k[0], "axis": k[1], "members": list(k[2]), "report_norm_id": v}
                  for k, v in config.crosswalk.items()]
     _need(_same(crosswalk, compiled["schema"]["crosswalk"]), "Fresh crosswalk differs")
