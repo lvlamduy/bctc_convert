@@ -444,6 +444,10 @@ def evaluate_concept_table_v1(
     if not evaluation.lanes:
         evaluation.status, evaluation.reasons = "REJECTED", ["NO_MONEY_LANES"]
         return [evaluation]
+    for lane in evaluation.lanes:
+        # Shadow-only period evidence (Codex 0232): measured with its source header, never used below.
+        evaluation.corroboration += [{**evidence, "lane": lane.column.column_id, "diagnostic_only": True}
+                                     for evidence in lane.shadow_evidence]
     separators = table.separator_roles()
     vetoed_rows = [role.row_index for role in roles if role.reason.startswith("ROW_VETO:")]
     for lane in evaluation.lanes:
