@@ -8,6 +8,8 @@ from io import BytesIO
 
 import openpyxl
 import pytest
+from test_notes_f36_ledger_projection import REFS
+from test_notes_f36_strict_ledger import CLOSED, cell, inventory_row
 
 from bctc_ai.export.canonical_xlsx import deterministic_workbook_bytes
 from bctc_ai.notes import export_v1 as pilot
@@ -20,8 +22,6 @@ from bctc_ai.notes.f36_strict_export_v1 import (
 )
 from bctc_ai.notes.f36_strict_ledger_v1 import classify_observation_v1
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
-from test_notes_f36_ledger_projection import REFS
-from test_notes_f36_strict_ledger import CLOSED, cell, inventory_row
 
 DOCUMENT = {"document_plan_id": "plan", "relative_path": "synthetic.pdf", "source_sha256": "a" * 64}
 TEMPLATE = [(1205, "Tổng"), (1206, "Chi nộp thuế"), (1212, "Chi về tài sản"), (747, "Nhóm 1")]

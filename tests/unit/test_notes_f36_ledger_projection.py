@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 import pytest
+from test_notes_f36_strict_ledger import CLOSED, ROWS, _proof, cell, inventory_row
 
 from bctc_ai.notes.f36_ledger_projection_v1 import (
     LedgerProjectionError,
@@ -17,7 +18,6 @@ from bctc_ai.notes.f36_strict_ledger_v1 import (
     classify_observation_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
-from test_notes_f36_strict_ledger import CLOSED, ROWS, _proof, cell, inventory_row
 
 REFS = {name: {"path": f"/synthetic/{name}.json", "sha256": digit * 64, "size_bytes": 9}
         for name, digit in (("summary", "a"), ("observations", "b"))}
