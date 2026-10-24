@@ -19,6 +19,7 @@ from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
     F36NotesCoreAdapterError,
     _fragments,
     _inventory,
+    _production_table_policy_v1,
     build_f36_notes_core_sweep_v1,
     build_f36_notes_query_evidence_v1,
     compile_f36_notes_core_specs_v1,
@@ -50,6 +51,13 @@ def example():
     config = load_notes_config_v1(ROOT)
     policy_path = ROOT / "config/families/tm-operating-expense-evaluation-v1.json"
     policy_raw = policy_path.read_bytes()
+    production = {}
+    for field, filename in (("production_topology", "tm-operating-expense-topology-v1.json"),
+                            ("production_schema_binding", "tm-operating-expense-schema-binding-v1.json")):
+        path = ROOT / "config/families" / filename
+        raw = path.read_bytes()
+        production[field] = json.loads(raw)
+        production[field + "_ref"] = {"path": str(path), "sha256": sha256(raw).hexdigest(), "size_bytes": len(raw)}
     doc = {"document_ordinal": 1, "source_logical_name": "synthetic.pdf", "source_sha256": "1" * 64,
            "document_identity": {"document_ordinal": 1, "relative_path": "synthetic.pdf", "source_sha256": "1" * 64},
            "pages": [{"physical_page": 64, "page_json_version_id": VID}]}
@@ -60,6 +68,7 @@ def example():
                                   "index_sha256": "a" * 64, "database_sha256": "a" * 64}}
     topology = {"format_version": TOPOLOGY_FORMAT, "family_id": FAMILY, "source": source, "documents_requested": [1]}
     evaluation = {"format_version": EVALUATION_FORMAT, "family_id": FAMILY, "notes_config_pins": config.pins,
+                  **production,
                   "notes_family": {"raw": config.families[FAMILY].raw, "sha256": config.families[FAMILY].sha256,
                       "axis": {"name": config.families[FAMILY].axis.name, "members": config.families[FAMILY].axis.members,
                                "outside_members": config.families[FAMILY].axis.outside_members}},
@@ -74,6 +83,7 @@ def example():
     compiled = compile_f36_notes_core_specs_v1(topology, evaluation, schema)
     inv, disposition = build(lpb())
     inv["table"].update(page_json_version_id=VID, section_id="s1", table_id="t1")
+    inv["table"]["fields"] = {"title_exact": {"present": True, "value": None}}
     inv["page"]["axis"]["page_json_version_id"] = VID
     inv["section"] = {"fields": {"title_exact": {"present": True, "value": "Chi phí hoạt động"}}}
     for row, spec in zip(inv["rows"], lpb(), strict=True):
@@ -92,9 +102,12 @@ def example():
     rows = {(VID, 1, 1, r["row_ordinal"]): r for r in inv["rows"]}
     records = [classify_observation_v1(c, 1206, closure, rows) for c in cells]
     assert [r["class"] for r in records] == ["CORE_CANDIDATE", "CORE_CANDIDATE"]
-    mappings, retained = _fragments(cells, records, {"MILLION_VND", "VND"}, {1: statement_period_context_v1(CONTEXT)})
+    production_receipt = _production_table_policy_v1(inv, disposition, closure, compiled)
+    policies = {(VID, "s1", "t1"): production_receipt}
+    mappings, retained = _fragments(cells, records, {"MILLION_VND", "VND"}, {1: statement_period_context_v1(CONTEXT)}, policies)
     ledger = {"cells": cells, "classifications": records, "retained": retained, "dispositions": [disposition],
               "root_closures": [{"table": [VID, "s1", "t1"], "closure": closure}],
+              "production_policy_receipts": [{"table": [VID, "s1", "t1"], "receipt": production_receipt}],
               "source_ledger": [{"inventory": inv,
                   "table_classification": classify_table_v1(inv["table"], inv["section"], {(VID, 1, 1): closure},
                       config.families[FAMILY].raw["subjects"]["OPERATING_EXPENSE_NOTE"]["any"]),
@@ -122,6 +135,10 @@ def reseal_trial(trial):
     material = {k: v for k, v in candidate.items() if k != "candidate_id"}
     candidate["candidate_id"] = "gjf36ncv1:candidate:" + canonical_json_sha256_v1(material)
     trial["selected_candidate_id"] = candidate["candidate_id"]
+
+
+def policies_of(trial):
+    return {tuple(p["table"]): p["receipt"] for p in trial["notes_ledger"]["production_policy_receipts"]}
 
 
 def test_existing_money_ids_source_contract_and_full_retention(example):
@@ -157,7 +174,7 @@ def test_reversed_printed_lanes_keep_current_first_and_all_original_evidence_ali
     ledger["classifications"] = [classify_observation_v1(c, 1206, closure, rows) for c in ledger["cells"]]
     ledger_before = canonical_json_bytes_v1(ledger)
     mappings, retained = _fragments(ledger["cells"], ledger["classifications"], {"MILLION_VND", "VND"},
-                                   {1: statement_period_context_v1(CONTEXT)})
+                                   {1: statement_period_context_v1(CONTEXT)}, policies_of(trial))
     assert not retained and canonical_json_bytes_v1(ledger) == ledger_before
     trial["mappings"] = mappings
     reseal_trial(trial)
@@ -240,7 +257,7 @@ def test_partial_or_unsupported_encoding_stays_outside_canonical_without_fabrica
     for c, record in zip(cells, records, strict=True):
         record["cell"] = deepcopy(c)
     before = canonical_json_bytes_v1([cells, records])
-    mappings, retained = _fragments(cells, records, {"MILLION_VND", "VND"}, {1: statement_period_context_v1(CONTEXT)})
+    mappings, retained = _fragments(cells, records, {"MILLION_VND", "VND"}, {1: statement_period_context_v1(CONTEXT)}, policies_of(trial))
     assert not mappings and len(retained) == len(cells)
     assert before == canonical_json_bytes_v1([cells, records])
 
@@ -250,7 +267,7 @@ def test_forged_core_flag_without_root_receipt_is_not_sufficient(example):
     cells, records = deepcopy((trial["notes_ledger"]["cells"], trial["notes_ledger"]["classifications"]))
     records[0].pop("lane_closure")
     with pytest.raises(F36NotesCoreAdapterError, match="Core structural"):
-        _fragments(cells, records, {"MILLION_VND"}, {1: statement_period_context_v1(CONTEXT)})
+        _fragments(cells, records, {"MILLION_VND"}, {1: statement_period_context_v1(CONTEXT)}, policies_of(trial))
 
 
 def test_sweep_outputs_do_not_alias_the_complete_input_trees(example):
@@ -278,3 +295,71 @@ def test_neutral_envelopes_reuse_original_presence_null_and_hash_domains():
     assert inv["rows"][0]["value_axis"]["null_column_ordinals"] == [1]
     assert inv["rows"][0]["value_axis"]["items_one_lf_sha256"] == [canonical_json_sha256_v1(None)]
     assert inv["page"]["source_proof"]["stored_blob_two_lf_sha256"] == PAGE_BLOB
+
+
+@pytest.mark.parametrize("count,blocked", [(2, True), (3, False)])
+def test_production_minimum_counts_distinct_source_frontier_roles_not_total_or_emitted_cells(example, count, blocked):
+    compiled, trial, _ = example
+    source = [lpb()[i] for i in (0, 1, 5)[:count]]
+    source.append(("Tổng chi phí hoạt động", "TOTAL", (str(count), str(count)), None, "TOTAL_OPERATING_EXPENSE"))
+    inv, disposition = build(source)
+    inv["section"] = {"fields": {"title_exact": {"present": True, "value": "Chi phí hoạt động"}}}
+    config = load_notes_config_v1(ROOT)
+    closure = root_closure_v1(inv, disposition, config.families[FAMILY])
+    receipt = _production_table_policy_v1(inv, disposition, closure, compiled)
+    assert len(receipt["distinct_configured_root_roles"]) == count
+    assert ("F36_PRODUCTION_ROOT_COMPONENT_MINIMUM_NOT_MET" in receipt["reasons"]) is blocked
+    cells, records = trial["notes_ledger"]["cells"], trial["notes_ledger"]["classifications"]
+    before = canonical_json_bytes_v1([cells, records])
+    mappings, retained = _fragments(cells, records, {"MILLION_VND"}, {1: statement_period_context_v1(CONTEXT)},
+                                   {(VID, "s1", "t1"): receipt})
+    assert bool(mappings) is not blocked
+    assert len(retained) == (2 if blocked else 0)
+    if blocked:
+        assert all("F36_PRODUCTION_ROOT_COMPONENT_MINIMUM_NOT_MET" in r["policy_reasons"] for r in retained)
+    assert before == canonical_json_bytes_v1([cells, records])
+
+
+@pytest.mark.parametrize("section_title,table_title,allowed", [
+    ("Chi phí hoạt động", None, True),
+    ("41. Chi phí hoạt động", None, True),
+    (None, "Chi phí quản lý chung (Chi phí hoạt động)", True),
+    ("Chi phí hoạt động dự kiến", None, False),
+    (None, "Chi phí hoạt động dự kiến", False),
+    (None, None, False),
+    ("41. Chi phí hoạt động (tiếp theo)", "Chi phí hoạt động", True),
+    ("41. Chi phí hoạt động (tiếp theo)", None, False),
+])
+def test_only_original_owned_production_title_surfaces_grant_owner(example, section_title, table_title, allowed):
+    compiled, trial, _ = example
+    ledger = trial["notes_ledger"]
+    inv = deepcopy(ledger["source_ledger"][0]["inventory"])
+    inv["section"]["fields"]["title_exact"] = {"present": True, "value": section_title}
+    inv["table"]["fields"]["title_exact"] = {"present": True, "value": table_title}
+    # These broader notes authorities must never become the production owner.
+    inv["section"]["narratives_exact"] = ["Chi phí hoạt động"]
+    inv["preceding_heading"] = "Chi phí hoạt động"
+    receipt = _production_table_policy_v1(inv, ledger["dispositions"][0], ledger["root_closures"][0]["closure"], compiled)
+    assert ("F36_PRODUCTION_ORIGINAL_OWNER_NOT_PROVEN" not in receipt["reasons"]) is allowed
+    assert receipt["source_owner_surfaces"] == {"SECTION_TITLE": section_title, "TABLE_TITLE": table_title}
+
+
+def test_existing_rnid_binding_bridges_provision_role_spelling_for_frontier_count(example):
+    compiled, _, _ = example
+    source = [lpb()[0], lpb()[1], ("Dự phòng đầu tư dài hạn", "ITEM", ("1", "1"), None, "LONG_TERM_INVESTMENT_PROVISION"),
+              ("Tổng chi phí hoạt động", "TOTAL", ("3", "3"), None, "TOTAL_OPERATING_EXPENSE")]
+    inv, disposition = build(source, terms=["TAX_FEES", "EMPLOYEE_EXPENSE", "LONG_TERM_INVESTMENT_PROVISION"])
+    inv["section"] = {"fields": {"title_exact": {"present": True, "value": "Chi phí hoạt động"}}}
+    family = load_notes_config_v1(ROOT).families[FAMILY]
+    receipt = _production_table_policy_v1(inv, disposition, root_closure_v1(inv, disposition, family), compiled)
+    assert receipt["distinct_configured_root_roles"] == ["EMPLOYEE_EXPENSE", "LONG_TERM_BAD_DEBT_PROVISION", "TAX_FEES"]
+    assert not receipt["reasons"]
+
+
+def test_resealed_owner_policy_receipt_cannot_waive_original_title_mismatch(example):
+    compiled, trial, index_id = example
+    trial["notes_ledger"]["source_ledger"][0]["inventory"]["section"]["fields"]["title_exact"]["value"] = "Chi phí hoạt động dự kiến"
+    # Keep the old empty refusal list and reseal all candidate/query ids.
+    reseal_trial(trial)
+    with pytest.raises(F36NotesCoreAdapterError, match="Production owner/frontier policy"):
+        sweep_of(compiled, trial, index_id)

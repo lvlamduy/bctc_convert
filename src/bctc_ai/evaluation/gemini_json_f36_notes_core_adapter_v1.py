@@ -18,7 +18,11 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
-from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import _money
+from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
+    _money,
+    _normalized,
+)
+from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import _owner_visible
 from bctc_ai.evaluation.gemini_json_operating_expense_original_inventory_v1 import _nodes
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
     validate_source_observation_mapping_contract_v1,
@@ -103,6 +107,8 @@ def compile_f36_notes_core_specs_v1(topology_spec: Any, evaluation_spec: Any,
         (topology_spec, TOPOLOGY_FORMAT, {"format_version", "family_id", "source", "documents_requested"}),
         (evaluation_spec, EVALUATION_FORMAT, {"format_version", "family_id", "notes_config_pins",
                                              "notes_family", "production_policy", "production_policy_ref",
+                                             "production_topology", "production_topology_ref",
+                                             "production_schema_binding", "production_schema_binding_ref",
                                              "primary_store_ref", "frontier_receipt_refs"}),
         (schema_binding_spec, SCHEMA_FORMAT, {"format_version", "family_id", "crosswalk"}),
     ):
@@ -116,6 +122,8 @@ def compile_f36_notes_core_specs_v1(topology_spec: Any, evaluation_spec: Any,
         _ref(source[key])
     _ref(evaluation_spec["primary_store_ref"])
     _ref(evaluation_spec["production_policy_ref"])
+    _ref(evaluation_spec["production_topology_ref"])
+    _ref(evaluation_spec["production_schema_binding_ref"])
     _need(type(source["artifact_root"]) is str and Path(source["artifact_root"]).is_absolute()
           and type(source["corpus_name"]) is str, "Source root/name")
     identity = source["corpus_identity"]
@@ -160,6 +168,20 @@ def compile_f36_notes_core_specs_v1(topology_spec: Any, evaluation_spec: Any,
           and policy.get("period_lane_policy") == "CURRENT_AND_COMPARATIVE_REQUIRED"
           and policy.get("source_presentation_rounding_policy")
           == "INDEPENDENT_DISPLAY_UNIT_ROUNDING_INTERVAL_ALL_EQUATIONS", "Production F36 policy changed")
+    _need(type(policy.get("minimum_source_visible_root_component_count")) is int
+          and policy["minimum_source_visible_root_component_count"] > 0
+          and policy.get("owner_match_policy") == "EXACT_NORMALIZED_WITH_BOUNDED_SOURCE_SUFFIX"
+          and type(policy.get("owner_surface_kinds")) is list
+          and len(policy["owner_surface_kinds"]) == 2
+          and set(policy["owner_surface_kinds"]) == {"SECTION_TITLE", "TABLE_TITLE"}, "Production owner/minimum policy")
+    production_topology = evaluation_spec["production_topology"]
+    production_schema = evaluation_spec["production_schema_binding"]
+    _need(type(production_topology) is dict and production_topology.get("family_id") == FAMILY
+          and type(production_topology.get("parent")) is dict
+          and type(production_topology["parent"].get("aliases")) is list
+          and bool(production_topology["parent"]["aliases"]), "Production owner topology")
+    _need(type(production_schema) is dict and production_schema.get("family_id") == FAMILY
+          and type(production_schema.get("role_bindings")) is list, "Production role binding schema")
     receipts = evaluation_spec["frontier_receipt_refs"]
     _need(type(receipts) is dict and set(receipts) == _RECEIPTS, "Actual frontier receipt axis incomplete")
     for ref in receipts.values():
@@ -221,13 +243,72 @@ def _inventory(page: dict[str, Any], version: str, blob_sha: str) -> dict[tuple[
     return tables
 
 
+def _production_table_policy_v1(inventory: dict[str, Any], disposition: dict[str, Any],
+                                closure: dict[str, Any], compiled: dict[str, Any]) -> dict[str, Any]:
+    """F36 owner and distinct configured SOURCE-frontier minimum, no value inference."""
+    evaluation = compiled["evaluation"]
+    policy = evaluation["production_policy"]
+    aliases = policy.get("query_owner_aliases")
+    if aliases is None:
+        aliases = [*evaluation["production_topology"]["parent"]["aliases"], *policy.get("supplemental_owner_aliases", [])]
+
+    def title(record):
+        field = (record.get("fields") or {}).get("title_exact")
+        return field["value"] if (type(field) is dict and set(field) == {"present", "value"}
+                and type(field["present"]) is bool and field["present"]) else None
+
+    section_title, table_title = title(inventory.get("section") or {}), title(inventory["table"])
+    owner = _owner_visible({"title_exact": section_title}, {"title_exact": table_title}, compiled_specs={
+        "query_policy": {"owner_surface_kinds": policy["owner_surface_kinds"],
+                         "owner_match_policy": policy["owner_match_policy"],
+                         "owner_aliases": [_normalized(alias) for alias in aliases]}})
+    production_by_id = {b["report_norm_id"]: b["role"] for b in evaluation["production_schema_binding"]["role_bindings"]}
+    notes_by_member = {}
+    raw_family = evaluation["notes_family"]["raw"]
+    for binding in compiled["schema"]["crosswalk"]:
+        if binding["concept"] == raw_family["concept"] and binding["axis"] == raw_family["axis"]:
+            for member in binding["members"]:
+                notes_by_member.setdefault(member, set()).add(binding["report_norm_id"])
+    configured = set(policy["root_component_roles"])
+    frontier, reasons = [], []
+    for row in closure.get("rows") or []:
+        if row.get("class") != "FRONTIER":
+            continue
+        source_rows = [r for r in disposition["rows"] if r["row_id"] == f"r{row['row_ordinal']}"]
+        _need(len(source_rows) == 1, "Production frontier source row ambiguous")
+        member = source_rows[0]["line"]
+        ids = notes_by_member.get(member, set())
+        role = member if member in configured else (production_by_id.get(next(iter(ids))) if len(ids) == 1 else None)
+        if role not in configured:
+            reasons.append("F36_PRODUCTION_FRONTIER_ROLE_UNPROVEN")
+        frontier.append({"row_ordinal": row["row_ordinal"], "notes_member": member, "production_role": role})
+    roles = sorted({r["production_role"] for r in frontier if r["production_role"] in configured})
+    if not owner:
+        reasons.append("F36_PRODUCTION_ORIGINAL_OWNER_NOT_PROVEN")
+    if len(roles) < policy["minimum_source_visible_root_component_count"]:
+        reasons.append("F36_PRODUCTION_ROOT_COMPONENT_MINIMUM_NOT_MET")
+    return {"format_version": "F36_NOTES_PRODUCTION_TABLE_POLICY_V1", "source_owner_surfaces": {
+                "SECTION_TITLE": section_title, "TABLE_TITLE": table_title},
+            "source_frontier": frontier, "distinct_configured_root_roles": roles,
+            "minimum_source_visible_root_component_count": policy["minimum_source_visible_root_component_count"],
+            "reasons": sorted(set(reasons))}
+
+
 def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
-               allowed_units: set[str], period_contexts: dict[int, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+               allowed_units: set[str], period_contexts: dict[int, Any],
+               table_policies: dict[tuple[str, str, str], dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Encoding only. Inputs must be freshly recomputed by rebuild_f36_notes_trials_v1."""
     groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
     retained = []
     for cell, record in zip(cells, records, strict=True):
         _need(_same(record.get("cell"), cell), "Full cell/classification binding")
+        loc = cell["locator"]
+        table_policy = table_policies.get((loc["page_json_version_id"], loc["section_id"], loc["table_id"]))
+        _need(type(table_policy) is dict and type(table_policy.get("reasons")) is list, "Fresh production table policy missing")
+        if table_policy["reasons"]:
+            retained.append({"classification": record, "adapter_disposition": "F36_PRODUCTION_TABLE_POLICY_BLOCKED",
+                             "policy_reasons": canonical_clone_v1(table_policy["reasons"])})
+            continue
         if record["class"] != "CORE_CANDIDATE":
             retained.append({"classification": record, "adapter_disposition": "RETAINED_NOT_CANONICAL"})
             continue
@@ -236,7 +317,6 @@ def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
               and record["exact_rnid_binding"] == cell.get("report_norm_id")
               and cell.get("observation_state") in {"VALUE", "PRINTED_ZERO"}
               and cell.get("scope") in {"SEPARATE", "CONSOLIDATED"}, "Core structural conditions")
-        loc = cell["locator"]
         origin = cell["original_cell"]
         _need(type(origin) is dict and all(type(origin.get(k)) is int and origin[k] > 0
               for k in ("section_ordinal", "table_ordinal", "row_ordinal", "column_ordinal"))
@@ -345,7 +425,7 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
                   == (doc.source_sha256, doc.relative_path, selected.physical_page), "Original source identity")
             blob = loaded["source_json_replay_receipt"]["canonical_json_sha256"]
             inventories.update(_inventory(loaded["page_json"], selected.page_json_version_id, blob))
-    closure_by_table, rows = {}, {}
+    closure_by_table, policy_by_table, rows = {}, {}, {}
     for loc, inventory in inventories.items():
         for row in inventory["rows"]:
             rows[(loc[0], int(loc[1][1:]), int(loc[2][1:]), row["row_ordinal"])] = row
@@ -354,6 +434,7 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
         key = (loc["page_json_version_id"], loc["section_id"], loc["table_id"])
         if key in inventories:
             closure_by_table[key] = root_closure_v1(inventories[key], disposition, config.families[FAMILY])
+            policy_by_table[key] = _production_table_policy_v1(inventories[key], disposition, closure_by_table[key], compiled)
     bindings = exact_rnid_bindings_v1(run.cells, config.crosswalk)
     records = []
     for cell, binding in zip(run.cells, bindings, strict=True):
@@ -367,7 +448,7 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
         ordinal = doc["document_ordinal"]
         own_indices = [i for i, c in enumerate(run.cells) if c["document_ordinal"] == ordinal]
         own_cells, own_records = [run.cells[i] for i in own_indices], [records[i] for i in own_indices]
-        mappings, retained = _fragments(own_cells, own_records, allowed_units, period_contexts)
+        mappings, retained = _fragments(own_cells, own_records, allowed_units, period_contexts, policy_by_table)
         own_dispositions = [d for d in dispositions if d["locator"]["document_ordinal"] == ordinal]
         closures = [{"table": list(k), "closure": v} for k, v in closure_by_table.items()
                     if any(p["page_json_version_id"] == k[0] for p in doc["pages"])]
@@ -386,6 +467,8 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
         ledger = {"cells": own_cells, "classifications": own_records, "retained": retained,
                   "dispositions": own_dispositions, "root_closures": closures,
                   "source_ledger": source_ledger,
+                  "production_policy_receipts": [{"table": list(k), "receipt": v} for k, v in policy_by_table.items()
+                      if k[0] in page_ids],
                   "primary_income_context_texts": contexts[ordinal].income_context_texts if ordinal in requested and ordinal in contexts else [],
                   "scope": "REQUESTED_F36_NOTES_DOCUMENT" if ordinal in requested else "NOT_EVALUATED_REQUESTED_SUBSET_ONLY"}
         candidates = []
@@ -429,7 +512,7 @@ def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
               and type(trial["notes_ledger"]) is dict, "Status/ledger axis")
         ledger = trial["notes_ledger"]
         _need(set(ledger) == {"cells", "classifications", "retained", "dispositions", "root_closures",
-                             "source_ledger", "primary_income_context_texts", "scope"}
+                             "source_ledger", "production_policy_receipts", "primary_income_context_texts", "scope"}
               and all(type(ledger[k]) is list for k in set(ledger) - {"scope"})
               and len(ledger["cells"]) == len(ledger["classifications"]), "Complete ledger fields")
         expected_scope = ("REQUESTED_F36_NOTES_DOCUMENT" if doc["document_ordinal"] in compiled_specs["topology"]["documents_requested"]
@@ -455,15 +538,18 @@ def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
                 coordinate = (key[0], int(section) + 1, int(table_id) + 1, row["row_ordinal"])
                 _need(coordinate not in inventory_rows, "Duplicate source row")
                 inventory_rows[coordinate] = row
-        closures = {}
+        closures, policies = {}, {}
         for disposition in ledger["dispositions"]:
             loc = disposition["locator"]
             key = (loc["page_json_version_id"], loc["section_id"], loc["table_id"])
             if key in inventories:
                 _need(key not in closures, "Duplicate disposition")
                 closures[key] = root_closure_v1(inventories[key], disposition, family)
+                policies[key] = _production_table_policy_v1(inventories[key], disposition, closures[key], compiled_specs)
         expected_closures = [{"table": list(k), "closure": v} for k, v in closures.items()]
         _need(_same(expected_closures, ledger["root_closures"]), "ROOT proof does not recompute")
+        _need(_same([{"table": list(k), "receipt": v} for k, v in policies.items()], ledger["production_policy_receipts"]),
+              "Production owner/frontier policy does not recompute")
         crosswalk = {(e["concept"], e["axis"], tuple(e["members"])): e["report_norm_id"]
                      for e in compiled_specs["schema"]["crosswalk"]}
         bindings = exact_rnid_bindings_v1(ledger["cells"], crosswalk)
@@ -485,7 +571,7 @@ def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
                   "Table/row source accounting does not recompute")
         allowed = {u["canonical_unit"] for u in compiled_specs["evaluation"]["production_policy"]["money_unit_bindings"] if u["accepted"] is True}
         period_contexts = {doc["document_ordinal"]: statement_period_context_v1(ledger["primary_income_context_texts"])}
-        expected_mappings, expected_retained = _fragments(ledger["cells"], ledger["classifications"], allowed, period_contexts)
+        expected_mappings, expected_retained = _fragments(ledger["cells"], ledger["classifications"], allowed, period_contexts, policies)
         _need(_same(expected_mappings, trial["mappings"]) and _same(expected_retained, ledger["retained"]),
               "Mapping/raw/state/period/retention encoding differs from complete ledger")
         for candidate in trial["candidates"]:
@@ -564,7 +650,8 @@ def replay_f36_notes_core_trials_from_source_v1(*, source_page_database: Path,
     project_root = Path(__file__).resolve().parents[3]
     config_root = project_root / "config/notes"
     refs = [source_spec["index_ref"], source_spec["database_ref"], evaluation["primary_store_ref"],
-            evaluation["production_policy_ref"], *evaluation["frontier_receipt_refs"].values(),
+            evaluation["production_policy_ref"], evaluation["production_topology_ref"], evaluation["production_schema_binding_ref"],
+            *evaluation["frontier_receipt_refs"].values(),
             {**source_spec["database_ref"], "path": str(source_page_database)}]
     refs += [{"path": str(config_root / key), "sha256": pin, "size_bytes": (config_root / key).stat().st_size}
              for key, pin in evaluation["notes_config_pins"].items()]
@@ -586,6 +673,11 @@ def replay_f36_notes_core_trials_from_source_v1(*, source_page_database: Path,
         policy_path = project_root / "config/families/tm-operating-expense-evaluation-v1.json"
         _need(Path(evaluation["production_policy_ref"]["path"]).resolve() == policy_path.resolve()
               and _same(json.loads(policy_path.read_bytes()), evaluation["production_policy"]), "Live F36 policy differs")
+        for field, filename in (("production_topology", "tm-operating-expense-topology-v1.json"),
+                                ("production_schema_binding", "tm-operating-expense-schema-binding-v1.json")):
+            path = project_root / "config/families" / filename
+            _need(Path(evaluation[field + "_ref"]["path"]).resolve() == path.resolve()
+                  and _same(json.loads(path.read_bytes()), evaluation[field]), "Live F36 topology/schema differs")
         corpus = load_corpus_selection_v1(name=source_spec["corpus_name"], root=root,
             index_relative_path=str(Path(source_spec["index_ref"]["path"]).relative_to(root)),
             expected_index_sha256=source_spec["index_ref"]["sha256"], expected_db_sha256=source_spec["database_ref"]["sha256"])
