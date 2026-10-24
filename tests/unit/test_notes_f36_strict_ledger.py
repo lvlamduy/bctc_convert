@@ -173,6 +173,33 @@ def test_legacy_values_join_only_through_a_direct_lane_column_proof():
     assert classify_legacy_value_v1(_proof(rnid=1207, text="110,573"), by_coordinate, ROWS)["class"] == "LEGACY_DIFFERS:RNID,RAW"
 
 
+@pytest.mark.parametrize("override,axes", [
+    ({"unit": None}, "UNIT"),
+    ({"unit": " "}, "UNIT"),
+    ({"report_norm_id": None}, "RNID"),
+    ({"report_norm_id": "1206"}, "RNID"),
+    ({"report_norm_id": True}, "RNID"),
+    ({"source_text_one_lf_sha256": None}, "RAW_HASH"),
+    ({"source_text_one_lf_sha256": "AB" * 32}, "RAW_HASH"),
+    ({"original_cell": None}, "COORDINATE"),
+    ({"original_cell": {"page_json_version_id": VID, "section_ordinal": 1, "table_ordinal": 1, "row_ordinal": 1,
+                        "column_ordinal": 0}}, "COORDINATE"),
+    ({"item_mapping_id": None, "value_index": True}, "ITEM_MAPPING_ID,VALUE_INDEX"),
+])
+def test_a_missing_or_malformed_legacy_axis_never_contradicts_the_core(override, axes):
+    core = classify_observation_v1(cell(), 1206, CLOSED, ROWS)
+    record = classify_legacy_value_v1({**_proof(), **override}, {(VID, 1, 1, 1, 2): core}, ROWS)
+    assert record["class"] == f"LEGACY_NOT_JOINABLE:AXIS_MISSING_OR_MALFORMED:{axes}"
+    apply_legacy_conflicts_v1([core], [record])
+    assert core["class"] == "CORE_CANDIDATE"
+
+
+def test_an_unavailable_current_original_item_is_not_a_raw_difference():
+    core = classify_observation_v1(cell(), 1206, CLOSED, ROWS)
+    record = classify_legacy_value_v1(_proof(), {(VID, 1, 1, 1, 2): core}, {})
+    assert record["class"] == "LEGACY_NOT_JOINABLE:CURRENT_ORIGINAL_ITEM_UNAVAILABLE"
+
+
 def test_only_a_proven_legacy_difference_moves_a_core_candidate_to_review():
     core = classify_observation_v1(cell(), 1206, CLOSED, ROWS)
     held = classify_observation_v1(cell(acceptance="HOLD", hold_reasons=["X"], row=1), 1206, CLOSED, ROWS)
