@@ -35,6 +35,14 @@ subjects:
 
 reject_context: [[ty le], [lai suat], [du tru bat buoc], [tuong duong tien]]
 
+# Owner is related parties (Codex 0234, deposits gross-total admission only): read from the table's OWN context only.
+# With its own counterparty TEXT column or flow / receivable-payable MONEY column the table is related-party
+# transactions (REJECTED, reason kept in the audit); otherwise it is a related-party subset, held SUBJECT_UNRESOLVED.
+related_party_owner:
+  owner_phrases: [[ben lien quan]]
+  counterparty_columns: [[ben lien quan], [moi quan he], [tinh chat giao dich]]
+  flow_or_settlement_columns: [[phat sinh], [chi phi], [thu nhap], [phai thu], [phai tra]]
+
 # Column meaning (Codex 0206): see by_customer_entity_type_v1.yaml. Row subjects come from the subject phrases above.
 non_balance_column_measures:
   PROVISION: {aliases: [du phong]}

@@ -537,3 +537,36 @@ def test_document_coverage_separates_observed_unresolved_from_not_observed():
     # Other shapes are unchanged.
     other = document_coverage_v1(evaluations, [], [1], "LIST_BY_AXIS")
     assert other[1]["status"] == "NOT_OBSERVED_AFTER_FULL_RETRIEVAL"
+
+
+def _kinds(table, kinds):
+    """Give the synthetic columns their source value kinds (make_table builds MONEY columns)."""
+
+    table.columns = [replace(column, value_kind=kinds.get(column.column_id, column.value_kind)) for column in table.columns]
+    return table
+
+
+def test_an_own_table_position_schedule_is_not_a_credit_provision_flow(config):
+    # Codex 0233/0234 E1 (doc 112 literals): maturity TEXT, rate PERCENT, count COUNT and "Giá trị đầu tư" MONEY with
+    # no period word is a bond position schedule; it is REJECTED with its deciding columns, never read as F37 flow.
+    family = config.families["CREDIT_PROVISION_EXPENSE"]
+    rows = [("Trái phiếu đặc biệt VAMC", ["31/12/2027", "0%", "100", "1.000"]), ("Tổng cộng", [None, None, None, "1.000"])]
+    schedule = _kinds(make_table(rows, [("Ngày đáo hạn",), ("Lãi suất",), ("Số lượng trái phiếu",), ("Giá trị đầu tư",)],
+                                 title=None, section=None), {"c1": "TEXT", "c2": "PERCENT", "c3": "COUNT"})
+    evaluation = evaluate_concept_table_v1(schedule, family, document(quarter=4), [], [])[0]
+    assert evaluation.status == "REJECTED"
+    assert evaluation.reasons == ["OWN_TABLE_IS_A_POSITION_SCHEDULE:money=c4;schedule=c1,c2,c3"]
+    # Positives keep reading: a flow table with a "Thuyết minh" TEXT column (doc 69 C2 shape), a real VAMC / bond
+    # provision flow, and a schedule-like table whose MONEY column is a flow measure.
+    flow_rows = [("Trích lập dự phòng trái phiếu đặc biệt VAMC", ["7", "40", "50"]),
+                 ("Dự phòng trái phiếu doanh nghiệp chưa niêm yết", ["8", "5", "4"]), ("Tổng cộng", [None, "45", "54"])]
+    with_note = _kinds(make_table(flow_rows, [("Thuyết minh",), ("Năm 2025",), ("Năm 2024",)],
+                                  title="29. Chi phí dự phòng rủi ro tín dụng"), {"c1": "TEXT"})
+    evaluations = evaluate_concept_table_v1(with_note, family, document(quarter=4), context_of(with_note), [])
+    assert evaluations[0].status == "EVALUATED"
+    result = cells(evaluations)
+    assert result[("VAMC_PROVISION", YEAR)]["acceptance"] == "ACCEPTED" and result[("CORPORATE_BOND_PROVISION", YEAR)]["value"] == "5"
+    rate_flow = _kinds(make_table([("Trích lập dự phòng trái phiếu đặc biệt VAMC", ["5%", "40"]), ("Tổng cộng", [None, "40"])],
+                                  [("Tỷ lệ trích lập",), ("Chi phí dự phòng",)], title=None, section=None), {"c1": "PERCENT"})
+    assert evaluate_concept_table_v1(rate_flow, family, document(quarter=4), [], [])[0].reasons[:1] != [
+        "OWN_TABLE_IS_A_POSITION_SCHEDULE:money=c2;schedule=c1"]

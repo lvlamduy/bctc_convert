@@ -23,7 +23,13 @@ from typing import Any
 
 from bctc_ai.notes.config_v1 import Family, all_phrases
 from bctc_ai.notes.kernel_v1 import DocumentContext, NoteLane, NoteTable, parse_cell_v1, resolve_instant_lanes_v1
-from bctc_ai.notes.list_shape_v1 import TOTAL_KEYS, classification_basis_v1, owned_date_texts_v1, resolve_subject_v1
+from bctc_ai.notes.list_shape_v1 import (
+    OWNER_SOURCES,
+    TOTAL_KEYS,
+    classification_basis_v1,
+    owned_date_texts_v1,
+    resolve_subject_v1,
+)
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese
 from bctc_ai.primary_statements.units_v1 import SCALE
 
@@ -170,8 +176,19 @@ def evaluate_coordinate_table_v1(
     if family.rejects(own_text):
         evaluation.status, evaluation.reasons = "REJECTED", ["CONTEXT_IS_NOT_A_BALANCE_BREAKDOWN"]
         return [evaluation]
+    related = related_party_owner_v1(table, family, context)
+    if related and related.startswith("OWNER_IS_RELATED_PARTY_TRANSACTIONS"):
+        evaluation.status, evaluation.reasons = "REJECTED", [related]
+        return [evaluation]
     evaluation.subject, evaluation.subject_basis = resolve_subject_v1(family, context)
+    if related:
+        # An explicitly related-party subset is never the gross subject total, nor its residual or completion proof,
+        # even when PRIMARY agrees: subject withheld, every cell held with the named reason (Codex 0234).
+        evaluation.subject, evaluation.subject_basis = None, {"basis": related}
     rows = assign_coordinates_v1(table, family, axes, evaluation.subject)
+    if related:
+        for row in rows:
+            row.subject = None
     first_members = {r.coordinate.get(axis_names[0]) for r in rows if r.coordinate}
     first_members.discard(None)
     if len(first_members) < family.min_distinct_members:
@@ -211,6 +228,34 @@ def evaluate_coordinate_table_v1(
             evaluation.cells.append(_cell(evaluation, family, document, lane, row, parsed, key, basis,
                                           proven, failed, block, foreign))
     return [evaluation]
+
+
+def related_party_owner_v1(table: NoteTable, family: Family, context: list[tuple[str, str]]) -> str | None:
+    """Opt-in family rule (``related_party_owner``; deposits only, Codex 0234 E2).
+
+    Only the table's OWN context (block heading, table title, section title, section narrative; never another
+    section of the page) can name related parties. Then a table with its own counterparty TEXT column or its own
+    flow / receivable-payable MONEY column is related-party transactions (REJECTED); otherwise it is an explicitly
+    related-party subset (RELATED_PARTY_SUBSET_NOT_GROSS_TOTAL). None when the owner names no related party.
+    """
+
+    spec = family.raw.get("related_party_owner")
+    if not spec:
+        return None
+
+    def groups(key):
+        return [[fold_vietnamese(str(p)) for p in g] for g in spec.get(key, [])]
+
+    owner = " ".join(fold_vietnamese(text) for source, text in context if source in OWNER_SOURCES)
+    if not all_phrases(groups("owner_phrases"), owner):
+        return None
+    counterparty = [c.column_id for c in table.columns
+                    if c.value_kind == "TEXT" and all_phrases(groups("counterparty_columns"), fold_vietnamese(c.header_text))]
+    flow = [c.column_id for c in table.columns
+            if c.value_kind == "MONEY" and all_phrases(groups("flow_or_settlement_columns"), fold_vietnamese(c.header_text))]
+    if counterparty or flow:
+        return f"OWNER_IS_RELATED_PARTY_TRANSACTIONS:counterparty={','.join(counterparty)};flow={','.join(flow)}"
+    return "RELATED_PARTY_SUBSET_NOT_GROSS_TOTAL"
 
 
 def _member_ancestors(member: str, first_axis) -> set[str]:
@@ -344,6 +389,8 @@ def _cell(evaluation, family, document, lane, row, parsed, key, basis, proven, f
         reasons.append("COLUMN_MEASURE_NOT_A_BALANCE:" + lane.measure)
     if foreign:
         reasons.append("TABLE_CONTAINS_ROW_OF_ANOTHER_SUBJECT")
+    if evaluation.subject_basis.get("basis") == "RELATED_PARTY_SUBSET_NOT_GROSS_TOTAL":
+        reasons.append("RELATED_PARTY_SUBSET_NOT_GROSS_TOTAL")
     if (block, key) in failed:
         reasons.append("VALIDATION_FAIL")
     state, value = parsed.state, parsed.value

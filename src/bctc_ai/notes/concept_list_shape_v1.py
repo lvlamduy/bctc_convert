@@ -28,10 +28,11 @@ The shape never chooses between competing readings:
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from typing import Any
 
-from bctc_ai.notes.config_v1 import Family, all_phrases
+from bctc_ai.notes.config_v1 import Family, all_phrases, phrase_in
 from bctc_ai.notes.kernel_v1 import (
     DocumentContext,
     NoteLane,
@@ -411,6 +412,31 @@ def anchor_checks_v1(family: Family, document: DocumentContext, values: dict[str
     return checks
 
 
+_POSITION_MEASURE = ("gia tri dau tu", "menh gia", "gia tri ghi so", "so du")
+_SCHEDULE_TEXT = ("ngay dao han", "ky han", "lai suat")
+_FLOW_PERIOD = re.compile(r"\b(?:nam|quy|ky|giai doan|luy ke|thang)\b")
+
+
+def position_schedule_reason_v1(table: NoteTable) -> str | None:
+    """REJECT reason when the table ITSELF is a position schedule, not a flow breakdown (Codex 0233/0234 E1).
+
+    All three own-table conditions, over every MONEY header: (a) some MONEY header names a position measure (giá trị
+    đầu tư, mệnh giá, giá trị ghi sổ, số dư); (b) the table has its own schedule column (COUNT, PERCENT, or a TEXT
+    maturity / term / rate column); (c) no MONEY header prints a flow period word (năm, quý, kỳ, giai đoạn, lũy kế,
+    tháng). A "Thuyết minh" TEXT column alone is not a schedule; no other section or page text is read.
+    """
+
+    money = [c for c in table.columns if c.value_kind == "MONEY"]
+    headers = {c.column_id: fold_vietnamese(c.header_text) for c in table.columns}
+    position = [c.column_id for c in money if any(phrase_in(p, headers[c.column_id]) for p in _POSITION_MEASURE)]
+    schedule = [c.column_id for c in table.columns if c.value_kind in {"COUNT", "PERCENT"}
+                or (c.value_kind == "TEXT" and any(phrase_in(p, headers[c.column_id]) for p in _SCHEDULE_TEXT))]
+    flow = [c.column_id for c in money if _FLOW_PERIOD.search(headers[c.column_id])]
+    if position and schedule and not flow:
+        return f"OWN_TABLE_IS_A_POSITION_SCHEDULE:money={','.join(position)};schedule={','.join(schedule)}"
+    return None
+
+
 def evaluate_concept_table_v1(
     table: NoteTable, family: Family, document: DocumentContext, context: list[tuple[str, str]], page_texts: list[str],
 ) -> list[TableEvaluation]:
@@ -426,6 +452,11 @@ def evaluate_concept_table_v1(
     owner = " ".join(fold_vietnamese(text) for source, text in context[:3] if source in OWNER_SOURCES)
     if family.rejects(owner):
         evaluation.status, evaluation.reasons = "REJECTED", ["OWNER_CONTEXT_IS_ANOTHER_NOTE"]
+        return [evaluation]
+    schedule = position_schedule_reason_v1(table)
+    if schedule:
+        # Kept in the dispositions audit with its locator and the deciding columns; the source rows are not dropped.
+        evaluation.status, evaluation.reasons = "REJECTED", [schedule]
         return [evaluation]
     evaluation.subject, evaluation.subject_basis = resolve_subject_v1(family, context)
     owned_subject = evaluation.subject is not None and evaluation.subject_basis.get("tier") == "OWNER_CONTEXT"

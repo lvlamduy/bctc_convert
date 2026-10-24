@@ -210,3 +210,41 @@ def test_an_all_null_printed_item_stays_an_unknown_component(config):
             assert cells[("DEPOSIT_TYPE=MARGIN", period)]["value"] is None
             dash = cells[("DEPOSIT_TYPE=TERM", period)]
             assert dash["observation_state"] == "DASH" and dash["value"] is None and dash["acceptance"] == "HOLD", primary
+
+
+def _related_table(rows, headers, kinds, *, title=None, section=None):
+    from dataclasses import replace as _replace
+    t = table(rows, title=title, section=section, headers=headers)
+    t.columns = [_replace(column, value_kind=kinds.get(column.column_id, column.value_kind)) for column in t.columns]
+    return t
+
+
+def test_related_party_ownership_is_never_the_gross_deposit_total(config):
+    # Codex 0234 E2: the deposits family reads the table's OWN context only.
+    family = config.families["DEPOSITS_BY_TYPE"]
+    axes = [config.axes[name] for name in family.raw["axes"]]
+    # 1. Related-party transactions (doc 111 literals): counterparty TEXT and flow / receivable-payable MONEY columns.
+    rows = [("Tiền gửi không kỳ hạn", ["Công ty A", "Công ty con", "10", "100"]), ("Tiền gửi có kỳ hạn", ["Công ty B", "Công ty liên kết", "20", "200"]),
+            ("Tổng", [None, None, "30", "300"])]
+    transactions = _related_table(rows, (("Bên liên quan",), ("Mối quan hệ",), ("Phát sinh trong kỳ Chi phí/ (Thu nhập)",),
+                                         ("Số dư tại 30/06/2025 Phải thu/ (Phải trả)", "Triệu VND")),
+                                  {"c1": "TEXT", "c2": "TEXT"}, section="33. GIAO DỊCH VỚI CÁC BÊN LIÊN QUAN")
+    evaluation = evaluate_coordinate_table_v1(transactions, family, document(primary_balance(4320, "300", "270")),
+                                              [("SECTION_TITLE", transactions.section_title)], [], axes=axes)[0]
+    assert evaluation.status == "REJECTED"
+    assert evaluation.reasons == ["OWNER_IS_RELATED_PARTY_TRANSACTIONS:counterparty=c1,c2;flow=c3,c4"]
+    # 2. An explicitly related-party deposit subset with genuine term columns: held, never the gross total, even
+    #    though the PRIMARY customer-deposit total agrees.
+    subset_rows = [("Tiền gửi không kỳ hạn", ["100", "90"]), ("Tiền gửi có kỳ hạn", ["200", "150"]), ("Tổng", ["300", "240"])]
+    cells_, evaluations = run(config, "DEPOSITS_BY_TYPE", subset_rows, primary=primary_balance(4320, "300", "240"),
+                              title="Tiền gửi của khách hàng là các bên liên quan")
+    assert evaluations[0].status == "EVALUATED" and not evaluations[0].corroboration
+    assert all(c["acceptance"] == "HOLD" and c["concept"] is None and "RELATED_PARTY_SUBSET_NOT_GROSS_TOTAL" in c["hold_reasons"]
+               for c in cells_.values())
+    # 3. Ordinary gross customer deposits, with and without a related-party section elsewhere on the page.
+    cells_, _ = run(config, "DEPOSITS_BY_TYPE", subset_rows, primary=primary_balance(4320, "300", "240"))
+    assert cells_[("TOTAL", JUN)]["acceptance"] == "ACCEPTED" and cells_[("TOTAL", JUN)]["concept"] == "CUSTOMER_DEPOSITS"
+    gross = table(subset_rows)
+    context = [("TABLE_TITLE", gross.table_title), ("PRECEDING_SECTION_TITLE", "33. GIAO DỊCH VỚI CÁC BÊN LIÊN QUAN")]
+    other = evaluate_coordinate_table_v1(gross, family, document(primary_balance(4320, "300", "240")), context, [], axes=axes)
+    assert {(c["member"], c["period_key"]): c for e in other for c in e.cells}[("TOTAL", JUN)]["acceptance"] == "ACCEPTED"
