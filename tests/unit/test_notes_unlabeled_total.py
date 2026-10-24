@@ -169,7 +169,8 @@ def test_no_grant_without_the_subject_in_the_tables_own_context_or_the_family_op
 def test_a_total_that_differs_from_its_lines_holds_them_and_loses_the_employee_acceptance(family):
     # Cascade (counted in both directions): a FAIL holds every line of the equation, including EMPLOYEE_EXPENSE,
     # which its own detail equation accepts without T. No amount is changed, chosen or backsolved.
-    [evaluation] = evaluate(lpb_like(total=("222", "196")), family)
+    # 250 differs from the printed components by 29, beyond the existing declared rounding allowance.
+    [evaluation] = evaluate(lpb_like(total=("250", "196")), family)
     statuses = {(e["name"], e["lane"]): e["status"] for e in evaluation.equations}
     assert statuses[("TOTAL_FROM_TOP_LEVEL_LINES", "c1")] == "FAIL" and statuses[("TOTAL_FROM_TOP_LEVEL_LINES", "c2")] == "PASS"
     result = cells([evaluation])
