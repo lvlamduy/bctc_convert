@@ -148,7 +148,7 @@ def test_family_policy_cannot_be_relaxed(example, field, value):
         compile_f36_notes_core_specs_v1(compiled["topology"], compiled["evaluation"], compiled["schema"])
 
 
-@pytest.mark.parametrize("target", ["family", "receipt", "ordinal", "version", "duplicate_page", "duplicate_crosswalk"])
+@pytest.mark.parametrize("target", ["family", "receipt", "ordinal", "version", "duplicate_page", "duplicate_crosswalk", "role_axis"])
 def test_bad_declared_source_and_config_axes_fail(example, target):
     compiled, _, _ = example
     if target == "family":
@@ -162,8 +162,10 @@ def test_bad_declared_source_and_config_axes_fail(example, target):
     elif target == "duplicate_page":
         pages = compiled["topology"]["source"]["document_axis"][0]["pages"]
         pages.append(deepcopy(pages[0]))
-    else:
+    elif target == "duplicate_crosswalk":
         compiled["schema"]["crosswalk"].append(deepcopy(compiled["schema"]["crosswalk"][0]))
+    else:
+        compiled["evaluation"]["notes_family"]["axis"]["members"].clear()
     with pytest.raises(F36NotesCoreAdapterError):
         compile_f36_notes_core_specs_v1(compiled["topology"], compiled["evaluation"], compiled["schema"])
 
