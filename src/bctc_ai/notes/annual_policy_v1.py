@@ -14,11 +14,12 @@ replay receipt. ``verify_annual_policy_v1`` re-derives the COMPLETE assertion ax
 candidate is captured with exactly that many candidates, and grants only a CALENDAR_YEAR resolution.
 
 Sentences split at ". " / "; " only; a physical line wrap is part of its sentence (a wrapped subject and start phrase
-are one candidate). A leading enumerated heading line without any cue ("(c) Kỳ kế toán") is set aside before the
-whole-sentence grammar; anything else stays in. A sentence is a CANDIDATE when its folded text names the accounting
-year (năm tài chính / kỳ kế toán năm / niên độ kế toán / năm kế toán) with "bắt đầu", or a first / changed / shorter /
-longer accounting year (QUALIFIER). A candidate whose raw text has a combining mark or a non-ASCII digit, or whose
-whole folded text is not the finite grammar, is UNSUPPORTED_WORDING; only a whole-sentence match is a DEFINITION
+are one candidate). Only the finite generic heading line reviewed in LPB, an enumerator followed by exactly "Kỳ kế
+toán" ("(c) Kỳ kế toán"), is set aside before the whole-sentence grammar (Codex 0260); any other heading (an
+exception, an owner qualification, anything unknown) stays in the sentence and makes it UNSUPPORTED_WORDING.
+A sentence is a CANDIDATE when its folded text names the accounting year (năm tài chính / kỳ kế toán năm / niên độ
+kế toán / năm kế toán) with "bắt đầu", or a first / changed / shorter / longer accounting year (QUALIFIER). A
+candidate whose raw text has a combining mark or a non-ASCII digit, or whose whole folded text is not the finite grammar, is UNSUPPORTED_WORDING; only a whole-sentence match is a DEFINITION
 (printed years retained: an absolute interval is not a recurrence). Owners are the exact designations "của Ngân hàng"
 (BANK) and "của Tập đoàn" / "của Ngân hàng và các công ty con" (GROUP); absent is UNKNOWN, anything else OTHER.
 CALENDAR_YEAR needs at least one DEFINITION, no UNSUPPORTED_WORDING or QUALIFIER anywhere in the frontier, every
@@ -45,7 +46,7 @@ _DEFINITION = re.compile(
 _CANDIDATE = re.compile(_SUBJECT + r".*\bbat dau\b")
 _QUALIFIER = re.compile(r"\b" + _SUBJECT + r" dau tien\b|\bthay doi " + _SUBJECT + r"|\bchuyen doi " + _SUBJECT
                         + r"|\b" + _SUBJECT + r"[^.;]*\b(?:ngan hon|dai hon)\b")
-_HEADING = re.compile(r"\(?[a-z0-9]{1,4}[.)]\s*[^0-9]*")
+_HEADING = re.compile(r"\(?[a-z0-9]{1,4}[.)] ?ky ke toan")
 _OWNERS = {"cua ngan hang": "BANK", "cua tap doan": "GROUP", "cua ngan hang va cac cong ty con": "GROUP"}
 _SCOPE_OWNER = {"SEPARATE": "BANK", "CONSOLIDATED": "GROUP"}
 
@@ -90,7 +91,7 @@ def classify_sentence_v1(sentence: str) -> dict[str, Any] | None:
     body = sentence
     if len(lines) > 1:
         head = _folded(lines[0])
-        if _HEADING.fullmatch(head) and not re.search(_SUBJECT + r"|\bbat dau\b|\bket thuc\b", head):
+        if _HEADING.fullmatch(head):
             body = "\n".join(lines[1:])
     folded = _folded(body)
     record: dict[str, Any] = {"folded": folded, "raw_ok": raw_marks_ok_v1(body)}
@@ -177,7 +178,13 @@ def resolve_annual_policy_v1(assertions: list[dict[str, Any]], scope: str | None
 
 
 def verify_annual_policy_v1(capture: Any, binding: tuple[Any, ...]) -> tuple[bool, str, dict[str, Any] | None]:
-    """(granted, why, resolution) re-derived from the immutable capture alone (Codex 0258)."""
+    """(granted, why, resolution) re-derived from the immutable capture alone (Codex 0258/0261).
+
+    Scope: this checks the CONSISTENCY of a capture inside the authenticated collector -> runner -> kernel path
+    (``NotesSource.annual_policies_v1`` builds it from loader-authenticated ORIGINAL pages and ``run_v1`` hands it
+    straight to the kernel; no capture is ever reloaded or deserialized). It does not independently authenticate an
+    object constructed elsewhere: source binding and the complete narrative / frontier checks are what it enforces.
+    """
 
     if type(capture) is not PolicyCapture or any(type(page) is not PolicyPage for page in capture.pages):
         return False, "POLICY_NOT_A_CAPTURE", None

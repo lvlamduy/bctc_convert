@@ -109,8 +109,11 @@ def test_the_actual_lpb_clause_is_a_scope_bound_calendar_definition():
      "POLICY_WINDOWS_CONFLICT"),
     ((CALENDAR, "Năm tài chính đầu tiên\ncủa Ngân hàng ngắn hơn 12 tháng."), "SEPARATE",
      "POLICY_QUALIFIED_FIRST_SHORT_LONG_OR_CHANGED_YEAR"),
-    (("Kỳ kế toán năm của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12́.",), "SEPARATE",
+    (("Kỳ kế toán năm của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31 tháng 12\u0301.",), "SEPARATE",
      "UNSUPPORTED_POLICY_WORDING"),
+    # Codex 0260: only the reviewed generic heading "(c) Kỳ kế toán" is set aside; an exception or owner heading is not.
+    (("(c) Ngoại lệ cho năm đầu tiên\n" + CALENDAR,), "SEPARATE", "UNSUPPORTED_POLICY_WORDING"),
+    (("(c) Riêng công ty con\n" + CALENDAR,), "SEPARATE", "UNSUPPORTED_POLICY_WORDING"),
 ])
 def test_unknown_foreign_scoped_absolute_unsupported_qualified_wrapped_marked_or_conflicting_policy_never_grants(
         narratives, scope, reason):
