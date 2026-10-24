@@ -515,3 +515,52 @@ def test_bare_current_year_label_needs_a_proven_current_tax_owner(family):
         dup.cells[("r2", column.column_id)] = ("1", "VALUE")
     child = assign_lines_v1(dup, family)[1]
     assert (child.role, child.disposition, child.reason) == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER")
+
+
+INTERIM_Q4 = ["Báo cáo kết quả hoạt động giữa niên độ cho giai đoạn từ ngày 01/1/2025 đến ngày 31/12/2025"]
+YEAR_ENDED_HEADERS = [("Năm kết thúc ngày 31/12/2025 Triệu VND",), ("Năm kết thúc\nngày 31/12/2024\nTriệu VND",)]
+
+
+def test_year_ended_header_is_recorded_as_shadow_evidence_only(family, monkeypatch):
+    # Codex 0230/0232 R1 (doc 69 C1/C2 literals): "Năm kết thúc ngày D" under an interim 01/01..31/12 statement is
+    # recorded as DURATION:YEAR_ENDED:D shadow evidence. Nothing else changes: same cells, acceptance, holds, period
+    # keys, candidates and legacy IDs as with the shadow grammar disabled, even with a PRIMARY amount that would agree.
+    from dataclasses import replace
+    from bctc_ai.notes import kernel_v1
+
+    interim = replace(document(quarter=4), income_context_texts=INTERIM_Q4,
+                      primary_cells=kqkd({"DURATION:YTD:TO_12-31:2025": {"CURRENT": "87808"}}))
+
+    def evaluate():
+        table = make_table(RECON, YEAR_ENDED_HEADERS)
+        evaluations = evaluate_concept_table_v1(table, family, interim, context_of(table), [])
+        cells_ = [dict(c) for e in evaluations for c in e.cells]
+        _assign_legacy_ids(cells_, load_notes_config_v1(ROOT))
+        return evaluations, cells_
+
+    shadowed, with_shadow = evaluate()
+    monkeypatch.setattr(kernel_v1, "year_ended_shadow_v1", lambda header: None)
+    plain, without_shadow = evaluate()
+    assert with_shadow == without_shadow and with_shadow  # every field of every cell, including report_norm_id
+    assert all(c["period_key"] is None and c["period_candidates"] == [] and c["acceptance"] == "HOLD"
+               and "PERIOD_UNRESOLVED:PERIOD_END_WITHOUT_PRINTED_DURATION" in c["hold_reasons"] for c in with_shadow)
+    extra = [c for c in shadowed[0].corroboration if c not in plain[0].corroboration]
+    assert extra == [
+        {"rule": "YEAR_ENDED", "status": "SHADOW_PERIOD_CANDIDATE_NOT_GRANTED", "candidate": "DURATION:YEAR_ENDED:2025-12-31",
+         "header_path_exact": ["Năm kết thúc ngày 31/12/2025 Triệu VND"], "lane": "c1", "diagnostic_only": True},
+        {"rule": "YEAR_ENDED", "status": "SHADOW_PERIOD_CANDIDATE_NOT_GRANTED", "candidate": "DURATION:YEAR_ENDED:2024-12-31",
+         "header_path_exact": ["Năm kết thúc\nngày 31/12/2024\nTriệu VND"], "lane": "c2", "diagnostic_only": True}]
+    assert not any(c.get("status") == "EXACT" for c in shadowed[0].corroboration)  # the agreeing amount chose nothing
+
+
+def test_year_ended_shadow_grammar_is_finite(family):
+    # Positive: a printed non-calendar year end stays as printed. Negatives: a bare end date, "kỳ kết thúc" (no grain),
+    # two dates, and a lane already resolved by its own printed quarter record nothing.
+    headers = [("31/12/2025",), ("Kỳ kết thúc ngày 31/12/2025",), ("Năm kết thúc ngày 31/12/2025 và 31/12/2024",),
+               ("Năm kết thúc ngày 30/06/2025",), ("Quý 4/2025",), ("Cho năm tài chính kết thúc ngày 31.12.2025",)]
+    from dataclasses import replace
+    table = make_table(RECON[:1], headers)
+    lanes = resolve_duration_lanes_v1(table, replace(document(quarter=4), income_context_texts=INTERIM_Q4), [], [table.table_title])
+    assert [[e["candidate"] for e in lane.shadow_evidence] for lane in lanes] == [
+        [], [], [], ["DURATION:YEAR_ENDED:2025-06-30"], [], ["DURATION:YEAR_ENDED:2025-12-31"]]
+    assert lanes[4].period_key == "DURATION:QUARTER:4:2025" and all(lane.period_key is None for lane in lanes[:4])

@@ -611,6 +611,8 @@ class NoteLane:
     measure: str | None = None
     subject: str | None = None
     candidates: list[str] = field(default_factory=list)
+    # Shadow-only period evidence (Codex 0232): measured, never a period key, candidate, proof or anchor key.
+    shadow_evidence: list[dict[str, Any]] = field(default_factory=list)
 
 
 _REPORTING_POINT = re.compile(r"\b(?:tai ngay|den ngay|tinh den ngay|ket thuc ngay|ket thuc vao ngay|vao ngay ket thuc)\b\s*")
@@ -897,6 +899,12 @@ def resolve_duration_lanes_v1(
                     else:
                         lane.reasons.append("PERIOD_UNRESOLVED:" + (
                             report.reason or (own.reason if own else None) or "NO_REASON_RECORDED"))
+        if lane.period_key is None:
+            ended = year_ended_shadow_v1(header)
+            if ended:
+                lane.shadow_evidence.append({"rule": "YEAR_ENDED", "status": "SHADOW_PERIOD_CANDIDATE_NOT_GRANTED",
+                                             "candidate": f"DURATION:YEAR_ENDED:{ended}",
+                                             "header_path_exact": list(column.header_raw or column.header_path)})
         _resolve_lane_unit(lane, header_units, unit_sources)
         lanes.append(lane)
     keys = [lane.period_key for lane in lanes if lane.period_key]
@@ -947,6 +955,21 @@ _NUMERIC_DATE = r"([0-9]{1,2})[/.\-]([0-9]{1,2})[/.\-]((?:19|20)[0-9]{2})"
 _WORDED_DATE = r"(?:ngay )?([0-9]{1,2}) thang ([0-9]{1,2}) nam ((?:19|20)[0-9]{2})"
 _ANNUAL_PREFIX = r"(?:(?:cho )?nam (?:tai chinh )?ket thuc (?:vao )?ngay |(?:tai )?ngay )?"
 _PLAIN_PREFIX = r"(?:(?:tai )?ngay )?"
+_YEAR_ENDED_PREFIX = re.compile(r"(?:cho )?nam (?:tai chinh )?ket thuc (?:vao )?ngay ")
+
+
+def year_ended_shadow_v1(header: str) -> str | None:
+    """Shadow-only R1 (Codex 0230/0232): the end date D of a header that is exactly "(Cho) năm (tài chính) kết thúc
+    (vào) ngày D" apart from unit words, else None.
+
+    "Năm" is a printed grain and D a printed end, but no start is printed: the evidence is the non-canonical
+    DURATION:YEAR_ENDED:D, recorded for measurement only. It is never a period key or candidate, never relabelled as
+    a calendar year, never compared with a PRIMARY line, and never clears a hold.
+    """
+
+    core = _header_core(fold_vietnamese(header))
+    match = _YEAR_ENDED_PREFIX.match(core)
+    return _single_date_header(core[match.end():], header, annual_prefix=False) if match else None
 
 
 def _raw_digits_and_marks_ok(raw_header: str) -> bool:
