@@ -112,6 +112,13 @@ LPB69 ORIGINAL/PDF policy check. Annual-policy work remains a separate candidate
 do not grant periods/units from a QIV endpoint or promote experimental notes.
 The reviewed V4 legacyFULL wrapper is UNRUN; short pending gates precede it.
 
+The short gates are now complete and legacy F36 FULL271 V4 is LIVE. Read
+`docs/operations/NOTES_88_DELTA_CLOSURE_AND_LIVE_F36_FULL271_V4_2026-10-24.md`
+for actual complete paired-ledger/closure results and the current run directory,
+session22643 and owned process controls. Its runtime f74 source is read-only.
+No other project runtime/data job may start before its actual terminal. Static
+annual-policy candidate work remains unapproved; no family is sealed.
+
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
 runs, using a reviewed read-only streaming reader capped at 384 MiB address
