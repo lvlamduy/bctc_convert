@@ -129,17 +129,27 @@ def root_closure_v1(inventory: dict[str, Any], disposition: dict[str, Any], fami
     rows = []
     for ordinal, (inv, note) in enumerate(zip(inv_rows, notes_rows, strict=True), 1):
         pointer = _ROW_POINTER.fullmatch(str(inv.get("pointer", "")))
-        fields, axis = inv.get("fields") or {}, inv.get("value_axis")
+        # The producer encodes every row field as {"present": bool, "value": raw}; a missing field is never read as an
+        # explicit null, and a malformed envelope is never guessed at (Codex 0330).
+        values = {}
+        for key in ("label_exact", "row_kind", "hierarchy_path_exact"):
+            envelope = (inv.get("fields") or {}).get(key)
+            if not isinstance(envelope, dict) or set(envelope) != {"present", "value"} or type(envelope["present"]) is not bool:
+                return unresolved(f"ORIGINAL_ROW_FIELD_ENVELOPE_MALFORMED:{key}:r{ordinal}")
+            if not envelope["present"]:
+                return unresolved(f"ORIGINAL_ROW_FIELD_ABSENT:{key}:r{ordinal}")
+            values[key] = envelope["value"]
+        axis = inv.get("value_axis")
         if (not pointer or int(pointer.group(3)) + 1 != ordinal or inv.get("row_ordinal") != ordinal
-                or note.get("row_id") != f"r{ordinal}" or fields.get("label_exact") != note.get("label_exact")
+                or note.get("row_id") != f"r{ordinal}" or values["label_exact"] != note.get("label_exact")
                 or not isinstance(axis, dict) or axis.get("count") != len(columns)):
             return unresolved(f"ROW_AXIS_DIFFERS:r{ordinal}")
         nulls = set(axis.get("null_column_ordinals") or [])
         valued = any(c not in nulls for c in money)
         if (note.get("disposition") == "HEADING") == valued:
             return unresolved(f"VALUE_STATE_DISAGREES:r{ordinal}")
-        rows.append({"ordinal": ordinal, "label": fields.get("label_exact"), "kind": fields.get("row_kind"),
-                     "path": fields.get("hierarchy_path_exact"), "notes_parent": note.get("parent_row_id"),
+        rows.append({"ordinal": ordinal, "label": values["label_exact"], "kind": values["row_kind"],
+                     "path": values["hierarchy_path_exact"], "notes_parent": note.get("parent_row_id"),
                      "line": note.get("line"), "disposition": note.get("disposition"), "reason": note.get("reason") or "",
                      "valued": valued, "all_null": len(nulls) == len(columns)})
     # Parent edges are re-proven from the exact ORIGINAL hierarchy and labels: the parent is the UNIQUE earlier row whose
