@@ -9,6 +9,8 @@ from contextlib import closing
 from decimal import Decimal
 
 import pytest
+from test_notes_f36_ledger_projection import REFS
+from test_notes_f36_strict_ledger import CLOSED, cell, inventory_row
 
 from bctc_ai.notes.f36_ledger_projection_v1 import attach_f36_ledger_v1
 from bctc_ai.notes.f36_strict_ledger_v1 import classify_observation_v1
@@ -19,8 +21,6 @@ from bctc_ai.notes.store_v1 import (
     write_notes_store_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
-from test_notes_f36_ledger_projection import REFS
-from test_notes_f36_strict_ledger import CLOSED, cell, inventory_row
 
 
 def _old_digest(cells):
