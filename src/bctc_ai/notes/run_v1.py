@@ -17,6 +17,8 @@ import resource
 import subprocess
 import sys
 import time
+from collections import Counter
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +55,13 @@ def evaluate_v1(args, metrics: SourceMetrics, *, verify_db_bytes: bool) -> tuple
     contexts = load_primary_context_v1(Path(args.primary_store), args.primary_store_sha256)
     config = load_notes_config_v1(PROJECT_ROOT)
     source = NotesSource(corpus, metrics)
+    # Document-owned annual policy from authenticated ORIGINAL narratives (Codex 0250); never from PRIMARY amounts.
+    policies = source.annual_policies_v1(contexts)
+    contexts = {ordinal: replace(context, annual_policy=policies.get(ordinal)) for ordinal, context in contexts.items()}
+    args.annual_policy_summary = {
+        "status": dict(Counter(p["status"] for p in policies.values())),
+        "reasons": dict(Counter(r for p in policies.values() for r in p["reasons"])),
+        "assertions": sum(len(p["assertions"]) for p in policies.values())}
     documents = set(map(int, args.documents.split(","))) if args.documents else None
     cells, summaries, dispositions = [], {}, []
     for family in args.families.split(","):
@@ -89,7 +98,8 @@ def main() -> int:
     manifest = {"format_version": "NOTES_PILOT_RUN_V1", "product_label": "NOTES_PILOT_EXPERIMENTAL", "git_head": args.git_head,
                 "corpus": corpus.identity(), "primary_store": {"path": args.primary_store, "sha256": args.primary_store_sha256},
                 "families": args.families.split(","), "documents_requested": args.documents, "config_pins": config.pins,
-                "provider_calls_performed": False, "source_mutations_performed": False, "summaries": summaries}
+                "provider_calls_performed": False, "source_mutations_performed": False, "summaries": summaries,
+                "annual_policy": args.annual_policy_summary}
     store = write_notes_store_v1(args.output_dir / "notes-results.sqlite3", manifest=manifest, cells=cells)
     # Denominator artifact (every retrieved table and row disposition), written once beside the store.
     with open(args.output_dir / "dispositions.json", "x", encoding="utf-8") as handle:
