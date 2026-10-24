@@ -87,8 +87,14 @@ backup/diagnostic does not seal F36 or cover the whole project.
 Read `docs/operations/NOTES_OUTPUT_READBACK_GAPS_AND_F36_RUNTIME_CHECKPOINT_2026-10-24.md`
 for concrete unpromoted notes workbook/store verification gaps, the finite next
 test batch and the clarification that file/snapshot hashes do not establish
-fresh SQL PRAGMA integrity. The legacy FULL271 runtime still owns execution;
-poll its actual handle/terminal before another project runtime job.
+fresh SQL PRAGMA integrity. That legacy FULL271 job is now terminal CPU-limit
+FAIL; its code/source-file barriers passed and no diagnostic output was produced.
+
+Read `docs/operations/NOTES_404_FULL_COMMON_BASELINE_AND_LEGACY_F36_CPU_CHECKPOINT_2026-10-24.md`
+for actual143/94/57/46 focused results, the retained failures, fresh experimental
+notes404 FULL271/COMMON204 stores/workbooks and source13 findings. These do not
+seal F36. Check the current runtime lease and any later A/B terminal before
+another project execution; keep the fixed experimental snapshots unchanged.
 
 One bounded scheduling exception was agreed in exchange messages 0066/0067:
 root may inventory the exact completed FULL271 diagnostic JSON while COMMON204
