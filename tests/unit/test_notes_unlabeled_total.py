@@ -13,7 +13,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from test_notes_expense_families import link
+from test_notes_expense_families import bridged, link
 from test_notes_income_tax import cells, context_of, document, make_table
 
 from bctc_ai.notes.concept_list_shape_v1 import assign_lines_v1, evaluate_concept_table_v1, unlabeled_total_row_v1
@@ -175,16 +175,94 @@ def test_a_total_that_differs_from_its_lines_holds_them_and_loses_the_employee_a
     assert result[("SALARY_ALLOWANCE", YEAR)]["acceptance"] == "ACCEPTED"  # not a term of the failing equation
 
 
-def test_an_unread_top_level_row_inside_the_span_leaves_the_equation_incomplete(family):
-    table = lpb_like()
-    row = table.rows[12]
-    table.rows[12] = replace(row, label="Chi phí chưa có quy tắc dòng")  # a valued top-level row with no line rule
+@pytest.mark.parametrize("unread,total", [
+    (0, ("211", "187")),   # Codex 0302: BEFORE the first recognized term; the remaining terms sum to the total
+    (12, ("219", "195")),  # between terms; the remaining terms sum to the total here too
+])
+def test_an_unaccounted_valued_row_before_the_total_refuses_it(family, unread, total):
+    # The equation span starts at its first recognized term, so only the complete pre-total population guard keeps an
+    # unread top-level component from being ignored. Refused, the table is exactly the pre-T table: nothing is
+    # accepted through T and nothing accepted before is lost.
+    table = lpb_like(total=total)
+    table.rows[unread] = replace(table.rows[unread], label="Chi phí chưa có quy tắc dòng")  # valued, no line rule
+    assigned = roles(table, family)
+    assert assigned[unread].disposition == "SOURCE_ONLY" and assigned[14].disposition == "SOURCE_ONLY"
+    assert unlabeled_total_row_v1(table, family, assigned, owned_subject=True) == (
+        None, f"UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:r{unread}")
+    [evaluation] = evaluate(table, family)
+    assert not any(e["name"] == "TOTAL_FROM_TOP_LEVEL_LINES" for e in evaluation.equations)
+    result = cells([evaluation])
+    assert ("TOTAL_OPERATING_EXPENSE", YEAR) not in result
+    assert result[("EMPLOYEE_EXPENSE", YEAR)]["acceptance"] == "ACCEPTED"
+    assert "LINE_NOT_PROVEN_BY_ITS_OWN_EQUATION_OR_ANCHOR" in result[("ASSET_EXPENSE", YEAR)]["hold_reasons"]
+
+
+def lpb_wrapped(bridge=True):
+    """LPB's actual layout: each group prints a value-less "Trong đó:" GROUP row, and the unread admin detail
+    "Chi phí khác cho hoạt động quản lý" hangs under that wrapper (ORIGINAL r14 -> r17), not under ADMIN itself."""
+
+    rows = [
+        ("Chi nộp thuế và các khoản phí, lệ phí", ["10", "9"]),                    # 0 TAX_FEES
+        ("Chi phí cho nhân viên", ["100", "90"]),                                   # 1 EMPLOYEE
+        ("Trong đó:", [None, None]),                                                # 2 wrapper of 1
+        ("Chi lương và phụ cấp", ["80", "70"]),                                     # 3
+        ("Chi trợ cấp thôi việc", ["15", "14"]),                                    # 4
+        ("Chi phí khác cho nhân viên", ["5", "6"]),                                 # 5
+        ("Chi về tài sản", ["50", "40"]),                                           # 6 ASSET
+        ("Trong đó:", [None, None]),                                                # 7 wrapper of 6
+        ("Khấu hao tài sản cố định", ["20", "18"]),                                 # 8
+        ("Chi phí thuê tài sản", ["30", "22"]),                                     # 9
+        ("Chi cho hoạt động quản lý công vụ", ["40", "35"]),                        # 10 ADMIN
+        ("Trong đó:", [None, None]),                                                # 11 wrapper of 10
+        ("Công tác phí", ["12", "10"]),                                             # 12
+        ("Chi phí khác cho hoạt động quản lý", ["28", "25"]),                       # 13 unread detail via wrapper
+        ("Chi nộp phí bảo hiểm, bảo hiểm tiền gửi của khách hàng", ["8", "7"]),    # 14 DEPOSIT_INSURANCE
+        ("Chi phí dự phòng khác", ["2", "1"]),                                      # 15 OTHER_ASSET_PROVISION
+        ("Chi phí hoạt động khác", ["11", "14"]),                                   # 16 OTHER_OPERATING
+        ("TOTAL", ["221", "196"]),                                                  # 17 unlabeled printed total
+    ]
+    table = make_table(rows, [("Năm 2025",), ("Năm 2024",)], title="30. Chi phí hoạt động")
+    for wrapper in (2, 7, 11):
+        table.rows[wrapper] = replace(table.rows[wrapper], kind="GROUP")
+    for child, parent in {2: 1, 3: 2, 4: 2, 5: 2, 7: 6, 8: 7, 9: 7, 11: 10, 12: 11, 13: 11}.items():
+        link(table, child, parent)
+    table.rows[17] = replace(table.rows[17], label=None, kind="TOTAL", hierarchy=(), hierarchy_raw=[None])
+    return bridged(table) if bridge else table
+
+
+def test_detail_under_a_proven_wrapper_is_accounted_inside_its_owner_never_as_a_component(family):
+    table = lpb_wrapped()
+    assigned = roles(table, family)
+    assert (assigned[13].disposition, assigned[11].disposition) == ("SOURCE_ONLY", "HEADING")
+    assert (assigned[17].role, assigned[17].reason) == ("TOTAL_OPERATING_EXPENSE", T_REASON)
+    [evaluation] = evaluate(table, family)
+    total = {e["lane"]: e for e in evaluation.equations if e["name"] == "TOTAL_FROM_TOP_LEVEL_LINES"}
+    for lane in ("c1", "c2"):
+        assert total[lane]["status"] == "PASS"
+        assert total[lane]["excused_detail_rows"] == [13]  # recorded as ADMIN's printed detail
+        assert set(total[lane]["terms"]) == set(TOP)  # the detail row is no term: counted once, inside ADMIN
+    result = cells([evaluation])
+    for line in [*TOP, "TOTAL_OPERATING_EXPENSE"]:
+        assert result[(line, YEAR)]["acceptance"] == "ACCEPTED", (line, result[(line, YEAR)]["hold_reasons"])
+
+
+def test_without_the_original_axis_proof_a_wrapper_accounts_for_nothing(family):
+    table = lpb_wrapped(bridge=False)  # no EXACT single-table bridge: "all wrapper cells null" is not proven
+    assigned = roles(table, family)
+    assert unlabeled_total_row_v1(table, family, assigned, owned_subject=True) == (
+        None, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:r13")
+    assert assigned[17].disposition == "SOURCE_ONLY"
+
+
+def test_a_labeled_total_keeps_the_immediate_parent_rule_unchanged(family):
+    # Outside the T route nothing changes: the same wrapped detail under a PRINTED "Tổng chi phí hoạt động" still
+    # blocks the span exactly as before (INCOMPLETE), so other tables and families see no new excuse.
+    table = lpb_wrapped()
+    table.rows[17] = replace(table.rows[17], label="Tổng chi phí hoạt động", kind="ITEM", hierarchy=(), hierarchy_raw=None)
+    assert roles(table, family)[17].reason == "LINE_RULE"
     [evaluation] = evaluate(table, family)
     statuses = {(e["name"], e["lane"]): e["status"] for e in evaluation.equations}
     assert statuses[("TOTAL_FROM_TOP_LEVEL_LINES", "c1")] == "INCOMPLETE_UNREAD_ROWS_IN_SPAN"
-    result = cells([evaluation])
-    assert "EQUATION_SPAN_HAS_UNREAD_ROWS" in result[("EMPLOYEE_EXPENSE", YEAR)]["hold_reasons"]
-    assert result[("TOTAL_OPERATING_EXPENSE", YEAR)]["acceptance"] == "HOLD"
 
 
 @pytest.mark.parametrize("line", ["RENT_EXPENSE", "NOT_A_LINE", "EMPLOYEE_EXPENSE"])
