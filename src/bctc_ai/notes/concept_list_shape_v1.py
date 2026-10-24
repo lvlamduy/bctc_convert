@@ -277,7 +277,52 @@ def assign_lines_v1(table: NoteTable, family: Family, *, owned_subject: bool = F
                 child_role.disposition, child_role.reason = "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER"
                 child_role.candidates, child_role.role = [child_role.role], None
                 changed = True
+    index, reason = unlabeled_total_row_v1(table, family, roles, owned_subject=owned_subject)
+    if index is not None:
+        roles[index] = RowRole(index, family.raw["unlabeled_total_line"], "MEMBER", reason)
     return roles
+
+
+def unlabeled_total_row_v1(table: NoteTable, family: Family, roles: list[RowRole], *,
+                           owned_subject: bool) -> tuple[int | None, str]:
+    """(row index, reason) of the table's printed UNLABELED total, else (None, why not) (Codex 0292/0296, proposal T).
+
+    Family opt-in only (``unlabeled_total_line``; OPERATING_EXPENSE). The identity comes from ORIGINAL source
+    structure, never from an amount, a position alone or an equation:
+    - the table's subject is printed in its OWN context;
+    - exactly one row of the table has ORIGINAL ``row_kind`` TOTAL (SUBTOTAL may close a partial block: never);
+    - that row prints no label (a JSON null and an empty string are kept apart in the reason) and has values;
+    - it claims no parent: no ``parent_row_id`` and no printed hierarchy component;
+    - it is the last valued row, so every top-level line is printed before it;
+    - it was left SOURCE_ONLY / NO_LINE_RULE, and no row is or could be the printed total line already.
+    The family's equations then validate it like any printed total (PASS proves, FAIL / INCOMPLETE hold); they
+    never decide membership.
+    """
+
+    line = family.raw.get("unlabeled_total_line")
+    if not line:
+        return None, "NOT_OPTED_IN"
+    if not owned_subject:
+        return None, "SUBJECT_NOT_IN_OWN_CONTEXT"
+    totals = [i for i, row in enumerate(table.rows) if row.kind == "TOTAL"]
+    if len(totals) != 1:
+        return None, f"TOTAL_KIND_ROWS_{len(totals)}_NOT_ONE"
+    index = totals[0]
+    row = table.rows[index]
+    if row.label is not None and row.label.strip():
+        return None, "TOTAL_ROW_PRINTS_A_LABEL"
+    if not _has_values(table, row):
+        return None, "TOTAL_ROW_HAS_NO_VALUES"
+    hierarchy = row.hierarchy_raw if row.hierarchy_raw is not None else row.hierarchy
+    if row.parent_row_id or any(isinstance(part, str) and part.strip() for part in hierarchy or ()):
+        return None, "TOTAL_ROW_CLAIMS_A_PARENT"
+    if any(_has_values(table, later) for later in table.rows[index + 1:]):
+        return None, "TOTAL_ROW_NOT_THE_LAST_VALUED_ROW"
+    if (roles[index].disposition, roles[index].reason) != ("SOURCE_ONLY", "NO_LINE_RULE"):
+        return None, "TOTAL_ROW_ALREADY_DISPOSED:" + roles[index].reason
+    if any(role.role == line or line in (role.candidates or []) for role in roles):
+        return None, "PRINTED_TOTAL_LINE_ALREADY_PRESENT"
+    return index, "UNLABELED_ORIGINAL_ROW_KIND_TOTAL:" + ("NULL_LABEL" if row.label is None else "EMPTY_LABEL")
 
 
 def detail_parent_line_v1(table: NoteTable, roles: list[RowRole], index: int) -> tuple[str | None, str]:

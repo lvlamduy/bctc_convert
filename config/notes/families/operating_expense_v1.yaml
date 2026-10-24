@@ -31,6 +31,11 @@ reject_context: [[ben lien quan], [bo phan], [thu nhap cua can bo], [tinh hinh t
 transparent_wrappers:
   labels: ["Trong đó"]
 
+# Proposal T (Codex 0292/0296): a printed total row WITHOUT a label (LPB FULL69 p64: ORIGINAL row_kind TOTAL,
+# label null, top level, last valued row; the PDF prints it unlabeled) is this family's total, by source
+# structure only (concept_list_shape_v1.unlabeled_total_row_v1). TOTAL_FROM_TOP_LEVEL_LINES validates it.
+unlabeled_total_line: TOTAL_OPERATING_EXPENSE
+
 emit_lines: [TAX_FEES, EMPLOYEE_EXPENSE, SALARY_ALLOWANCE, PAYROLL_CONTRIBUTIONS, EMPLOYEE_BENEFIT, UNIFORM_EXPENSE,
              OTHER_EMPLOYEE_EXPENSE, ASSET_EXPENSE, DEPRECIATION_EXPENSE, RENT_EXPENSE,
              MAINTENANCE_EXPENSE, TOOLS_EQUIPMENT_EXPENSE, OTHER_ASSET_EXPENSE, ADMIN_EXPENSE,
