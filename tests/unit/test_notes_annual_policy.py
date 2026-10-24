@@ -153,15 +153,33 @@ def test_year_ended_lanes_take_their_own_printed_year_under_a_verified_calendar_
                and lane.reasons == [] and lane.shadow_evidence == [] for lane in lanes)
 
 
+def test_an_absent_capture_attempts_nothing_and_keeps_the_pre_policy_lane(monkeypatch):
+    # Codex 0272: with no capture the policy is never consulted, so the lane (reasons included) is exactly the
+    # pre-policy kernel's; the helper itself still reports the absence to a direct caller.
+    from bctc_ai.notes import kernel_v1
+
+    table = make_table(RECON[:1], YEAR_ENDED[:1])
+    assert year_ended_policy_v1("Năm kết thúc ngày 31/12/2025", interim(None), statement_period_context_v1([])) == (
+        None, "DOCUMENT_ANNUAL_POLICY_ABSENT")
+
+    def consulted(*_args):
+        raise AssertionError("annual policy consulted without a capture")
+
+    monkeypatch.setattr(kernel_v1, "year_ended_policy_v1", consulted)
+    [lane] = resolve_duration_lanes_v1(table, interim(None), [], [table.table_title])
+    assert lane.period_key is None and lane.reasons[:1] == ["PERIOD_UNRESOLVED:PERIOD_END_WITHOUT_PRINTED_DURATION"]
+    assert not any(r.startswith("ANNUAL_POLICY") for r in lane.reasons)
+    assert [e["candidate"] for e in lane.shadow_evidence] == ["DURATION:YEAR_ENDED:2025-12-31"]
+
+
 @pytest.mark.parametrize("header,policy,why", [
-    ("Năm kết thúc ngày 31/12/2025", None, "DOCUMENT_ANNUAL_POLICY_ABSENT"),
     ("Năm kết thúc ngày 31/12/2025", "unresolved", "DOCUMENT_ANNUAL_POLICY_UNRESOLVED"),
     ("Năm kết thúc ngày 31/12/2025", "status_only", "POLICY_NOT_A_CAPTURE"),
     ("Năm kết thúc ngày 31/12/2025", "foreign", "POLICY_BINDING_IS_ANOTHER_DOCUMENT_OR_SCOPE"),
     ("Năm kết thúc ngày 30/06/2025", "calendar", "YEAR_END_NOT_31_DECEMBER"),
 ])
-def test_absent_unresolved_untrusted_foreign_or_non_december_policy_keeps_the_hold(header, policy, why):
-    policies = {None: None, "unresolved": capture(), "status_only": {"status": "CALENDAR_YEAR"},
+def test_unresolved_untrusted_foreign_or_non_december_policy_keeps_the_hold(header, policy, why):
+    policies = {"unresolved": capture(), "status_only": {"status": "CALENDAR_YEAR"},
                 "foreign": replace(capture(CALENDAR), binding=(1, "x.pdf", "9" * 64, "SEPARATE")), "calendar": capture(CALENDAR)}
     table = make_table(RECON[:1], [(header,)])
     [lane] = resolve_duration_lanes_v1(table, interim(policies[policy]), [], [table.table_title])

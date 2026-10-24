@@ -962,8 +962,11 @@ def resolve_duration_lanes_v1(
                         lane.reasons.append("PERIOD_UNRESOLVED:PRINTED_WINDOW_WITHOUT_CANONICAL_KEY:" + unkeyed.split(":")[1])
                     else:
                         reason = report.reason or (own.reason if own else None) or "NO_REASON_RECORDED"
+                        # Without a capture nothing is attempted, so a lane is byte-identical to the pre-policy
+                        # kernel (Codex 0272); the helper still answers DOCUMENT_ANNUAL_POLICY_ABSENT when asked.
                         granted, why = (year_ended_policy_v1(header, document, own_context)
-                                        if reason == "PERIOD_END_WITHOUT_PRINTED_DURATION" else (None, None))
+                                        if reason == "PERIOD_END_WITHOUT_PRINTED_DURATION"
+                                        and document.annual_policy is not None else (None, None))
                         if granted:
                             # Only this missing-duration reason is resolved; unit/scope/equation vetoes still apply.
                             lane.period_key, lane.period_basis = granted
