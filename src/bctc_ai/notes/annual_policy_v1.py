@@ -1,33 +1,36 @@
-"""Document-owned annual accounting-period policy evidence (Codex 0250/0254; prototype, never by amount).
+"""Document-owned annual accounting-period policy evidence (Codex 0250/0254/0258; prototype, never by amount).
 
 A bank's notes print its accounting year once, in the accounting-policy narratives (LPB FULL69 p12
-/sections/0/narratives_exact/5: "Kỳ kế toán năm của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc vào ngày 31
-tháng 12."). A note lane headed exactly "Năm kết thúc ngày 31/12/2025" prints a YEAR grain and an end but no start;
-with that printed recurring calendar-year policy the start is printed too, so the lane is DURATION:YEAR:2025.
+/sections/0/narratives_exact/5: "(c) Kỳ kế toán\\nKỳ kế toán năm của Ngân hàng bắt đầu từ ngày 1 tháng 1 và kết thúc
+vào ngày 31 tháng 12. …"). A note lane headed exactly "Năm kết thúc ngày 31/12/2025" prints a YEAR grain and an end
+but no start; with that printed recurring calendar-year policy the start is printed too: DURATION:YEAR:2025.
 
-Evidence (from AUTHENTICATED ORIGINAL narratives only). Every narrative is split into sentences (newline, ". ",
-"; "). A sentence naming the accounting year (năm tài chính / kỳ kế toán năm / niên độ kế toán / năm kế toán) together
-with "bắt đầu" is a policy CANDIDATE, and so is any sentence naming a first / changed accounting year. Each candidate
-is kept whole with its pointer, raw sentence, section hash and source binding, and is classified:
-  * DEFINITION only when the WHOLE folded sentence is the finite grammar
-    "<subject> [<owner>] bắt đầu từ/vào [ngày] D tháng M | D/M [năm Y | /Y] [,] và kết thúc [vào|tại] [ngày] D tháng M |
-    D/M [năm Y | /Y] [hàng năm]" with ASCII digits; printed years are retained (an absolute interval is not a
-    recurrence);
-  * UNSUPPORTED_WORDING for any other candidate (extra wording is never accepted as a regex prefix);
-  * QUALIFIER for a first / short / long / changed-year sentence.
-Owner is one of the exact designations "của Ngân hàng" (BANK), "của Tập đoàn" / "của Ngân hàng và các công ty con"
-(GROUP), absent (UNKNOWN) or anything else (OTHER: e.g. "của Ngân hàng Nhà nước", "của công ty con của Ngân hàng").
+Capture (the only authority). ``PolicyCapture`` is an immutable record built by the collector from AUTHENTICATED
+ORIGINAL pages: the document binding (ordinal, source name, source SHA-256, scope), the frontier (every selected page
+of the document with its candidate count read from the stored narratives) and, for every page with candidates,
+EVERY narrative of the page with its exact pointer, a hash over all of them, and the page's ORIGINAL BLOB SHA /
+replay receipt. ``verify_annual_policy_v1`` re-derives the COMPLETE assertion axis from the captured raw narratives
+(never from a caller-supplied status or assertion list), checks every page hash and that every frontier page with a
+candidate is captured with exactly that many candidates, and grants only a CALENDAR_YEAR resolution.
 
-``resolve_annual_policy_v1(assertions, binding)`` is CALENDAR_YEAR only when there is at least one DEFINITION, no
-UNSUPPORTED_WORDING / QUALIFIER candidate anywhere in the document, every DEFINITION is 01-01..12-31 with no printed
-year, and every owner is the designation of the document's authenticated scope (SEPARATE -> BANK, CONSOLIDATED ->
-GROUP). ``verify_annual_policy_v1(policy, binding)`` re-derives every assertion from its stored raw sentence and its
-binding before any use: a status tag alone, a tampered field or another document's policy never grants.
+Sentences split at ". " / "; " only; a physical line wrap is part of its sentence (a wrapped subject and start phrase
+are one candidate). A leading enumerated heading line without any cue ("(c) Kỳ kế toán") is set aside before the
+whole-sentence grammar; anything else stays in. A sentence is a CANDIDATE when its folded text names the accounting
+year (năm tài chính / kỳ kế toán năm / niên độ kế toán / năm kế toán) with "bắt đầu", or a first / changed / shorter /
+longer accounting year (QUALIFIER). A candidate whose raw text has a combining mark or a non-ASCII digit, or whose
+whole folded text is not the finite grammar, is UNSUPPORTED_WORDING; only a whole-sentence match is a DEFINITION
+(printed years retained: an absolute interval is not a recurrence). Owners are the exact designations "của Ngân hàng"
+(BANK) and "của Tập đoàn" / "của Ngân hàng và các công ty con" (GROUP); absent is UNKNOWN, anything else OTHER.
+CALENDAR_YEAR needs at least one DEFINITION, no UNSUPPORTED_WORDING or QUALIFIER anywhere in the frontier, every
+DEFINITION 01-01..12-31 without printed year, and every owner the designation of the authenticated scope
+(SEPARATE -> BANK, CONSOLIDATED -> GROUP).
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
+from dataclasses import dataclass
 from typing import Any
 
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese
@@ -42,27 +45,59 @@ _DEFINITION = re.compile(
 _CANDIDATE = re.compile(_SUBJECT + r".*\bbat dau\b")
 _QUALIFIER = re.compile(r"\b" + _SUBJECT + r" dau tien\b|\bthay doi " + _SUBJECT + r"|\bchuyen doi " + _SUBJECT
                         + r"|\b" + _SUBJECT + r"[^.;]*\b(?:ngan hon|dai hon)\b")
+_HEADING = re.compile(r"\(?[a-z0-9]{1,4}[.)]\s*[^0-9]*")
 _OWNERS = {"cua ngan hang": "BANK", "cua tap doan": "GROUP", "cua ngan hang va cac cong ty con": "GROUP"}
 _SCOPE_OWNER = {"SEPARATE": "BANK", "CONSOLIDATED": "GROUP"}
-BINDING_KEYS = ("document_ordinal", "source_logical_name", "source_sha256", "scope")
 
 
-def _sentences(narrative: str) -> list[str]:
-    return [s for s in re.split(r"\n+|(?<=[.;])\s+", narrative) if s.strip()]
+@dataclass(frozen=True)
+class PolicyPage:
+    page_json_version_id: str
+    physical_page: int
+    original_blob_sha256: str
+    replay_receipt_id: str
+    narratives: tuple[tuple[str, str], ...]   # (exact pointer, raw narrative) for EVERY narrative of the page
+    narratives_sha256: str
+
+
+@dataclass(frozen=True)
+class PolicyCapture:
+    binding: tuple[Any, ...]                  # (document_ordinal, source_logical_name, source_sha256, scope)
+    frontier: tuple[tuple[str, int], ...]     # every selected page of the document: (VID, stored candidate count)
+    pages: tuple[PolicyPage, ...]             # every frontier page with candidates, from its ORIGINAL object
+
+
+def raw_marks_ok_v1(raw: str) -> bool:
+    """The kernel's raw guard: no combining mark after NFC and only ASCII decimal digits (checked before folding)."""
+
+    text = unicodedata.normalize("NFC", raw)
+    return not any(unicodedata.category(c) == "Mn" for c in text) and all(
+        c in "0123456789" for c in text if unicodedata.category(c) == "Nd")
+
+
+def _folded(text: str) -> str:
+    return fold_vietnamese(text).rstrip(".;").strip()
 
 
 def classify_sentence_v1(sentence: str) -> dict[str, Any] | None:
-    """The candidate classification of one raw sentence, or None when it is not a policy candidate."""
+    """The candidate classification of one raw sentence (physical wraps included), or None when not a candidate."""
 
-    folded = re.sub(r"\s+", " ", fold_vietnamese(sentence)).strip().rstrip(".;").strip()
-    qualifier = bool(_QUALIFIER.search(folded))
-    if not qualifier and not _CANDIDATE.search(folded):
+    whole = _folded(sentence)
+    qualifier = bool(_QUALIFIER.search(whole))
+    if not qualifier and not _CANDIDATE.search(whole):
         return None
-    record: dict[str, Any] = {"folded": folded, "ascii_digits": not any(ch.isdigit() and not ch.isascii() for ch in sentence)}
+    lines = [line for line in sentence.split("\n") if line.strip()]
+    body = sentence
+    if len(lines) > 1:
+        head = _folded(lines[0])
+        if _HEADING.fullmatch(head) and not re.search(_SUBJECT + r"|\bbat dau\b|\bket thuc\b", head):
+            body = "\n".join(lines[1:])
+    folded = _folded(body)
+    record: dict[str, Any] = {"folded": folded, "raw_ok": raw_marks_ok_v1(body)}
     match = _DEFINITION.fullmatch(folded)
     if qualifier:
         record.update(kind="QUALIFIER")
-    elif match is None or not record["ascii_digits"]:
+    elif match is None or not record["raw_ok"]:
         record.update(kind="UNSUPPORTED_WORDING")
     else:
         owner = (match.group("owner") or "").strip()
@@ -74,35 +109,50 @@ def classify_sentence_v1(sentence: str) -> dict[str, Any] | None:
     return record
 
 
+def _sentences(narrative: str) -> list[str]:
+    return [s for s in re.split(r"(?<=[.;])\s+", narrative) if s.strip()]
+
+
 def policy_sentences_v1(narrative: str) -> list[str]:
     """The raw sentences of one narrative that are policy candidates or qualifiers (the frontier test)."""
 
     return [sentence for sentence in _sentences(narrative) if classify_sentence_v1(sentence) is not None]
 
 
-def policy_assertions_v1(page_json: dict[str, Any], provenance: dict[str, Any]) -> list[dict[str, Any]]:
-    """Every policy candidate sentence in the ORIGINAL page's section narratives, kept whole with its binding."""
+def page_narratives_v1(page_json: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Every string narrative of an ORIGINAL page with its exact pointer, in page order."""
 
     found = []
     for s, section in enumerate(page_json.get("sections") or []):
         narratives = section.get("narratives_exact") if type(section) is dict else None
-        if type(narratives) is not list:
-            continue
-        for i, narrative in enumerate(narratives):
-            if type(narrative) is not str:
-                continue
+        for i, narrative in enumerate(narratives if type(narratives) is list else []):
+            if type(narrative) is str:
+                found.append((f"/sections/{s}/narratives_exact/{i}", narrative))
+    return tuple(found)
+
+
+def policy_page_v1(page_json: dict[str, Any], *, page_json_version_id: str, physical_page: int,
+                   original_blob_sha256: str, replay_receipt_id: str) -> PolicyPage:
+    narratives = page_narratives_v1(page_json)
+    return PolicyPage(page_json_version_id, physical_page, original_blob_sha256, replay_receipt_id, narratives,
+                      canonical_json_sha256_v1([list(n) for n in narratives]))
+
+
+def assertions_v1(capture: PolicyCapture) -> list[dict[str, Any]]:
+    """The COMPLETE assertion axis re-derived from every captured raw narrative."""
+
+    found = []
+    for page in capture.pages:
+        for pointer, narrative in page.narratives:
             for sentence in _sentences(narrative):
                 record = classify_sentence_v1(sentence)
                 if record is not None:
-                    found.append({**provenance, "pointer": f"/sections/{s}/narratives_exact/{i}", "section_index": s,
-                                  "narrative_index": i, "narrative_exact": narrative, "sentence_exact": sentence,
-                                  "section_sha256": canonical_json_sha256_v1(section), **record})
+                    found.append({"page_json_version_id": page.page_json_version_id, "physical_page": page.physical_page,
+                                  "pointer": pointer, "sentence_exact": sentence, **record})
     return found
 
 
-def resolve_annual_policy_v1(assertions: list[dict[str, Any]], binding: dict[str, Any]) -> dict[str, Any]:
-    """CALENDAR_YEAR only for scope-matched, unqualified, year-free 01-01..12-31 definitions and no other candidate."""
-
+def resolve_annual_policy_v1(assertions: list[dict[str, Any]], scope: str | None) -> dict[str, Any]:
     definitions = [a for a in assertions if a["kind"] == "DEFINITION"]
     reasons = []
     if not definitions:
@@ -113,8 +163,8 @@ def resolve_annual_policy_v1(assertions: list[dict[str, Any]], binding: dict[str
         reasons.append("POLICY_QUALIFIED_FIRST_SHORT_LONG_OR_CHANGED_YEAR")
     if any(a["printed_years"] for a in definitions):
         reasons.append("POLICY_ABSOLUTE_INTERVAL_NOT_A_RECURRENCE")
-    expected_owner = _SCOPE_OWNER.get(binding.get("scope"))
-    if any(a["owner"] != expected_owner for a in definitions) or (definitions and expected_owner is None):
+    expected_owner = _SCOPE_OWNER.get(scope)
+    if definitions and (expected_owner is None or any(a["owner"] != expected_owner for a in definitions)):
         reasons.append("POLICY_OWNER_NOT_THE_DOCUMENT_SCOPE_ENTITY")
     windows = {(a["window"]["start"], a["window"]["end"]) for a in definitions}
     if len(windows) > 1:
@@ -122,30 +172,29 @@ def resolve_annual_policy_v1(assertions: list[dict[str, Any]], binding: dict[str
     elif windows and windows != {("01-01", "12-31")}:
         reasons.append("POLICY_NOT_A_CALENDAR_YEAR")
     return {"status": "UNRESOLVED" if reasons else CALENDAR_YEAR, "reasons": reasons,
-            "binding": {k: binding.get(k) for k in BINDING_KEYS},
-            "pointers": [{k: a.get(k) for k in ("page_json_version_id", "physical_page", "pointer")} for a in definitions],
+            "pointers": [{k: a[k] for k in ("page_json_version_id", "physical_page", "pointer")} for a in definitions],
             "assertions": assertions}
 
 
-def verify_annual_policy_v1(policy: Any, binding: dict[str, Any]) -> tuple[bool, str]:
-    """Re-derive the policy from its stored raw sentences and binding; never trust a status tag (Codex 0254)."""
+def verify_annual_policy_v1(capture: Any, binding: tuple[Any, ...]) -> tuple[bool, str, dict[str, Any] | None]:
+    """(granted, why, resolution) re-derived from the immutable capture alone (Codex 0258)."""
 
-    if type(policy) is not dict or type(policy.get("assertions")) is not list:
-        return False, "POLICY_NOT_A_RECORD"
-    expected = {k: binding.get(k) for k in BINDING_KEYS}
-    if policy.get("binding") != expected:
-        return False, "POLICY_BINDING_IS_ANOTHER_DOCUMENT_OR_SCOPE"
-    for assertion in policy["assertions"]:
-        if type(assertion) is not dict or any(assertion.get(k) != expected[k] for k in BINDING_KEYS if k != "scope") \
-                or type(assertion.get("page_json_version_id")) is not str or type(assertion.get("pointer")) is not str \
-                or type(assertion.get("sentence_exact")) is not str or type(assertion.get("narrative_exact")) is not str \
-                or assertion["sentence_exact"] not in assertion["narrative_exact"] \
-                or not re.fullmatch(r"[0-9a-f]{64}", str(assertion.get("section_sha256"))):
-            return False, "POLICY_ASSERTION_SOURCE_BINDING_INVALID"
-        derived = classify_sentence_v1(assertion["sentence_exact"])
-        if derived is None or any(assertion.get(k) != v for k, v in derived.items()):
-            return False, "POLICY_ASSERTION_DOES_NOT_REDERIVE_FROM_ITS_SENTENCE"
-    recomputed = resolve_annual_policy_v1(policy["assertions"], binding)
-    if recomputed["status"] != policy.get("status") or recomputed["reasons"] != policy.get("reasons"):
-        return False, "POLICY_STATUS_DOES_NOT_REDERIVE"
-    return recomputed["status"] == CALENDAR_YEAR, "VERIFIED" if recomputed["status"] == CALENDAR_YEAR else "DOCUMENT_ANNUAL_POLICY_UNRESOLVED"
+    if type(capture) is not PolicyCapture or any(type(page) is not PolicyPage for page in capture.pages):
+        return False, "POLICY_NOT_A_CAPTURE", None
+    if capture.binding != tuple(binding):
+        return False, "POLICY_BINDING_IS_ANOTHER_DOCUMENT_OR_SCOPE", None
+    frontier = dict(capture.frontier)
+    if len(frontier) != len(capture.frontier) or len({p.page_json_version_id for p in capture.pages}) != len(capture.pages):
+        return False, "POLICY_FRONTIER_OR_PAGES_REPEATED", None
+    for page in capture.pages:
+        if canonical_json_sha256_v1([list(n) for n in page.narratives]) != page.narratives_sha256:
+            return False, "POLICY_PAGE_NARRATIVES_HASH_MISMATCH", None
+        if not re.fullmatch(r"[0-9a-f]{64}", str(page.original_blob_sha256)) or page.page_json_version_id not in frontier:
+            return False, "POLICY_PAGE_NOT_BOUND_TO_FRONTIER", None
+    counts = {p.page_json_version_id: sum(len(policy_sentences_v1(n)) for _ptr, n in p.narratives) for p in capture.pages}
+    for version_id, count in frontier.items():
+        if counts.get(version_id, 0) != count:
+            return False, "POLICY_FRONTIER_CANDIDATES_NOT_CAPTURED", None
+    resolution = resolve_annual_policy_v1(assertions_v1(capture), capture.binding[3])
+    granted = resolution["status"] == CALENDAR_YEAR
+    return granted, "VERIFIED" if granted else "DOCUMENT_ANNUAL_POLICY_UNRESOLVED", resolution

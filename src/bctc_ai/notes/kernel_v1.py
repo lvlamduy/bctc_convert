@@ -39,9 +39,10 @@ from bctc_ai.primary_statements.source_v1 import CorpusSelection, SourceMetrics,
 from bctc_ai.primary_statements.text_v1 import fold_vietnamese, label_key_v1
 from bctc_ai.evaluation.gemini_financial_page_json_v1 import validate_financial_page_json_v1
 from bctc_ai.notes.annual_policy_v1 import (
-    policy_assertions_v1,
+    PolicyCapture,
+    PolicyPage,
+    policy_page_v1,
     policy_sentences_v1,
-    resolve_annual_policy_v1,
     verify_annual_policy_v1,
 )
 from bctc_ai.notes.source_bridge_v1 import bridge_table_v1, table_fingerprint_v1
@@ -95,8 +96,8 @@ class DocumentContext:
     # Identity of the PRIMARY result this context came from: the notes run must bind the same
     # source document AND the same corpus before using any scope/period/unit/anchor from it.
     corpus_identity: dict[str, Any] = field(default_factory=dict)
-    # Document-owned annual accounting-period policy from authenticated ORIGINAL narratives (annual_policy_v1), or None.
-    annual_policy: dict[str, Any] | None = None
+    # Immutable document-owned annual-policy capture from authenticated ORIGINAL narratives (annual_policy_v1), or None.
+    annual_policy: Any = None
 
     def identity_mismatch(self, document, corpus_identity: dict[str, Any]) -> str | None:
         """Why this PRIMARY context must not be used for ``document`` of the given corpus, else None."""
@@ -348,19 +349,20 @@ class NotesSource:
         self._attach_bridges(list(tables.values()))
         return [tables[key] for key in keys]
 
-    def annual_policies_v1(self, scopes: dict[int, str | None]) -> dict[int, dict[str, Any]]:
-        """Each requested document's annual-period policy (annual_policy_v1) from its AUTHENTICATED ORIGINAL narratives.
+    def annual_policies_v1(self, scopes: dict[int, str | None]) -> dict[int, PolicyCapture]:
+        """Each requested document's immutable annual-policy capture (annual_policy_v1) from AUTHENTICATED ORIGINALs.
 
-        Complete frontier within each requested document (Codex 0254): every narrative of every selected page is read
-        from SQL, split into sentences and folded (case and diacritics), and a page holding any policy candidate or
-        qualifier sentence is loaded once through the authenticated loader, whose provenance must be the selected page
-        of that document. The ORIGINAL candidates must equal the SQL candidates of that page (the loader's lossless
-        proof leaves narratives untouched); a difference fails the invocation. Only ``scopes``' documents are read.
+        Complete frontier within each requested document (Codex 0254/0258): every narrative of every selected page is
+        read from SQL and its candidate sentences counted (sentences split at ". "/"; " only, physical wraps kept,
+        case and diacritics folded); every page with a candidate is loaded once through the authenticated loader,
+        whose provenance must be the selected page of that document, and EVERY narrative of that ORIGINAL page is
+        captured with its pointer. The ORIGINAL candidates must equal the stored candidates of that page; a difference
+        fails the invocation. Only ``scopes``' documents are read.
         """
 
         wanted = set(scopes)
         pages = [version_id for version_id, (ordinal, _page) in self.page_of.items() if ordinal in wanted]
-        sql_candidates: dict[str, list[str]] = {}
+        stored: dict[str, list[str]] = {version_id: [] for version_id in pages}
         if pages:
             with closing(connect_readonly(self.corpus.db_path)) as connection:
                 connection.execute("CREATE TEMP TABLE policy_pages(v TEXT PRIMARY KEY)")
@@ -374,10 +376,9 @@ class NotesSource:
             for version_id, _order, raw in rows:
                 for narrative in json.loads(raw or "[]"):
                     if type(narrative) is str:
-                        sql_candidates.setdefault(version_id, [])
-                        sql_candidates[version_id] += [s for s in policy_sentences_v1(narrative)]
-        version_ids = sorted((v for v, found in sql_candidates.items() if found), key=lambda v: self.page_of[v])
-        assertions: dict[int, list[dict[str, Any]]] = defaultdict(list)
+                        stored[version_id] += policy_sentences_v1(narrative)
+        version_ids = sorted((v for v, found in stored.items() if found), key=lambda v: self.page_of[v])
+        captured: dict[int, list[PolicyPage]] = defaultdict(list)
         loaded = self._load_originals(version_ids) if version_ids else {}
         for version_id in version_ids:
             item = loaded.pop(version_id)
@@ -387,20 +388,20 @@ class NotesSource:
                       item.get("physical_page")) == (version_id, document.relative_path, document.source_sha256, physical_page),
                      f"original page provenance is not the selected page {version_id}")
             receipt = item["source_json_replay_receipt"]
-            found = policy_assertions_v1(item["page_json"], {
-                "document_ordinal": ordinal, "source_logical_name": document.relative_path,
-                "source_sha256": document.source_sha256, "page_json_version_id": version_id, "physical_page": physical_page,
-                "original_blob_sha256": receipt.get("canonical_json_sha256"), "replay_receipt_id": receipt.get("replay_receipt_id")})
-            _require([a["sentence_exact"] for a in found] == sql_candidates[version_id],
+            page = policy_page_v1(item["page_json"], page_json_version_id=version_id, physical_page=physical_page,
+                                  original_blob_sha256=receipt.get("canonical_json_sha256"),
+                                  replay_receipt_id=receipt.get("replay_receipt_id"))
+            _require([s for _ptr, n in page.narratives for s in policy_sentences_v1(n)] == stored[version_id],
                      f"ORIGINAL policy candidates differ from the stored narratives of {version_id}")
-            assertions[ordinal] += found
+            captured[ordinal].append(page)
             del item
         result = {}
         for ordinal in sorted(wanted):
             document = self._documents[ordinal]
-            result[ordinal] = resolve_annual_policy_v1(assertions.get(ordinal, []), {
-                "document_ordinal": ordinal, "source_logical_name": document.relative_path,
-                "source_sha256": document.source_sha256, "scope": scopes[ordinal]})
+            frontier = tuple((v, len(stored[v])) for v in sorted((v for v in pages if self.page_of[v][0] == ordinal),
+                                                                   key=lambda v: self.page_of[v]))
+            result[ordinal] = PolicyCapture((ordinal, document.relative_path, document.source_sha256, scopes[ordinal]),
+                                            frontier, tuple(captured.get(ordinal, [])))
         return result
 
     def _load_originals(self, version_ids: list[str]) -> dict[str, dict[str, Any]]:
@@ -1031,14 +1032,14 @@ _YEAR_ENDED_PREFIX = re.compile(r"(?:cho )?nam (?:tai chinh )?ket thuc (?:vao )?
 
 def year_ended_policy_v1(header: str, document, own_context) -> tuple[tuple[str, str] | None, str | None]:
     """((period_key, period_basis), None) when a "Năm kết thúc ngày 31/12/Y" header is a whole calendar year by the
-    document's own printed policy (Codex 0250/0254), else (None, why) - or (None, None) when the header is not that
-    grammar.
+    document's own printed policy (Codex 0250/0254/0258), else (None, why) - or (None, None) when the header is not
+    that grammar.
 
-    The policy is never trusted by its status tag: ``verify_annual_policy_v1`` re-derives every assertion from its
-    stored raw sentence and requires the binding to be THIS document (ordinal, source name, source SHA-256, scope).
-    The year is the header's own printed Y (a comparative "…31/12/2024" is 2024 by its own words, never "minus one").
-    No own caption may print a different window (months, quarter, first-N-months, another range start or end); a
-    report-level quarter frame is not an own caption. No amount is read.
+    The grant comes only from ``verify_annual_policy_v1`` re-deriving the complete assertion axis from the immutable
+    ORIGINAL capture bound to THIS document (ordinal, source name, source SHA-256, scope); a status tag or a caller
+    assertion list is never trusted. The year is the header's own printed Y (a comparative "…31/12/2024" is 2024 by its
+    own words, never "minus one"). No own caption may print a different window; a report-level quarter frame is not an
+    own caption. No amount is read.
     """
 
     ended = year_ended_shadow_v1(header)
@@ -1048,10 +1049,9 @@ def year_ended_policy_v1(header: str, document, own_context) -> tuple[tuple[str,
         return None, "YEAR_END_NOT_31_DECEMBER"
     if document.annual_policy is None:
         return None, "DOCUMENT_ANNUAL_POLICY_ABSENT"
-    binding = {"document_ordinal": document.ordinal, "source_logical_name": document.relative_path,
-               "source_sha256": document.source_sha256, "scope": document.scope}
-    verified, why = verify_annual_policy_v1(document.annual_policy, binding)
-    if not verified:
+    granted, why, resolution = verify_annual_policy_v1(
+        document.annual_policy, (document.ordinal, document.relative_path, document.source_sha256, document.scope))
+    if not granted:
         return None, why
     if own_context.conflict or own_context.months not in (None, 12) or own_context.quarter \
             or own_context.first_months_of_fiscal_year \
@@ -1059,8 +1059,7 @@ def year_ended_policy_v1(header: str, document, own_context) -> tuple[tuple[str,
             or (own_context.reporting_date and own_context.reporting_date[5:] != "12-31") \
             or (own_context.fiscal_year_end and own_context.fiscal_year_end[5:] != "12-31"):
         return None, "OWN_CAPTION_WINDOW_CONFLICT"
-    pointers = ";".join(f"{p['page_json_version_id']}@p{p['physical_page']}{p['pointer']}"
-                        for p in document.annual_policy.get("pointers") or [])
+    pointers = ";".join(f"{p['page_json_version_id']}@p{p['physical_page']}{p['pointer']}" for p in resolution["pointers"])
     return (f"DURATION:YEAR:{ended[:4]}", "PRINTED_YEAR_ENDED_WITH_DOCUMENT_ANNUAL_POLICY:" + pointers), None
 
 

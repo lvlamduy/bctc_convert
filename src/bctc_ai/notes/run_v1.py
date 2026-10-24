@@ -22,6 +22,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from bctc_ai.notes.annual_policy_v1 import verify_annual_policy_v1
 from bctc_ai.notes.config_v1 import load_notes_config_v1
 from bctc_ai.notes.engine_v1 import dispositions_v1, run_family_v1, summarize_v1
 from bctc_ai.notes.export_v1 import build_notes_workbook_v1, tm_template_rows_v1
@@ -61,10 +62,11 @@ def evaluate_v1(args, metrics: SourceMetrics, *, verify_db_bytes: bool) -> tuple
     policies = source.annual_policies_v1({ordinal: context.scope for ordinal, context in contexts.items()
                                           if documents is None or ordinal in documents})
     contexts = {ordinal: replace(context, annual_policy=policies.get(ordinal)) for ordinal, context in contexts.items()}
+    verified = [verify_annual_policy_v1(capture, capture.binding) for capture in policies.values()]
     args.annual_policy_summary = {
-        "status": dict(Counter(p["status"] for p in policies.values())),
-        "reasons": dict(Counter(r for p in policies.values() for r in p["reasons"])),
-        "assertions": sum(len(p["assertions"]) for p in policies.values())}
+        "verified": dict(Counter(why for _granted, why, _resolution in verified)),
+        "reasons": dict(Counter(r for _g, _w, resolution in verified if resolution for r in resolution["reasons"])),
+        "assertions": sum(len(resolution["assertions"]) for _g, _w, resolution in verified if resolution)}
     cells, summaries, dispositions = [], {}, []
     for family in args.families.split(","):
         started = time.perf_counter()
