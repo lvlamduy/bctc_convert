@@ -310,3 +310,76 @@ def test_the_opt_in_must_name_the_familys_emitted_root_total(tmp_path, line):
                     encoding="utf-8")
     with pytest.raises(NotesConfigError, match="unlabeled_total_line"):
         load_notes_config_v1(tmp_path)
+
+
+# --------------------------------------------------------------------------- Codex 0306: blank / dash prefix states
+
+
+def _blank(table, index):
+    table.cells[(f"r{index}", "c1")], table.cells[(f"r{index}", "c2")] = (None, "BLANK"), (None, "BLANK")
+
+
+def _blank_root_operand(table):
+    _blank(table, 12)  # "Chi phí dự phòng khác": a printed root component whose amounts are unknown
+
+
+def _blank_top_level_caption(table):
+    table.rows[0] = replace(table.rows[0], label="Ghi chú")
+    _blank(table, 0)
+
+
+def _blank_printed_total_line(table):
+    table.rows[13] = replace(table.rows[13], label="Tổng chi phí hoạt động")
+    _blank(table, 13)
+
+
+@pytest.mark.parametrize("mutate,total,why", [
+    (_blank_root_operand, ("219", "195"), "BLANK_ROOT_OPERAND_BEFORE_TOTAL:r12"),     # Codex's case: the six known terms
+    (_blank_top_level_caption, ("211", "187"), "UNRESOLVED_BLANK_ROW_BEFORE_TOTAL:r0"),
+    (_blank_printed_total_line, ("210", "182"), "BLANK_PRINTED_TOTAL_LINE_BEFORE_TOTAL:r13"),
+])
+def test_a_blank_prefix_row_never_vanishes_from_the_root(family, mutate, total, why):
+    # A no-values row is a HEADING before any label is read; the total may not close over it as if it were absent.
+    # Nothing is filled or excluded: the unlabeled total is simply refused and the table stays exactly pre-T.
+    table = lpb_like(total=total)
+    mutate(table)
+    assigned = roles(table, family)
+    assert unlabeled_total_row_v1(table, family, assigned, owned_subject=True) == (None, why)
+    [evaluation] = evaluate(table, family)
+    assert not any(e["name"] == "TOTAL_FROM_TOP_LEVEL_LINES" for e in evaluation.equations)
+    assert cells([evaluation])[("EMPLOYEE_EXPENSE", YEAR)]["acceptance"] == "ACCEPTED"
+
+
+def test_a_dash_root_operand_is_never_zero_and_proves_nothing(family):
+    # A printed dash is valued (the frontier keeps it), but no equation completes over it: NOT_EVALUABLE, not PASS.
+    table = lpb_like(total=("219", "195"))
+    table.cells[("r12", "c1")], table.cells[("r12", "c2")] = ("-", "DASH"), ("-", "DASH")
+    assert roles(table, family)[14].reason == T_REASON
+    [evaluation] = evaluate(table, family)
+    statuses = {(e["name"], e["lane"]): e["status"] for e in evaluation.equations}
+    assert statuses[("TOTAL_FROM_TOP_LEVEL_LINES", "c1")] == statuses[("TOTAL_FROM_TOP_LEVEL_LINES", "c2")] == "NOT_EVALUABLE"
+    result = cells([evaluation])
+    assert result[("TOTAL_OPERATING_EXPENSE", YEAR)]["acceptance"] == "HOLD"
+    assert "LINE_NOT_PROVEN_BY_ITS_OWN_EQUATION_OR_ANCHOR" in result[("TAX_FEES", YEAR)]["hold_reasons"]
+    assert result[("EMPLOYEE_EXPENSE", YEAR)]["acceptance"] == "ACCEPTED"  # NOT_EVALUABLE is no FAIL: nothing lost
+
+
+def test_blank_detail_inside_a_frontier_owner_is_accounted_by_that_owner(family):
+    # "Khấu hao" printed under ASSET with unknown amounts: ASSET's own printed amount carries it; it is no root operand.
+    table = lpb_like()
+    _blank(table, 6)
+    assert roles(table, family)[14].reason == T_REASON
+    [evaluation] = evaluate(table, family)
+    assert {e["status"] for e in evaluation.equations if e["name"] == "TOTAL_FROM_TOP_LEVEL_LINES"} == {"PASS"}
+    result = cells([evaluation])
+    assert all(result[(line, YEAR)]["acceptance"] == "ACCEPTED" for line in TOP)
+
+
+def test_a_value_less_item_trong_do_is_no_wrapper(family):
+    # A genuine wrapper is an exact all-null GROUP; a value-less ITEM row is only blank detail of ADMIN, so the lines
+    # printed under it reach no frontier owner and the total is refused.
+    table = lpb_wrapped()
+    table.rows[11] = replace(table.rows[11], kind="ITEM")
+    assigned = roles(table, family)
+    assert unlabeled_total_row_v1(table, family, assigned, owned_subject=True) == (
+        None, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:r12")
