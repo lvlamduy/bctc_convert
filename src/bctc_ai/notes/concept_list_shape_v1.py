@@ -293,7 +293,8 @@ def unlabeled_total_row_v1(table: NoteTable, family: Family, roles: list[RowRole
     - exactly one row of the table has ORIGINAL ``row_kind`` TOTAL (SUBTOTAL may close a partial block: never);
     - that row prints no label (a JSON null and an empty string are kept apart in the reason) and has values;
     - it claims no parent: no ``parent_row_id`` and no printed hierarchy component;
-    - it is the last valued row, so every top-level line is printed before it;
+    - it is the last valued row and the FINAL source row of the table, so every printed line, valued or blank, is
+      before it (Codex 0308);
     - it was left SOURCE_ONLY / NO_LINE_RULE, and no row is or could be the printed total line already.
     The family's equations then validate it like any printed total (PASS proves, FAIL / INCOMPLETE hold); they
     never decide membership.
@@ -318,6 +319,10 @@ def unlabeled_total_row_v1(table: NoteTable, family: Family, roles: list[RowRole
         return None, "TOTAL_ROW_CLAIMS_A_PARENT"
     if any(_has_values(table, later) for later in table.rows[index + 1:]):
         return None, "TOTAL_ROW_NOT_THE_LAST_VALUED_ROW"
+    if index != len(table.rows) - 1:
+        # Codex 0308: a blank row AFTER the total (an unknown printed root component, a blank printed total line, or an
+        # unexplained caption) is a source suffix no rule here authenticates; the total must close the source table.
+        return None, "TOTAL_ROW_NOT_THE_FINAL_SOURCE_ROW"
     if (roles[index].disposition, roles[index].reason) != ("SOURCE_ONLY", "NO_LINE_RULE"):
         return None, "TOTAL_ROW_ALREADY_DISPOSED:" + roles[index].reason
     if any(role.role == line or line in (role.candidates or []) for role in roles):
