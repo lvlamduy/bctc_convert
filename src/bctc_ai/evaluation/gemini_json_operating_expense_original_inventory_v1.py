@@ -171,7 +171,8 @@ def write_f36_original_completeness_inventory_v1(*, database: Path, database_ref
     """Write one neutral inventory, with COMPLETE identity only after all final guards.
 
     Caller pins a reviewed corpus authority; this does not grant family relevance.
-    The CLI restricts real runs to FULL271/COMMON204. Tests may use tiny genuine stores.
+    A reviewed runtime caller must pin and restrict real FULL271/COMMON204 profiles;
+    no CLI is implemented here. Tests may use tiny genuine stores.
     No generator/capability escapes. Provisional JSONL remains explicitly unsealed on FAIL.
     """
     _need(type(batch_size) is int and 1 <= batch_size <= 32, "Batch size must be plain int1..32")
