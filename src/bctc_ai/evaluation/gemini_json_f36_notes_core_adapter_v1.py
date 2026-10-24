@@ -283,6 +283,13 @@ def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
         if reason is not None:
             retained.extend({"cell": c, "adapter_disposition": reason} for c in own)
             continue
+        # Canonical values are CURRENT then COMPARATIVE, independently of the
+        # printed column order. Keep every value/evidence axis zipped together.
+        ordered = sorted(zip(own, periods, values, strict=True),
+                         key=lambda item: {"CURRENT": 0, "COMPARATIVE": 1}[item[1]["role"]])
+        own = [item[0] for item in ordered]
+        periods = [item[1] for item in ordered]
+        values = [item[2] for item in ordered]
         refs = []
         for cell in own:
             origin = cell["original_cell"]

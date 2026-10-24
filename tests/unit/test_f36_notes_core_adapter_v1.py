@@ -138,6 +138,39 @@ def test_existing_money_ids_source_contract_and_full_retention(example):
     assert mapping["source_refs"][1]["money_column_ordinals"] == [3]
 
 
+def test_reversed_printed_lanes_keep_current_first_and_all_original_evidence_aligned(example):
+    compiled, trial, index_id = example
+    ledger = trial["notes_ledger"]
+    # Printed c2 is comparative; printed c3 is current. Distinct amounts make
+    # an accidental physical-order export observable without selecting by value.
+    current, comparative = ledger["cells"]
+    for c, column, raw in ((current, 3, "25"), (comparative, 2, "24")):
+        c["original_cell"]["column_ordinal"] = column
+        c["locator"]["column_id"] = f"c{column}"
+        c["raw"], c["value"] = raw, raw
+    ledger["cells"] = [comparative, current]  # retain actual producer physical order
+    inventory = ledger["source_ledger"][0]["inventory"]
+    row = inventory["rows"][0]
+    row["value_axis"]["items_one_lf_sha256"] = [canonical_json_sha256_v1(v) for v in (None, "24", "25")]
+    rows = {(VID, 1, 1, r["row_ordinal"]): r for r in inventory["rows"]}
+    closure = ledger["root_closures"][0]["closure"]
+    ledger["classifications"] = [classify_observation_v1(c, 1206, closure, rows) for c in ledger["cells"]]
+    ledger_before = canonical_json_bytes_v1(ledger)
+    mappings, retained = _fragments(ledger["cells"], ledger["classifications"], {"MILLION_VND", "VND"},
+                                   {1: statement_period_context_v1(CONTEXT)})
+    assert not retained and canonical_json_bytes_v1(ledger) == ledger_before
+    trial["mappings"] = mappings
+    reseal_trial(trial)
+    checked = validate_f36_notes_core_sweep_v1(sweep_of(compiled, trial, index_id))
+    mapping = checked["trials"][0]["mappings"][0]
+    assert [v["coefficient"] for v in mapping["values"]] == [25, 24]
+    assert [r["money_column_ordinals"] for r in mapping["source_refs"]] == [[3], [2]]
+    assert [p["original_column_ordinal"] for p in mapping["period_axis"]] == [3, 2]
+    assert [p["parsed_period"]["role"] for p in mapping["period_axis"]] == ["CURRENT", "COMPARATIVE"]
+    assert [c["locator"]["column_id"] for c in checked["trials"][0]["notes_ledger"]["cells"]] == ["c2", "c3"]
+    assert canonical_json_bytes_v1(checked["trials"][0]["notes_ledger"]) == ledger_before
+
+
 @pytest.mark.parametrize("field,value", [("family_root_population_policy", "SUBTREE"),
     ("family_root_requirement", "OPTIONAL"), ("period_lane_policy", "CURRENT_ONLY"),
     ("source_presentation_rounding_policy", "UNBOUNDED")])
