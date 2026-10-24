@@ -7,7 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from bctc_ai.notes.concept_list_shape_v1 import assign_lines_v1, evaluate_concept_table_v1, evaluate_equations_v1
+from bctc_ai.notes.concept_list_shape_v1 import (
+    assign_lines_v1,
+    evaluate_concept_table_v1,
+    evaluate_equations_v1,
+)
 from bctc_ai.notes.config_v1 import load_notes_config_v1
 from bctc_ai.notes.engine_v1 import _assign_legacy_ids
 from bctc_ai.notes.kernel_v1 import (
@@ -66,7 +70,7 @@ def make_table(rows, headers, *, title="28. Chi phí thuế thu nhập doanh ngh
     table = NoteTable(1, page, version, "s1", "t1", 0, 0, "FINANCIAL_NOTE", section, title, unit, "NONE", [], columns)
     for index, (label, values) in enumerate(rows):
         table.rows.append(NoteRow(f"r{index}", index, label, "ITEM", (), None))
-        for column, value in zip(columns, values):
+        for column, value in zip(columns, values, strict=False):
             state = "BLANK" if value is None else ("DASH" if value.strip() == "-" else "VALUE")
             table.cells[(f"r{index}", column.column_id)] = (value, state)
     return table
@@ -211,8 +215,9 @@ def test_deduction_sign_follows_printed_sign_not_the_variant_that_passes(family)
     positive = {"PROFIT_BEFORE_TAX": parsed("100"), "NON_TAXABLE_INCOME": parsed("10"), "TAXABLE_INCOME": parsed("90")}
     negative = {"PROFIT_BEFORE_TAX": parsed("100"), "NON_TAXABLE_INCOME": parsed("-10"), "TAXABLE_INCOME": parsed("90")}
     wrong = {"PROFIT_BEFORE_TAX": parsed("100"), "NON_TAXABLE_INCOME": parsed("10"), "TAXABLE_INCOME": parsed("110")}
-    status = lambda values: next(e["status"] for e in evaluate_equations_v1(family, values, "MILLION_VND", "c1")
-                                 if e["name"] == "TAXABLE_FROM_PROFIT")
+    def status(values):
+        return next(e["status"] for e in evaluate_equations_v1(family, values, "MILLION_VND", "c1")
+                    if e["name"] == "TAXABLE_FROM_PROFIT")
     assert status(positive) == "PASS" and status(negative) == "PASS"
     assert status(wrong) == "FAIL"  # a positive deduction is never added to make the sum work
 
@@ -526,6 +531,7 @@ def test_year_ended_header_is_recorded_as_shadow_evidence_only(family, monkeypat
     # recorded as DURATION:YEAR_ENDED:D shadow evidence. Nothing else changes: same cells, acceptance, holds, period
     # keys, candidates and legacy IDs as with the shadow grammar disabled, even with a PRIMARY amount that would agree.
     from dataclasses import replace
+
     from bctc_ai.notes import kernel_v1
 
     interim = replace(document(quarter=4), income_context_texts=INTERIM_Q4,

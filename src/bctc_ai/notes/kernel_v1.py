@@ -22,21 +22,13 @@ import json
 import re
 import unicodedata
 from collections import defaultdict
+from collections.abc import Iterable
 from contextlib import closing
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
-from bctc_ai.primary_statements.numbers_v1 import SeparatorRoles, evidence_roles_v1, parse_money_cell_v1
-from bctc_ai.primary_statements.periods_v1 import (
-    duration_lane_period_v1,
-    instant_lane_period_v1,
-    printed_dates_v1,
-    statement_period_context_v1,
-)
-from bctc_ai.primary_statements.source_v1 import CorpusSelection, SourceMetrics, connect_readonly, sha256_file
-from bctc_ai.primary_statements.text_v1 import fold_vietnamese, label_key_v1
 from bctc_ai.evaluation.gemini_financial_page_json_v1 import validate_financial_page_json_v1
 from bctc_ai.notes.annual_policy_v1 import (
     PolicyCapture,
@@ -45,16 +37,36 @@ from bctc_ai.notes.annual_policy_v1 import (
     policy_sentences_v1,
     verify_annual_policy_v1,
 )
-from bctc_ai.notes.source_bridge_v1 import bridge_table_v1, table_fingerprint_v1
 from bctc_ai.notes.source_bridge_v1 import EXACT as BRIDGE_EXACT
 from bctc_ai.notes.source_bridge_v1 import EXACT_SHIFT as BRIDGE_EXACT_SHIFT
-from bctc_ai.storage.gemini_income_tax_source_page_loader_v1 import load_income_tax_source_page_json_versions_v1
+from bctc_ai.notes.source_bridge_v1 import bridge_table_v1, table_fingerprint_v1
+from bctc_ai.primary_statements.numbers_v1 import (
+    SeparatorRoles,
+    evidence_roles_v1,
+    parse_money_cell_v1,
+)
+from bctc_ai.primary_statements.periods_v1 import (
+    duration_lane_period_v1,
+    instant_lane_period_v1,
+    printed_dates_v1,
+    statement_period_context_v1,
+)
+from bctc_ai.primary_statements.source_v1 import (
+    CorpusSelection,
+    SourceMetrics,
+    connect_readonly,
+    sha256_file,
+)
+from bctc_ai.primary_statements.text_v1 import fold_vietnamese, label_key_v1
 from bctc_ai.primary_statements.units_v1 import (
     PERCENT,
     VND_PER_SHARE,
     units_in_header_component_v1,
     units_in_prose_v1,
     units_in_unit_field_v1,
+)
+from bctc_ai.storage.gemini_income_tax_source_page_loader_v1 import (
+    load_income_tax_source_page_json_versions_v1,
 )
 
 KERNEL_VERSION = "NOTES_KERNEL_V1"
@@ -247,7 +259,7 @@ class NoteTable:
 
     def separator_roles(self) -> SeparatorRoles:
         roles = SeparatorRoles()
-        for (row_id, column_id), (text, _state) in self.cells.items():
+        for (_row_id, _column_id), (text, _state) in self.cells.items():
             roles = roles.merge(evidence_roles_v1(text))
         return roles
 
@@ -493,7 +505,7 @@ _ON_NEXT = {"CONTINUES_ON_NEXT_PAGE", "BOTH"}
 _FROM_PREVIOUS = {"CONTINUES_FROM_PREVIOUS_PAGE", "BOTH"}
 
 
-def continuation_neighbors_v1(source: "NotesSource", keys) -> set[tuple[str, str, str]]:
+def continuation_neighbors_v1(source: NotesSource, keys) -> set[tuple[str, str, str]]:
     """Keys of the tables printed just before/after each key across a page break."""
 
     outline = source.outline()
@@ -551,10 +563,10 @@ def _continuation_compatible(head: NoteTable, follower: NoteTable) -> bool:
     follower_units = {u.unit for u in units_in_unit_field_v1(follower.unit_exact, source_kind="TABLE_UNIT_FIELD")}
     if head_units and follower_units and head_units != follower_units:
         return False
-    return all(not f.header_text or f.header_text == h.header_text for h, f in zip(head_money, follower_money))
+    return all(not f.header_text or f.header_text == h.header_text for h, f in zip(head_money, follower_money, strict=False))
 
 
-def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) -> tuple[list[NoteTable], list[dict[str, Any]]]:
+def assemble_continuations_v1(source: NotesSource, tables: list[NoteTable]) -> tuple[list[NoteTable], list[dict[str, Any]]]:
     """Join a table with its continuation on the next page.
 
     Two fragments join only when (a) the earlier is the last table of its page
@@ -610,7 +622,7 @@ def assemble_continuations_v1(source: "NotesSource", tables: list[NoteTable]) ->
         )
         head_money = _money_columns(head)
         for fragment in chain:
-            column_map = {c.column_id: h.column_id for c, h in zip(_money_columns(fragment), head_money)}
+            column_map = {c.column_id: h.column_id for c, h in zip(_money_columns(fragment), head_money, strict=False)}
             merged.fragment_column_maps[fragment.physical_page] = {h: c for c, h in column_map.items()}
             for row in fragment.rows:
                 row_id = f"p{fragment.physical_page}:{row.row_id}"

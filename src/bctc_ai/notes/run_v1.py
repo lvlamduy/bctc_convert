@@ -27,7 +27,11 @@ from bctc_ai.notes.config_v1 import load_notes_config_v1
 from bctc_ai.notes.engine_v1 import dispositions_v1, run_family_v1, summarize_v1
 from bctc_ai.notes.export_v1 import build_notes_workbook_v1, tm_template_rows_v1
 from bctc_ai.notes.kernel_v1 import NotesSource, load_primary_context_v1
-from bctc_ai.notes.store_v1 import cells_projection_sha256_v1, reload_notes_store_v1, write_notes_store_v1
+from bctc_ai.notes.store_v1 import (
+    cells_projection_sha256_v1,
+    reload_notes_store_v1,
+    write_notes_store_v1,
+)
 from bctc_ai.primary_statements.source_v1 import SourceMetrics, load_corpus_selection_v1
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

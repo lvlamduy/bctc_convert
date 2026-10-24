@@ -113,7 +113,7 @@ def _compare_sql_v1(table, section: dict[str, Any], source: dict[str, Any]) -> d
     columns = sorted(table.columns, key=lambda c: c.ordinal)
     if len(columns) != len(columns_source):
         return {"reason": "COLUMN_COUNT"}
-    for index, (column, expected) in enumerate(zip(columns, columns_source)):
+    for index, (column, expected) in enumerate(zip(columns, columns_source, strict=False)):
         if (column.column_id, column.ordinal) != (f"c{index + 1}", index) or not _same(
                 [column.header_raw, column.value_kind], [expected.get("header_path_exact"), expected.get("value_kind")]):
             return {"reason": "COLUMN_IDENTITY", "column_id": column.column_id}
@@ -126,7 +126,7 @@ def _compare_sql_v1(table, section: dict[str, Any], source: dict[str, Any]) -> d
         per_row[row_id] = per_row.get(row_id, 0) + 1
     if set(per_row) - {row.row_id for row in rows}:
         return {"reason": "CELL_WITHOUT_ROW"}
-    for index, (row, expected) in enumerate(zip(rows, rows_source)):
+    for index, (row, expected) in enumerate(zip(rows, rows_source, strict=False)):
         if (row.row_id, row.order) != (f"r{index + 1}", index) or not _same(
                 [row.label, row.hierarchy_raw, row.kind],
                 [expected.get("label_exact"), expected.get("hierarchy_path_exact"), expected.get("row_kind")]):
@@ -156,7 +156,7 @@ def _proven_shift_map_v1(original: dict[str, Any], validated: dict[str, Any], re
             or not _same({k: v for k, v in original.items() if k not in ("columns", "rows")},
                          {k: v for k, v in validated.items() if k not in ("columns", "rows")}):
         return None, "TEXT_SHIFT_COLUMN_DIFFERS"
-    for vrow, orow in zip(vrows, orows):
+    for vrow, orow in zip(vrows, orows, strict=False):
         ovalues, vvalues = orow.get("values_exact"), vrow.get("values_exact")
         if type(ovalues) is not list or type(vvalues) is not list or len(ovalues) != len(vvalues) + 1 \
                 or not _same({k: v for k, v in orow.items() if k != "values_exact"}, {k: v for k, v in vrow.items() if k != "values_exact"}) \

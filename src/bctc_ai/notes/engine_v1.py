@@ -13,9 +13,12 @@ import re
 import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Any
 
+from bctc_ai.notes.concept_list_shape_v1 import evaluate_concept_table_v1
 from bctc_ai.notes.config_v1 import NotesConfig
+from bctc_ai.notes.coordinate_shape_v1 import evaluate_coordinate_table_v1
 from bctc_ai.notes.kernel_v1 import (
     KERNEL_VERSION,
     DocumentContext,
@@ -26,10 +29,6 @@ from bctc_ai.notes.kernel_v1 import (
     stable_json_sha256,
     table_context_v1,
 )
-from functools import partial
-
-from bctc_ai.notes.concept_list_shape_v1 import evaluate_concept_table_v1
-from bctc_ai.notes.coordinate_shape_v1 import evaluate_coordinate_table_v1
 from bctc_ai.notes.list_shape_v1 import TableEvaluation, evaluate_table_v1
 from bctc_ai.notes.source_bridge_v1 import original_cell_v1
 

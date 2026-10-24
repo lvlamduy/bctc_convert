@@ -24,7 +24,11 @@ from typing import Any
 
 import openpyxl
 
-from bctc_ai.export.canonical_xlsx import deterministic_workbook_bytes, set_literal_cell, workbook_has_formula
+from bctc_ai.export.canonical_xlsx import (
+    deterministic_workbook_bytes,
+    set_literal_cell,
+    workbook_has_formula,
+)
 from bctc_ai.primary_statements.excel_v1 import excel_number_v1
 from bctc_ai.primary_statements.source_v1 import sha256_file
 from bctc_ai.schema.xlsx_reader import read_rows

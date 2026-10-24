@@ -134,7 +134,7 @@ def load_notes_config_v1(project_root: Path) -> NotesConfig:
         _require(raw["axis"] in axes, f"{path.name}: unknown axis")
         _require(all(name in axes for name in raw.get("axes", [])) and (not raw.get("axes") or raw["axes"][0] == raw["axis"]),
                  f"{path.name}: axes must exist and start with the family axis")
-        for subject, spec in raw["subjects"].items():
+        for _subject, spec in raw["subjects"].items():
             spec["any"] = [[fold_vietnamese(str(p)) for p in g] for g in spec.get("any", [])]
             spec["none"] = [[fold_vietnamese(str(p)) for p in g] for g in spec.get("none", [])]
         raw["reject_context"] = [[fold_vietnamese(str(p)) for p in g] for g in raw.get("reject_context", [])]

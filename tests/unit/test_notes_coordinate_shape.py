@@ -38,7 +38,7 @@ def table(rows, *, title="Tiền gửi của khách hàng", section=None, header
         parent = spec[3] if len(spec) > 3 else None
         kind = kind or ("TOTAL" if label in (None, "Tổng", "Cộng") else "ITEM")
         result.rows.append(NoteRow(f"r{index}", index, label, kind, (), parent))
-        for column, value in zip(columns, values):
+        for column, value in zip(columns, values, strict=False):
             state = "BLANK" if value is None else ("DASH" if value.strip() == "-" else "VALUE")
             result.cells[(f"r{index}", column.column_id)] = (value, state)
     return result

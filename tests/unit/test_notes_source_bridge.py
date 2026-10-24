@@ -21,7 +21,13 @@ from bctc_ai.notes.kernel_v1 import (
     NoteTable,
     assemble_continuations_v1,
 )
-from bctc_ai.notes.source_bridge_v1 import EXACT, EXACT_SHIFT, bridge_table_v1, original_cell_v1, table_fingerprint_v1
+from bctc_ai.notes.source_bridge_v1 import (
+    EXACT,
+    EXACT_SHIFT,
+    bridge_table_v1,
+    original_cell_v1,
+    table_fingerprint_v1,
+)
 from bctc_ai.primary_statements.numbers_v1 import SeparatorRoles
 from bctc_ai.primary_statements.source_v1 import CorpusSelection, SelectedDocument, SelectedPage
 from bctc_ai.storage import gemini_financial_page_store_v1 as shared
@@ -305,7 +311,9 @@ def test_cached_proof_binds_the_sql_payload_and_is_detached(tmp_path, monkeypatc
     calls = []
 
     def loader(path, *, page_json_version_ids):
-        from bctc_ai.storage.gemini_income_tax_source_page_loader_v1 import load_income_tax_source_page_json_versions_v1
+        from bctc_ai.storage.gemini_income_tax_source_page_loader_v1 import (
+            load_income_tax_source_page_json_versions_v1,
+        )
         calls.append(list(page_json_version_ids))
         return load_income_tax_source_page_json_versions_v1(path, page_json_version_ids=page_json_version_ids)
 

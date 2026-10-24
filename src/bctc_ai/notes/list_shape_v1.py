@@ -161,7 +161,7 @@ def owned_date_texts_v1(table: NoteTable, context: list[tuple[str, str]]) -> lis
 
 
 def classification_basis_v1(context: list[tuple[str, str]]) -> str:
-    for source, text in context[:3]:
+    for _source, text in context[:3]:
         folded = fold_vietnamese(text)
         if re.search(r"\btt\s*31\b|thong tu\s*(?:so\s*)?31\b", folded):
             return "TT31_2024"

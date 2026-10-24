@@ -22,7 +22,13 @@ from decimal import Decimal
 from typing import Any
 
 from bctc_ai.notes.config_v1 import Family, all_phrases
-from bctc_ai.notes.kernel_v1 import DocumentContext, NoteLane, NoteTable, parse_cell_v1, resolve_instant_lanes_v1
+from bctc_ai.notes.kernel_v1 import (
+    DocumentContext,
+    NoteLane,
+    NoteTable,
+    parse_cell_v1,
+    resolve_instant_lanes_v1,
+)
 from bctc_ai.notes.list_shape_v1 import (
     OWNER_SOURCES,
     TOTAL_KEYS,
@@ -325,8 +331,7 @@ def _equations_for(block_values, axis_names, first_axis, table):
         direct = [a for a in found if not any(b in ancestors and a in ancestors[b] for b in found if b != a)]
         if len(direct) == 1:
             nearest.setdefault(direct[0], []).append(key)
-    for parent_key, children in nearest.items():
-        yield parent_key, children
+    yield from nearest.items()
 
 
 def _check(evaluation, lane, block, parent_key, children, block_values, proven, failed):

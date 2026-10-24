@@ -19,7 +19,12 @@ from bctc_ai.notes.annual_policy_v1 import (
 )
 from bctc_ai.notes.concept_list_shape_v1 import evaluate_concept_table_v1
 from bctc_ai.notes.config_v1 import load_notes_config_v1
-from bctc_ai.notes.kernel_v1 import NotesKernelError, NotesSource, resolve_duration_lanes_v1, year_ended_policy_v1
+from bctc_ai.notes.kernel_v1 import (
+    NotesKernelError,
+    NotesSource,
+    resolve_duration_lanes_v1,
+    year_ended_policy_v1,
+)
 from bctc_ai.primary_statements.periods_v1 import statement_period_context_v1
 from bctc_ai.storage import gemini_financial_page_store_v1 as shared
 
@@ -51,7 +56,7 @@ def capture(*narratives, scope="SEPARATE", pages=None):
 
     built = [page_of(list(p), 12 + i) for i, p in enumerate(pages or [narratives])]
     frontier = tuple((p.page_json_version_id, sum(len(policy_sentences_v1(n)) for _ptr, n in p.narratives)) for p in built)
-    return PolicyCapture((*BINDING[:3], scope), frontier, tuple(p for p, (_v, count) in zip(built, frontier) if count))
+    return PolicyCapture((*BINDING[:3], scope), frontier, tuple(p for p, (_v, count) in zip(built, frontier, strict=False) if count))
 
 
 @pytest.fixture(scope="module")

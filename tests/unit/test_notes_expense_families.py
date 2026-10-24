@@ -6,13 +6,12 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from test_notes_income_tax import cells, context_of, document, kqkd, make_table
 
 from bctc_ai.notes.concept_list_shape_v1 import assign_lines_v1, evaluate_concept_table_v1
 from bctc_ai.notes.config_v1 import load_notes_config_v1
 from bctc_ai.notes.engine_v1 import _assign_legacy_ids, hold_write_key_collisions_v1
 from bctc_ai.notes.kernel_v1 import NoteRow
-
-from test_notes_income_tax import cells, context_of, document, kqkd, make_table
 
 ROOT = Path(__file__).resolve().parents[2]
 YEAR = "DURATION:YEAR:2025"
@@ -103,8 +102,8 @@ def test_credit_provision_general_and_specific_need_a_printed_subject_parent(con
 
 
 def test_dispositions_keep_rejected_tables_and_unread_rows():
-    from bctc_ai.notes.engine_v1 import FamilyRun, dispositions_v1
     from bctc_ai.notes.concept_list_shape_v1 import evaluate_concept_table_v1 as evaluate
+    from bctc_ai.notes.engine_v1 import FamilyRun, dispositions_v1
     family = load_notes_config_v1(ROOT).families["OPERATING_EXPENSE"]
     table = opex_table()
     run = FamilyRun("OPERATING_EXPENSE")

@@ -132,7 +132,7 @@ def reload_notes_store_v1(path: Path) -> tuple[dict[str, Any], list[dict[str, An
         cell = json.loads(row[-1])
         expected = _cell_row_v1(index, cell)
         # Every normalized column, the contiguous ordinal and the canonical JSON itself, with exact types (Codex 0222).
-        if len(row) != len(expected) or any(type(a) is not type(b) or a != b for a, b in zip(row, expected)):
+        if len(row) != len(expected) or any(type(a) is not type(b) or a != b for a, b in zip(row, expected, strict=False)):
             raise NotesStoreError(f"stored cell {index} differs from its canonical JSON record")
         cells.append(cell)
     if cells_projection_sha256_v1(cells) != identity[3]:

@@ -18,9 +18,9 @@ from typing import Any
 
 import yaml
 
+from bctc_ai.primary_statements.text_v1 import NORMALIZATION_VERSION, label_key_v1
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
 from bctc_ai.schema.registry import SchemaItem, load_all
-from bctc_ai.primary_statements.text_v1 import NORMALIZATION_VERSION, label_key_v1
 
 CATALOG_FORMAT_VERSION = "PRIMARY_STATEMENT_CATALOG_V1"
 PRIMARY_STATEMENTS = ("CDKT", "KQKD", "LCTT")
@@ -180,7 +180,7 @@ def load_primary_catalog_v1(project_root: Path) -> PrimaryCatalog:
             )
         index: dict[str, list[AliasHit]] = defaultdict(list)
 
-        def add(key_text: str, hit: AliasHit) -> None:
+        def add(key_text: str, hit: AliasHit, *, statement=statement, index=index) -> None:
             key = label_key_v1(key_text).key
             _require(key, f"{statement} alias normalizes to an empty key: {key_text!r}")
             if not any(existing.kind == hit.kind and existing.target == hit.target for existing in index[key]):

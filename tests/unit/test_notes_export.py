@@ -9,7 +9,12 @@ import openpyxl
 import pytest
 
 from bctc_ai.export.canonical_xlsx import deterministic_workbook_bytes
-from bctc_ai.notes.export_v1 import NotesWorkbookError, build_notes_workbook_v1, tm_template_rows_v1, verify_notes_workbook_v1
+from bctc_ai.notes.export_v1 import (
+    NotesWorkbookError,
+    build_notes_workbook_v1,
+    tm_template_rows_v1,
+    verify_notes_workbook_v1,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT = {"document_plan_id": "plan-1", "relative_path": "x.pdf", "source_sha256": "0" * 64}

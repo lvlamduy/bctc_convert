@@ -9,7 +9,13 @@ import pytest
 
 from bctc_ai.notes.config_v1 import NotesConfigError, load_notes_config_v1
 from bctc_ai.notes.engine_v1 import _assign_legacy_ids
-from bctc_ai.notes.kernel_v1 import DocumentContext, NoteColumn, NoteRow, NoteTable, assemble_continuations_v1
+from bctc_ai.notes.kernel_v1 import (
+    DocumentContext,
+    NoteColumn,
+    NoteRow,
+    NoteTable,
+    assemble_continuations_v1,
+)
 from bctc_ai.notes.list_shape_v1 import axis_blocks_v1, evaluate_table_v1
 from bctc_ai.primary_statements.numbers_v1 import SeparatorRoles
 
@@ -44,7 +50,7 @@ def make_table(rows, headers=(("30/06/2025", "Triệu VND"), ("31/12/2024", "Tri
     for index, (label, values) in enumerate(rows):
         kind = (kinds or {}).get(index, "TOTAL" if label in (None, "Tổng", "Cộng", "Tổng cộng") else "ITEM")
         table.rows.append(NoteRow(f"r{index}", index, label, kind, (), None))
-        for column, value in zip(columns, values):
+        for column, value in zip(columns, values, strict=False):
             state = "BLANK" if value is None else ("DASH" if value.strip() == "-" else "VALUE")
             table.cells[(f"r{index}", column.column_id)] = (value, state)
     return table
