@@ -44,36 +44,48 @@ def lpb():
     ]
 
 
-def build(spec, *, statuses=("PASS", "PASS"), terms=None, reasons=None, dispositions=None, root_reason=T_ROOT):
-    """(inventory, disposition) of one EXACT single table from a compact row spec."""
+PAGE_BLOB = "a" * 64  # the stored two-LF page bytes' SHA-256, shared by the inventory page and the notes bridge
+
+
+def build(spec, *, statuses=("PASS", "PASS"), terms=None, reasons=None, dispositions=None, root_reason=T_ROOT, texts=None):
+    """(inventory, disposition) of one EXACT single table from a compact row spec.
+
+    The ORIGINAL table prints a TEXT column first (a note reference such as "28"; ``texts`` gives it per row, null by
+    default) and two MONEY columns, which the notes lanes c2 / c3 occupy through the identity bridge column map.
+    """
 
     paths, inv_rows, note_rows = [], [], []
-    reasons, dispositions = reasons or {}, dispositions or {}
+    reasons, dispositions, texts = reasons or {}, dispositions or {}, texts or {}
     for i, (label, kind, values, parent, line) in enumerate(spec):
         path = (paths[parent] if parent is not None else []) + [label]
         paths.append(path)
+        original = [texts.get(i), *values]
         inv_rows.append({"record_type": "row", "document_ordinal": 69, "page_json_version_id": "v64",
                          "pointer": f"/sections/0/tables/0/rows/{i}", "row_ordinal": i + 1,
                          "fields": {"row_kind": kind, "label_exact": label, "hierarchy_path_exact": path},
-                         "value_axis": {"count": 2, "item_types": [type(v).__name__ for v in values],
-                                        "null_column_ordinals": [c for c, v in enumerate(values, 1) if v is None]}})
+                         "value_axis": {"count": 3, "item_types": [type(v).__name__ for v in original],
+                                        "null_column_ordinals": [c for c, v in enumerate(original, 1) if v is None]}})
         valued = any(v is not None for v in values)
         disposition = dispositions.get(i) or ("MEMBER" if line else ("SOURCE_ONLY" if valued else "HEADING"))
         reason = reasons.get(i) or (("LINE_RULE" if label else root_reason) if line else ("NO_LINE_RULE" if valued else "NO_VALUES"))
         note_rows.append({"row_id": f"r{i + 1}", "label_exact": label, "parent_row_id": None if parent is None else f"r{parent + 1}",
                           "line": line if disposition == "MEMBER" else None, "disposition": disposition, "reason": reason})
     frontier = terms if terms is not None else [line for (_l, _k, _v, parent, line) in spec if parent is None and line in TOP]
-    inventory = {"table": {"record_type": "table", "pointer": "/sections/0/tables/0", "page_json_version_id": "v64"},
-                 "columns": [{"record_type": "column", "column_ordinal": c, "column_exact": {"value_kind": "MONEY"}} for c in (1, 2)],
+    inventory = {"page": {"record_type": "page", "axis": {"page_json_version_id": "v64", "physical_page": 64},
+                          "source_proof": {"stored_blob_two_lf_sha256": PAGE_BLOB}},
+                 "table": {"record_type": "table", "pointer": "/sections/0/tables/0", "page_json_version_id": "v64"},
+                 "columns": [{"record_type": "column", "column_ordinal": c, "column_exact": {"value_kind": kind}}
+                             for c, kind in ((1, "TEXT"), (2, "MONEY"), (3, "MONEY"))],
                  "rows": inv_rows, "unsupported": []}
     disposition = {"family": "OPERATING_EXPENSE", "status": "EVALUATED", "fragments": [],
                    "source_bridges": [{"status": "EXACT", "page_json_version_id": "v64", "section_ordinal": 1, "table_ordinal": 1,
-                                       "row_count": len(spec), "column_map": {"c1": 1, "c2": 2}}],
-                   "rows": note_rows, "lanes": [{"column_id": "c1"}, {"column_id": "c2"}],
+                                       "original_blob_sha256": PAGE_BLOB, "row_count": len(spec),
+                                       "column_map": {"c1": 1, "c2": 2, "c3": 3}}],
+                   "rows": note_rows, "lanes": [{"column_id": "c2"}, {"column_id": "c3"}],
                    "equations": [{"name": "EMPLOYEE_FROM_DETAIL", "lane": lane, "status": "PASS",
-                                  "terms": ["SALARY_ALLOWANCE", "OTHER_EMPLOYEE_EXPENSE"]} for lane in ("c1", "c2")]
+                                  "terms": ["SALARY_ALLOWANCE", "OTHER_EMPLOYEE_EXPENSE"]} for lane in ("c2", "c3")]
                    + [{"name": "TOTAL_FROM_TOP_LEVEL_LINES", "lane": lane, "status": status, "terms": list(frontier)}
-                      for lane, status in zip(("c1", "c2"), statuses, strict=True) if status is not None]}
+                      for lane, status in zip(("c2", "c3"), statuses, strict=True) if status is not None]}
     return inventory, disposition
 
 
@@ -153,6 +165,19 @@ def test_ambiguous_or_vetoed_rows_are_never_accounted_as_detail(family, disposit
     assert lane_status(result) == [f"NOT_ROOT_CLOSED:{why}"] * 2
 
 
+def test_a_text_note_reference_never_makes_a_blank_root_operand_valued(family):
+    # Codex 0328: ORIGINAL ["28", null, null] is numerically blank - its two MONEY operands are unknown.
+    spec = [r if i != 13 else (r[0], r[1], N, None, None) for i, r in enumerate(lpb())]
+    result = root_closure_v1(*build(spec, texts={13: "28"}), family)
+    assert lane_status(result) == ["NOT_ROOT_CLOSED:BLANK_ROOT_OPERAND:r14"] * 2
+
+
+def test_a_wrapper_needs_every_original_cell_null_not_only_its_money_cells(family):
+    # A "Trong đó:" GROUP printing a TEXT reference is no transparent wrapper: the lines under it reach no frontier owner.
+    result = root_closure_v1(*build(lpb(), texts={9: "x"}), family)
+    assert lane_status(result) == ["NOT_ROOT_CLOSED:UNACCOUNTED_VALUED_ROW:r11"] * 2
+
+
 def test_root_equation_terms_must_be_exactly_the_frontier(family):
     result = root_closure_v1(*build(lpb(), terms=[t for t in TOP if t != "TAX_FEES"]), family)
     assert lane_status(result) == ["NOT_ROOT_CLOSED:ROOT_EQUATION_TERMS_DIFFER_FROM_FRONTIER"] * 2
@@ -190,6 +215,22 @@ def _not_evaluated(inv, disp):
     disp["status"] = "REJECTED"
 
 
+def _page_binding(inv, disp):
+    disp["source_bridges"][0]["original_blob_sha256"] = "b" * 64
+
+
+def _lane_outside_map(inv, disp):
+    disp["lanes"].append({"column_id": "c4"})
+
+
+def _lane_on_text(inv, disp):
+    disp["lanes"][0]["column_id"] = "c1"
+
+
+def _parent_edge(inv, disp):
+    disp["rows"][3]["parent_row_id"] = "r2"  # notes says EMPLOYEE; the ORIGINAL path proves the r3 wrapper
+
+
 @pytest.mark.parametrize("mutate,why", [
     (_merged, "CONTINUATION_MERGED_TABLE_NOT_SUPPORTED_V1"),
     (_shifted, "SOURCE_BRIDGE_NOT_EXACT:EXACT_WITH_PROVEN_TEXT_COLUMN_SHIFT"),
@@ -199,6 +240,10 @@ def _not_evaluated(inv, disp):
     (_value_state, "VALUE_STATE_DISAGREES:r3"),
     (_other_table, "BRIDGE_AND_INVENTORY_NAME_DIFFERENT_TABLES"),
     (_not_evaluated, "TABLE_NOT_EVALUATED:REJECTED"),
+    (_page_binding, "PAGE_BINDING_DIFFERS"),
+    (_lane_outside_map, "LANE_COLUMN_NOT_IN_PROVEN_COLUMN_MAP:c4"),
+    (_lane_on_text, "LANE_COLUMN_NOT_ORIGINAL_MONEY:c1"),
+    (_parent_edge, "PARENT_EDGE_DIFFERS_FROM_ORIGINAL:r4"),
 ])
 def test_unprovable_inputs_are_named_unresolved_never_closed(family, mutate, why):
     inventory, disposition = build(lpb())
