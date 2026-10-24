@@ -25,9 +25,11 @@ Source axis - every ORIGINAL table and every row of an assessed table:
   row READ (some money position is a notes cell; every OTHER valued money position is listed as unread), its closure
   partition class, UNREAD_ORIGINAL (valued, no cell, no partition) or BLANK_ROW.
 Legacy axis - every LEGACY_VALUE_PROOF_V1 record (one per legacy mapping value) once: LEGACY_NOT_JOINABLE:<proof>
-unless the proof is a direct, complete lane -> ORIGINAL column proof; then LEGACY_AGREES / LEGACY_DIFFERS:<axes> on
-RNID / raw / unit only (period never: LEGACY_PERIOD_UNPROVEN). A proven difference moves that CORE_CANDIDATE to
-CONFLICT_REVIEW; absent legacy evidence never establishes or contradicts anything.
+unless the proof is a direct, complete lane -> ORIGINAL column proof whose compared axes (mapping id / value index /
+positive int RNID / non-blank unit / 64-hex raw one-LF hash / positive ORIGINAL coordinate) are ALL present and exactly
+typed (else LEGACY_NOT_JOINABLE:AXIS_MISSING_OR_MALFORMED:<axes>); then LEGACY_AGREES / LEGACY_DIFFERS:<axes> on RNID /
+raw / unit only (period never: LEGACY_PERIOD_UNPROVEN). A proven difference moves that CORE_CANDIDATE to
+CONFLICT_REVIEW; absent or malformed legacy evidence never establishes or contradicts anything.
 """
 
 from __future__ import annotations
@@ -45,6 +47,7 @@ SCOPES = frozenset({"SEPARATE", "CONSOLIDATED"})
 DIRECT_PROOF = "DIRECT_LANE_COLUMN_PROVEN"
 _TABLE_POINTER = re.compile(r"/sections/(\d+)/tables/(\d+)")
 _ROW_POINTER = re.compile(r"/sections/(\d+)/tables/(\d+)/rows/(\d+)")
+_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 def _positive(value: Any) -> bool:
@@ -215,20 +218,43 @@ def classify_legacy_value_v1(proof: dict[str, Any], observations_by_coordinate: 
               "proof_status": proof.get("proof_status"), "period": "LEGACY_PERIOD_UNPROVEN"}
     if proof.get("proof_status") != DIRECT_PROOF:
         return {**record, "class": "LEGACY_NOT_JOINABLE:" + str(proof.get("proof_status"))}
-    origin = proof.get("original_cell") or {}
-    key = (origin.get("page_json_version_id"), origin.get("section_ordinal"), origin.get("table_ordinal"),
-           origin.get("row_ordinal"), origin.get("column_ordinal"))
+    # Every compared axis must be PROVEN and exactly typed; a missing or malformed one establishes and contradicts
+    # nothing (Codex 0350), so the record is not joinable instead of a difference.
+    missing = _legacy_axes_missing(proof)
+    if missing:
+        return {**record, "class": "LEGACY_NOT_JOINABLE:AXIS_MISSING_OR_MALFORMED:" + ",".join(missing)}
+    origin = proof["original_cell"]
+    key = (origin["page_json_version_id"], origin["section_ordinal"], origin["table_ordinal"], origin["row_ordinal"],
+           origin["column_ordinal"])
     observation = observations_by_coordinate.get(key)
     if observation is None:
         return {**record, "class": "LEGACY_NO_CURRENT_OBSERVATION", "original_cell": origin}
-    row = inventory_rows.get(key[:4]) or {}
-    hashes = (row.get("value_axis") or {}).get("items_one_lf_sha256") or []
-    item_hash = hashes[key[4] - 1] if _positive(key[4]) and key[4] <= len(hashes) else None
+    hashes = ((inventory_rows.get(key[:4]) or {}).get("value_axis") or {}).get("items_one_lf_sha256")
+    item_hash = hashes[key[4] - 1] if isinstance(hashes, list) and key[4] <= len(hashes) else None
+    if not (isinstance(item_hash, str) and _SHA256.fullmatch(item_hash)):
+        return {**record, "class": "LEGACY_NOT_JOINABLE:CURRENT_ORIGINAL_ITEM_UNAVAILABLE", "original_cell": origin}
     differs = [axis for axis, same in (
-        ("RNID", proof.get("report_norm_id") == observation["cell"].get("report_norm_id")),
-        ("RAW", proof.get("source_text_one_lf_sha256") is not None and proof.get("source_text_one_lf_sha256") == item_hash),
-        ("UNIT", proof.get("unit") == observation["cell"].get("unit"))) if not same]
+        ("RNID", proof["report_norm_id"] == observation["cell"].get("report_norm_id")),
+        ("RAW", proof["source_text_one_lf_sha256"] == item_hash),
+        ("UNIT", proof["unit"] == observation["cell"].get("unit"))) if not same]
     return {**record, "class": "LEGACY_DIFFERS:" + ",".join(differs) if differs else "LEGACY_AGREES", "original_cell": origin}
+
+
+def _legacy_axes_missing(proof: dict[str, Any]) -> list[str]:
+    """The names of the LEGACY_VALUE_PROOF_V1 axes that are absent or not exactly typed (empty when all are proven)."""
+
+    origin = proof.get("original_cell")
+    checks = (
+        ("ITEM_MAPPING_ID", isinstance(proof.get("item_mapping_id"), str) and bool(proof["item_mapping_id"])),
+        ("VALUE_INDEX", type(proof.get("value_index")) is int and proof["value_index"] >= 0),
+        ("RNID", _positive(proof.get("report_norm_id"))),
+        ("UNIT", isinstance(proof.get("unit"), str) and bool(proof["unit"].strip())),
+        ("RAW_HASH", isinstance(proof.get("source_text_one_lf_sha256"), str)
+         and _SHA256.fullmatch(proof["source_text_one_lf_sha256"]) is not None),
+        ("COORDINATE", isinstance(origin, dict) and isinstance(origin.get("page_json_version_id"), str)
+         and bool(origin["page_json_version_id"])
+         and all(_positive(origin.get(k)) for k in ("section_ordinal", "table_ordinal", "row_ordinal", "column_ordinal"))))
+    return [name for name, proven in checks if not proven]
 
 
 def apply_legacy_conflicts_v1(observations: list[dict[str, Any]], legacy: list[dict[str, Any]]) -> None:
