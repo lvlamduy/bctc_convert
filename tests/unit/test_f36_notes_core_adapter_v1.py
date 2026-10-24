@@ -104,7 +104,8 @@ def example():
     assert [r["class"] for r in records] == ["CORE_CANDIDATE", "CORE_CANDIDATE"]
     production_receipt = _production_table_policy_v1(inv, disposition, closure, compiled)
     policies = {(VID, "s1", "t1"): production_receipt}
-    mappings, retained = _fragments(cells, records, {"MILLION_VND", "VND"}, {1: statement_period_context_v1(CONTEXT)}, policies)
+    mappings, retained = _fragments(cells, records, {"MILLION_VND", "VND"}, {1: statement_period_context_v1(CONTEXT)}, policies,
+                                   compiled["evaluation"]["production_schema_binding"])
     ledger = {"cells": cells, "classifications": records, "retained": retained, "dispositions": [disposition],
               "root_closures": [{"table": [VID, "s1", "t1"], "closure": closure}],
               "production_policy_receipts": [{"table": [VID, "s1", "t1"], "receipt": production_receipt}],
@@ -150,6 +151,7 @@ def test_existing_money_ids_source_contract_and_full_retention(example):
     mapping = sweep["trials"][0]["mappings"][0]
     assert mapping["report_norm_id"] == 1206 and mapping["values"] == [
         {"source_text": "1", "coefficient": 1, "state": "RAW_SIGNED_INTEGER"}] * 2
+    assert mapping["role"] == "TAX_FEES" and mapping["notes_member"] == "TAX_FEES"
     assert [p["parsed_period"]["role"] for p in mapping["period_axis"]] == ["CURRENT", "COMPARATIVE"]
     assert len(sweep["trials"][0]["notes_ledger"]["source_ledger"][0]["rows"]) == 16
     assert mapping["source_refs"][1]["money_column_ordinals"] == [3]
@@ -174,7 +176,8 @@ def test_reversed_printed_lanes_keep_current_first_and_all_original_evidence_ali
     ledger["classifications"] = [classify_observation_v1(c, 1206, closure, rows) for c in ledger["cells"]]
     ledger_before = canonical_json_bytes_v1(ledger)
     mappings, retained = _fragments(ledger["cells"], ledger["classifications"], {"MILLION_VND", "VND"},
-                                   {1: statement_period_context_v1(CONTEXT)}, policies_of(trial))
+                                   {1: statement_period_context_v1(CONTEXT)}, policies_of(trial),
+                                   compiled["evaluation"]["production_schema_binding"])
     assert not retained and canonical_json_bytes_v1(ledger) == ledger_before
     trial["mappings"] = mappings
     reseal_trial(trial)
@@ -257,17 +260,19 @@ def test_partial_or_unsupported_encoding_stays_outside_canonical_without_fabrica
     for c, record in zip(cells, records, strict=True):
         record["cell"] = deepcopy(c)
     before = canonical_json_bytes_v1([cells, records])
-    mappings, retained = _fragments(cells, records, {"MILLION_VND", "VND"}, {1: statement_period_context_v1(CONTEXT)}, policies_of(trial))
+    mappings, retained = _fragments(cells, records, {"MILLION_VND", "VND"}, {1: statement_period_context_v1(CONTEXT)}, policies_of(trial),
+                                   _compiled["evaluation"]["production_schema_binding"])
     assert not mappings and len(retained) == len(cells)
     assert before == canonical_json_bytes_v1([cells, records])
 
 
 def test_forged_core_flag_without_root_receipt_is_not_sufficient(example):
-    _, trial, _ = example
+    compiled, trial, _ = example
     cells, records = deepcopy((trial["notes_ledger"]["cells"], trial["notes_ledger"]["classifications"]))
     records[0].pop("lane_closure")
     with pytest.raises(F36NotesCoreAdapterError, match="Core structural"):
-        _fragments(cells, records, {"MILLION_VND"}, {1: statement_period_context_v1(CONTEXT)}, policies_of(trial))
+        _fragments(cells, records, {"MILLION_VND"}, {1: statement_period_context_v1(CONTEXT)}, policies_of(trial),
+                   compiled["evaluation"]["production_schema_binding"])
 
 
 def test_sweep_outputs_do_not_alias_the_complete_input_trees(example):
@@ -312,7 +317,7 @@ def test_production_minimum_counts_distinct_source_frontier_roles_not_total_or_e
     cells, records = trial["notes_ledger"]["cells"], trial["notes_ledger"]["classifications"]
     before = canonical_json_bytes_v1([cells, records])
     mappings, retained = _fragments(cells, records, {"MILLION_VND"}, {1: statement_period_context_v1(CONTEXT)},
-                                   {(VID, "s1", "t1"): receipt})
+                                   {(VID, "s1", "t1"): receipt}, compiled["evaluation"]["production_schema_binding"])
     assert bool(mappings) is not blocked
     assert len(retained) == (2 if blocked else 0)
     if blocked:
@@ -363,3 +368,43 @@ def test_resealed_owner_policy_receipt_cannot_waive_original_title_mismatch(exam
     reseal_trial(trial)
     with pytest.raises(F36NotesCoreAdapterError, match="Production owner/frontier policy"):
         sweep_of(compiled, trial, index_id)
+
+
+@pytest.mark.parametrize("member,rnid,role", [("TOTAL_OPERATING_EXPENSE", 1205, "FAMILY_ROOT_TOTAL"),
+    ("LONG_TERM_INVESTMENT_PROVISION", 1218, "LONG_TERM_BAD_DEBT_PROVISION"), ("TAX_FEES", 1206, "TAX_FEES")])
+def test_existing_production_rnid_binding_sets_role_and_hashes_original_notes_member(example, member, rnid, role):
+    compiled, trial, _ = example
+    cells, records = deepcopy((trial["notes_ledger"]["cells"], trial["notes_ledger"]["classifications"]))
+    for c, record in zip(cells, records, strict=True):
+        c["member"], c["report_norm_id"] = member, rnid
+        record["cell"], record["exact_rnid_binding"] = deepcopy(c), rnid
+    before = canonical_json_bytes_v1([cells, records])
+    mappings, retained = _fragments(cells, records, {"MILLION_VND"}, {1: statement_period_context_v1(CONTEXT)},
+        policies_of(trial), compiled["evaluation"]["production_schema_binding"])
+    assert not retained and len(mappings) == 1
+    assert mappings[0]["role"] == role and mappings[0]["notes_member"] == member
+    assert mappings[0]["item_mapping_id"] == "gjmthfmv1:item:" + canonical_json_sha256_v1(
+        {k: v for k, v in mappings[0].items() if k != "item_mapping_id"})
+    assert before == canonical_json_bytes_v1([cells, records])
+
+
+@pytest.mark.parametrize("problem,reason", [("unknown", "F36_CANONICAL_RNID_ROLE_UNDECLARED"),
+    ("duplicate", "F36_CANONICAL_RNID_ROLE_AMBIGUOUS"), ("root_collision", "F36_CANONICAL_RNID_ROLE_AMBIGUOUS")])
+def test_unknown_or_ambiguous_production_rnid_never_picks_a_role(example, problem, reason):
+    compiled, trial, _ = example
+    cells, records = deepcopy((trial["notes_ledger"]["cells"], trial["notes_ledger"]["classifications"]))
+    schema = deepcopy(compiled["evaluation"]["production_schema_binding"])
+    rnid = 987654 if problem == "unknown" else 1206
+    if problem == "duplicate":
+        schema["role_bindings"].append({"report_norm_id": rnid, "role": "TAX_FEES"})
+    elif problem == "root_collision":
+        rnid = schema["family_root_report_norm_id"]
+        schema["role_bindings"].append({"report_norm_id": rnid, "role": "TAX_FEES"})
+    for c, record in zip(cells, records, strict=True):
+        c["report_norm_id"] = rnid
+        record["cell"], record["exact_rnid_binding"] = deepcopy(c), rnid
+    before = canonical_json_bytes_v1([cells, records])
+    mappings, retained = _fragments(cells, records, {"MILLION_VND"}, {1: statement_period_context_v1(CONTEXT)}, policies_of(trial), schema)
+    assert not mappings and len(retained) == 2
+    assert {r["adapter_disposition"] for r in retained} == {reason}
+    assert before == canonical_json_bytes_v1([cells, records])

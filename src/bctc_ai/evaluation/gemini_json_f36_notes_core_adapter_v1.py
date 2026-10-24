@@ -296,7 +296,8 @@ def _production_table_policy_v1(inventory: dict[str, Any], disposition: dict[str
 
 def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
                allowed_units: set[str], period_contexts: dict[int, Any],
-               table_policies: dict[tuple[str, str, str], dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+               table_policies: dict[tuple[str, str, str], dict[str, Any]],
+               production_schema: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Encoding only. Inputs must be freshly recomputed by rebuild_f36_notes_trials_v1."""
     groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
     retained = []
@@ -332,7 +333,15 @@ def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
         # Initial declared F36 policy needs both actual lanes. No placeholder comparative.
         own = sorted(own, key=lambda c: c["original_cell"]["column_ordinal"])
         reason = None
-        if len(own) != 2 or len({c["period_key"] for c in own}) != 2:
+        roles = [binding["role"] for binding in production_schema["role_bindings"]
+                 if binding["report_norm_id"] == key[5]]
+        if production_schema["family_root_report_norm_id"] == key[5]:
+            roles.append("FAMILY_ROOT_TOTAL")
+        if not roles:
+            reason = "F36_CANONICAL_RNID_ROLE_UNDECLARED"
+        elif len(roles) != 1:
+            reason = "F36_CANONICAL_RNID_ROLE_AMBIGUOUS"
+        elif len(own) != 2 or len({c["period_key"] for c in own}) != 2:
             reason = "EXPLICIT_TWO_LANE_PAIR_NOT_PROVEN"
         elif key[-1] not in allowed_units:
             reason = "UNIT_OUTSIDE_DECLARED_F36_BINDINGS"
@@ -379,7 +388,7 @@ def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
                          "row_id": f"r{origin['row_ordinal']}", "row_ordinal": origin["row_ordinal"],
                          "money_column_ordinals": [origin["column_ordinal"]], "period_key": cell["period_key"],
                          "notes_observation_state": cell["observation_state"], "cell": _money(cell["raw"])})
-        material = {"report_norm_id": key[5], "role": key[4], "row_id": key[3], "source_refs": refs,
+        material = {"report_norm_id": key[5], "role": roles[0], "notes_member": key[4], "row_id": key[3], "source_refs": refs,
                     "state": "SOURCE_VISIBLE_NOTES_STRICT_CORE_PROPOSAL", "unit": key[-1], "values": values,
                     "scope": key[6], "classification_basis": key[7],
                     "period_axis": [{"period_key": c["period_key"], "period_basis": c["period_basis"],
@@ -448,7 +457,8 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
         ordinal = doc["document_ordinal"]
         own_indices = [i for i, c in enumerate(run.cells) if c["document_ordinal"] == ordinal]
         own_cells, own_records = [run.cells[i] for i in own_indices], [records[i] for i in own_indices]
-        mappings, retained = _fragments(own_cells, own_records, allowed_units, period_contexts, policy_by_table)
+        mappings, retained = _fragments(own_cells, own_records, allowed_units, period_contexts, policy_by_table,
+                                        evaluation["production_schema_binding"])
         own_dispositions = [d for d in dispositions if d["locator"]["document_ordinal"] == ordinal]
         closures = [{"table": list(k), "closure": v} for k, v in closure_by_table.items()
                     if any(p["page_json_version_id"] == k[0] for p in doc["pages"])]
@@ -571,7 +581,8 @@ def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
                   "Table/row source accounting does not recompute")
         allowed = {u["canonical_unit"] for u in compiled_specs["evaluation"]["production_policy"]["money_unit_bindings"] if u["accepted"] is True}
         period_contexts = {doc["document_ordinal"]: statement_period_context_v1(ledger["primary_income_context_texts"])}
-        expected_mappings, expected_retained = _fragments(ledger["cells"], ledger["classifications"], allowed, period_contexts, policies)
+        expected_mappings, expected_retained = _fragments(ledger["cells"], ledger["classifications"], allowed, period_contexts, policies,
+                                                         compiled_specs["evaluation"]["production_schema_binding"])
         _need(_same(expected_mappings, trial["mappings"]) and _same(expected_retained, ledger["retained"]),
               "Mapping/raw/state/period/retention encoding differs from complete ledger")
         for candidate in trial["candidates"]:
