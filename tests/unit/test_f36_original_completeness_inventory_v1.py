@@ -1,6 +1,7 @@
 """UNRUN neutral inventory tests: real tiny stores, no mocked source authority."""
 from __future__ import annotations
 
+import inspect
 import json
 import sqlite3
 from copy import deepcopy
@@ -50,6 +51,11 @@ def _rebind_database(options, index):
 
 
 def test_complete_source_axes_include_null_item_group_unlabeled_total_and_no_relevant_page(tmp_path, monkeypatch):
+    root = Path(subject.__file__).resolve().parents[3]
+    for function, filename in ((_fixture, "test_gemini_income_tax_raw_money_census_v1.py"),
+                               (_primary_page, "test_gemini_json_income_tax_family_v1.py"),
+                               (_fixture.__globals__["_ingest"], "test_gemini_financial_page_store_v1.py")):
+        assert Path(inspect.getfile(function)).resolve() == root / "tests/unit" / filename
     options, index, pages = _fixture(tmp_path, monkeypatch, pages=_pages(), documents=2, manifest_v4=True)
     before = sha256(options["database"].read_bytes()).hexdigest()
     report = _run(options, tmp_path / "inventory")
