@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from dataclasses import asdict
 from hashlib import sha256
 from pathlib import Path
 
 import pytest
+from test_notes_annual_policy import CALENDAR, INTERIM_Q4, YEAR_ENDED, policy_page
 from test_notes_f36_strict_ledger import cell
 from test_notes_root_closure import PAGE_BLOB, build, lpb
 
@@ -17,6 +19,7 @@ from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
     SCHEMA_FORMAT,
     TOPOLOGY_FORMAT,
     F36NotesCoreAdapterError,
+    _annual_context_v1,
     _fragments,
     _inventory,
     _production_table_policy_v1,
@@ -26,6 +29,7 @@ from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
     replay_f36_notes_core_trials_from_source_v1,
     validate_f36_notes_core_sweep_v1,
 )
+from bctc_ai.notes.annual_policy_v1 import PolicyCapture, policy_page_v1
 from bctc_ai.notes.config_v1 import load_notes_config_v1
 from bctc_ai.notes.f36_strict_ledger_v1 import (
     classify_observation_v1,
@@ -33,7 +37,10 @@ from bctc_ai.notes.f36_strict_ledger_v1 import (
     classify_table_v1,
 )
 from bctc_ai.notes.root_closure_v1 import root_closure_v1
-from bctc_ai.primary_statements.periods_v1 import statement_period_context_v1
+from bctc_ai.primary_statements.periods_v1 import (
+    duration_lane_period_v1,
+    statement_period_context_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1, canonical_json_sha256_v1
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -408,3 +415,118 @@ def test_unknown_or_ambiguous_production_rnid_never_picks_a_role(example, proble
     assert not mappings and len(retained) == 2
     assert {r["adapter_disposition"] for r in retained} == {reason}
     assert before == canonical_json_bytes_v1([cells, records])
+
+
+def annual_example(example):
+    compiled, trial, index_id = deepcopy(example)
+    doc = compiled["topology"]["source"]["document_axis"][0]
+    policy_vid = "gfpstorev1:json:" + "8" * 64
+    doc["pages"].insert(0, {"physical_page": 12, "page_json_version_id": policy_vid})
+    doc["document_identity"]["document_plan_id"] = "synthetic-plan"
+    page = policy_page_v1(policy_page(CALENDAR), page_json_version_id=policy_vid, physical_page=12,
+                         original_blob_sha256="a" * 64, replay_receipt_id="synthetic-policy-replay")
+    capture = PolicyCapture((1, "synthetic.pdf", "1" * 64, "SEPARATE"), ((policy_vid, 1), (VID, 0)), (page,))
+    ledger = trial["notes_ledger"]
+    ledger["primary_income_context_texts"] = INTERIM_Q4
+    ledger["annual_period_context"] = {"capture": json.loads(json.dumps(asdict(capture))),
+        "owned_table_texts": [{"table": [VID, "s1", "t1"], "texts": ["Chi phí hoạt động"]}]}
+    for c, header in zip(ledger["cells"], YEAR_ENDED, strict=True):
+        c["header_text"] = header[0]
+        c["period_basis"] = f"PRINTED_YEAR_ENDED_WITH_DOCUMENT_ANNUAL_POLICY:{policy_vid}@p12/sections/0/narratives_exact/0"
+    rows = {(VID, 1, 1, r["row_ordinal"]): r for r in ledger["source_ledger"][0]["inventory"]["rows"]}
+    closure = ledger["root_closures"][0]["closure"]
+    ledger["classifications"] = [classify_observation_v1(c, 1206, closure, rows) for c in ledger["cells"]]
+    return compiled, trial, index_id
+
+
+def annual_fragments(compiled, trial):
+    ledger = trial["notes_ledger"]
+    doc = compiled["topology"]["source"]["document_axis"][0]
+    annual = _annual_context_v1(ledger.get("annual_period_context"), doc, ledger["primary_income_context_texts"])
+    return _fragments(ledger["cells"], ledger["classifications"], {"MILLION_VND"},
+        {1: statement_period_context_v1(ledger["primary_income_context_texts"])}, policies_of(trial),
+        compiled["evaluation"]["production_schema_binding"], {1: annual})
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_printed_year_ended_pair_reuses_verified_policy_under_q4_without_changing_source(example, reverse):
+    compiled, trial, index_id = annual_example(example)
+    ledger = trial["notes_ledger"]
+    if reverse:
+        ledger["primary_income_context_texts"] = ["Quý IV năm 2025 cho 3 tháng kết thúc ngày 31/12/2025"]
+        report = statement_period_context_v1(ledger["primary_income_context_texts"])
+        assert report.months == 3 and report.reporting_date == "2025-12-31" and not report.conflict
+        assert duration_lane_period_v1(ledger["cells"][0]["header_text"], report).key == "DURATION:MONTHS_ENDED:3:2025-12-31"
+        for c, column in zip(ledger["cells"], (3, 2), strict=True):
+            c["original_cell"]["column_ordinal"] = column
+            c["locator"]["column_id"] = f"c{column}"
+        ledger["cells"].reverse()
+        rows = {(VID, 1, 1, r["row_ordinal"]): r for r in ledger["source_ledger"][0]["inventory"]["rows"]}
+        closure = ledger["root_closures"][0]["closure"]
+        ledger["classifications"] = [classify_observation_v1(c, 1206, closure, rows) for c in ledger["cells"]]
+    before = canonical_json_bytes_v1(ledger)
+    mappings, retained = annual_fragments(compiled, trial)
+    assert len(mappings) == 1 and not retained
+    assert [p["parsed_period"]["role"] for p in mappings[0]["period_axis"]] == ["CURRENT", "COMPARATIVE"]
+    assert [p["period_key"] for p in mappings[0]["period_axis"]] == ["DURATION:YEAR:2025", "DURATION:YEAR:2024"]
+    assert [r["money_column_ordinals"] for r in mappings[0]["source_refs"]] == ([[3], [2]] if reverse else [[2], [3]])
+    assert all(p["parsed_period"]["resolution"] == "CONTEXT_BOUND" for p in mappings[0]["period_axis"])
+    assert canonical_json_bytes_v1(ledger) == before
+    trial["mappings"], ledger["retained"] = mappings, retained
+    reseal_trial(trial)
+    assert validate_f36_notes_core_sweep_v1(sweep_of(compiled, trial, index_id))["trials"][0]["mappings"] == mappings
+
+
+@pytest.mark.parametrize("attack", ["absent", "absent_full_year_primary", "narrative_drift", "stale_pointer", "scope", "header", "basis", "period", "midyear", "own_quarter", "report_midyear"])
+def test_annual_period_fallback_never_uses_unproven_capture_or_changed_lane_axes(example, attack):
+    compiled, trial, _ = annual_example(example)
+    ledger = trial["notes_ledger"]
+    if attack in {"absent", "absent_full_year_primary"}:
+        del ledger["annual_period_context"]
+        if attack == "absent_full_year_primary":
+            ledger["primary_income_context_texts"] = ["Cho 12 tháng kết thúc ngày 31/12/2025"]
+    elif attack == "narrative_drift":
+        ledger["annual_period_context"]["capture"]["pages"][0]["narratives"][0][1] += " unknown"
+    elif attack == "stale_pointer":
+        page = ledger["annual_period_context"]["capture"]["pages"][0]
+        page["narratives"][0][0] = "/sections/0/narratives_exact/1"
+        page["narratives_sha256"] = canonical_json_sha256_v1(page["narratives"])
+    elif attack == "scope":
+        ledger["annual_period_context"]["capture"]["binding"][3] = "CONSOLIDATED"
+    elif attack == "own_quarter":
+        ledger["annual_period_context"]["owned_table_texts"][0]["texts"] = ["Cho chín tháng kết thúc ngày 30/09/2025"]
+    elif attack == "report_midyear":
+        ledger["primary_income_context_texts"] = ["Cho 6 tháng kết thúc ngày 30/06/2025"]
+    else:
+        for c in ledger["cells"]:
+            if attack == "header":
+                c["header_text"] = c["header_text"].replace("202", "２０２")
+            elif attack == "basis":
+                c["period_basis"] += "FORGED"
+            elif attack == "period":
+                c["period_key"] = {"DURATION:YEAR:2025": "DURATION:YEAR:2023", "DURATION:YEAR:2024": "DURATION:YEAR:2022"}[c["period_key"]]
+            elif attack == "midyear":
+                c["header_text"] = c["header_text"].replace("31/12", "30/06")
+    for c, record in zip(ledger["cells"], ledger["classifications"], strict=True):
+        record["cell"] = deepcopy(c)
+    mappings, retained = annual_fragments(compiled, trial)
+    assert not mappings and len(retained) == 2
+    assert {r["adapter_disposition"] for r in retained} == {"SOURCE_PERIOD_ROLE_PAIR_NOT_PROVEN_BY_EXISTING_PARSER"}
+
+
+@pytest.mark.parametrize("attack", ["source", "missing_frontier", "bool_frontier", "page", "status_only"])
+def test_annual_capture_must_name_exact_document_and_complete_selected_axis(example, attack):
+    compiled, trial, _ = annual_example(example)
+    capture = trial["notes_ledger"]["annual_period_context"]["capture"]
+    if attack == "source":
+        capture["binding"][2] = "2" * 64
+    elif attack == "missing_frontier":
+        capture["frontier"].pop()
+    elif attack == "bool_frontier":
+        capture["frontier"][0][1] = True
+    elif attack == "page":
+        capture["pages"][0]["physical_page"] = 13
+    else:
+        trial["notes_ledger"]["annual_period_context"]["capture"] = {"status": "CALENDAR_YEAR"}
+    with pytest.raises(F36NotesCoreAdapterError, match="Annual"):
+        annual_fragments(compiled, trial)

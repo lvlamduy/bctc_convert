@@ -12,7 +12,7 @@ import os
 import re
 import stat
 from collections import defaultdict
-from dataclasses import replace
+from dataclasses import asdict, replace
 from decimal import Decimal
 from hashlib import sha256
 from pathlib import Path
@@ -27,6 +27,11 @@ from bctc_ai.evaluation.gemini_json_operating_expense_original_inventory_v1 impo
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
     validate_source_observation_mapping_contract_v1,
 )
+from bctc_ai.notes.annual_policy_v1 import (
+    PolicyCapture,
+    PolicyPage,
+    verify_annual_policy_v1,
+)
 from bctc_ai.notes.config_v1 import Axis, Family, load_notes_config_v1
 from bctc_ai.notes.engine_v1 import dispositions_v1, run_family_v1
 from bctc_ai.notes.f36_strict_ledger_v1 import (
@@ -36,12 +41,19 @@ from bctc_ai.notes.f36_strict_ledger_v1 import (
     exact_rnid_bindings_v1,
 )
 from bctc_ai.notes.kernel_v1 import (
+    DocumentContext,
     NotesSource,
     canonical_period_key_v1,
     load_primary_context_v1,
+    table_context_v1,
+    year_ended_policy_v1,
+    year_ended_shadow_v1,
 )
+from bctc_ai.notes.list_shape_v1 import owned_date_texts_v1
 from bctc_ai.notes.root_closure_v1 import root_closure_v1
 from bctc_ai.primary_statements.periods_v1 import (
+    PeriodDescriptor,
+    _role_from_end,
     duration_lane_period_v1,
     statement_period_context_v1,
 )
@@ -294,10 +306,93 @@ def _production_table_policy_v1(inventory: dict[str, Any], disposition: dict[str
             "reasons": sorted(set(reasons))}
 
 
+def _annual_context_v1(payload: Any, doc: dict[str, Any], primary_texts: list[str]) -> dict[str, Any] | None:
+    """Recheck a serialized capture's consistency only; checked IO must rebuild it.
+
+    This does not authenticate a deserialized capture or its narrative pixels.
+    Fresh reconstruction serializes the actual collector capture, and checked
+    source replay compares the entire trial, including this payload, exactly.
+    """
+    if payload is None:
+        return None
+    _need(type(payload) is dict and set(payload) == {"capture", "owned_table_texts"}, "Annual context fields")
+    raw = payload["capture"]
+    _need(type(raw) is dict and set(raw) == {"binding", "frontier", "pages"}
+          and type(raw["binding"]) is list and len(raw["binding"]) == 4
+          and _same(raw["binding"][:3], [doc["document_ordinal"], doc["source_logical_name"], doc["source_sha256"]])
+          and raw["binding"][3] in {"SEPARATE", "CONSOLIDATED"}
+          and type(raw["frontier"]) is list and type(raw["pages"]) is list, "Annual document binding")
+    _need(all(type(p) is list and len(p) == 2 and type(p[0]) is str and type(p[1]) is int and p[1] >= 0
+              for p in raw["frontier"])
+          and [p[0] for p in raw["frontier"]] == [p["page_json_version_id"] for p in doc["pages"]],
+          "Annual complete selected frontier")
+    pages = []
+    for page in raw["pages"]:
+        _need(type(page) is dict and set(page) == {"page_json_version_id", "physical_page", "original_blob_sha256",
+              "replay_receipt_id", "narratives", "narratives_sha256"}
+              and type(page["physical_page"]) is int
+              and {"physical_page": page["physical_page"], "page_json_version_id": page["page_json_version_id"]} in doc["pages"]
+              and type(page["replay_receipt_id"]) is str and bool(page["replay_receipt_id"])
+              and type(page["narratives"]) is list
+              and all(type(n) is list and len(n) == 2 and all(type(s) is str for s in n) for n in page["narratives"]),
+              "Annual captured page fields")
+        pages.append(PolicyPage(page["page_json_version_id"], page["physical_page"], page["original_blob_sha256"],
+            page["replay_receipt_id"], tuple(tuple(n) for n in page["narratives"]), page["narratives_sha256"]))
+    capture = PolicyCapture(tuple(raw["binding"]), tuple(tuple(p) for p in raw["frontier"]), tuple(pages))
+    # Verification is repeated at each fallback by the existing kernel grant.
+    # Unresolved captures stay evidence; they never become a granted status flag.
+    verify_annual_policy_v1(capture, capture.binding)
+    tables = {}
+    _need(type(payload["owned_table_texts"]) is list, "Annual owned table axis")
+    selected = {p["page_json_version_id"] for p in doc["pages"]}
+    for item in payload["owned_table_texts"]:
+        _need(type(item) is dict and set(item) == {"table", "texts"} and type(item["table"]) is list
+              and len(item["table"]) == 3 and item["table"][0] in selected
+              and all(type(s) is str for s in item["table"]) and type(item["texts"]) is list
+              and all(type(t) is str for t in item["texts"]), "Annual table context")
+        key = tuple(item["table"])
+        _need(key not in tables, "Annual duplicate table context")
+        tables[key] = statement_period_context_v1(item["texts"])
+    document = DocumentContext(doc["document_ordinal"], doc["document_identity"]["document_plan_id"],
+        doc["source_logical_name"], doc["source_sha256"], raw["binding"][3],
+        "STRUCTURAL_CAPTURE_ONLY_AUTHENTICATION_REQUIRES_FRESH_IO", None, [], [], {},
+        income_context_texts=primary_texts, annual_policy=capture)
+    return {"document": document, "tables": tables}
+
+
+def _annual_lane_v1(cell: dict[str, Any], descriptor: Any, report_context: Any,
+                    annual: dict[str, Any] | None) -> Any:
+    basis = cell.get("period_basis")
+    if type(basis) is not str or not basis.startswith("PRINTED_YEAR_ENDED_WITH_DOCUMENT_ANNUAL_POLICY:"):
+        return descriptor
+    blocked = PeriodDescriptor("UNRESOLVED", None, None, "UNRESOLVED", (), (cell["header_text"],),
+                               "DOCUMENT_ANNUAL_POLICY_NOT_REPROVEN")
+    if annual is None:
+        return blocked
+    loc = cell["locator"]
+    own = annual["tables"].get((loc["page_json_version_id"], loc["section_id"], loc["table_id"]))
+    if own is None or annual["document"].scope != cell["scope"]:
+        return blocked
+    granted, _why = year_ended_policy_v1(cell["header_text"], annual["document"], own)
+    ended = year_ended_shadow_v1(cell["header_text"])
+    if (granted is None or ended is None or granted != (cell["period_key"], cell["period_basis"])):
+        return blocked
+    if (report_context.conflict or not report_context.reporting_date
+            or report_context.reporting_date[5:] != "12-31"):
+        return blocked
+    role = _role_from_end(ended, report_context)
+    if role not in {"CURRENT", "COMPARATIVE"}:
+        return blocked
+    return PeriodDescriptor("DURATION", role, granted[0], "CONTEXT_BOUND",
+        (("grain", "YEAR"), ("end", ended), ("annual_policy_basis", granted[1])),
+        (cell["header_text"], granted[1]))
+
+
 def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
                allowed_units: set[str], period_contexts: dict[int, Any],
                table_policies: dict[tuple[str, str, str], dict[str, Any]],
-               production_schema: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+               production_schema: dict[str, Any],
+               annual_contexts: dict[int, Any] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Encoding only. Inputs must be freshly recomputed by rebuild_f36_notes_trials_v1."""
     groups: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
     retained = []
@@ -350,6 +445,8 @@ def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
         if reason is None:
             for cell in own:
                 descriptor = duration_lane_period_v1(cell["header_text"], period_contexts[cell["document_ordinal"]])
+                descriptor = _annual_lane_v1(cell, descriptor, period_contexts[cell["document_ordinal"]],
+                    (annual_contexts or {}).get(cell["document_ordinal"]))
                 if (descriptor.basis != "DURATION" or descriptor.role not in {"CURRENT", "COMPARATIVE"}
                         or canonical_period_key_v1(descriptor.key) != canonical_period_key_v1(cell["period_key"])
                         or canonical_period_key_v1(cell["period_key"]) is None):
@@ -423,6 +520,21 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
     requested = set(topo["documents_requested"])
     run = run_family_v1(FAMILY, config, source, contexts, document_ordinals=requested)
     dispositions = dispositions_v1(run)
+    annual_payloads = {}
+    for doc in topo["source"]["document_axis"]:
+        ordinal = doc["document_ordinal"]
+        context = contexts.get(ordinal)
+        if (ordinal not in requested or context is None or context.scope not in {"SEPARATE", "CONSOLIDATED"}
+                or type(context.annual_policy) is not PolicyCapture):
+            continue
+        table_texts = []
+        for result in run.evaluations:
+            table = result.table
+            if table.document_ordinal == ordinal:
+                table_texts.append({"table": [table.page_json_version_id, table.section_id, table.table_id],
+                    "texts": owned_date_texts_v1(table, table_context_v1(table, []))})
+        annual_payloads[ordinal] = canonical_clone_v1({"capture": asdict(context.annual_policy),
+                                                      "owned_table_texts": table_texts})
     inventories = {}
     # Bounded per-page parsing; no whole-corpus ORIGINAL object cache.
     for doc in source.corpus.documents:
@@ -452,13 +564,16 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
         records.append(classify_observation_v1(cell, binding, closure, rows))
     allowed_units = {u["canonical_unit"] for u in evaluation["production_policy"]["money_unit_bindings"] if u["accepted"] is True}
     period_contexts = {n: statement_period_context_v1(c.income_context_texts) for n, c in contexts.items()}
+    annual_contexts = {doc["document_ordinal"]: _annual_context_v1(annual_payloads.get(doc["document_ordinal"]), doc,
+                          contexts[doc["document_ordinal"]].income_context_texts)
+                       for doc in topo["source"]["document_axis"] if doc["document_ordinal"] in annual_payloads}
     trials = []
     for doc in topo["source"]["document_axis"]:
         ordinal = doc["document_ordinal"]
         own_indices = [i for i, c in enumerate(run.cells) if c["document_ordinal"] == ordinal]
         own_cells, own_records = [run.cells[i] for i in own_indices], [records[i] for i in own_indices]
         mappings, retained = _fragments(own_cells, own_records, allowed_units, period_contexts, policy_by_table,
-                                        evaluation["production_schema_binding"])
+                                        evaluation["production_schema_binding"], annual_contexts)
         own_dispositions = [d for d in dispositions if d["locator"]["document_ordinal"] == ordinal]
         closures = [{"table": list(k), "closure": v} for k, v in closure_by_table.items()
                     if any(p["page_json_version_id"] == k[0] for p in doc["pages"])]
@@ -481,6 +596,8 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
                       if k[0] in page_ids],
                   "primary_income_context_texts": contexts[ordinal].income_context_texts if ordinal in requested and ordinal in contexts else [],
                   "scope": "REQUESTED_F36_NOTES_DOCUMENT" if ordinal in requested else "NOT_EVALUATED_REQUESTED_SUBSET_ONLY"}
+        if ordinal in annual_payloads:
+            ledger["annual_period_context"] = annual_payloads[ordinal]
         candidates = []
         if own_dispositions:
             first = own_dispositions[0]["locator"]
@@ -521,9 +638,10 @@ def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
         _need(trial["status"] in {"READY", "UNRESOLVED"} and type(trial["reasons"]) is list
               and type(trial["notes_ledger"]) is dict, "Status/ledger axis")
         ledger = trial["notes_ledger"]
-        _need(set(ledger) == {"cells", "classifications", "retained", "dispositions", "root_closures",
-                             "source_ledger", "production_policy_receipts", "primary_income_context_texts", "scope"}
-              and all(type(ledger[k]) is list for k in set(ledger) - {"scope"})
+        base_fields = {"cells", "classifications", "retained", "dispositions", "root_closures",
+                       "source_ledger", "production_policy_receipts", "primary_income_context_texts", "scope"}
+        _need(set(ledger) in (base_fields, base_fields | {"annual_period_context"})
+              and all(type(ledger[k]) is list for k in base_fields - {"scope"})
               and len(ledger["cells"]) == len(ledger["classifications"]), "Complete ledger fields")
         expected_scope = ("REQUESTED_F36_NOTES_DOCUMENT" if doc["document_ordinal"] in compiled_specs["topology"]["documents_requested"]
                           else "NOT_EVALUATED_REQUESTED_SUBSET_ONLY")
@@ -581,8 +699,10 @@ def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
                   "Table/row source accounting does not recompute")
         allowed = {u["canonical_unit"] for u in compiled_specs["evaluation"]["production_policy"]["money_unit_bindings"] if u["accepted"] is True}
         period_contexts = {doc["document_ordinal"]: statement_period_context_v1(ledger["primary_income_context_texts"])}
+        annual = _annual_context_v1(ledger.get("annual_period_context"), doc, ledger["primary_income_context_texts"])
         expected_mappings, expected_retained = _fragments(ledger["cells"], ledger["classifications"], allowed, period_contexts, policies,
-                                                         compiled_specs["evaluation"]["production_schema_binding"])
+                                                         compiled_specs["evaluation"]["production_schema_binding"],
+                                                         {doc["document_ordinal"]: annual})
         _need(_same(expected_mappings, trial["mappings"]) and _same(expected_retained, ledger["retained"]),
               "Mapping/raw/state/period/retention encoding differs from complete ledger")
         for candidate in trial["candidates"]:
