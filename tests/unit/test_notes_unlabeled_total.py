@@ -383,3 +383,26 @@ def test_a_value_less_item_trong_do_is_no_wrapper(family):
     assigned = roles(table, family)
     assert unlabeled_total_row_v1(table, family, assigned, owned_subject=True) == (
         None, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:r12")
+
+
+# --------------------------------------------------------------------------- Codex 0308: whole-table boundary
+
+
+@pytest.mark.parametrize("label,why", [
+    ("Dự phòng đầu tư dài hạn", "a configured root term absent from the printed components, amounts unknown"),
+    ("Tổng chi phí hoạt động", "a blank printed total line competing with the unlabeled one"),
+    ("Ghi chú", "an unexplained blank caption"),
+])
+def test_the_unlabeled_total_must_be_the_final_source_row(family, label, why):
+    # Amounts unchanged (221 / 196 still closes over the seven printed components): a blank top-level ITEM printed
+    # AFTER the total is no valued row, so only the final-source-row rule keeps it from being silently excluded.
+    table = lpb_like()
+    table.rows.append(replace(table.rows[0], row_id="r15", order=15, label=label, kind="ITEM", hierarchy=(label,),
+                              hierarchy_raw=[label], parent_row_id=None))
+    _blank(table, 15)
+    assigned = roles(table, family)
+    assert assigned[15].disposition == "HEADING", why
+    assert unlabeled_total_row_v1(table, family, assigned, owned_subject=True) == (None, "TOTAL_ROW_NOT_THE_FINAL_SOURCE_ROW")
+    assert assigned[14].disposition == "SOURCE_ONLY"
+    [evaluation] = evaluate(table, family)
+    assert not any(e["name"] == "TOTAL_FROM_TOP_LEVEL_LINES" for e in evaluation.equations)
