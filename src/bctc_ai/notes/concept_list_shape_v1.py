@@ -325,15 +325,56 @@ def unlabeled_total_row_v1(table: NoteTable, family: Family, roles: list[RowRole
     # Codex 0302/0304: the equation's unread-row span starts at its first recognized term, and recognition alone does
     # not place a row in the root population. The unlabeled total is admitted only when EVERY valued pre-total row is
     # a source top-level root-frontier term, or proven detail of one; a root-term label printed nested is refused.
+    # Codex 0306: a row whose money cells are ALL blank is a HEADING before any label is read, so it must be classified
+    # here too - a printed root component with unknown amounts may never drop out of the root equation.
     terms = root_terms_v1(family, line)
     for earlier, other in enumerate(table.rows[:index]):
-        if not _has_values(table, other):
-            continue
-        if roles[earlier].disposition == "MEMBER" and roles[earlier].role in terms and not _source_top_level_v1(other):
-            return None, "ROOT_TERM_NOT_AT_SOURCE_TOP_LEVEL:" + other.row_id
-        if _root_frontier_owner_v1(table, family, roles, earlier, terms) is None:
-            return None, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:" + other.row_id
+        why = _prefix_state_refusal_v1(table, family, roles, earlier, terms, line)
+        if why:
+            return None, f"{why}:{other.row_id}"
     return index, "UNLABELED_ORIGINAL_ROW_KIND_TOTAL:" + ("NULL_LABEL" if row.label is None else "EMPTY_LABEL")
+
+
+def _prefix_state_refusal_v1(table: NoteTable, family: Family, roles: list[RowRole], index: int, terms: set[str],
+                             line: str) -> str | None:
+    """Why pre-total row ``index`` refuses the unlabeled total, or None when it is safely accounted for (Codex 0306).
+
+    VALUED (some money cell is not BLANK; a dash or an unparsed cell is valued here and later makes the equation
+    NOT_EVALUABLE, never zero):
+      a root-term MEMBER at source top level ........ the frontier itself (the equation validates it)
+      a root-term MEMBER printed nested .............. ROOT_TERM_NOT_AT_SOURCE_TOP_LEVEL
+      detail of a frontier row (immediate proven parent, or ONE source-proven wrapper) ... accounted, never a term
+      anything else (no / wrong / unproven owner, AMBIGUOUS, ROW_VETO, longer chains) ... UNACCOUNTED_VALUED_ROW
+    ALL BLANK (JSON null or empty in every money cell; no value is read, filled or excluded):
+      its label names the total line .................. BLANK_PRINTED_TOTAL_LINE_BEFORE_TOTAL
+      its label names a root term (direct or scoped) .. BLANK_ROOT_OPERAND_BEFORE_TOTAL (an unknown root component)
+      an exact transparent wrapper (family literal, GROUP, all ORIGINAL cells null, EXACT single-table domain, proven
+        parent edge) owned by a frontier row ....... structure, accounted
+      blank detail of a frontier row (immediate proven parent, or ONE source-proven wrapper) ... inside the owner's
+        printed amount, accounted
+      anything else (a top-level caption, a value-less ITEM "Trong đó" that is no proven wrapper, a wrong owner) ...
+        UNRESOLVED_BLANK_ROW_BEFORE_TOTAL
+    """
+
+    row, role = table.rows[index], roles[index]
+    if _has_values(table, row):
+        if role.disposition == "MEMBER" and role.role in terms and not _source_top_level_v1(row):
+            return "ROOT_TERM_NOT_AT_SOURCE_TOP_LEVEL"
+        return None if _root_frontier_owner_v1(table, family, roles, index, terms) is not None \
+            else "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL"
+    key = row.key
+    named = set(family.axis.match(key)) if key else set()
+    named |= {m for m, spec in family.axis.members.items() if key and spec.get("scoped") and _scoped_match(spec, key)}
+    if line in named:
+        return "BLANK_PRINTED_TOTAL_LINE_BEFORE_TOTAL"
+    if named & terms:
+        return "BLANK_ROOT_OPERAND_BEFORE_TOTAL"
+    wrapper = _owner_through_wrapper(table, index, family)
+    if wrapper is not None and roles[wrapper[1]].role == wrapper[0] and _is_frontier_v1(table, roles, wrapper[1], terms):
+        return None
+    if _frontier_parent_v1(table, family, roles, index, terms) is not None:
+        return None
+    return "UNRESOLVED_BLANK_ROW_BEFORE_TOTAL"
 
 
 T_ROUTE_REASON = "UNLABELED_ORIGINAL_ROW_KIND_TOTAL:"
@@ -368,21 +409,31 @@ def _root_frontier_owner_v1(table: NoteTable, family: Family, roles: list[RowRol
     its owner's amount: accounted for once, never a component of the total.
     """
 
-    def frontier(i: int) -> bool:
-        return roles[i].disposition == "MEMBER" and roles[i].role in terms and _source_top_level_v1(table.rows[i])
-
     role = roles[index]
-    if frontier(index):
+    if _is_frontier_v1(table, roles, index, terms):
         return index
     if role.disposition not in {"MEMBER", "SOURCE_ONLY"} or role.reason.startswith("ROW_VETO:") or role.role in terms:
         return None
+    return _frontier_parent_v1(table, family, roles, index, terms)
+
+
+def _is_frontier_v1(table: NoteTable, roles: list[RowRole], index: int, terms: set[str]) -> bool:
+    """A MEMBER of a root term printed at source top level."""
+
+    return roles[index].disposition == "MEMBER" and roles[index].role in terms and _source_top_level_v1(table.rows[index])
+
+
+def _frontier_parent_v1(table: NoteTable, family: Family, roles: list[RowRole], index: int, terms: set[str]) -> int | None:
+    """The frontier row that is the immediate proven printed parent of ``index``, directly or through ONE source-proven
+    transparent wrapper (``_owner_through_wrapper``) owned by that frontier line; else None. No longer chains."""
+
     parent_index, _reason = proven_parent_index_v1(table, index)
     if parent_index is None:
         return None
-    if frontier(parent_index):
+    if _is_frontier_v1(table, roles, parent_index, terms):
         return parent_index
     through = _owner_through_wrapper(table, parent_index, family)
-    if through is not None and roles[through[1]].role == through[0] and frontier(through[1]):
+    if through is not None and roles[through[1]].role == through[0] and _is_frontier_v1(table, roles, through[1], terms):
         return through[1]
     return None
 
