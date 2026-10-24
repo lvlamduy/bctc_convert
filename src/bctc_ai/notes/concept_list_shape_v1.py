@@ -322,7 +322,42 @@ def unlabeled_total_row_v1(table: NoteTable, family: Family, roles: list[RowRole
         return None, "TOTAL_ROW_ALREADY_DISPOSED:" + roles[index].reason
     if any(role.role == line or line in (role.candidates or []) for role in roles):
         return None, "PRINTED_TOTAL_LINE_ALREADY_PRESENT"
+    # Codex 0302: the equation's unread-row span starts at its first recognized term, so a valued row printed BEFORE
+    # it would escape. The unlabeled total is admitted only when the COMPLETE pre-total valued population is
+    # accounted for by printed structure: a read line, or detail inside a read line's printed population.
+    for earlier, other in enumerate(table.rows[:index]):
+        if _has_values(table, other) and _accounted_owner_v1(table, family, roles, earlier) is None:
+            return None, "UNACCOUNTED_VALUED_ROW_BEFORE_TOTAL:" + other.row_id
     return index, "UNLABELED_ORIGINAL_ROW_KIND_TOTAL:" + ("NULL_LABEL" if row.label is None else "EMPTY_LABEL")
+
+
+T_ROUTE_REASON = "UNLABELED_ORIGINAL_ROW_KIND_TOTAL:"
+
+
+def _accounted_owner_v1(table: NoteTable, family: Family, roles: list[RowRole], index: int) -> int | None:
+    """Row index of the read line whose printed population contains valued row ``index``, else None (Codex 0302).
+
+    A MEMBER row accounts for itself. A SOURCE_ONLY row (never a ROW_VETO foreign row, never AMBIGUOUS) is detail of
+    a MEMBER by proven printed edges only: its immediate proven parent (``proven_parent_index_v1``) is a MEMBER, or
+    that parent is ONE source-proven transparent wrapper (``_owner_through_wrapper``: family literal, GROUP, every
+    ORIGINAL value cell null, EXACT single-table domain, its own proven parent edge) whose owner row is the MEMBER
+    of that line. Detail is inside its owner's amount: it is accounted for, never a component of the total.
+    """
+
+    role = roles[index]
+    if role.disposition == "MEMBER":
+        return index
+    if role.disposition != "SOURCE_ONLY" or role.reason.startswith("ROW_VETO:"):
+        return None
+    parent_index, _reason = proven_parent_index_v1(table, index)
+    if parent_index is None:
+        return None
+    if roles[parent_index].disposition == "MEMBER":
+        return parent_index
+    through = _owner_through_wrapper(table, parent_index, family)
+    if through is not None and roles[through[1]].disposition == "MEMBER" and roles[through[1]].role == through[0]:
+        return through[1]
+    return None
 
 
 def detail_parent_line_v1(table: NoteTable, roles: list[RowRole], index: int) -> tuple[str | None, str]:
@@ -526,6 +561,9 @@ def evaluate_concept_table_v1(
                                      for evidence in lane.shadow_evidence]
     separators = table.separator_roles()
     vetoed_rows = [role.row_index for role in roles if role.reason.startswith("ROW_VETO:")]
+    # Only a table closed by the unlabeled-total route (proposal T) also excuses detail reached through one proven
+    # transparent wrapper; every other table keeps the immediate-parent rule unchanged (Codex 0302).
+    t_route = any(role.reason.startswith(T_ROUTE_REASON) for role in roles)
     for lane in evaluation.lanes:
         values = {role.role: parse_cell_v1(table, table.rows[role.row_index], lane.column, separators, document.separator_roles)
                   for role in roles if role.disposition == "MEMBER"}
@@ -540,6 +578,9 @@ def evaluate_concept_table_v1(
             # A vetoed (foreign) row is never excused as printed detail of a read line.
             if role.disposition == "SOURCE_ONLY" and role.row_index not in vetoed_rows:
                 parent, _reason = detail_parent_line_v1(table, roles, role.row_index)
+                if parent is None and t_route:
+                    owner = _accounted_owner_v1(table, family, roles, role.row_index)
+                    parent = roles[owner].role if owner is not None and owner != role.row_index else None
                 # The parent must itself carry a parsed amount in this lane to contain its detail.
                 if parent is not None and (parent not in values or values[parent].state not in NUMERIC):
                     parent = None
