@@ -1,0 +1,129 @@
+# (concept, axis, member) -> legacy ReportNormId in Bank_TM_ReportNormId.v2.xlsx
+# (UNIVERSAL_BANK_BCTC_SCHEMA@6076). Lets the dimensional results fill the
+# existing template. Adding a member or a concept adds rows here only.
+# A cell without a legacy ID is still stored and comparable by (concept,
+# axis, member); it simply has no column in the legacy template.
+format_version: NOTES_CROSSWALK_V1
+schema_revision: UNIVERSAL_BANK_BCTC_SCHEMA@6076
+
+entries:
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G1, report_norm_id: 747}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G2, report_norm_id: 748}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G3, report_norm_id: 749}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G4, report_norm_id: 750}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: G5, report_norm_id: 751}
+  # 746 is the analysed total: the grand total when the table prints margin
+  # lending / pending items beside the five groups (= gross loans), else the
+  # five-group total.
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, members_in_preference: [GRAND_TOTAL, TOTAL_FIVE_GROUPS], report_norm_id: 746}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CREDIT_QUALITY_GROUP, member: MARGIN_AND_SECURITIES_ADVANCE, report_norm_id: 1944}
+
+  # Customer deposits by deposit type x currency (legacy 1057-1074).
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=DEMAND', report_norm_id: 1057}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=DEMAND;CURRENCY=VND', report_norm_id: 1058}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=DEMAND;CURRENCY=FOREIGN_CURRENCY', report_norm_id: 1059}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=TERM', report_norm_id: 1060}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=TERM;CURRENCY=VND', report_norm_id: 1061}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=TERM;CURRENCY=FOREIGN_CURRENCY', report_norm_id: 1062}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=SAVINGS', report_norm_id: 1063}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=SAVINGS;CURRENCY=VND', report_norm_id: 1064}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=SAVINGS;CURRENCY=FOREIGN_CURRENCY', report_norm_id: 1065}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=MARGIN', report_norm_id: 1066}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=MARGIN;CURRENCY=VND', report_norm_id: 1067}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=MARGIN;CURRENCY=FOREIGN_CURRENCY', report_norm_id: 1068}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=SPECIAL_PURPOSE', report_norm_id: 1069}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=SPECIAL_PURPOSE;CURRENCY=VND', report_norm_id: 1070}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=SPECIAL_PURPOSE;CURRENCY=FOREIGN_CURRENCY', report_norm_id: 1071}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=OTHER_PAYMENT_GUARANTEE', report_norm_id: 1072}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=OTHER_PAYMENT_GUARANTEE;CURRENCY=VND', report_norm_id: 1073}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: 'DEPOSIT_TYPE=OTHER_PAYMENT_GUARANTEE;CURRENCY=FOREIGN_CURRENCY', report_norm_id: 1074}
+  - {concept: CUSTOMER_DEPOSITS, axis: DEPOSIT_TYPExCURRENCY, member: TOTAL, report_norm_id: 1056}
+
+  # Loans / customer deposits by customer entity type (legacy 766-782, 6074; 1075-1091, 5977).
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=STATE_OWNED', report_norm_id: 767}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=LLC', report_norm_id: 768}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=LLC_STATE_100', report_norm_id: 769}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=LLC_STATE_OVER_50', report_norm_id: 770}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=LLC_OTHER', report_norm_id: 771}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=JSC_STATE_OVER_50', report_norm_id: 772}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=JSC_OTHER', report_norm_id: 773}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=PRIVATE_ENTERPRISE', report_norm_id: 774}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=COMBINED_JSC_LLC_PRIVATE', report_norm_id: 775}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=COOPERATIVE', report_norm_id: 776}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=COOPERATIVE_AND_PRIVATE', report_norm_id: 6074}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=JOINT_VENTURE', report_norm_id: 777}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=PARTNERSHIP', report_norm_id: 778}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=FOREIGN_INVESTED', report_norm_id: 779}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=HOUSEHOLD_INDIVIDUAL', report_norm_id: 780}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=ADMIN_ASSOCIATION', report_norm_id: 781}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=OTHER', report_norm_id: 782}
+  - {concept: LOANS_TO_CUSTOMERS, axis: CUSTOMER_ENTITY_TYPE, member: 'TOTAL', report_norm_id: 766}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=ECONOMIC_ORGANIZATIONS', report_norm_id: 5977}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=STATE_OWNED', report_norm_id: 1076}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=LLC', report_norm_id: 1077}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=LLC_STATE_100', report_norm_id: 1078}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=LLC_STATE_OVER_50', report_norm_id: 1079}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=LLC_OTHER', report_norm_id: 1080}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=JSC_STATE_OVER_50', report_norm_id: 1081}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=JSC_OTHER', report_norm_id: 1082}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=PRIVATE_ENTERPRISE', report_norm_id: 1083}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=COMBINED_JSC_LLC_PRIVATE', report_norm_id: 1084}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=COOPERATIVE', report_norm_id: 1085}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=JOINT_VENTURE', report_norm_id: 1086}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=PARTNERSHIP', report_norm_id: 1087}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=FOREIGN_INVESTED', report_norm_id: 1088}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=HOUSEHOLD_INDIVIDUAL', report_norm_id: 1089}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=ADMIN_ASSOCIATION', report_norm_id: 1090}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'CUSTOMER_ENTITY_TYPE=OTHER', report_norm_id: 1091}
+  - {concept: CUSTOMER_DEPOSITS, axis: CUSTOMER_ENTITY_TYPE, member: 'TOTAL', report_norm_id: 1075}
+
+  # Income-tax note lines (legacy 5723-5737). 5729/5730 take only the named
+  # lines (non-taxable income / non-deductible expenses), never a printed
+  # adjustments total of another population. 5726/5736 and 5737 are other presentations of
+  # deferred tax and total tax in the legacy layout; the line values are under
+  # DEFERRED_TAX_EXPENSE / TOTAL_TAX_EXPENSE.
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: PROFIT_BEFORE_TAX, report_norm_id: 5728}
+  # 5729/5730 are HELD (no legacy ID; Codex 0122): a printed 'không chịu thuế' / 'không được khấu trừ'
+  # line does not by itself prove the legacy BASE amount (vs its tax effect) nor the bank-only
+  # population. Cells keep semantic_state BASE_OR_TAX_EFFECT_UNPROVEN until source evidence resolves it.
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: TAXABLE_INCOME, report_norm_id: 5731}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: TAX_AT_STATUTORY_RATE, report_norm_id: 5732}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: PRIOR_YEAR_TAX_ADJUSTMENT, report_norm_id: 5733}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: FOREIGN_BRANCH_TAX, report_norm_id: 5734}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: SUBSIDIARY_TAX, report_norm_id: 5735}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: CURRENT_TAX_EXPENSE, report_norm_id: 5723}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: CURRENT_YEAR_PORTION, report_norm_id: 5724}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: DEFERRED_TAX_EXPENSE, report_norm_id: 5725}
+  - {concept: INCOME_TAX_NOTE, axis: INCOME_TAX_LINE, member: TOTAL_TAX_EXPENSE, report_norm_id: 5727}
+
+  # Operating-expense note lines (legacy 1205-1220). Lines the legacy layout
+  # has no row for (rent, maintenance, advertising, IT ...) keep no legacy ID.
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: TOTAL_OPERATING_EXPENSE, report_norm_id: 1205}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: TAX_FEES, report_norm_id: 1206}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: EMPLOYEE_EXPENSE, report_norm_id: 1207}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: SALARY_ALLOWANCE, report_norm_id: 1208}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: PAYROLL_CONTRIBUTIONS, report_norm_id: 1209}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: EMPLOYEE_BENEFIT, report_norm_id: 1210}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: OTHER_EMPLOYEE_EXPENSE, report_norm_id: 1211}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: ASSET_EXPENSE, report_norm_id: 1212}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: DEPRECIATION_EXPENSE, report_norm_id: 1213}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: ADMIN_EXPENSE, report_norm_id: 1214}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: TRAVEL_EXPENSE, report_norm_id: 1215}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: UNION_ACTIVITY_EXPENSE, report_norm_id: 1216}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: DEPOSIT_INSURANCE_EXPENSE, report_norm_id: 1217}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: LONG_TERM_INVESTMENT_PROVISION, report_norm_id: 1218}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: OTHER_OPERATING_EXPENSE, report_norm_id: 1219}
+  - {concept: OPERATING_EXPENSE_NOTE, axis: OPERATING_EXPENSE_LINE, member: OTHER_ASSET_PROVISION, report_norm_id: 1220}
+
+  # Credit-risk provision expense note lines (legacy 1221-1228, 6031-6033).
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: TOTAL_CREDIT_PROVISION, report_norm_id: 1221}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: INTERBANK_GENERAL, report_norm_id: 1222}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: INTERBANK_SPECIFIC, report_norm_id: 1223}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: CUSTOMER_GENERAL, report_norm_id: 1224}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: CUSTOMER_SPECIFIC, report_norm_id: 1225}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: VAMC_PROVISION, report_norm_id: 1226}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: OFF_BALANCE_PROVISION, report_norm_id: 1227}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: OTHER_PROVISION, report_norm_id: 1228}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: CUSTOMER_PROVISION, report_norm_id: 6031}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: INTERBANK_PROVISION, report_norm_id: 6032}
+  - {concept: CREDIT_PROVISION_EXPENSE_NOTE, axis: CREDIT_PROVISION_LINE, member: PURCHASED_DEBT_PROVISION, report_norm_id: 6033}
