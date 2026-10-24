@@ -79,7 +79,8 @@ def _source_fixture(tmp_path, monkeypatch, *, interim_q4):
     document = deepcopy(old_index["documents"][0])
     manifest = build_financial_document_manifest_v1(database, source_sha256=document["source_sha256"],
         source_logical_name=document["relative_path"], expected_physical_pages=[1], prompt_sha256="d" * 64,
-        response_schema_sha256="e" * 64, requested_model="gemini-3.7-flash", requested_service_tier="flex")
+        response_schema_sha256="e" * 64, requested_model="gemini-3.7-flash", requested_service_tier="flex",
+        selected_provider="GOOGLE_GEMINI_API")
     local_manifest = "current-document-manifests/complete.json"
     manifest_ref = _put(root, "documents/1/" + local_manifest, manifest)
     selection = build_current_document_manifest_selection_v1(
