@@ -64,9 +64,13 @@ All gates were run with the runner's own functions on that sweep:
 127 TM workbooks were exported; an independent stdlib audit checked 437,134 lane cells with 0
 violations. Receipt: `restore-receipts/F37_CLAUDE_FULL271_STORE_AND_GATED_AUDITS_9FC73CE4_20261026_V1.json`.
 
-## Open
+## OFFICIAL selection (Claude-owned store)
 
-- Promotion to OFFICIAL selection / family seal (outside this Claude branch's authority).
+The same sha256-pinned sweep was ingested with `run_kind=OFFICIAL` into a new Claude-owned
+store. The mandatory full source replay passed, the reload was exact, and the store records one
+`family_current_selection` for CREDIT_RISK_PROVISION_EXPENSE (run `fa4d8705…`, store `156a52b4`).
+No shared or Codex store was written, and the integration branch is untouched.
+Receipt: `restore-receipts/F37_CLAUDE_OFFICIAL_SELECTION_9FC73CE4_20261026_V1.json`.
 - Dated opening / closing balance rows were investigated as a coverage lever and rejected
   (`restore-receipts/F37_CLAUDE_DATED_ROW_LEVER_INVESTIGATION_20261025_V1.json`):
   - EIB's dated rows prove "Kỳ này / Kỳ trước" are the current and previous QUARTER, not the
