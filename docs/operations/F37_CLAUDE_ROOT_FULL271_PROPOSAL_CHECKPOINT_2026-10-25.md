@@ -44,12 +44,29 @@ flat sweep validation, source-observation contract, source-row coverage.
   An independent stdlib audit checked 413,040 lane cells with 0 violations.
 - Printed dashes are written as "-", never 0; unobserved lanes stay empty.
 
+## Update 2026-10-26: whole-corpus store and gated audits at `9fc73ce4`
+
+`9fc73ce4` treats a first-quarter movement ("Quý 1/2025") as the three-month year-to-date root
+window (322 PASS). One whole-corpus sweep (peak 1.8 GB, 4 h 44 min) gave:
+
+- 127 READY / 144 UNRESOLVED, 562 mappings, coverage violations 0.
+- 7 documents recovered (MSB 84/88/90, OCB 126/132/136/138); each was checked against its PDF page.
+
+All gates were run with the runner's own functions on that sweep:
+
+- Registered source repairs: 9 of 9 authenticated against their PDFs.
+- PDF-visible source-row audit: 271 PDFs, 1,719 page renders, 3,275 source rows, 0 uncovered.
+  The 18 review categories were read by hand.
+- PDF residual audit: 144 held documents, every page re-rendered and matched.
+- EXPERIMENTAL store: `bcae2a01`, written after a mandatory full source replay; exact reload;
+  562 mappings / 271 trials; 0 selections.
+
+127 TM workbooks were exported; an independent stdlib audit checked 437,134 lane cells with 0
+violations. Receipt: `restore-receipts/F37_CLAUDE_FULL271_STORE_AND_GATED_AUDITS_9FC73CE4_20261026_V1.json`.
+
 ## Open
 
-- Store persistence: the replay-gated store ingest needs the whole-corpus page frontier in one
-  Family-37 sweep (about 3-4 GB on this host); a streaming ingest is needed first.
-- The gated runner's PDF-visible source-row audit and per-document residual audit
-  (builder draft: `scratchpad f39new/build_f37_pdf_visible_audit_v1.py`).
+- Promotion to OFFICIAL selection / family seal (outside this Claude branch's authority).
 - Dated opening / closing balance rows were investigated as a coverage lever and rejected
   (`restore-receipts/F37_CLAUDE_DATED_ROW_LEVER_INVESTIGATION_20261025_V1.json`):
   - EIB's dated rows prove "Kỳ này / Kỳ trước" are the current and previous QUARTER, not the
