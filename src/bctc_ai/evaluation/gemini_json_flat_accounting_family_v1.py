@@ -41,6 +41,11 @@ DUAL_COMPONENT_INDEXED_QUERY_EVIDENCE_FORMAT_VERSION = (
 READY = "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
 NOT_OBSERVED = "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
 UNRESOLVED = "UNRESOLVED_GEMINI_JSON_FAMILY"
+# Family-owned F36 notes engines (full and compact-A source ledgers); dispatched by exact tag only.
+_F36_NOTES_EVALUATION_FORMATS = frozenset({"F36_NOTES_STRICT_CORE_EVALUATION_SPEC_V1",
+                                           "F36_NOTES_STRICT_CORE_COMPACT_A_EVALUATION_SPEC_V1"})
+_F36_NOTES_SWEEP_FORMATS = frozenset({"GEMINI_JSON_F36_NOTES_STRICT_CORE_SWEEP_V1",
+                                      "GEMINI_JSON_F36_NOTES_STRICT_CORE_COMPACT_A_SWEEP_V1"})
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_TWO_THEN_THREE_ANCHOR_"
     "PARENT_TITLE_EXACT_ROLE_POPULATION_ALL_LANE_EXACT_DIRECT_FRONTIER_"
@@ -80,7 +85,7 @@ def _compile_specs(
     evaluation_spec: Any,
     schema_binding_spec: Any,
 ) -> dict[str, Any]:
-    if type(evaluation_spec) is dict and evaluation_spec.get("format_version") == "F36_NOTES_STRICT_CORE_EVALUATION_SPEC_V1":
+    if type(evaluation_spec) is dict and evaluation_spec.get("format_version") in _F36_NOTES_EVALUATION_FORMATS:
         from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
             compile_f36_notes_core_specs_v1,
         )
@@ -5106,7 +5111,7 @@ def build_gemini_json_flat_family_sweep_v1(
 ) -> dict[str, Any]:
     """Seal a complete ordered document disposition axis."""
 
-    if type(evaluation_spec) is dict and evaluation_spec.get("format_version") == "F36_NOTES_STRICT_CORE_EVALUATION_SPEC_V1":
+    if type(evaluation_spec) is dict and evaluation_spec.get("format_version") in _F36_NOTES_EVALUATION_FORMATS:
         raise _error("F36 notes sweeps require the family-owned frontier builder")
 
     if (
@@ -5424,7 +5429,7 @@ def build_gemini_json_flat_family_sweep_v1(
 def validate_gemini_json_flat_family_sweep_v1(value: Any) -> dict[str, Any]:
     """Rebuild one persisted sweep envelope and reject coherent drift."""
 
-    if type(value) is dict and value.get("format_version") == "GEMINI_JSON_F36_NOTES_STRICT_CORE_SWEEP_V1":
+    if type(value) is dict and value.get("format_version") in _F36_NOTES_SWEEP_FORMATS:
         from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
             validate_f36_notes_core_sweep_v1,
         )

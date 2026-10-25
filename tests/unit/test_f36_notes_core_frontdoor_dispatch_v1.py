@@ -2,14 +2,17 @@
 from __future__ import annotations
 
 import pytest
+from test_f36_notes_compact_source_proof_v1 import compact_example as compact_example
 from test_f36_notes_core_adapter_v1 import example as example
 from test_f36_notes_core_adapter_v1 import ref, sweep_of
 
 from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
+    COMPACT_FORMAT,
     replay_f36_notes_core_trials_from_source_v1,
 )
 from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     build_gemini_json_flat_family_sweep_v1,
+    validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.storage.gemini_accounting_family_store_v1 import (
     ingest_gemini_accounting_family_sweep_v1,
@@ -48,3 +51,22 @@ def test_new_engine_can_never_change_official_current_selection(example, tmp_pat
             corpus_index_ref=compiled["topology"]["source"]["index_ref"],
             implementation_refs=[ref("adapter.py")], run_kind="OFFICIAL")
     assert not destination.exists()
+
+
+def test_compact_engine_is_dispatched_by_exact_tag_and_stays_experimental_only(compact_example, tmp_path):
+    compiled, trial, index_id, _page = compact_example
+    with pytest.raises(ValueError, match="family-owned frontier builder"):
+        build_gemini_json_flat_family_sweep_v1(corpus_manifest_index_id=index_id,
+            topology_spec=compiled["topology"], evaluation_spec=compiled["evaluation"],
+            schema_binding_spec=compiled["schema"], trials=[trial])
+    sweep = sweep_of(compiled, trial, index_id)
+    assert sweep["format_version"] == COMPACT_FORMAT
+    assert validate_gemini_json_flat_family_sweep_v1(sweep) == sweep
+    for run_kind, why in (("OFFICIAL", "cannot alter the OFFICIAL"),
+                          ("EXPERIMENTAL", "requires its checked source replay")):
+        destination = tmp_path / f"compact-{run_kind}.sqlite3"
+        with pytest.raises(RuntimeError, match=why):
+            ingest_gemini_accounting_family_sweep_v1(destination, sweep=sweep,
+                corpus_index_ref=compiled["topology"]["source"]["index_ref"],
+                implementation_refs=[ref("adapter.py")], run_kind=run_kind)
+        assert not destination.exists()

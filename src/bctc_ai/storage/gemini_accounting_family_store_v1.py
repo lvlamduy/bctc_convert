@@ -35,6 +35,9 @@ from bctc_ai.storage.gemini_family_effective_page_frontier_v1 import (
 )
 
 FORMAT_VERSION = "GEMINI_ACCOUNTING_FAMILY_STORE_V1"
+# F36 notes proposals (full and compact-A source ledgers): EXPERIMENTAL only, mandatory checked source replay.
+_F36_NOTES_SWEEP_FORMATS = frozenset({"GEMINI_JSON_F36_NOTES_STRICT_CORE_SWEEP_V1",
+                                      "GEMINI_JSON_F36_NOTES_STRICT_CORE_COMPACT_A_SWEEP_V1"})
 
 
 class GeminiAccountingFamilyStoreV1Error(RuntimeError):
@@ -1015,7 +1018,7 @@ def ingest_gemini_accounting_family_sweep_v1(
         raise _error("family sweep violates the source-observation mapping contract") from exc
     checked_implementation = _checked_implementation_refs(implementation_refs)
     source_replay_format = checked_sweep["format_version"]
-    if source_replay_format == "GEMINI_JSON_F36_NOTES_STRICT_CORE_SWEEP_V1":
+    if source_replay_format in _F36_NOTES_SWEEP_FORMATS:
         if run_kind != "EXPERIMENTAL":
             raise _error("F36 notes prototype cannot alter the OFFICIAL family selection")
         if source_replay_adapter is None or source_replay_adapter_ref is None:
@@ -1024,8 +1027,7 @@ def ingest_gemini_accounting_family_sweep_v1(
         type(checked_sweep["specs"]["evaluation"]["value"].get("dual_axis_projection_policy"))
         is dict
     )
-    if dual_axis_source_replay or source_replay_format in {
-        "GEMINI_JSON_F36_NOTES_STRICT_CORE_SWEEP_V1",
+    if dual_axis_source_replay or source_replay_format in _F36_NOTES_SWEEP_FORMATS or source_replay_format in {
         "GEMINI_JSON_CUSTOMER_DEPOSIT_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_DUAL_COMPONENT_ACCOUNTING_FAMILY_V1",
         "GEMINI_JSON_EQUITY_MATRIX_ACCOUNTING_FAMILY_V1",

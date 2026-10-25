@@ -50,7 +50,7 @@ def _put(root, relative, value):
     return {**_ref(path), "path": relative}
 
 
-def _source_fixture(tmp_path, monkeypatch, *, interim_q4):
+def _source_fixture(tmp_path, monkeypatch, *, interim_q4, unrelated=False):
     labels = ["Chi nộp thuế và các khoản phí, lệ phí", "Chi phí cho nhân viên", "Chi về tài sản",
               "Tổng chi phí hoạt động"]
     values = [("10", "9"), ("20", "18"), ("30", "27"), ("60", "54")]
@@ -67,6 +67,14 @@ def _source_fixture(tmp_path, monkeypatch, *, interim_q4):
                     "rows": [{"label_exact": label, "row_kind": "TOTAL" if i == 3 else "ITEM",
                               "hierarchy_path_exact": [label], "values_exact": list(amounts)}
                              for i, (label, amounts) in enumerate(zip(labels, values, strict=True))]}]}]}
+    if unrelated:
+        # A non-OPEX table the producer never retrieves: compact-A keeps only its node digests and counts.
+        page["sections"].append({"content_kind": "FINANCIAL_NOTE", "statement_type": "NOT_APPLICABLE",
+            "title_exact": "Phải thu khác", "narratives_exact": [], "tables": [{
+                "title_exact": "Phải thu khác", "unit_exact": "Triệu đồng", "continuation": "NONE",
+                "columns": [{"header_path_exact": ["Số cuối năm"], "value_kind": "MONEY"}],
+                "rows": [{"label_exact": "Phải thu từ khách hàng", "row_kind": "ITEM",
+                          "hierarchy_path_exact": ["Phải thu từ khách hàng"], "values_exact": ["7"]}]}]})
     # The shared transport fixture uses the real page-store ingest; legacy=False
     # does not patch a validator or any financial function.
     options, old_index, _ = _fixture(tmp_path, monkeypatch, pages=[page])
@@ -105,10 +113,12 @@ def _source_fixture(tmp_path, monkeypatch, *, interim_q4):
     return corpus, page
 
 
+@pytest.mark.parametrize("compact", [False, True])
 @pytest.mark.parametrize("interim_q4", [False, True])
-def test_real_f36_source_replay_precedes_experimental_store_and_exact_readback(example, tmp_path, monkeypatch, interim_q4):
+def test_real_f36_source_replay_precedes_experimental_store_and_exact_readback(example, tmp_path, monkeypatch,
+                                                                              interim_q4, compact):
     """No saved trial is returned by the checked callback: it reconstructs source rules."""
-    corpus, original = _source_fixture(tmp_path, monkeypatch, interim_q4=interim_q4)
+    corpus, original = _source_fixture(tmp_path, monkeypatch, interim_q4=interim_q4, unrelated=compact)
     production, _, _ = example
     topology = deepcopy(production["topology"])
     topology["source"] = {"corpus_name": corpus.name, "artifact_root": str(corpus.root),
@@ -131,6 +141,8 @@ def test_real_f36_source_replay_precedes_experimental_store_and_exact_readback(e
         connection.execute("CREATE TABLE document_result(document_ordinal INTEGER PRIMARY KEY, result_json TEXT NOT NULL)")
         connection.execute("INSERT INTO document_result VALUES (?,?)", (1, json.dumps(result, ensure_ascii=False)))
     evaluation["primary_store_ref"] = _ref(primary)
+    if compact:
+        evaluation["format_version"] = adapter.COMPACT_EVALUATION_FORMAT
     evaluation["frontier_receipt_refs"] = {}
     for name in production["evaluation"]["frontier_receipt_refs"]:
         path = tmp_path / f"{name}.json"
@@ -156,6 +168,21 @@ def test_real_f36_source_replay_precedes_experimental_store_and_exact_readback(e
     if interim_q4:
         assert all(c["period_basis"].startswith("PRINTED_YEAR_ENDED_WITH_DOCUMENT_ANNUAL_POLICY")
                    for c in trials[0]["notes_ledger"]["cells"])
+    if compact:
+        # Same decisions as the full ledger; only the unassessed table's raw rows are not embedded.
+        full_spec = adapter.compile_f36_notes_core_specs_v1(
+            topology, {**evaluation, "format_version": adapter.EVALUATION_FORMAT}, production["schema"])
+        full = adapter.rebuild_f36_notes_trials_v1(source=source, contexts=contexts, config=config, compiled_specs=full_spec)
+        for field in ("mappings", "status", "reasons"):
+            assert canonical_json_bytes_v1(trials[0][field]) == canonical_json_bytes_v1(full[0][field])
+        for field in ("cells", "classifications", "retained", "root_closures", "production_policy_receipts"):
+            assert canonical_json_bytes_v1(trials[0]["notes_ledger"][field]) == canonical_json_bytes_v1(
+                full[0]["notes_ledger"][field])
+        partition = trials[0]["notes_ledger"]["source_partition"]
+        assert partition["counts"]["full_tables"] == 1 and partition["counts"]["unassessed_tables"] == 1
+        assert len(trials[0]["notes_ledger"]["source_ledger"]) == 1 and len(full[0]["notes_ledger"]["source_ledger"]) == 2
+        unassessed = [t for p in partition["pages"] for t in p["tables"] if t["disposition"] == "UNASSESSED_NOT_ABSENT"]
+        assert len(unassessed) == 1 and unassessed[0]["counts"]["row"] == 1 and "rows" not in unassessed[0]
     query = adapter.build_f36_notes_query_evidence_v1(trials=trials, compiled_specs=compiled)
     sweep = adapter.build_f36_notes_core_sweep_v1(corpus_manifest_index_id=corpus.corpus_manifest_index_id,
         topology_spec=topology, evaluation_spec=evaluation, schema_binding_spec=production["schema"],
@@ -171,6 +198,7 @@ def test_real_f36_source_replay_precedes_experimental_store_and_exact_readback(e
         source_replay_adapter_ref=adapter_ref)
     loaded = load_gemini_accounting_family_sweep_v1(destination, stored["family_run_id"])
     assert canonical_json_bytes_v1(loaded) == canonical_json_bytes_v1(sweep)
+    assert loaded["format_version"] == (adapter.COMPACT_FORMAT if compact else adapter.FORMAT)
     with sqlite3.connect(destination) as connection:
         assert connection.execute("PRAGMA quick_check").fetchall() == [("ok",)]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
