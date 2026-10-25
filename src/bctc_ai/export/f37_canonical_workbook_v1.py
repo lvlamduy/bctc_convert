@@ -16,6 +16,7 @@ The caller authenticates the store / sweep it loaded the trial from.
 from __future__ import annotations
 
 import hashlib
+import re
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,7 @@ LANES = ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
 _FIELDS = ("value", "state", "unit", "role", "source")
 _PRINTED = "RAW_SIGNED_INTEGER"
 _DASH = "DASH_ZERO"
+_DASH_TEXT = re.compile(r"[-_–—]+")  # printed dash runs as the engine reads them ("-", "--", "_")
 _EMPTY = {"UNOBSERVED_SOURCE_LANE", "BLANK_SOURCE_CELL"}
 _DERIVED = {"EXACT_DECLARED_SOURCE_COMPONENT_SUM", "EXACT_COMPLETE_VISIBLE_SCOPED_CHILD_FRONTIER_SUM",
             "EXACT_VISIBLE_CUSTOMER_COMPONENT_SUM", "EXACT_VISIBLE_GENERAL_AND_SPECIFIC_SUM",
@@ -80,7 +82,8 @@ def _cell(value: dict[str, Any]) -> tuple[Any, str]:
         _need(type(coefficient) is int and value.get("source_text") is not None, "Printed lane lacks its exact integer")
         return coefficient, state
     if state == _DASH:
-        _need(coefficient == 0 and value.get("source_text") is not None and value["source_text"].strip() in {"-", "_", "–"},
+        text = value.get("source_text")
+        _need(coefficient == 0 and type(text) is str and _DASH_TEXT.fullmatch(text.strip()) is not None,
               "Dash lane is not a printed dash")
         return "-", state
     if state in _EMPTY:

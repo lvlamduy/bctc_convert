@@ -72,6 +72,16 @@ def test_workbook_writes_printed_values_dash_and_derivations_exactly(template) -
     assert build_f37_canonical_workbook_v1(DOCUMENT, _trial(), template, head="a" * 40)[0] == payload
 
 
+@pytest.mark.parametrize("dash", ["-", " - ", "-\n", "--", "_"])
+def test_every_printed_dash_form_is_written_as_a_dash(template, dash) -> None:
+    trial = _trial()
+    trial["mappings"][1]["values"][0] = _value(0, dash, "DASH_ZERO")
+
+    rows, _header = _tm(build_f37_canonical_workbook_v1(DOCUMENT, trial, template, head="a" * 40)[0])
+
+    assert rows[1228][3] == "-"
+
+
 def test_readback_rejects_any_changed_cell(template) -> None:
     payload, _receipt = build_f37_canonical_workbook_v1(DOCUMENT, _trial(), template, head="a" * 40)
     changed = _trial()
@@ -87,6 +97,7 @@ def test_readback_rejects_any_changed_cell(template) -> None:
         lambda t: t.update(status="UNRESOLVED_GEMINI_JSON_FAMILY"),
         lambda t: t["mappings"][0].update(report_norm_id=999999),
         lambda t: t["mappings"][1]["values"].__setitem__(0, _value(0, None, "DASH_ZERO")),
+        lambda t: t["mappings"][1]["values"].__setitem__(0, _value(0, "0", "DASH_ZERO")),
         lambda t: t["mappings"][2]["values"].__setitem__(1, _value(0, None, "UNOBSERVED_SOURCE_LANE")),
         lambda t: t["mappings"][0]["values"].__setitem__(0, _value(1, "1", "SOME_NEW_STATE")),
         lambda t: t["mappings"].append(dict(t["mappings"][0])),
