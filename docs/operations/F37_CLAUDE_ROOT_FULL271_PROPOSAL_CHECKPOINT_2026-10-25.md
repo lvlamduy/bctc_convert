@@ -50,5 +50,10 @@ flat sweep validation, source-observation contract, source-row coverage.
   Family-37 sweep (about 3-4 GB on this host); a streaming ingest is needed first.
 - The gated runner's PDF-visible source-row audit and per-document residual audit
   (builder draft: `scratchpad f39new/build_f37_pdf_visible_audit_v1.py`).
-- Coverage lever not implemented: roll-forwards that print dated opening / closing rows
-  (e.g. "Tại ngày 01.10.2025") state their own window.
+- Dated opening / closing balance rows were investigated as a coverage lever and rejected
+  (`restore-receipts/F37_CLAUDE_DATED_ROW_LEVER_INVESTIGATION_20261025_V1.json`):
+  - EIB's dated rows prove "Kỳ này / Kỳ trước" are the current and previous QUARTER, not the
+    report's year-to-date and prior-year lanes.
+  - VAB's windows match, but VAB prints the allowance roll-forward in parentheses, so the
+    charge would be exported with the wrong sign; correcting it would need sign flipping.
+  - The 65 duration-conflict holds stand.
