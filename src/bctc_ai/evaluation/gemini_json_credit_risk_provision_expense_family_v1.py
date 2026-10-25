@@ -2145,6 +2145,12 @@ def _family37_period_compatibility_v1(
             and detail.get("calendar_year") != root.get("calendar_year")
         ):
             return False, "CALENDAR_YEAR_CONFLICT"
+        if detail.get("semantic_role") == "COMPARATIVE_PERIOD" and root_basis != "FULL_YEAR":
+            # A relative comparative lane ("Kỳ trước") prints no window, and under an interim root it is not
+            # necessarily the root's comparative window: FULL271 doc 4 (Q1 report) prints a roll-forward whose
+            # "Kỳ trước" runs from the 2024 opening to the 2024 closing balance (the prior FULL year) while the root
+            # comparative is Q1 2024. As in the F36 project rule, only an annual root lane lends it a window.
+            return False, "RELATIVE_COMPARATIVE_UNDER_INTERIM_PARENT_SCOPE"
         return True, "PRIMARY_PARENT_INHERITED"
     if detail_basis in {
         "AMBIGUOUS_WITHIN_YEAR",

@@ -730,15 +730,17 @@ def test_exact_period_two_role_movement_derives_total_and_ignores_utilization() 
 
     assert trials[0]["status"] == READY
     mapped = _mapped(trials[0])
+    # "Kỳ trước năm 2024" prints no window and the root is interim (Q1 ranges): the comparative lane is not
+    # exported (FULL271 doc 4); the current lane still derives the total and ignores utilization.
     assert [
         cell["coefficient"] for cell in mapped["CUSTOMER_PROVISION"]["values"]
-    ] == [100, 80]
+    ] == [100, None]
     assert [
         cell["coefficient"] for cell in mapped["CUSTOMER_GENERAL"]["values"]
-    ] == [20, 15]
+    ] == [20, None]
     assert [
         cell["coefficient"] for cell in mapped["CUSTOMER_SPECIFIC"]["values"]
-    ] == [80, 65]
+    ] == [80, None]
     assert all(
         "Sử dụng" not in source_ref["label_exact"]
         for source_ref in mapped["CUSTOMER_PROVISION"]["source_refs"]
@@ -2757,31 +2759,48 @@ def test_relative_detail_cannot_inherit_bare_primary_period_labels() -> None:
     assert "F37_DETAIL_PRIMARY_DURATION_SCOPE_CONFLICT" in trials[0]["reasons"]
 
 
-def test_relative_detail_inherits_exact_lane_specific_primary_ranges() -> None:
+def _relative_movement_under(current_header: str, comparative_header: str, years=(2026, 2025)):
     primary = _primary_page("(100)", "(80)")
     columns = primary["sections"][0]["tables"][0]["columns"]
-    columns[0]["header_path_exact"] = [
-        "Kỳ này từ 01/01/2026 đến 30/06/2026",
-        "Triệu đồng",
-    ]
-    columns[1]["header_path_exact"] = [
-        "Kỳ trước từ 01/01/2025 đến 30/06/2025",
-        "Triệu đồng",
-    ]
+    columns[0]["header_path_exact"] = [current_header, "Triệu đồng"]
+    columns[1]["header_path_exact"] = [comparative_header, "Triệu đồng"]
     movement = _movement_note(
         [
             _movement_table(
                 [_row("Trích lập dự phòng trong kỳ", ["20", "80", "100"])],
-                title="Kỳ này năm 2026",
+                title=f"Kỳ này năm {years[0]}",
             ),
             _movement_table(
                 [_row("Trích lập dự phòng trong kỳ", ["15", "65", "80"])],
-                title="Kỳ trước năm 2025",
+                title=f"Kỳ trước năm {years[1]}",
             ),
         ]
     )
-    indexed, trials, _pages = _run_pages(
-        [(VERSION_1, 1, primary), (VERSION_2, 2, movement)]
+    return _run_pages([(VERSION_1, 1, primary), (VERSION_2, 2, movement)])
+
+
+def test_relative_comparative_never_inherits_an_interim_primary_window() -> None:
+    # Was a reviewed positive. FULL271 doc 4 (ABB Q1 2025) shows why it cannot hold: its roll-forward "Kỳ trước"
+    # is the prior FULL year (opening 597.535 -> closing 981.156) while the root comparative is Q1 2024.
+    indexed, trials, _pages = _relative_movement_under(
+        "Kỳ này từ 01/01/2026 đến 30/06/2026", "Kỳ trước từ 01/01/2025 đến 30/06/2025"
+    )
+
+    # The current lane ("Kỳ này") keeps the reviewed inheritance; the comparative lane is never exported.
+    assert trials[0]["status"] == READY
+    for role, current in (("CUSTOMER_PROVISION", 100), ("CUSTOMER_GENERAL", 20), ("CUSTOMER_SPECIFIC", 80)):
+        assert [cell["coefficient"] for cell in _mapped(trials[0])[role]["values"]] == [current, None]
+    receipt = trials[0]["candidates"][0]["closure_receipt"]["credit_risk_provision_expense_adapter_receipt"]
+    assert {
+        (item["semantic_role"], item["compatibility"])
+        for item in receipt["transposed_receipt"]["period_compatibility_axis"]
+        if not item["accepted"]
+    } == {("COMPARATIVE_PERIOD", "RELATIVE_COMPARATIVE_UNDER_INTERIM_PARENT_SCOPE")}
+
+
+def test_relative_detail_inherits_an_annual_primary_window() -> None:
+    indexed, trials, _pages = _relative_movement_under(
+        "Cho năm tài chính kết thúc ngày 31/12/2026", "Cho năm tài chính kết thúc ngày 31/12/2025"
     )
 
     assert indexed["candidate_dispositions"][0]["disposition"] == READY
@@ -2790,6 +2809,7 @@ def test_relative_detail_inherits_exact_lane_specific_primary_ranges() -> None:
         cell["coefficient"]
         for cell in _mapped(trials[0])["FAMILY_ROOT_TOTAL"]["values"]
     ] == [-100, -80]
+    assert [cell["coefficient"] for cell in _mapped(trials[0])["CUSTOMER_PROVISION"]["values"]] == [100, 80]
 
 
 def test_relative_detail_visible_year_conflict_with_exact_parent_is_unresolved() -> None:
