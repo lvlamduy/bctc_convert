@@ -722,7 +722,13 @@ def test_exact_period_two_role_movement_derives_total_and_ignores_utilization() 
             (
                 VERSION_1,
                 1,
-                _primary_page_with_exact_ranges("(100)", "(80)"),
+                # Annual root: relative "Kỳ này / Kỳ trước" lanes inherit only an annual window.
+                _primary_page_with_exact_ranges(
+                    "(100)",
+                    "(80)",
+                    current_end="31/12/2025",
+                    comparative_end="31/12/2024",
+                ),
             ),
             (VERSION_2, 2, _movement_note([current, comparative])),
         ]
@@ -730,17 +736,15 @@ def test_exact_period_two_role_movement_derives_total_and_ignores_utilization() 
 
     assert trials[0]["status"] == READY
     mapped = _mapped(trials[0])
-    # "Kỳ trước năm 2024" prints no window and the root is interim (Q1 ranges): the comparative lane is not
-    # exported (FULL271 doc 4); the current lane still derives the total and ignores utilization.
     assert [
         cell["coefficient"] for cell in mapped["CUSTOMER_PROVISION"]["values"]
-    ] == [100, None]
+    ] == [100, 80]
     assert [
         cell["coefficient"] for cell in mapped["CUSTOMER_GENERAL"]["values"]
-    ] == [20, None]
+    ] == [20, 15]
     assert [
         cell["coefficient"] for cell in mapped["CUSTOMER_SPECIFIC"]["values"]
-    ] == [80, None]
+    ] == [80, 65]
     assert all(
         "Sử dụng" not in source_ref["label_exact"]
         for source_ref in mapped["CUSTOMER_PROVISION"]["source_refs"]
@@ -823,32 +827,11 @@ def test_customer_summary_requires_exact_period_to_select_current_not_annual() -
         ]
     )
     trial = trials[0]
-    assert trial["status"] == READY
-    mapped = _mapped(trial)
-    assert [
-        cell["coefficient"] for cell in mapped["CUSTOMER_PROVISION"]["values"]
-    ] == [100, None]
-    assert [
-        cell["coefficient"] for cell in mapped["CUSTOMER_GENERAL"]["values"]
-    ] == [20, None]
-    assert [
-        cell["coefficient"] for cell in mapped["CUSTOMER_SPECIFIC"]["values"]
-    ] == [80, None]
-    receipt = trial["candidates"][0]["closure_receipt"][
-        "credit_risk_provision_expense_adapter_receipt"
-    ]
-    transposed = receipt["transposed_receipt"]
-    assert transposed["comparative"] is None
-    assert transposed["rule"] == (
-        "EXACT_LANE_DURATION_COMPATIBILITY_REJECTS_ONLY_CONFLICTING_"
-        "MOVEMENT_LANES"
-    )
-    assert {
-        row["disposition"] for row in transposed["source_only_rows"]
-    } == {
-        "DETAIL_LANE_REJECTED_BY_EXACT_DURATION_SCOPE_"
-        "DETAIL_DURATION_SCOPE_NOT_PROVEN"
-    }
+    # Was READY through "Kỳ này" inheriting the exact Q1 root window. A relative lane under an interim root is
+    # never the root's window by rule (FULL271 docs 4 / 37 / 38 print roll-forwards whose "Kỳ này / Kỳ trước"
+    # are the quarter, the previous quarter or the prior full year), so the document is held.
+    assert trial["status"] == UNRESOLVED
+    assert trial["mappings"] == []
 
 
 def test_direct_expense_keeps_exact_reconciled_customer_movement_breakdown() -> None:
@@ -1155,7 +1138,12 @@ def test_adjacent_customer_continuation_requires_exact_reporting_period() -> Non
             (
                 VERSION_1,
                 1,
-                _primary_page_with_exact_ranges("(100)", "(80)"),
+                _primary_page_with_exact_ranges(
+                    "(100)",
+                    "(80)",
+                    current_end="31/12/2025",
+                    comparative_end="31/12/2024",
+                ),
             ),
             (VERSION_2, 2, canonical_clone_v1(first)),
             (
@@ -2597,7 +2585,7 @@ def _partial_period_lane_fixture() -> list[tuple[str, int, dict[str, Any]]]:
                 ["20", "80", "100"],
             )
         ],
-        title="Kỳ này",
+        title="Số lũy kế từ đầu năm đến cuối Q2.2026",
     )
     comparative = _movement_table(
         [
@@ -2779,23 +2767,17 @@ def _relative_movement_under(current_header: str, comparative_header: str, years
     return _run_pages([(VERSION_1, 1, primary), (VERSION_2, 2, movement)])
 
 
-def test_relative_comparative_never_inherits_an_interim_primary_window() -> None:
+def test_relative_detail_never_inherits_an_interim_primary_window() -> None:
     # Was a reviewed positive. FULL271 doc 4 (ABB Q1 2025) shows why it cannot hold: its roll-forward "Kỳ trước"
     # is the prior FULL year (opening 597.535 -> closing 981.156) while the root comparative is Q1 2024.
     indexed, trials, _pages = _relative_movement_under(
         "Kỳ này từ 01/01/2026 đến 30/06/2026", "Kỳ trước từ 01/01/2025 đến 30/06/2025"
     )
 
-    # The current lane ("Kỳ này") keeps the reviewed inheritance; the comparative lane is never exported.
-    assert trials[0]["status"] == READY
-    for role, current in (("CUSTOMER_PROVISION", 100), ("CUSTOMER_GENERAL", 20), ("CUSTOMER_SPECIFIC", 80)):
-        assert [cell["coefficient"] for cell in _mapped(trials[0])[role]["values"]] == [current, None]
-    receipt = trials[0]["candidates"][0]["closure_receipt"]["credit_risk_provision_expense_adapter_receipt"]
-    assert {
-        (item["semantic_role"], item["compatibility"])
-        for item in receipt["transposed_receipt"]["period_compatibility_axis"]
-        if not item["accepted"]
-    } == {("COMPARATIVE_PERIOD", "RELATIVE_COMPARATIVE_UNDER_INTERIM_PARENT_SCOPE")}
+    # FULL271 docs 37 / 38 show "Kỳ này" can be the quarter under a year-to-date root: neither lane is exported.
+    assert trials[0]["status"] == UNRESOLVED
+    assert trials[0]["mappings"] == []
+    assert "F37_DETAIL_PRIMARY_DURATION_SCOPE_CONFLICT" in trials[0]["reasons"]
 
 
 def test_relative_detail_inherits_an_annual_primary_window() -> None:
