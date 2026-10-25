@@ -3197,3 +3197,69 @@ def test_year_end_to_year_end_range_is_not_the_first_calendar_year() -> None:
     assert _family37_period_compatibility_v1(detail, root) == (
         False, "FULL_YEAR_WINDOW_NOT_THE_CALENDAR_YEAR"
     )
+
+
+# Per-document fail-closed instead of a corpus stop (FULL271 docs 119 / 125 / 178 / 179 / 183 / 184 / 211 / 214 / 262).
+
+
+def test_unresolved_trial_holds_coverage_violations_without_stopping_the_corpus() -> None:
+    indexed, trials, pages = _run_pages(_partial_period_lane_fixture())
+    held = canonical_clone_v1(trials)
+    held[0].update(status=UNRESOLVED, mappings=[], reasons=["F37_TEST_HELD"], selected_candidate_id=None)
+
+    coverage = build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
+        indexed_query_evidence=indexed,
+        trials=held,
+        page_json_by_document=pages,
+        compiled_specs=_compiled(),
+    )
+
+    assert coverage["violation_count"] == 0
+    held_entries = [
+        item for item in coverage["movement_cell_axis"] if item["coverage"].startswith("HELD_UNRESOLVED_TRIAL_")
+    ]
+    assert held_entries
+    assert not any(item["coverage"].startswith("VIOLATION_") for item in coverage["movement_cell_axis"])
+
+
+def test_not_observed_trial_never_hides_an_explicit_family37_source_row() -> None:
+    indexed, trials, pages = _run_pages(_partial_period_lane_fixture())
+    absent = canonical_clone_v1(trials)
+    absent[0].update(status=NOT_OBSERVED, mappings=[], reasons=[], selected_candidate_id=None)
+
+    with pytest.raises(
+        GeminiJsonCreditRiskProvisionExpenseFamilyV1Error,
+        match="nested movement coverage is invalid",
+    ):
+        build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
+            indexed_query_evidence=indexed,
+            trials=absent,
+            page_json_by_document=pages,
+            compiled_specs=_compiled(),
+        )
+
+
+def test_candidate_disagreeing_with_source_authority_fails_closed_for_its_document(monkeypatch) -> None:
+    from bctc_ai.evaluation import gemini_json_credit_risk_provision_expense_family_v1 as family
+
+    original = family._movement_source_role_coverage
+
+    def disagreeing(**kwargs):
+        result = original(**kwargs)
+        if kwargs.get("mappings"):
+            # As in FULL271 doc 178: an accepted source cell the candidate did not map.
+            return {**result, "violation_count": 1, "violations": ["VIOLATION_ACCEPTED_SOURCE_CELL_NOT_MAPPED"]}
+        return result
+
+    monkeypatch.setattr(family, "_movement_source_role_coverage", disagreeing)
+    indexed, trials, pages = _run_pages(_partial_period_lane_fixture())
+
+    assert trials[0]["status"] == UNRESOLVED
+    assert trials[0]["mappings"] == []
+    assert "F37_CANDIDATE_EXACT_SOURCE_CELL_COVERAGE_NOT_EXACT" in trials[0]["reasons"]
+    receipt = trials[0]["candidates"][0]["closure_receipt"]["credit_risk_provision_expense_adapter_receipt"]
+    assert receipt["source_role_coverage"]["violation_count"] >= 1
+    coverage = build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
+        indexed_query_evidence=indexed, trials=trials, page_json_by_document=pages, compiled_specs=_compiled()
+    )
+    assert coverage["violation_count"] == 0

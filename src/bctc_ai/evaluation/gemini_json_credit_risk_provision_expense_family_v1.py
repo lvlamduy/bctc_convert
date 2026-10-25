@@ -73,6 +73,7 @@ SOURCE_COVERAGE_FORMAT_VERSION = (
 SOURCE_ROW_COVERAGE_FORMAT_VERSION = (
     "CREDIT_RISK_PROVISION_EXPENSE_SOURCE_ROW_COVERAGE_V1"
 )
+CANDIDATE_COVERAGE_REASON = "F37_CANDIDATE_EXACT_SOURCE_CELL_COVERAGE_NOT_EXACT"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_CREDIT_RISK_PROVISION_EXPENSE_"
     "AUTHENTICATED_PDF_VISIBLE_REPAIR_EXACT_TEXTUAL_OR_CLOSED_STRUCTURAL_"
@@ -5815,6 +5816,14 @@ def _secondary_family_root_source_only_disposition(
     return None
 
 
+def _held_coverage_v1(coverage: str, *, held: bool) -> str:
+    """VIOLATION_* of an UNRESOLVED trial (nothing exported) is kept visible as HELD_UNRESOLVED_TRIAL_*."""
+
+    if held and coverage.startswith("VIOLATION_"):
+        return "HELD_UNRESOLVED_TRIAL_" + coverage[len("VIOLATION_"):]
+    return coverage
+
+
 def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
     *,
     indexed_query_evidence: Mapping[str, Any],
@@ -5903,6 +5912,10 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
             "credit_risk_provision_expense_query_adapter_receipt", {}
         ).get("query_kind")
         direct_selected = str(query_kind).startswith("NORMAL_TWO_PERIOD")
+        # An UNRESOLVED trial exports nothing: its violating rows stay visible as HELD_UNRESOLVED_TRIAL_* (each
+        # still a manual PDF review category) instead of stopping the corpus. READY and NOT_OBSERVED (an absence
+        # claim) keep every violation.
+        held = trial["status"] == UNRESOLVED
         movement = _movement_source_role_coverage(
             document=document,
             selected_page_axis=indexed["selected_page_axis"],
@@ -5914,7 +5927,7 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
                 "source_authority_receipt"
             ],
         )
-        if movement["violation_count"]:
+        if movement["violation_count"] and not held:
             raise _error("Family-37 nested movement coverage is invalid")
         for entry in movement["entries"]:
             locator = entry["locator"]
@@ -5926,7 +5939,7 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
             )
             row = table["rows"][entry["row_ordinal"] - 1]
             full_entry = _coverage_source_row(
-                coverage=entry["disposition"],
+                coverage=_held_coverage_v1(entry["disposition"], held=held),
                 document=document,
                 page_axis=axes[locator["page_json_version_id"]],
                 section=section,
@@ -6061,6 +6074,7 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
                                 coverage = (
                                     "OUTSIDE_DURATION_EXPENSE_OWNER_FENCE_SOURCE_ONLY"
                                 )
+                            coverage = _held_coverage_v1(coverage, held=held)
                             item = _coverage_source_row(
                                 coverage=coverage,
                                 document=document,
@@ -6127,6 +6141,7 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
                                     )
                                     or "VIOLATION_UNACCOUNTED_EXACT_FAMILY_ROOT_ROW"
                                 )
+                            coverage = _held_coverage_v1(coverage, held=held)
                             item = _coverage_source_row(
                                 coverage=coverage,
                                 document=document,
@@ -6156,6 +6171,7 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
                                 coverage = "BLANK_STRUCTURAL_TERMINAL_TOTAL"
                             else:
                                 coverage = "VIOLATION_UNMAPPED_VISIBLE_TERMINAL_TOTAL"
+                            coverage = _held_coverage_v1(coverage, held=held)
                             item = _coverage_source_row(
                                 coverage=coverage,
                                 document=document,
@@ -6231,6 +6247,7 @@ def build_credit_risk_provision_expense_source_row_coverage_receipt_v1(
                                     "OUTSIDE_EXPLICIT_DURATION_OWNER_FENCE_"
                                     "SOURCE_ONLY"
                                 )
+                        coverage = _held_coverage_v1(coverage, held=held)
                         item = _coverage_source_row(
                             coverage=coverage,
                             document=document,
@@ -6850,7 +6867,12 @@ def _bind_family37_candidate_source_authority_v1(
         source_authority_receipt=source_authority,
     )
     if material["source_role_coverage"]["violation_count"]:
-        raise _error("Family-37 candidate exact source-cell coverage failed")
+        # The candidate does not map exactly the cells the source authority accepted (e.g. it dropped an accepted
+        # comparative lane): like SOURCE_ROLE_COVERAGE_CONTRACT_FAILED, THIS document fails closed with no mapping
+        # and keeps the violating coverage as evidence; the corpus continues and the document stays a residual.
+        candidate["mappings"] = []
+        candidate["reasons"] = sorted(set(candidate.get("reasons", [])) | {CANDIDATE_COVERAGE_REASON})
+        candidate["status"] = UNRESOLVED
     closure["credit_risk_provision_expense_adapter_receipt"] = {
         **material,
         "adapter_receipt_id": "gjcrpefav1:evaluation:"
