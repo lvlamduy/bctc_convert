@@ -11,7 +11,7 @@ import json
 import os
 import re
 import stat
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import replace
 from decimal import Decimal
 from hashlib import sha256
@@ -73,6 +73,11 @@ TOPOLOGY_FORMAT = "F36_NOTES_SOURCE_FRONTIER_SPEC_V1"
 EVALUATION_FORMAT = "F36_NOTES_STRICT_CORE_EVALUATION_SPEC_V1"
 SCHEMA_FORMAT = "F36_NOTES_CROSSWALK_BINDING_SPEC_V1"
 QUERY_FORMAT = "F36_NOTES_REBUILT_SOURCE_FRONTIER_V1"
+COMPACT_FORMAT = "GEMINI_JSON_F36_NOTES_STRICT_CORE_COMPACT_A_SWEEP_V1"
+COMPACT_EVALUATION_FORMAT = "F36_NOTES_STRICT_CORE_COMPACT_A_EVALUATION_SPEC_V1"
+COMPACT_QUERY_FORMAT = "F36_NOTES_REBUILT_COMPACT_A_SOURCE_FRONTIER_V1"
+COMPACT_PARTITION_FORMAT = "F36_NOTES_FRESH_COMPACT_SOURCE_PARTITION_V1"
+_NODE_DIGEST_DOMAIN = "CANONICAL_JSON_ONE_LF_OF_ORDERED_FULL_NODE_SHA256_TRIPLES_V1"
 CLAIM = "F36_NOTES_AUTHENTICATED_REPLAY_REQUIRED_PROPOSAL_ONLY_NOT_ACCEPTANCE"
 _SHA = re.compile(r"[0-9a-f]{64}")
 _RECEIPTS = {"producer_manifest", "ledger_summary", "ledger_observations",
@@ -115,9 +120,11 @@ def _identity(status: Any) -> tuple[Any, ...]:
 def compile_f36_notes_core_specs_v1(topology_spec: Any, evaluation_spec: Any,
                                    schema_binding_spec: Any) -> dict[str, Any]:
     """Pure new-format compiler. References are declarations, not IO authentication."""
+    compact = type(evaluation_spec) is dict and evaluation_spec.get("format_version") == COMPACT_EVALUATION_FORMAT
     for spec, version, fields in (
         (topology_spec, TOPOLOGY_FORMAT, {"format_version", "family_id", "source", "documents_requested"}),
-        (evaluation_spec, EVALUATION_FORMAT, {"format_version", "family_id", "notes_config_pins",
+        (evaluation_spec, COMPACT_EVALUATION_FORMAT if compact else EVALUATION_FORMAT,
+                                            {"format_version", "family_id", "notes_config_pins",
                                              "notes_family", "production_policy", "production_policy_ref",
                                              "production_topology", "production_topology_ref",
                                              "production_schema_binding", "production_schema_binding_ref",
@@ -208,7 +215,7 @@ def compile_f36_notes_core_specs_v1(topology_spec: Any, evaluation_spec: Any,
               and type(entry["report_norm_id"]) is int and entry["report_norm_id"] > 0, "Crosswalk fields")
     _need(len({(e["concept"], e["axis"], tuple(e["members"])) for e in crosswalk}) == len(crosswalk)
           and len({e["report_norm_id"] for e in crosswalk}) == len(crosswalk), "Crosswalk duplicate")
-    return {"engine_format_version": FORMAT, "claim_boundary": CLAIM,
+    return {"engine_format_version": COMPACT_FORMAT if compact else FORMAT, "claim_boundary": CLAIM,
             "topology": canonical_clone_v1(topology_spec), "evaluation": canonical_clone_v1(evaluation_spec),
             "schema": canonical_clone_v1(schema_binding_spec)}
 
@@ -253,6 +260,239 @@ def _inventory(page: dict[str, Any], version: str, blob_sha: str) -> dict[tuple[
             if field is not None:
                 tables[current][field].append(node)
     return tables
+
+
+def _compact(compiled: dict[str, Any]) -> bool:
+    _need(compiled["engine_format_version"] in {FORMAT, COMPACT_FORMAT}
+          and compiled["evaluation"]["format_version"] == (COMPACT_EVALUATION_FORMAT
+              if compiled["engine_format_version"] == COMPACT_FORMAT else EVALUATION_FORMAT), "Compiled inventory format pairing")
+    return compiled["engine_format_version"] == COMPACT_FORMAT
+
+
+def _source_key(value: Any, *, original: bool = False) -> tuple[str, str, str]:
+    _need(type(value) is dict and type(value.get("page_json_version_id")) is str
+          and re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", value["page_json_version_id"]) is not None,
+          "Compact required source VID missing/malformed")
+    if original:
+        _need(all(type(value.get(k)) is int and value[k] > 0 for k in ("section_ordinal", "table_ordinal")),
+              "Compact required ORIGINAL table axis missing/malformed")
+        return value["page_json_version_id"], f"s{value['section_ordinal']}", f"t{value['table_ordinal']}"
+    _need(all(type(value.get(k)) is str and re.fullmatch(pattern, value[k]) is not None
+              for k, pattern in (("section_id", r"s[1-9][0-9]*"), ("table_id", r"t[1-9][0-9]*"))),
+          "Compact required table axis missing/malformed")
+    return value["page_json_version_id"], value["section_id"], value["table_id"]
+
+
+def _required_source_keys(dispositions: list[dict[str, Any]], cells: list[dict[str, Any]]) -> set[tuple[str, str, str]]:
+    """ALL statuses and fragments, never only mapped/numeric/READY owners.
+
+    A None bridge/original_cell remains verbatim in its rejected/held record;
+    it supplies no guessed coordinate. A nonempty declared coordinate must bind.
+    """
+    keys = set()
+    for disposition in dispositions:
+        keys.add(_source_key(disposition["locator"]))
+        _need(type(disposition.get("fragments")) is list and type(disposition.get("source_bridges")) is list,
+              "Compact fragment/bridge axes missing")
+        keys.update(_source_key(fragment) for fragment in disposition["fragments"])
+        for bridge in disposition["source_bridges"]:
+            if bridge is None:
+                continue
+            try:
+                keys.add(_source_key(bridge, original=True))
+            except F36NotesCoreAdapterError as error:
+                raise F36NotesCoreAdapterError("COMPACT_PROOF_UNSUPPORTED_BRIDGE_AXIS: "
+                    f"status={disposition.get('status')!r}; owner={disposition['locator']!r}; bridge={bridge!r}") from error
+    for cell in cells:
+        keys.add(_source_key(cell["locator"]))
+        if cell.get("original_cell") is not None:
+            keys.add(_source_key(cell["original_cell"], original=True))
+    return keys
+
+
+def _inventory_counts(inventory: dict[str, Any]) -> dict[str, Any]:
+    """Literal source slots/types only; non-null is never a numeric or financial-unread grant."""
+    types, slots, nulls, missing = Counter(), 0, 0, 0
+    for row in inventory["rows"]:
+        axis = row.get("value_axis")
+        if axis is None:
+            missing += 1
+        else:
+            slots += axis["count"]
+            nulls += len(axis["null_column_ordinals"])
+            types.update(axis["item_types"])
+    return {"column": len(inventory["columns"]), "row": len(inventory["rows"]),
+            "unsupported_shape": len(inventory["unsupported"]), "value_slots": slots,
+            "null_slots": nulls, "non_null_slots": slots - nulls, "rows_without_value_axis": missing,
+            "item_types": dict(sorted(types.items()))}
+
+
+def _node_axis(nodes: list[dict[str, Any]]) -> list[list[str]]:
+    return [[node["record_type"], node["pointer"], canonical_json_sha256_v1(node)] for node in nodes]
+
+
+def _table_nodes(inventory: dict[str, Any]) -> list[dict[str, Any]]:
+    # Order belongs to the page node_axis, not this grouped inventory codec.
+    table = {k: v for k, v in inventory["table"].items() if k != "page_json_version_id"}
+    return [table, *inventory["columns"], *inventory["rows"], *inventory["unsupported"]]
+
+
+def _table_axis(axis: list[list[str]], pointer: str) -> list[list[str]]:
+    return [node for node in axis if node[1] == pointer or node[1].startswith(pointer + "/")]
+
+
+def _compact_descriptor(key: tuple[str, str, str], inventory: dict[str, Any], axis: list[list[str]],
+                        required: set[tuple[str, str, str]], subjects: list[list[str]]) -> dict[str, Any]:
+    classification = classify_table_v1(inventory["table"], inventory["section"], {}, subjects)
+    reasons = (["REQUIRED_SOURCE_DEPENDENCY"] if key in required else [])
+    if classification.get("tag") == "POTENTIAL_CANDIDATE":
+        reasons.append("POTENTIAL_CANDIDATE")
+    if inventory["unsupported"]:
+        reasons.append("UNSUPPORTED_TABLE")
+    return {"table_key": list(key), "table": inventory["table"], "section": inventory["section"],
+            "inventory_sha256": canonical_json_sha256_v1(inventory),
+            "node_axis_sha256": canonical_json_sha256_v1(_table_axis(axis, inventory["table"]["pointer"])),
+            "counts": _inventory_counts(inventory), "retention_reasons": reasons,
+            "disposition": "FULL_INVENTORY_RETAINED" if reasons else "UNASSESSED_NOT_ABSENT"}
+
+
+def _compact_page(page: dict[str, Any], *, doc: dict[str, Any], selected: dict[str, Any], blob_sha: str,
+                  required: set[tuple[str, str, str]], subjects: list[list[str]]) -> tuple[dict[str, Any], dict]:
+    """One fresh page only. Irrelevant full row graphs die before the next page."""
+    nodes = list(_nodes(page))
+    axis = _node_axis(nodes)
+    inventories = _inventory(page, selected["page_json_version_id"], blob_sha)
+    # V1's table helper deliberately only collects descendants. A malformed
+    # table itself has a same-pointer unsupported node: compact A must retain it.
+    for inv in inventories.values():
+        inv["unsupported"].extend(node for node in nodes if node["record_type"] == "unsupported_shape"
+                                  and node["pointer"] == inv["table"]["pointer"])
+    descriptors, retained = [], {}
+    for key, inv in inventories.items():
+        descriptor = _compact_descriptor(key, inv, axis, required, subjects)
+        descriptors.append(descriptor)
+        if descriptor["retention_reasons"]:
+            retained[key] = inv
+    pointers = [d["table"]["pointer"] for d in descriptors]
+    outside = [node for node in nodes if not any(node["pointer"] == p or node["pointer"].startswith(p + "/") for p in pointers)]
+    result = {"axis": {"document_ordinal": doc["document_ordinal"], **selected},
+              "source_sha256": doc["source_sha256"], "source_logical_name": doc["source_logical_name"],
+              "stored_blob_two_lf_sha256": blob_sha, "page_object_one_lf_sha256": canonical_json_sha256_v1(page),
+              "node_axis": axis, "node_axis_sha256": canonical_json_sha256_v1(axis),
+              "node_counts": dict(sorted(Counter(n[0] for n in axis).items())),
+              "outside_table_nodes": outside, "tables": descriptors}
+    return result, retained
+
+
+def _source_partition(doc: dict[str, Any], compiled: dict[str, Any], pages: list[dict[str, Any]]) -> dict[str, Any]:
+    # The external neutral ref is retained provenance, not a substitute cache:
+    # rebuild_f36_notes_trials_v1 decodes ALL requested pages afresh on every call.
+    source = compiled["topology"]["source"]
+    counts = Counter()
+    for page in pages:
+        counts.update(page["node_counts"])
+        for table in page["tables"]:
+            counts["full_tables" if table["retention_reasons"] else "unassessed_tables"] += 1
+            for key in ("value_slots", "null_slots", "non_null_slots", "rows_without_value_axis"):
+                counts[key] += table["counts"][key]
+    return {"format_version": COMPACT_PARTITION_FORMAT, "digest_domain": _NODE_DIGEST_DOMAIN,
+            "validation_boundary": "STRUCTURAL_NOT_AUTHENTICATED_FRESH_IO_REBUILD_REQUIRED",
+            "scope": "FRESH_ALL_REQUESTED_DOCUMENT_PAGES" if doc["document_ordinal"] in compiled["topology"]["documents_requested"]
+                     else "OUTSIDE_REQUESTED_SUBSET_NOT_EVALUATED",
+            "source": {"document_ordinal": doc["document_ordinal"], "source_logical_name": doc["source_logical_name"],
+                       "source_sha256": doc["source_sha256"], "index_ref": source["index_ref"],
+                       "database_ref": source["database_ref"],
+                       "external_neutral_ref": compiled["evaluation"]["frontier_receipt_refs"]["neutral_inventory"]},
+            "pages": pages, "counts": dict(sorted(counts.items())),
+            "ordered_universe_sha256": canonical_json_sha256_v1(pages)}
+
+
+def _validate_compact_partition(ledger: dict[str, Any], doc: dict[str, Any], compiled: dict[str, Any],
+                                inventories: dict[tuple[str, str, str], dict[str, Any]], subjects: list[list[str]]) -> None:
+    """Checks declared partition consistency; omitted raw rows are authenticated ONLY by fresh IO replay."""
+    proof = ledger["source_partition"]
+    _need(type(proof) is dict and type(proof.get("pages")) is list
+          and _same(proof, _source_partition(doc, compiled, proof["pages"])), "Compact source partition/source/digest drift")
+    pages = proof["pages"]
+    expected_pages = doc["pages"] if doc["document_ordinal"] in compiled["topology"]["documents_requested"] else []
+    _need(_same([p.get("axis") for p in pages], [{"document_ordinal": doc["document_ordinal"], **p} for p in expected_pages]),
+          "Compact complete selected-page axis missing/order")
+    required = _required_source_keys(ledger["dispositions"], ledger["cells"])
+    universe, kept = set(), set()
+    for page in pages:
+        _need(type(page) is dict and set(page) == {"axis", "source_sha256", "source_logical_name", "stored_blob_two_lf_sha256",
+              "page_object_one_lf_sha256", "node_axis", "node_axis_sha256", "node_counts", "outside_table_nodes", "tables"},
+              "Compact page fields")
+        _need(page["source_sha256"] == doc["source_sha256"] and page["source_logical_name"] == doc["source_logical_name"]
+              and all(type(page[k]) is str and _SHA.fullmatch(page[k]) for k in ("stored_blob_two_lf_sha256", "page_object_one_lf_sha256")),
+              "Compact page source/BLOB domains")
+        axis = page["node_axis"]
+        _need(type(axis) is list and all(type(n) is list and len(n) == 3 and n[0] in
+              {"section", "table", "column", "row", "unsupported_shape"} and type(n[1]) is str
+              and type(n[2]) is str and _SHA.fullmatch(n[2]) for n in axis), "Compact node axis")
+        _need(len({(n[0], n[1]) for n in axis}) == len(axis)
+              and _same(page["node_axis_sha256"], canonical_json_sha256_v1(axis))
+              and _same(page["node_counts"], dict(sorted(Counter(n[0] for n in axis).items()))), "Compact node digest/counts")
+        _need(type(page["tables"]) is list and type(page["outside_table_nodes"]) is list, "Compact page partition lists")
+        table_axes, pointers = [], []
+        for descriptor in page["tables"]:
+            _need(type(descriptor) is dict and set(descriptor) == {"table_key", "table", "section", "inventory_sha256",
+                  "node_axis_sha256", "counts", "retention_reasons", "disposition"}, "Compact table descriptor")
+            table = descriptor["table"]
+            key = _source_key(table)
+            _need(key[0] == page["axis"]["page_json_version_id"] and key not in universe
+                  and _same(descriptor["table_key"], list(key)), "Compact duplicate/foreign table")
+            pointer = f"/sections/{int(key[1][1:]) - 1}/tables/{int(key[2][1:]) - 1}"
+            _need(table.get("pointer") == pointer and type(descriptor["inventory_sha256"]) is str
+                  and _SHA.fullmatch(descriptor["inventory_sha256"]), "Compact table pointer/inventory digest")
+            section_pointer = f"/sections/{int(key[1][1:]) - 1}"
+            sections = [n for n in page["outside_table_nodes"] if n.get("record_type") == "section"
+                        and n.get("pointer") == section_pointer]
+            _need(len(sections) == 1 and _same(descriptor["section"], sections[0]), "Compact table/section source binding")
+            universe.add(key)
+            pointers.append(pointer)
+            own_axis = _table_axis(axis, pointer)
+            table_axes.extend(own_axis)
+            _need(_same(descriptor["node_axis_sha256"], canonical_json_sha256_v1(own_axis))
+                  and [n for n in own_axis if n[0] == "table"] == _node_axis([
+                      {k: v for k, v in table.items() if k != "page_json_version_id"}]), "Compact table node proof")
+            counts = descriptor["counts"]
+            _need(type(counts) is dict and set(counts) == {"column", "row", "unsupported_shape", "value_slots", "null_slots",
+                  "non_null_slots", "rows_without_value_axis", "item_types"}
+                  and all(type(counts[k]) is int and counts[k] >= 0 for k in counts if k != "item_types")
+                  and type(counts["item_types"]) is dict
+                  and all(k in {"str", "int", "float", "bool", "NoneType", "list", "dict"}
+                          and type(v) is int and v > 0 for k, v in counts["item_types"].items()), "Compact source counts typed")
+            node_counts = Counter(n[0] for n in own_axis)
+            _need(all(counts[k] == node_counts[k] for k in ("column", "row", "unsupported_shape"))
+                  and sum(counts["item_types"].values()) == counts["value_slots"]
+                  and counts["item_types"].get("NoneType", 0) == counts["null_slots"]
+                  and counts["null_slots"] + counts["non_null_slots"] == counts["value_slots"]
+                  and counts["rows_without_value_axis"] <= counts["row"], "Compact source count arithmetic")
+            potential = classify_table_v1(table, descriptor["section"], {}, subjects).get("tag") == "POTENTIAL_CANDIDATE"
+            reasons = (["REQUIRED_SOURCE_DEPENDENCY"] if key in required else [])
+            if potential:
+                reasons.append("POTENTIAL_CANDIDATE")
+            if counts["unsupported_shape"]:
+                reasons.append("UNSUPPORTED_TABLE")
+            _need(_same(descriptor["retention_reasons"], reasons)
+                  and descriptor["disposition"] == ("FULL_INVENTORY_RETAINED" if reasons else "UNASSESSED_NOT_ABSENT"),
+                  "Compact required/potential/unsupported disposition")
+            if reasons:
+                _need(key in inventories, "Compact required source inventory missing")
+                inv = inventories[key]
+                _need(_same(descriptor, _compact_descriptor(key, inv, axis, required, subjects))
+                      and _same(inv["page"], {"axis": {"page_json_version_id": key[0]},
+                          "source_proof": {"stored_blob_two_lf_sha256": page["stored_blob_two_lf_sha256"]}})
+                      and sorted(_node_axis(_table_nodes(inv))) == sorted(own_axis), "Compact FULL inventory/source node drift")
+                kept.add(key)
+        _need([n[1] for n in axis if n[0] == "table"] == pointers, "Compact missing/order table universe")
+        outside = page["outside_table_nodes"]
+        table_positions = {(n[0], n[1]) for n in table_axes}
+        _need(all(not any(n["pointer"] == p or n["pointer"].startswith(p + "/") for p in pointers) for n in outside)
+              and _same(_node_axis(outside), [n for n in axis if (n[0], n[1]) not in table_positions]),
+              "Compact outside-table nodes lost")
+    _need(required <= universe and set(inventories) == kept, "Compact required/full/universe partition incomplete")
 
 
 def _production_table_policy_v1(inventory: dict[str, Any], disposition: dict[str, Any],
@@ -548,6 +788,10 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
         annual_payloads[ordinal] = canonical_clone_v1({"capture": _annual_capture_json_v1(context.annual_policy),
                                                       "owned_table_texts": table_texts})
     inventories = {}
+    compact = _compact(compiled)
+    required = _required_source_keys(dispositions, run.cells) if compact else set()
+    compact_pages = defaultdict(list)
+    subjects = config.families[FAMILY].raw["subjects"]["OPERATING_EXPENSE_NOTE"]["any"]
     # Bounded per-page parsing; no whole-corpus ORIGINAL object cache.
     for doc in source.corpus.documents:
         if doc.ordinal not in requested:
@@ -557,7 +801,16 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
             _need((loaded["source_sha256"], loaded["source_logical_name"], loaded["physical_page"])
                   == (doc.source_sha256, doc.relative_path, selected.physical_page), "Original source identity")
             blob = loaded["source_json_replay_receipt"]["canonical_json_sha256"]
-            inventories.update(_inventory(loaded["page_json"], selected.page_json_version_id, blob))
+            if compact:
+                descriptor, kept = _compact_page(loaded["page_json"], doc=topo["source"]["document_axis"][doc.ordinal - 1],
+                    selected={"physical_page": selected.physical_page, "page_json_version_id": selected.page_json_version_id},
+                    blob_sha=blob, required=required, subjects=subjects)
+                compact_pages[doc.ordinal].append(descriptor)
+                inventories.update(kept)
+            else:
+                inventories.update(_inventory(loaded["page_json"], selected.page_json_version_id, blob))
+    if compact:
+        _need(required <= set(inventories), "Compact required source inventory missing after fresh scan")
     closure_by_table, policy_by_table, rows = {}, {}, {}
     for loc, inventory in inventories.items():
         for row in inventory["rows"]:
@@ -608,6 +861,8 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
                       if k[0] in page_ids],
                   "primary_income_context_texts": contexts[ordinal].income_context_texts if ordinal in requested and ordinal in contexts else [],
                   "scope": "REQUESTED_F36_NOTES_DOCUMENT" if ordinal in requested else "NOT_EVALUATED_REQUESTED_SUBSET_ONLY"}
+        if compact:
+            ledger["source_partition"] = _source_partition(doc, compiled, compact_pages[ordinal])
         if ordinal in annual_payloads:
             ledger["annual_period_context"] = annual_payloads[ordinal]
         candidates = []
@@ -628,7 +883,7 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
 
 
 def build_f36_notes_query_evidence_v1(*, trials: list[dict[str, Any]], compiled_specs: dict[str, Any]) -> dict[str, Any]:
-    material = {"format_version": QUERY_FORMAT, "family_id": FAMILY,
+    material = {"format_version": COMPACT_QUERY_FORMAT if _compact(compiled_specs) else QUERY_FORMAT, "family_id": FAMILY,
                 "selected_document_axis": compiled_specs["topology"]["source"]["document_axis"],
                 "frontier_receipt_refs": compiled_specs["evaluation"]["frontier_receipt_refs"],
                 "trial_frontier": [{"document_ordinal": t["document_ordinal"], "trial_sha256": canonical_json_sha256_v1(t)} for t in trials]}
@@ -652,8 +907,10 @@ def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
         ledger = trial["notes_ledger"]
         base_fields = {"cells", "classifications", "retained", "dispositions", "root_closures",
                        "source_ledger", "production_policy_receipts", "primary_income_context_texts", "scope"}
+        if _compact(compiled_specs):
+            base_fields.add("source_partition")
         _need(set(ledger) in (base_fields, base_fields | {"annual_period_context"})
-              and all(type(ledger[k]) is list for k in base_fields - {"scope"})
+              and all(type(ledger[k]) is list for k in base_fields - {"scope", "source_partition"})
               and len(ledger["cells"]) == len(ledger["classifications"]), "Complete ledger fields")
         expected_scope = ("REQUESTED_F36_NOTES_DOCUMENT" if doc["document_ordinal"] in compiled_specs["topology"]["documents_requested"]
                           else "NOT_EVALUATED_REQUESTED_SUBSET_ONLY")
@@ -678,6 +935,9 @@ def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
                 coordinate = (key[0], int(section) + 1, int(table_id) + 1, row["row_ordinal"])
                 _need(coordinate not in inventory_rows, "Duplicate source row")
                 inventory_rows[coordinate] = row
+        if _compact(compiled_specs):
+            _validate_compact_partition(ledger, doc, compiled_specs, inventories,
+                family.raw["subjects"]["OPERATING_EXPENSE_NOTE"]["any"])
         closures, policies = {}, {}
         for disposition in ledger["dispositions"]:
             loc = disposition["locator"]
@@ -758,7 +1018,7 @@ def build_f36_notes_core_sweep_v1(*, corpus_manifest_index_id: str, topology_spe
     _need(type(corpus_manifest_index_id) is str and corpus_manifest_index_id.startswith("gjfccmiv1:index:")
           and corpus_manifest_index_id == topology_spec["source"]["corpus_identity"].get("corpus_manifest_index_id"), "Corpus ID")
     checked = validate_f36_notes_trials_v1(trials=trials, indexed_query_evidence=indexed_query_evidence, compiled_specs=compiled)
-    material = {"format_version": FORMAT, "family_id": FAMILY, "claim_boundary": CLAIM,
+    material = {"format_version": compiled["engine_format_version"], "family_id": FAMILY, "claim_boundary": CLAIM,
                 "state": "COMPLETE_DOCUMENT_F36_NOTES_STRICT_CORE_PROPOSAL_ONLY",
                 "corpus_manifest_index_id": corpus_manifest_index_id,
                 "specs": {name: {"value": canonical_clone_v1(value), "sha256": canonical_json_sha256_v1(value)}
@@ -771,7 +1031,8 @@ def build_f36_notes_core_sweep_v1(*, corpus_manifest_index_id: str, topology_spe
 
 
 def validate_f36_notes_core_sweep_v1(value: Any) -> dict[str, Any]:
-    _need(type(value) is dict and value.get("format_version") == FORMAT and value.get("family_id") == FAMILY, "Sweep format/family")
+    _need(type(value) is dict and value.get("format_version") in {FORMAT, COMPACT_FORMAT}
+          and value.get("family_id") == FAMILY, "Sweep format/family")
     specs = value["specs"]
     rebuilt = build_f36_notes_core_sweep_v1(corpus_manifest_index_id=value["corpus_manifest_index_id"],
         topology_spec=specs["topology"]["value"], evaluation_spec=specs["evaluation"]["value"],
