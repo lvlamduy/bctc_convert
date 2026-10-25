@@ -368,6 +368,33 @@ def test_existing_rnid_binding_bridges_provision_role_spelling_for_frontier_coun
     assert not receipt["reasons"]
 
 
+@pytest.mark.parametrize("topology_change,proven", [
+    (None, True),
+    ("WITHIN_ROLE", False),  # the bound role is no longer declared top-level
+    ("REMOVED", False),      # the bound role is no longer declared at all
+])
+def test_goodwill_frontier_counts_only_through_the_declared_top_level_source_only_role(example, topology_change, proven):
+    compiled, _, _ = example
+    compiled = deepcopy(compiled)
+    children = compiled["evaluation"]["production_topology"]["children"]
+    child = next(c for c in children if c["role"] == "GOODWILL_AMORTIZATION_SOURCE_ONLY")
+    if topology_change == "WITHIN_ROLE":
+        child["matchers"][0]["within_role"] = "ASSET_EXPENSE"
+    elif topology_change == "REMOVED":
+        children.remove(child)
+    source = [lpb()[0], lpb()[1], ("Phân bổ lợi thế thương mại", "ITEM", ("1", "1"), None, "GOODWILL_AMORTIZATION"),
+              ("Tổng chi phí hoạt động", "TOTAL", ("3", "3"), None, "TOTAL_OPERATING_EXPENSE")]
+    inv, disposition = build(source, terms=["TAX_FEES", "EMPLOYEE_EXPENSE", "GOODWILL_AMORTIZATION"])
+    inv["section"] = {"fields": {"title_exact": {"present": True, "value": "Chi phí hoạt động"}}}
+    family = load_notes_config_v1(ROOT).families[FAMILY]
+    receipt = _production_table_policy_v1(inv, disposition, root_closure_v1(inv, disposition, family), compiled)
+    goodwill = next(r for r in receipt["source_frontier"] if r["notes_member"] == "GOODWILL_AMORTIZATION")
+    assert goodwill["production_role"] == ("GOODWILL_AMORTIZATION_SOURCE_ONLY" if proven else None)
+    assert ("F36_PRODUCTION_FRONTIER_ROLE_UNPROVEN" in receipt["reasons"]) is not proven
+    if proven:
+        assert receipt["distinct_configured_root_roles"] == ["EMPLOYEE_EXPENSE", "GOODWILL_AMORTIZATION_SOURCE_ONLY", "TAX_FEES"]
+
+
 def test_resealed_owner_policy_receipt_cannot_waive_original_title_mismatch(example):
     compiled, trial, index_id = example
     trial["notes_ledger"]["source_ledger"][0]["inventory"]["section"]["fields"]["title_exact"]["value"] = "Chi phí hoạt động dự kiến"

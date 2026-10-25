@@ -495,6 +495,24 @@ def _validate_compact_partition(ledger: dict[str, Any], doc: dict[str, Any], com
     _need(required <= universe and set(inventories) == kept, "Compact required/full/universe partition incomplete")
 
 
+# A notes member with no ReportNormId can still be a proven top-level component of the ROOT. These are explicit
+# same-meaning bindings to the production SOURCE_ONLY root role, used ONLY to count the source frontier; they never
+# create a canonical mapping. GOODWILL_AMORTIZATION (notes all_of "loi the thuong mai") = production
+# GOODWILL_AMORTIZATION_SOURCE_ONLY (aliases "Phân bổ lợi thế thương mại", "Chi phí lợi thế thương mại", ...). Added
+# only where actual FULL frontiers need it (2 ROOT-closed tables), never by label similarity at run time.
+_SOURCE_ONLY_FRONTIER_ROLES = {"GOODWILL_AMORTIZATION": "GOODWILL_AMORTIZATION_SOURCE_ONLY"}
+
+
+def _source_only_frontier_role(member: str, topology: dict[str, Any], configured: set[str]) -> str | None:
+    """The bound production role, only if the live topology declares it a top-level ADDITIVE_CHILD root component."""
+    role = _SOURCE_ONLY_FRONTIER_ROLES[member]
+    children = [c for c in topology.get("children") or [] if type(c) is dict and c.get("role") == role]
+    top_level = (len(children) == 1 and children[0].get("role_kind") == "ADDITIVE_CHILD"
+                 and type(children[0].get("matchers")) is list and bool(children[0]["matchers"])
+                 and all(type(m) is dict and m.get("within_role") is None for m in children[0]["matchers"]))
+    return role if top_level and role in configured else None
+
+
 def _production_table_policy_v1(inventory: dict[str, Any], disposition: dict[str, Any],
                                 closure: dict[str, Any], compiled: dict[str, Any]) -> dict[str, Any]:
     """F36 owner and distinct configured SOURCE-frontier minimum, no value inference."""
@@ -531,6 +549,8 @@ def _production_table_policy_v1(inventory: dict[str, Any], disposition: dict[str
         member = source_rows[0]["line"]
         ids = notes_by_member.get(member, set())
         role = member if member in configured else (production_by_id.get(next(iter(ids))) if len(ids) == 1 else None)
+        if role is None and member in _SOURCE_ONLY_FRONTIER_ROLES:
+            role = _source_only_frontier_role(member, evaluation["production_topology"], configured)
         if role not in configured:
             reasons.append("F36_PRODUCTION_FRONTIER_ROLE_UNPROVEN")
         frontier.append({"row_ordinal": row["row_ordinal"], "notes_member": member, "production_role": role})
