@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from bctc_ai.evaluation.gemini_json_f36_notes_core_adapter_v1 import (
     _fragments,
     _inventory,
     _production_table_policy_v1,
+    _quarter_frame_lane_v1,
     build_f36_notes_core_sweep_v1,
     build_f36_notes_query_evidence_v1,
     compile_f36_notes_core_specs_v1,
@@ -563,3 +565,34 @@ def test_annual_capture_must_name_exact_document_and_complete_selected_axis(exam
         trial["notes_ledger"]["annual_period_context"]["capture"] = {"status": "CALENDAR_YEAR"}
     with pytest.raises(F36NotesCoreAdapterError, match="Annual"):
         annual_fragments(compiled, trial)
+
+
+@pytest.mark.parametrize("frame,header,role,shape", [
+    ("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I năm 2025", "Kỳ ba tháng kết thúc ngày 31/03/2025\nTriệu VND", "CURRENT",
+     "MONTHS_ENDED:3:03-31"),
+    ("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I năm 2025", "Kỳ ba tháng kết thúc ngày 31/03/2024\nTriệu VND", "COMPARATIVE",
+     "MONTHS_ENDED:3:03-31"),
+    ("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý III năm 2025", "Từ 01/01/2025 đến 30/09/2025", "CURRENT", "RANGE:01-01..09-30"),
+    ("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý III năm 2025", "Từ 01/01/2024 đến 30/09/2024", "COMPARATIVE", "RANGE:01-01..09-30"),
+    ("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT\nQuý II năm 2025", "Từ 01/04/2025 đến 30/06/2025", "CURRENT", "RANGE:04-01..06-30"),
+    # A window that is not this frame's quarter end, two years back, or no printed frame: never a role.
+    ("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý III năm 2025", "Từ 01/01/2025 đến 30/06/2025", None, None),
+    ("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I năm 2025", "Kỳ ba tháng kết thúc ngày 31/03/2023\nTriệu VND", None, None),
+    ("BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I năm 2025", "Từ 01/02/2025 đến 31/03/2025", None, None),
+    ("", "Kỳ 6 tháng kết thúc ngày\n30.6.2025\nTriệu đồng", None, None),
+])
+def test_printed_quarter_frame_binds_only_matching_explicit_windows(frame, header, role, shape):
+    context = statement_period_context_v1([frame] if frame else [])
+    descriptor = duration_lane_period_v1(header, context)
+    assert descriptor.role is None and descriptor.resolution == "EXPLICIT"
+    bound = _quarter_frame_lane_v1(descriptor, context)
+    assert bound.role == role and bound.key == descriptor.key
+    assert dict(bound.fields).get("window_shape") == shape
+
+
+def test_quarter_frame_is_refused_under_printed_non_calendar_fiscal_evidence():
+    context = statement_period_context_v1(["BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I năm 2025"])
+    descriptor = duration_lane_period_v1("Kỳ ba tháng kết thúc ngày 31/03/2025", context)
+    for change in ({"fiscal_year_end": "2025-06-30"}, {"first_months_of_fiscal_year": 3}, {"conflict": "X"},
+                   {"reporting_date": "2025-03-31"}):
+        assert _quarter_frame_lane_v1(descriptor, replace(context, **change)) is descriptor

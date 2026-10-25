@@ -660,6 +660,48 @@ def _annual_lane_v1(cell: dict[str, Any], descriptor: Any, report_context: Any,
         (cell["header_text"], granted[1]))
 
 
+# Fixed calendar quarter windows (month-day). Used ONLY to check an explicitly printed lane window against a printed
+# "Quý q năm y" report frame that prints no reporting date; never to create a period key or a reporting date.
+_QUARTER_START = {1: "01-01", 2: "04-01", 3: "07-01", 4: "10-01"}
+_QUARTER_END = {1: "03-31", 2: "06-30", 3: "09-30", 4: "12-31"}
+
+
+def _quarter_frame_lane_v1(descriptor: Any, context: Any) -> Any:
+    """CURRENT / COMPARATIVE of an EXPLICIT printed window under a printed quarter frame, else the descriptor unchanged.
+
+    The window must end on the frame quarter's calendar end in the frame year (CURRENT) or the prior year
+    (COMPARATIVE), and be that year-to-date, that quarter alone, or 3 / 3q months ended. Any printed evidence of a
+    non-calendar fiscal year, a printed reporting date, or a conflicting frame leaves the role unresolved.
+    """
+    if (descriptor.basis != "DURATION" or descriptor.role is not None or descriptor.key is None
+            or descriptor.resolution != "EXPLICIT"):
+        return descriptor
+    quarter, year = context.quarter, context.year
+    if (context.conflict or context.reporting_date or type(quarter) is not int or quarter not in _QUARTER_END
+            or type(year) is not int or context.first_months_of_fiscal_year
+            or (context.fiscal_year_end and context.fiscal_year_end[5:] != "12-31")
+            or (context.range_start and context.range_start[5:] != "01-01")
+            or context.months not in (None, 3, 3 * quarter)):
+        return descriptor
+    fields = dict(descriptor.fields)
+    end = fields.get("end")
+    if type(end) is not str or len(end) != 10 or end[5:] != _QUARTER_END[quarter]:
+        return descriptor
+    if fields.get("grain") == "RANGE" and type(fields.get("start")) is str and fields["start"][:4] == end[:4] \
+            and fields["start"][5:] in {"01-01", _QUARTER_START[quarter]}:
+        shape = f"RANGE:{fields['start'][5:]}..{end[5:]}"
+    elif fields.get("grain") == "MONTHS_ENDED" and fields.get("months") in {3, 3 * quarter}:
+        shape = f"MONTHS_ENDED:{fields['months']}:{end[5:]}"
+    else:
+        return descriptor
+    role = {year: "CURRENT", year - 1: "COMPARATIVE"}.get(int(end[:4]))
+    if role is None:
+        return descriptor
+    return PeriodDescriptor("DURATION", role, descriptor.key, "QUARTER_FRAME_BOUND",
+                            descriptor.fields + (("quarter_frame", f"Q{quarter}:{year}"), ("window_shape", shape)),
+                            descriptor.evidence + context.evidence)
+
+
 def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
                allowed_units: set[str], period_contexts: dict[int, Any],
                table_policies: dict[tuple[str, str, str], dict[str, Any]],
@@ -719,6 +761,7 @@ def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
                 descriptor = duration_lane_period_v1(cell["header_text"], period_contexts[cell["document_ordinal"]])
                 descriptor = _annual_lane_v1(cell, descriptor, period_contexts[cell["document_ordinal"]],
                     (annual_contexts or {}).get(cell["document_ordinal"]))
+                descriptor = _quarter_frame_lane_v1(descriptor, period_contexts[cell["document_ordinal"]])
                 if (descriptor.basis != "DURATION" or descriptor.role not in {"CURRENT", "COMPARATIVE"}
                         or canonical_period_key_v1(descriptor.key) != canonical_period_key_v1(cell["period_key"])
                         or canonical_period_key_v1(cell["period_key"]) is None):
@@ -738,6 +781,10 @@ def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
                 values.append(parsed)
             if reason is None and {p["role"] for p in periods} != {"CURRENT", "COMPARATIVE"}:
                 reason = "SOURCE_PERIOD_ROLE_PAIR_NOT_CURRENT_AND_COMPARATIVE"
+            framed = [p for p in periods if p["resolution"] == "QUARTER_FRAME_BOUND"]
+            if reason is None and framed and (len(framed) != len(periods)
+                                              or len({p["fields"]["window_shape"] for p in framed}) != 1):
+                reason = "SOURCE_PERIOD_QUARTER_FRAME_SHAPES_DIFFER"
         if reason is not None:
             retained.extend({"cell": c, "adapter_disposition": reason} for c in own)
             continue
