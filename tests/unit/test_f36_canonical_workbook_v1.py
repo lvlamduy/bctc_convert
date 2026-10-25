@@ -48,10 +48,12 @@ def test_tm_numbers_are_exactly_the_canonical_coefficients_with_source(trial, te
     assert receipt["status"] == "PASS_EXACT_READBACK" and receipt["financial_acceptance"] is False
     assert receipt["tm_values"] == 2 and receipt["canonical_mappings"] == 1
     tm = _rows(payload, "TM")
-    assert tm[0][3:] == [f"DURATION:YEAR:{y}|{f}" for y in (2025, 2024) for f in ("value", "unit", "role", "source")]
+    # export_v1's period order: keys without an ISO date sort ascending (the existing pilot convention).
+    assert tm[0][3:] == [f"DURATION:YEAR:{y}|{f}" for y in (2024, 2025) for f in ("value", "unit", "role", "source")]
+    vid = trial["mappings"][0]["source_refs"][0]["locator"]["page_json_version_id"]
     row = next(r for r in tm[1:] if r[1] == 1206)
-    assert row[3:7] == [1, "MILLION_VND", "CURRENT", f"p64/s1/t1/r1/col2@{trial['mappings'][0]['source_refs'][0]['locator']['page_json_version_id']}"]
-    assert row[7:9] == [1, "MILLION_VND"] and row[9] == "COMPARATIVE"
+    assert row[3:7] == [1, "MILLION_VND", "COMPARATIVE", f"p64/s1/t1/r1/col3@{vid}"]
+    assert row[7:11] == [1, "MILLION_VND", "CURRENT", f"p64/s1/t1/r1/col2@{vid}"]
     assert all(r[3] is None for r in tm[1:] if r[1] != 1206)  # no other template row carries a number
     dimensional = _rows(payload, "DIMENSIONAL")
     assert dimensional[0][-2:] == ["ledger_class", "canonical_status"]
