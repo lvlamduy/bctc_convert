@@ -1996,10 +1996,52 @@ def _family37_observation_period_scope_v1(
         and layout_scope.get("semantic_role") == semantic_role
     ):
         return canonical_clone_v1(layout_scope)
-    return _family37_period_scope_v1(
+    scope = _family37_period_scope_v1(
         observation.get("duration_surface_axis", []),
         semantic_role=semantic_role,
     )
+    role_axes = observation.get("role_duration_surface_axes")
+    if type(role_axes) is not dict:
+        return scope
+    # Separate GENERAL / SPECIFIC tables: each role's printed window is parsed on its
+    # own; any veto or difference makes the summed lane's scope invalid (HOLD), it
+    # is never inherited from the GENERAL table.
+    windows = [
+        {
+            key: value
+            for key, value in _family37_period_scope_v1(
+                role_axes.get(role, []), semantic_role=semantic_role
+            ).items()
+            if key not in {"raw_surface_axis", "receipt_id"}
+        }
+        for role in ("CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC")
+    ]
+    if not windows[0]["reasons"] and windows[0] == windows[1]:
+        return scope
+    material = {
+        key: canonical_clone_v1(value)
+        for key, value in scope.items()
+        if key != "receipt_id"
+    }
+    material.update(
+        {
+            "basis": "INVALID_RANGE",
+            "raw_surface_axis": [
+                *role_axes.get("CUSTOMER_GENERAL", []),
+                *role_axes.get("CUSTOMER_SPECIFIC", []),
+            ],
+            "reasons": [
+                *windows[0]["reasons"],
+                *windows[1]["reasons"],
+                "SEPARATE_ROLE_DURATION_WINDOWS_DIFFER",
+            ],
+        }
+    )
+    return {
+        **material,
+        "receipt_id": "gjcrpefav1:period-scope:"
+        + canonical_json_sha256_v1(material),
+    }
 
 
 def _family37_exact_root_lane_for_observation_v1(
@@ -2046,6 +2088,23 @@ def _family37_exact_root_lane_for_observation_v1(
         if allowed and compatibility == "EXACT_COMPATIBLE":
             matches.append(semantic_role)
     return matches[0] if len(matches) == 1 else None
+
+
+def _family37_calendar_year_endpoints_only_v1(
+    scope: Mapping[str, Any], calendar_year: int | None
+) -> bool:
+    """Every date printed in the scope's raw surfaces is 01/01 or 31/12 of the year."""
+
+    if calendar_year is None:
+        return False
+    raw_axis = scope.get("raw_surface_axis")
+    dates = _family37_source_dates_v1(
+        " | ".join(raw_axis) if type(raw_axis) is list else ""
+    )
+    if dates is None:
+        return False
+    endpoints = {date(calendar_year, 1, 1), date(calendar_year, 12, 31)}
+    return all(item in endpoints for item in dates)
 
 
 def _family37_period_compatibility_v1(
@@ -2100,6 +2159,16 @@ def _family37_period_compatibility_v1(
         if full_year_equivalent:
             if detail.get("calendar_year") != root.get("calendar_year"):
                 return False, "CALENDAR_YEAR_CONFLICT"
+            # A shared first year and a count of twelve are not a window: every printed
+            # date of BOTH sides must be an endpoint of that calendar year, so an
+            # off-calendar fiscal window (e.g. 01/07/2025-30/06/2026) never passes.
+            if not all(
+                _family37_calendar_year_endpoints_only_v1(
+                    scope, detail.get("calendar_year")
+                )
+                for scope in (detail, root)
+            ):
+                return False, "FULL_YEAR_WINDOW_NOT_THE_CALENDAR_YEAR"
             return True, "FULL_YEAR_EQUIVALENT_TWELVE_MONTH_SCOPE"
         return False, "DURATION_BASIS_CONFLICT"
     if (
@@ -2147,6 +2216,21 @@ def _family37_layout_period_scope_v1(
         )
     )
     if not is_full_year_surface:
+        return scope
+    # The annual shorthand only refines a scope that prints no other temporal
+    # assertion: a printed date (valid or not), month count, conflicting range or
+    # non-Q4 quarter keeps the parsed scope and its vetoes (never rewritten).
+    explicit_dates = _family37_source_dates_v1(narrative_exact)
+    if (
+        scope["reasons"]
+        or explicit_dates is None
+        or explicit_dates
+        or _family37_numeric_month_token_v1(surface) is not None
+        or _family37_month_count_v1(surface) is not None
+        or scope["basis"] not in {"AMBIGUOUS_WITHIN_YEAR", "SINGLE_QUARTER"}
+        or scope["quarter_ordinal"] not in {None, 4}
+        or scope["calendar_year"] != years[0]
+    ):
         return scope
     material = {
         key: canonical_clone_v1(value)
@@ -3284,6 +3368,16 @@ def _customer_separate_role_observations(
                     canonical_clone_v1(general["region"]),
                     canonical_clone_v1(specific["region"]),
                 ],
+                # Both roles' own printed duration surfaces, so the period scope is
+                # proven from each table (equal lane_keys are only semantic aliases).
+                "role_duration_surface_axes": {
+                    "CUSTOMER_GENERAL": canonical_clone_v1(
+                        general["duration_surface_by_lane"][lane]
+                    ),
+                    "CUSTOMER_SPECIFIC": canonical_clone_v1(
+                        specific["duration_surface_by_lane"][lane]
+                    ),
+                },
                 "role_axis": {
                     "CUSTOMER_GENERAL": general["money_column_ordinals"][lane],
                     "CUSTOMER_SPECIFIC": specific["money_column_ordinals"][lane],

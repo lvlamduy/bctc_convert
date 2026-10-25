@@ -9,6 +9,7 @@ import pytest
 from bctc_ai.evaluation.gemini_json_credit_risk_provision_expense_family_v1 import (
     GeminiJsonCreditRiskProvisionExpenseFamilyV1Error,
     _apply_document_repairs,
+    _family37_layout_period_scope_v1,
     _family37_period_compatibility_v1,
     _family37_period_scope_v1,
     build_credit_risk_provision_expense_source_row_coverage_receipt_v1,
@@ -2906,3 +2907,230 @@ def test_relative_word_cannot_erase_invalid_explicit_written_date() -> None:
     assert not allowed
     assert detail["basis"] == "INVALID_DATE"
     assert detail["reasons"] == ["INVALID_CALENDAR_DATE"]
+
+
+# F37_PERIOD_01: a full-year / twelve-month equivalence needs the calendar window itself.
+
+
+@pytest.mark.parametrize(
+    "detail_surface",
+    ["Cho năm tài chính kết thúc ngày 31/12/2025", "Từ 01/01/2025 đến 31/12/2025"],
+)
+def test_calendar_full_year_matches_calendar_twelve_month_root(
+    detail_surface: str,
+) -> None:
+    detail = _family37_period_scope_v1(detail_surface, semantic_role="CURRENT_PERIOD")
+    root = _family37_period_scope_v1(
+        "Lũy kế 12 tháng từ đầu năm 2025", semantic_role="CURRENT_PERIOD"
+    )
+
+    assert detail["basis"] == "FULL_YEAR"
+    assert (root["basis"], root["elapsed_month_count"]) == ("ELAPSED_FROM_YEAR_START", 12)
+    assert _family37_period_compatibility_v1(detail, root) == (
+        True,
+        "FULL_YEAR_EQUIVALENT_TWELVE_MONTH_SCOPE",
+    )
+
+
+@pytest.mark.parametrize(
+    ("detail_surface", "root_surface"),
+    [
+        ("Từ 01/07/2025 đến 30/06/2026", "Lũy kế từ đầu năm, từ 01/01/2025 đến 31/12/2025"),
+        ("Từ 01/07/2025 đến 30/06/2026", "Lũy kế 12 tháng từ đầu năm 2025"),
+        ("Cho năm tài chính kết thúc ngày 30/06/2026", "Lũy kế 12 tháng từ đầu năm 2026"),
+    ],
+)
+def test_off_calendar_full_year_never_matches_calendar_twelve_months(
+    detail_surface: str, root_surface: str
+) -> None:
+    detail = _family37_period_scope_v1(detail_surface, semantic_role="CURRENT_PERIOD")
+    root = _family37_period_scope_v1(root_surface, semantic_role="CURRENT_PERIOD")
+
+    assert detail["basis"] == "FULL_YEAR"
+    assert root["basis"] == "ELAPSED_FROM_YEAR_START"
+    assert _family37_period_compatibility_v1(detail, root) == (
+        False,
+        "FULL_YEAR_WINDOW_NOT_THE_CALENDAR_YEAR",
+    )
+
+
+def _twelve_month_primary_page() -> dict[str, Any]:
+    page = _primary_page("(100)", "(80)")
+    columns = page["sections"][0]["tables"][0]["columns"]
+    for column, year in zip(columns, (2025, 2024), strict=True):
+        column["header_path_exact"] = [f"Lũy kế 12 tháng từ đầu năm {year}", "Triệu đồng"]
+    return page
+
+
+@pytest.mark.parametrize(
+    ("current_title", "comparative_title", "expected"),
+    [
+        ("Từ 01/01/2025 đến 31/12/2025", "Từ 01/01/2024 đến 31/12/2024", READY),
+        ("Từ 01/07/2025 đến 30/06/2026", "Từ 01/07/2024 đến 30/06/2025", UNRESOLVED),
+    ],
+)
+def test_off_calendar_movement_cannot_bind_twelve_month_primary_root(
+    current_title: str, comparative_title: str, expected: str
+) -> None:
+    detail = _movement_note(
+        [
+            _movement_table(
+                [_row("Trích lập dự phòng trong kỳ", ["20", "80", "100"])],
+                title=current_title,
+            ),
+            _movement_table(
+                [_row("Trích lập dự phòng trong kỳ", ["15", "65", "80"])],
+                title=comparative_title,
+            ),
+        ]
+    )
+    before = canonical_clone_v1(detail)
+    _indexed, trials, pages = _run_pages(
+        [(VERSION_1, 1, _twelve_month_primary_page()), (VERSION_2, 2, detail)]
+    )
+
+    assert trials[0]["status"] == expected
+    assert same_typed_json_v1(pages[1][VERSION_2], before)
+    if expected == UNRESOLVED:
+        assert trials[0]["mappings"] == []
+
+
+# F37_PERIOD_02: annual layout wording never erases a printed temporal assertion.
+
+
+def test_annual_layout_wording_alone_still_reads_the_full_year() -> None:
+    scope = _family37_layout_period_scope_v1(
+        "Thay đổi dự phòng rủi ro tín dụng trong năm 2024 bao gồm các khoản sau:",
+        semantic_role="COMPARATIVE_PERIOD",
+    )
+
+    assert (scope["basis"], scope["calendar_year"], scope["reasons"]) == ("FULL_YEAR", 2024, [])
+
+
+ANNUAL_WITH_SIX_MONTH_RANGE = (
+    "Thay đổi dự phòng rủi ro tín dụng trong năm 2025, từ 01/01/2025 đến 30/06/2025, "
+    "bao gồm các khoản sau:"
+)
+ANNUAL_WITH_INVALID_DATE = (
+    "Thay đổi dự phòng rủi ro tín dụng trong năm 2025 đến ngày 31/02/2025 bao gồm các khoản sau:"
+)
+
+
+@pytest.mark.parametrize(
+    ("narrative", "basis", "reasons"),
+    [
+        (ANNUAL_WITH_SIX_MONTH_RANGE, "ELAPSED_FROM_YEAR_START", []),
+        (ANNUAL_WITH_INVALID_DATE, "INVALID_DATE", ["INVALID_CALENDAR_DATE"]),
+        (
+            "Thay đổi dự phòng rủi ro tín dụng trong năm 2025 (sáu tháng) bao gồm các khoản sau:",
+            "AMBIGUOUS_WITHIN_YEAR",
+            [],
+        ),
+    ],
+)
+def test_annual_layout_wording_cannot_overwrite_a_printed_window(
+    narrative: str, basis: str, reasons: list[str]
+) -> None:
+    scope = _family37_layout_period_scope_v1(narrative, semantic_role="CURRENT_PERIOD")
+
+    assert scope["basis"] == basis
+    assert scope["reasons"] == reasons
+
+
+@pytest.mark.parametrize("narrative", [ANNUAL_WITH_SIX_MONTH_RANGE, ANNUAL_WITH_INVALID_DATE])
+def test_annual_layout_with_a_printed_window_is_not_exported(narrative: str) -> None:
+    note = _annual_layout_bound_movement_page()
+    note["sections"][0]["narratives_exact"][1] = narrative
+    before = canonical_clone_v1(note)
+    primary = _primary_page_with_exact_ranges(
+        "(999)",
+        "(888)",
+        current_end="31/12/2025",
+        comparative_end="31/12/2024",
+    )
+
+    _indexed, trials, pages = _run_pages([(VERSION_1, 1, primary), (VERSION_2, 2, note)])
+
+    assert trials[0]["status"] == UNRESOLVED
+    assert trials[0]["mappings"] == []
+    assert same_typed_json_v1(pages[1][VERSION_2], before)
+
+
+# F37_PERIOD_03: separate GENERAL / SPECIFIC tables each prove their own window.
+
+
+def _separate_role_note(general_headers: list[str], specific_headers: list[str]) -> dict[str, Any]:
+    def role_section(role_label: str, headers: list[str], values: list[str]) -> dict[str, Any]:
+        return {
+            "content_kind": "FINANCIAL_NOTE",
+            "narratives_exact": [
+                f"Biến động {role_label} cho các khoản cho vay khách hàng trong kỳ như sau:"
+            ],
+            "statement_type": "NOT_APPLICABLE",
+            "tables": [
+                {
+                    "columns": [
+                        {"header_path_exact": [header], "value_kind": "MONEY"}
+                        for header in headers
+                    ],
+                    "continuation": "NONE",
+                    "rows": [_row("Trích lập dự phòng trong kỳ", values)],
+                    "title_exact": None,
+                    "unit_exact": "Triệu VND",
+                }
+            ],
+            "title_exact": None,
+        }
+
+    return {
+        "completion": {"all_relevant_content_transcribed": True, "uncertainty_exact": []},
+        "sections": [
+            role_section("dự phòng chung", general_headers, ["20", "15"]),
+            role_section("dự phòng cụ thể", specific_headers, ["80", "65"]),
+        ],
+        "status": "FINANCIAL_NOTE_CONTENT",
+    }
+
+
+THREE_MONTHS = ["Kỳ ba tháng kết thúc ngày 31/03/2025", "Kỳ ba tháng kết thúc ngày 31/03/2024"]
+
+
+@pytest.mark.parametrize("exact_root", [False, True])
+@pytest.mark.parametrize(
+    ("specific_headers", "expected"),
+    [
+        (THREE_MONTHS, READY),
+        # Same semantic aliases, different printed window: summed before the fix.
+        (["Kỳ sáu tháng kết thúc ngày 30/06/2025", "Kỳ sáu tháng kết thúc ngày 30/06/2024"], UNRESOLVED),
+        # A different printed year: before the fix the 2023 column was summed into a lane.
+        (["Kỳ ba tháng kết thúc ngày 31/03/2023", "Kỳ ba tháng kết thúc ngày 31/03/2024"], UNRESOLVED),
+        # Explicit range / invalid date: already fail closed at the lane-axis gate.
+        (["Từ 01/02/2025 đến 31/03/2025", "Kỳ ba tháng kết thúc ngày 31/03/2024"], None),
+        (["Kỳ ba tháng kết thúc ngày 31/02/2025", "Kỳ ba tháng kết thúc ngày 31/03/2024"], None),
+    ],
+)
+def test_specific_table_never_inherits_the_general_window(
+    specific_headers: list[str], expected: str | None, exact_root: bool
+) -> None:
+    note = _separate_role_note(THREE_MONTHS, specific_headers)
+    before = canonical_clone_v1(note)
+    primary = (
+        _primary_page_with_exact_ranges("(100)", "(80)")
+        if exact_root
+        else _primary_page("(100)", "(80)")
+    )
+
+    _indexed, trials, pages = _run_pages([(VERSION_1, 1, primary), (VERSION_2, 2, note)])
+
+    assert same_typed_json_v1(pages[1][VERSION_2], before)
+    mapped = _mapped(trials[0])
+    if expected == READY:
+        assert trials[0]["status"] == READY
+        assert [cell["coefficient"] for cell in mapped["CUSTOMER_PROVISION"]["values"]] == [100, 80]
+        assert len(mapped["CUSTOMER_PROVISION"]["source_refs"]) == 4
+        return
+    if expected is not None:
+        assert trials[0]["status"] == expected
+        assert "F37_DETAIL_PRIMARY_DURATION_SCOPE_CONFLICT" in trials[0]["reasons"]
+    assert trials[0]["status"] != READY
+    assert not {"CUSTOMER_PROVISION", "CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC"} & set(mapped)
