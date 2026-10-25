@@ -203,7 +203,6 @@
             "(Hoàn nhập)/Trích lập dự phòng cho hoạt động mua nợ",
             "(Hoàn nhập)/Trích lập dự phòng chung cho hoạt động mua nợ",
             "Trích lập/(Hoàn nhập) dự phòng cho hoạt động mua nợ",
-            "Số hoàn nhập dự phòng rủi ro cho các khoản bán nợ",
             "Số trích lập dự phòng rủi ro hoạt động mua nợ",
             "Chi phí dự phòng hoạt động mua nợ",
             "(Hoàn nhập)/Chi phí dự phòng hoạt động mua nợ",
@@ -211,7 +210,8 @@
             "(Hoàn nhập)/Trích lập chi phí dự phòng rủi ro hoạt động mua nợ",
             "Biến động dự phòng các khoản phải thu từ hợp đồng mua nợ",
             "Hoàn nhập dự phòng chung hoạt động mua nợ",
-            "Hoàn nhập dự phòng cụ thể hoạt động mua nợ"
+            "Hoàn nhập dự phòng cụ thể hoạt động mua nợ",
+            "Trích lập dự phòng chung cho hoạt động mua nợ"
           ],
           "within_role": null
         }
@@ -277,7 +277,8 @@
             "(Hoàn nhập)/Trích lập dự phòng cho các khoản thư tín dụng trả chậm",
             "Trích lập/(Hoàn nhập) dự phòng cho các khoản thư tín dụng trả chậm",
             "Hoàn nhập dự phòng chung cho các khoản thư tín dụng trả chậm có điều khoản thanh toán ngay",
-            "Trích lập dự phòng chung cho các khoản thư tín dụng trả chậm có điều khoản thanh toán ngay"
+            "Trích lập dự phòng chung cho các khoản thư tín dụng trả chậm có điều khoản thanh toán ngay",
+            "(Hoàn nhập)/Trích lập dự phòng chung cho các khoản thư tín dụng trả chậm có điều khoản thanh toán ngay"
           ],
           "within_role": null
         }
@@ -311,6 +312,7 @@
             "Chi phí dự phòng rủi ro cho các khoản phải thu",
             "(Hoàn nhập)/Chi phí dự phòng rủi ro cho các khoản phải thu",
             "Hoàn nhập dự phòng cho khoản phải thu từ hợp đồng bán nợ",
+            "Số hoàn nhập dự phòng rủi ro cho các khoản bán nợ",
             "Hoàn nhập dự phòng cho các khoản phải thu khó đòi khác",
             "Trích lập/(Hoàn nhập) dự phòng cho các khoản phải thu khó đòi khác",
             "Hoàn nhập dự phòng phải thu khó đòi khác",

@@ -3265,3 +3265,54 @@ def test_candidate_disagreeing_with_source_authority_fails_closed_for_its_docume
         indexed_query_evidence=indexed, trials=trials, page_json_by_document=pages, compiled_specs=_compiled()
     )
     assert coverage["violation_count"] == 0
+
+
+def test_debt_sale_receivable_reversal_is_other_provision_not_purchased_debt() -> None:
+    # FULL271 doc 92 (NAB 2025 annual) prints separate note references: customer loans (10.1), debt-SALE receivables
+    # (14.4) and debt-PURCHASE activity (9); NAB's own Q4 report names the same (4.349) "phải thu" (receivables).
+    rows = [
+        _row("Số trích lập dự phòng rủi ro cho vay khách hàng", ["2.437.439", "525.251"]),
+        _row("Số hoàn nhập dự phòng rủi ro cho các khoản bán nợ", ["-", "(4.349)"]),
+        _row("Số trích lập dự phòng rủi ro hoạt động mua nợ", ["25.887", "-"]),
+        _row(None, ["2.463.326", "520.902"], kind="TOTAL"),
+    ]
+    _indexed, trials, _pages = _run_pages([(VERSION_1, 1, _normal_page(rows))])
+
+    assert trials[0]["status"] == READY
+    mapped = _mapped(trials[0])
+    assert {ref["label_exact"] for ref in mapped["OTHER_PROVISION"]["source_refs"]} == {
+        "Số hoàn nhập dự phòng rủi ro cho các khoản bán nợ"
+    }
+    assert [cell["coefficient"] for cell in mapped["OTHER_PROVISION"]["values"]][1] == -4349
+    assert {ref["label_exact"] for ref in mapped["PURCHASED_DEBT_PROVISION"]["source_refs"]} == {
+        "Số trích lập dự phòng rủi ro hoạt động mua nợ"
+    }
+    assert [cell["coefficient"] for cell in mapped["PURCHASED_DEBT_PROVISION"]["values"]][0] == 25887
+
+
+def test_general_provision_rows_of_other_populations_keep_their_own_roles() -> None:
+    # FULL271 docs 225 / 231 (TPB 2025 annual): "dự phòng chung" rows for debt purchase (note 12) and for deferred-
+    # payment L/Cs (note 17.4) must never fall into the customer general provision by the shorter
+    # scoped prefix "Trích lập dự phòng chung" / "(Hoàn nhập)/Trích lập dự phòng chung".
+    rows = [
+        _row("Dự phòng chung cho vay khách hàng trích lập trong năm\n(Thuyết minh 11.1)", ["403.223", "338.044"]),
+        _row("Dự phòng cụ thể cho vay khách hàng trích lập trong năm\n(Thuyết minh 11.2)", ["2.814.397", "3.876.224"]),
+        _row("Trích lập dự phòng chung cho hoạt động mua nợ trong năm\n(Thuyết minh 12)", ["2.495", "5.099"]),
+        _row(
+            "(Hoàn nhập)/trích lập dự phòng chung cho các khoản thư tín dụng\n"
+            "trả chậm có điều khoản thanh toán ngay trích lập trong năm\n(Thuyết minh 17.4)",
+            ["(29.843)", "29.845"],
+        ),
+        _row("Hoàn nhập dự phòng phải thu khó đòi khác trong năm\n(Thuyết minh 17.4)", ["-", "(90.000)"]),
+        _row(None, ["3.190.272", "4.159.212"], kind="TOTAL"),
+    ]
+    _indexed, trials, _pages = _run_pages([(VERSION_1, 1, _normal_page(rows))])
+
+    assert trials[0]["status"] == READY
+    mapped = _mapped(trials[0])
+    assert [cell["coefficient"] for cell in mapped["CUSTOMER_GENERAL"]["values"]] == [403223, 338044]
+    assert [cell["coefficient"] for cell in mapped["PURCHASED_DEBT_PROVISION"]["values"]] == [2495, 5099]
+    # The L/C row keeps the bank's reviewed off-balance classification (TPB's other reports, same row label family).
+    assert [cell["coefficient"] for cell in mapped["OFF_BALANCE_COMMITMENT_PROVISION"]["values"]] == [-29843, 29845]
+    assert [cell["coefficient"] for cell in mapped["OTHER_PROVISION"]["values"]] == [0, -90000]
+    assert [cell["coefficient"] for cell in mapped["FAMILY_ROOT_TOTAL"]["values"]] == [3190272, 4159212]
