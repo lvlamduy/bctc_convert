@@ -2093,7 +2093,13 @@ def _family37_exact_root_lane_for_observation_v1(
 def _family37_calendar_year_endpoints_only_v1(
     scope: Mapping[str, Any], calendar_year: int | None
 ) -> bool:
-    """Every date printed in the scope's raw surfaces is 01/01 or 31/12 of the year."""
+    """The scope's printed dates can only describe the calendar year itself.
+
+    Every printed date is a calendar-year boundary (01/01 or 31/12; an off-calendar
+    window prints e.g. 01/07 or 30/06), and a parsed range with distinct endpoints
+    is exactly 01/01-31/12 of ``calendar_year``. A lone or repeated boundary date
+    (a report-frame or legal-reference date in the surfaces) does not form a range.
+    """
 
     if calendar_year is None:
         return False
@@ -2101,10 +2107,13 @@ def _family37_calendar_year_endpoints_only_v1(
     dates = _family37_source_dates_v1(
         " | ".join(raw_axis) if type(raw_axis) is list else ""
     )
-    if dates is None:
+    if dates is None or any((item.month, item.day) not in {(1, 1), (12, 31)} for item in dates):
         return False
-    endpoints = {date(calendar_year, 1, 1), date(calendar_year, 12, 31)}
-    return all(item in endpoints for item in dates)
+    start, end = scope.get("start_date"), scope.get("end_date")
+    return start == end or (start, end) == (
+        date(calendar_year, 1, 1).isoformat(),
+        date(calendar_year, 12, 31).isoformat(),
+    )
 
 
 def _family37_period_compatibility_v1(

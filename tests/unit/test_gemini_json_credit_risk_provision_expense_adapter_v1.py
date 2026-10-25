@@ -3134,3 +3134,66 @@ def test_specific_table_never_inherits_the_general_window(
         assert "F37_DETAIL_PRIMARY_DURATION_SCOPE_CONFLICT" in trials[0]["reasons"]
     assert trials[0]["status"] != READY
     assert not {"CUSTOMER_PROVISION", "CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC"} & set(mapped)
+
+
+STB_ROOT_TITLE = (
+    "NGÂN HÀNG THƯƠNG MẠI CỔ PHẦN SÀI GÒN THƯƠNG TÍN\nBIỂU SỐ: B03a/TCTD\n"
+    "Ban hành theo Thông tư 49/2014/TT-NHNN ngày 31/12/2014 của Thống đốc NHNN VN\n"
+    "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG\nQúy IV.2025"
+)
+BAB_ROOT_TITLE = (
+    "Ngân hàng Thương mại Cổ phần Bắc Á\nBÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG LẺ GIỮA NIÊN ĐỘ\n"
+    "cho Quý 4 kết thúc ngày 31 tháng 12 năm 2025"
+)
+
+
+def test_full_year_root_with_a_legal_reference_date_still_matches_the_calendar_year() -> None:
+    # FULL271 doc 198 shape: a circular's issuance date in the root title is not a window.
+    detail = _family37_period_scope_v1(
+        ["Kỳ này", "Các thông tin trình bày trong phần này: kỳ này bắt đầu từ 01/01/2025 đến 31/12/2025"],
+        semantic_role="CURRENT_PERIOD",
+    )
+    root = _family37_period_scope_v1(
+        ["Lũy kế từ đầu năm", "Năm nay", "(5)", STB_ROOT_TITLE], semantic_role="CURRENT_PERIOD"
+    )
+
+    assert (detail["basis"], root["basis"], root["elapsed_month_count"]) == (
+        "FULL_YEAR", "ELAPSED_FROM_YEAR_START", 12
+    )
+    assert _family37_period_compatibility_v1(detail, root) == (
+        True, "FULL_YEAR_EQUIVALENT_TWELVE_MONTH_SCOPE"
+    )
+
+
+def test_full_year_root_lane_printing_two_year_ends_is_held() -> None:
+    # FULL271 docs 13 / 19 shape: the comparative root lane prints 31/12/2024 and the report frame's 31/12/2025,
+    # which the parser reads as a 2024-12-31..2025-12-31 range; it never acquires calendar-2024 authority.
+    current = _family37_period_scope_v1(
+        ["Lũy kế từ đầu kỳ đến ngày", "31/12/2025\ntriệu đồng", BAB_ROOT_TITLE], semantic_role="CURRENT_PERIOD"
+    )
+    comparative = _family37_period_scope_v1(
+        ["Lũy kế từ đầu kỳ đến ngày", "31/12/2024\ntriệu đồng", BAB_ROOT_TITLE], semantic_role="COMPARATIVE_PERIOD"
+    )
+    detail = {
+        role: _family37_layout_period_scope_v1(text, semantic_role=role)
+        for role, text in (
+            ("CURRENT_PERIOD", "Thay đổi dự phòng rủi ro tín dụng đến hết Quý 4 năm 2025 bao gồm các khoản sau:"),
+            ("COMPARATIVE_PERIOD", "Thay đổi dự phòng rủi ro tín dụng trong năm 2024 bao gồm các khoản sau:"),
+        )
+    }
+
+    assert _family37_period_compatibility_v1(detail["CURRENT_PERIOD"], current)[0]
+    assert (comparative["start_date"], comparative["end_date"]) == ("2024-12-31", "2025-12-31")
+    assert _family37_period_compatibility_v1(detail["COMPARATIVE_PERIOD"], comparative) == (
+        False, "FULL_YEAR_WINDOW_NOT_THE_CALENDAR_YEAR"
+    )
+
+
+def test_year_end_to_year_end_range_is_not_the_first_calendar_year() -> None:
+    detail = _family37_period_scope_v1("Từ 31/12/2024 đến 31/12/2025", semantic_role="CURRENT_PERIOD")
+    root = _family37_period_scope_v1("Lũy kế 12 tháng từ đầu năm 2024", semantic_role="CURRENT_PERIOD")
+
+    assert (detail["basis"], detail["calendar_year"]) == ("FULL_YEAR", 2024)
+    assert _family37_period_compatibility_v1(detail, root) == (
+        False, "FULL_YEAR_WINDOW_NOT_THE_CALENDAR_YEAR"
+    )
