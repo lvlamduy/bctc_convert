@@ -219,7 +219,9 @@ axes:
                               owner: [EMPLOYEE_EXPENSE]}
       EMPLOYEE_BENEFIT: {name: Chi trợ cấp, all_of: [[tro cap]]}
       UNIFORM_EXPENSE: {name: "Chi trang phục giao dịch, bảo hộ lao động", all_of: [[trang phuc], [bao ho lao dong]]}
-      OTHER_EMPLOYEE_EXPENSE: {name: Chi khác cho nhân viên, all_of: [[chi khac cho nhan vien], [chi phi khac cho nhan vien]],
+      # "Chi khác cho cán bộ, nhân viên" (actual FULL doc 20): both phrases required, never a bare "cán bộ".
+      OTHER_EMPLOYEE_EXPENSE: {name: Chi khác cho nhân viên, all_of: [[chi khac cho nhan vien], [chi phi khac cho nhan vien],
+                                                                      [chi khac cho can bo, nhan vien]],
                                scoped: {within: [EMPLOYEE_EXPENSE], exact: [chi khac, khac, cac khoan chi khac, chi phi khac]}}
       ASSET_EXPENSE: {name: Chi về tài sản, all_of: [[chi ve tai san], [chi phi ve tai san], [chi phi tai san]], none_of: [[khac]]}
       DEPRECIATION_EXPENSE: {name: Chi phí khấu hao tài sản cố định, all_of: [[khau hao]], none_of: [[loi the thuong mai]]}

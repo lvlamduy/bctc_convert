@@ -203,15 +203,24 @@ def assign_lines_v1(table: NoteTable, family: Family, *, owned_subject: bool = F
         blocked: list[str] = []
         parent_index, by_parent = None, set()  # by_parent: members read only because of the proven parent
         owner_index, via_wrapper = None, None
+        scoped_line, scoped_index = None, None
         if scoped or owned or any(members.get(m, {}).get("not_within") for m in matches):
             parent_line, parent_reason, parent_index = _proven_parent_line(table, index, family)
             owner_line, owner_index = parent_line, parent_index
             if owned and parent_line is None and parent_index is not None:
                 # F36 opt-in (Codex 0150): an owner reached through ONE source-proven transparent wrapper row.
-                # Only the owner rule may look through it; scoped / not_within keep the immediate parent.
+                # not_within keeps the immediate parent.
                 through = _owner_through_wrapper(table, parent_index, family)
                 if through is not None:
                     owner_line, owner_index, via_wrapper = through[0], through[1], parent_index
+            scoped_line, scoped_index, scoped_wrapper = parent_line, parent_index, None
+            if scoped and parent_line is None and parent_index is not None:
+                # A scoped phrase (bare "Chi khác" under "Chi phí cho nhân viên") may look through exactly the same
+                # ONE source-proven transparent wrapper the owner rule uses (declared literal, GROUP, every ORIGINAL
+                # cell JSON null, proven edges); the child still depends on the owner's FINAL MEMBER role.
+                through = _owner_through_wrapper(table, parent_index, family)
+                if through is not None:
+                    scoped_line, scoped_index, scoped_wrapper = through[0], through[1], parent_index
             excluded = [m for m in matches if members.get(m, {}).get("not_within")
                         and (parent_line in members[m]["not_within"] or (parent_line is None and _claims_parent(row)))]
             # An owner-bound line is read only under its proven printed owner (never by amount or position).
@@ -220,11 +229,11 @@ def assign_lines_v1(table: NoteTable, family: Family, *, owned_subject: bool = F
             # Only an explicit owner, or a member ADDED by the proven scoped fallback, depends on the parent;
             # a fully qualified direct label (e.g. "Dự phòng chung cho vay khách hàng") reads on its own.
             by_owner = {m for m in owned if m in matches}
-            added = [m for m in scoped if parent_line in members[m]["scoped"]["within"] and m not in matches]
+            added = [m for m in scoped if scoped_line in members[m]["scoped"]["within"] and m not in matches]
             matches += added
             by_parent = set(added)
             if not by_owner:
-                via_wrapper = None
+                via_wrapper = scoped_wrapper if added else None
             if blocked and len(direct) > 1:
                 # A label matching several lines DIRECTLY stays ambiguous: a missing owner (or not_within) is not
                 # evidence selecting the remaining direct meaning (Codex 0151/0152: payroll + uniform composite).
@@ -252,9 +261,9 @@ def assign_lines_v1(table: NoteTable, family: Family, *, owned_subject: bool = F
             if matches[0] in by_owner and owner_index is not None:
                 depends[index] = (owner_index, owner_line)
                 roles[-1].depends_on = owner_index
-            elif matches[0] in by_parent and parent_index is not None:
-                depends[index] = (parent_index, parent_line)
-                roles[-1].depends_on = parent_index
+            elif matches[0] in by_parent and scoped_index is not None:
+                depends[index] = (scoped_index, scoped_line)
+                roles[-1].depends_on = scoped_index
         else:
             roles.append(RowRole(index, None, "SOURCE_ONLY", "NO_LINE_RULE"))
     printed: dict[str, list[RowRole]] = {}

@@ -503,6 +503,63 @@ def test_wrapper_needs_the_complete_original_value_axis(config):
         assert _roles(table, family)[2][:2] == held
 
 
+def _wrapped_child(child="Chi khác", **kwargs):
+    """_wrapped with another printed child label under the same proven wrapper edge."""
+
+    table = _wrapped(**kwargs)
+    table.rows[2] = replace(table.rows[2], label=child, hierarchy=(*table.rows[1].hierarchy, child))
+    return table
+
+
+def test_scoped_other_reaches_its_owner_through_one_null_trong_do_wrapper(config):
+    # FULL docs 124/125/130/131: "Chi phí cho nhân viên" -> "Trong đó:" -> bare "Chi khác". The scoped phrase looks
+    # through exactly the wrapper the owner rule accepts; the wrapper stays a heading, never a value.
+    family = config.families["OPERATING_EXPENSE"]
+    roles = assign_lines_v1(_wrapped_child(), family)
+    assert (roles[1].disposition, roles[1].reason) == ("HEADING", "NO_VALUES")
+    assert (roles[2].role, roles[2].disposition, roles[2].reason) == (
+        "OTHER_EMPLOYEE_EXPENSE", "MEMBER", "LINE_RULE_VIA_TRANSPARENT_WRAPPER:r1:ORIGINAL_EXACT_UNSHIFTED_SINGLE_TABLE")
+    assert roles[2].depends_on == 0
+    for label in ("Khác", "Chi phí khác", "Các khoản chi khác"):
+        assert _roles(_wrapped_child(label), family)[2][:2] == ("OTHER_EMPLOYEE_EXPENSE", "MEMBER")
+    # Under the asset line the same wrapper reads the asset meaning (its own scoped rule), never the employee one.
+    assert _roles(_wrapped_child(owner="Chi về tài sản"), family)[2][0] != "OTHER_EMPLOYEE_EXPENSE"
+
+
+def test_scoped_other_wrapper_negatives_never_grant_the_owner(config):
+    family = config.families["OPERATING_EXPENSE"]
+    held = (None, "SOURCE_ONLY")
+    for kwargs in ({"wrapper_values": ("-", None)}, {"wrapper_values": ("", None)}, {"wrapper_values": ("0", None)},
+                   {"wrapper_kind": "ITEM"}, {"wrapper": "Bao gồm:"}, {"wrapper": "Trong đó, chi phí"},
+                   {"owner": "Tổng chi phí hoạt động"}):
+        assert _roles(_wrapped_child(**kwargs), family)[2][:2] == held, kwargs
+    shifted = bridged(_wrapped_child(), status="EXACT_WITH_PROVEN_TEXT_COLUMN_SHIFT", column_map={"c1": 2, "c2": 3})
+    merged = _wrapped_child()
+    merged.fragments = [merged.locator(), {**merged.locator(), "physical_page": 38}]
+    id_only = _wrapped_child()
+    id_only.rows[1] = replace(id_only.rows[1], hierarchy=())
+    for table in (shifted, merged, id_only):
+        assert _roles(table, family)[2][:2] == held
+    # A duplicate EMPLOYEE population releases the wrapped scoped child (FINAL MEMBER fixed point).
+    dup = _wrapped_child()
+    dup.rows.append(replace(dup.rows[0], row_id="r3", order=3))
+    for column in dup.columns:
+        dup.cells[("r3", column.column_id)] = ("50", "VALUE")
+    assert _roles(dup, family)[2] == (None, "SOURCE_ONLY", "OWNER_NOT_PROVEN:PARENT_NOT_A_FINAL_MEMBER")
+    plain = replace(family, raw={k: v for k, v in family.raw.items() if k != "transparent_wrappers"})
+    assert _roles(_wrapped_child(), plain)[2] == (None, "SOURCE_ONLY", "NO_LINE_RULE")
+
+
+def test_other_employee_expense_reads_the_printed_staff_label(config):
+    # FULL doc 20 prints "Chi khác cho cán bộ, nhân viên"; both phrases are required (never a bare "cán bộ").
+    family = config.families["OPERATING_EXPENSE"]
+    table = make_table([("Chi phí cho nhân viên", ["100", "90"]), ("Chi khác cho cán bộ, nhân viên", ["5", "6"]),
+                        ("Chi cho cán bộ", ["1", "1"])], [("Năm 2025",), ("Năm 2024",)], title="30. Chi phí hoạt động")
+    roles = _roles(table, family)
+    assert roles[1][:2] == ("OTHER_EMPLOYEE_EXPENSE", "MEMBER")
+    assert roles[2][0] != "OTHER_EMPLOYEE_EXPENSE"
+
+
 def test_document_coverage_separates_observed_unresolved_from_not_observed():
     # Codex 0155/0157: metadata only - FOUND precedence, cells/roles/thresholds untouched.
     from bctc_ai.notes.engine_v1 import COVERAGE_FORMAT, document_coverage_v1
