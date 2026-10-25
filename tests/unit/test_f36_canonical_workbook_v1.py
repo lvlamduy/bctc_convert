@@ -28,12 +28,22 @@ def template():
     return tm_template_rows_v1(ROOT)
 
 
+@pytest.fixture
+def trial(example):
+    """The adapter fixture's READY trial with the engine's DIMENSIONAL cell fields (as real engine cells carry)."""
+    _compiled, trial, _index = deepcopy(example)
+    ledger = trial["notes_ledger"]
+    for cell in ledger["cells"] + [r["cell"] for r in ledger["classifications"]]:
+        cell.setdefault("unit_basis", "TABLE")
+        cell.setdefault("label_exact", "Chi nộp thuế và các khoản phí, lệ phí")
+    return trial
+
+
 def _rows(payload, sheet):
     return [[c.value for c in row] for row in openpyxl.load_workbook(BytesIO(payload))[sheet].iter_rows()]
 
 
-def test_tm_numbers_are_exactly_the_canonical_coefficients_with_source(example, template):
-    _compiled, trial, _index = example
+def test_tm_numbers_are_exactly_the_canonical_coefficients_with_source(trial, template):
     payload, receipt = build_f36_canonical_workbook_v1(DOCUMENT, trial, template, PINS)
     assert receipt["status"] == "PASS_EXACT_READBACK" and receipt["financial_acceptance"] is False
     assert receipt["tm_values"] == 2 and receipt["canonical_mappings"] == 1
@@ -48,8 +58,7 @@ def test_tm_numbers_are_exactly_the_canonical_coefficients_with_source(example, 
     assert [r[-2:] for r in dimensional[1:]] == [["CORE_CANDIDATE", "CANONICAL_MAPPED"]] * 2
 
 
-def test_withheld_cells_keep_their_named_reason_and_never_reach_tm(example, template):
-    _compiled, trial, _index = deepcopy(example)
+def test_withheld_cells_keep_their_named_reason_and_never_reach_tm(trial, template):
     ledger = trial["notes_ledger"]
     ledger["retained"] = [{"cell": c, "adapter_disposition": "EXPLICIT_TWO_LANE_PAIR_NOT_PROVEN"} for c in ledger["cells"]]
     trial["mappings"] = []
@@ -77,20 +86,17 @@ def _broken(trial, kind):
 
 
 @pytest.mark.parametrize("kind", ["duplicate_slot", "lane_order", "not_integer", "foreign_document", "unaligned_ledger"])
-def test_inconsistent_canonical_trials_are_refused(example, template, kind):
-    _compiled, trial, _index = example
+def test_inconsistent_canonical_trials_are_refused(trial, template, kind):
     with pytest.raises(F36CanonicalWorkbookError):
         build_f36_canonical_workbook_v1(DOCUMENT, _broken(trial, kind), template, PINS)
 
 
-def test_rnid_outside_the_supplied_template_is_refused_not_dropped(example, template):
-    _compiled, trial, _index = example
+def test_rnid_outside_the_supplied_template_is_refused_not_dropped(trial, template):
     with pytest.raises(F36CanonicalWorkbookError, match="outside the supplied template"):
         build_f36_canonical_workbook_v1(DOCUMENT, trial, [r for r in template if r[0] != 1206], PINS)
 
 
-def test_a_tampered_tm_number_fails_readback(example, template):
-    _compiled, trial, _index = example
+def test_a_tampered_tm_number_fails_readback(trial, template):
     payload, _receipt = build_f36_canonical_workbook_v1(DOCUMENT, trial, template, PINS)
     workbook = openpyxl.load_workbook(BytesIO(payload))
     row = next(r for r in workbook["TM"].iter_rows(min_row=2) if r[1].value == 1206)
