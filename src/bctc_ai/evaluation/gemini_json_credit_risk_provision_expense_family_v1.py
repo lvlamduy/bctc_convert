@@ -2117,6 +2117,14 @@ def _family37_calendar_year_endpoints_only_v1(
     )
 
 
+def _family37_printed_dates_within_v1(scope: Mapping[str, Any], allowed: set[date]) -> bool:
+    """Every date printed in the scope's raw surfaces is one of ``allowed`` (no printed date also passes)."""
+
+    raw_axis = scope.get("raw_surface_axis")
+    dates = _family37_source_dates_v1(" | ".join(raw_axis) if type(raw_axis) is list else "")
+    return dates is not None and all(item in allowed for item in dates)
+
+
 def _family37_period_compatibility_v1(
     detail: Mapping[str, Any], root: Mapping[str, Any]
 ) -> tuple[bool, str]:
@@ -2187,6 +2195,28 @@ def _family37_period_compatibility_v1(
             ):
                 return False, "FULL_YEAR_WINDOW_NOT_THE_CALENDAR_YEAR"
             return True, "FULL_YEAR_EQUIVALENT_TWELVE_MONTH_SCOPE"
+        first_quarter_equivalent = (
+            {detail_basis, root_basis} == {"SINGLE_QUARTER", "ELAPSED_FROM_YEAR_START"}
+            and all(
+                scope.get("elapsed_month_count") == 3
+                if scope.get("basis") == "ELAPSED_FROM_YEAR_START"
+                else scope.get("quarter_ordinal") == 1
+                for scope in (detail, root)
+            )
+        )
+        if first_quarter_equivalent:
+            # "Quý 1/Y" and "three months from the start of Y" are the same window (FULL271 OCB Q1 reports:
+            # movement "Quý 1/2025" under the root "Số luỹ kế từ đầu năm đến cuối Q1.2025"). Every printed date of
+            # both scopes must be 01/01 or 31/03 of that year; any other quarter stays a basis conflict.
+            year = detail.get("calendar_year")
+            if year is None or year != root.get("calendar_year"):
+                return False, "CALENDAR_YEAR_CONFLICT"
+            if not all(
+                _family37_printed_dates_within_v1(scope, {date(year, 1, 1), date(year, 3, 31)})
+                for scope in (detail, root)
+            ):
+                return False, "FIRST_QUARTER_WINDOW_NOT_PROVEN"
+            return True, "FIRST_QUARTER_EQUIVALENT_THREE_MONTH_SCOPE"
         return False, "DURATION_BASIS_CONFLICT"
     if (
         detail.get("quarter_ordinal") is not None

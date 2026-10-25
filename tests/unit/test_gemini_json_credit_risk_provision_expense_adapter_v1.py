@@ -3316,3 +3316,37 @@ def test_general_provision_rows_of_other_populations_keep_their_own_roles() -> N
     assert [cell["coefficient"] for cell in mapped["OFF_BALANCE_COMMITMENT_PROVISION"]["values"]] == [-29843, 29845]
     assert [cell["coefficient"] for cell in mapped["OTHER_PROVISION"]["values"]] == [0, -90000]
     assert [cell["coefficient"] for cell in mapped["FAMILY_ROOT_TOTAL"]["values"]] == [3190272, 4159212]
+
+
+# A first quarter is exactly the first three elapsed months of its calendar year (FULL271 OCB Q1 reports).
+
+
+def test_first_quarter_movement_matches_three_month_year_to_date_root() -> None:
+    detail = _family37_period_scope_v1(["Quý 1/2025", "Trích lập Dự phòng rủi ro"], semantic_role="CURRENT_PERIOD")
+    root = _family37_period_scope_v1(
+        ["Số luỹ kế từ đầu năm đến cuối Q1.2025", "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG\nQuý 01 năm 2025"],
+        semantic_role="CURRENT_PERIOD",
+    )
+
+    assert (detail["basis"], detail["quarter_ordinal"]) == ("SINGLE_QUARTER", 1)
+    assert (root["basis"], root["elapsed_month_count"]) == ("ELAPSED_FROM_YEAR_START", 3)
+    assert _family37_period_compatibility_v1(detail, root) == (True, "FIRST_QUARTER_EQUIVALENT_THREE_MONTH_SCOPE")
+
+
+@pytest.mark.parametrize(
+    ("detail_surface", "root_surface", "reason"),
+    [
+        ("Quý 2/2025", "Số luỹ kế từ đầu năm đến cuối Q2.2025", "DURATION_BASIS_CONFLICT"),
+        ("Quý 1/2024", "Số luỹ kế từ đầu năm đến cuối Q1.2025", "CALENDAR_YEAR_CONFLICT"),
+        ("Quý 1/2025 (đến ngày 30/04/2025)", "Số luỹ kế từ đầu năm đến cuối Q1.2025", None),
+    ],
+)
+def test_other_quarters_or_windows_never_match_a_three_month_root(detail_surface, root_surface, reason) -> None:
+    detail = _family37_period_scope_v1(detail_surface, semantic_role="CURRENT_PERIOD")
+    root = _family37_period_scope_v1(root_surface, semantic_role="CURRENT_PERIOD")
+
+    allowed, why = _family37_period_compatibility_v1(detail, root)
+
+    assert not allowed
+    if reason is not None:
+        assert why == reason
