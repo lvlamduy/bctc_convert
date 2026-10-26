@@ -233,7 +233,7 @@ That receipt is source review, not a second execution claim.
 
 The initial bridge still needs a separately owned real-store proof. No real
 export coverage, corpus-scale memory/performance result, complete transitive
-consumer-source attestation or financial acceptance is asserted. The approved
+consumer-source attestation or financial acceptance is asserted. The proposed
 consumer-manifest and efficient authenticated-run/session designs need separate
 implementation/review; the current entry point repeats full-run authentication
 for each requested document. Existing frozen/template files remain unchanged.
