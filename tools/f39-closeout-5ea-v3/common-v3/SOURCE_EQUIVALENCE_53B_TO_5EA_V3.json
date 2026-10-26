@@ -1,0 +1,259 @@
+{
+  "schema": "F39_T5_53B_TO_5EA_SOURCE_EQUIVALENCE_STATIC_PROOF_V3",
+  "status": "STATIC_GIT_BLOB_AND_PINNED_METADATA_ONLY_NOT_READER_EXECUTION",
+  "tested_commit": "53b6b16a6818b5f71ccb7285e55ed730c4ae14ae",
+  "runtime_commit": "5ea0499e8745366c8a9cc11246484fabde78ee6c",
+  "direct_parent_verified": true,
+  "exact_git_delta": "A\tdocs/operations/F39_SOURCE_LABEL_T5_UNSEALED_CHECKPOINT_2026-10-26.md\n",
+  "approved_receipt_ref": {
+    "path": "D:\\bctc_bank\\restore-receipts\\CODEX_F39_T5_TESTS_20261026_V1\\f39-t5-nonlegacy-20261026-v2\\test-receipt.json",
+    "sha256": "7acbb5d786678af256db1847f2276031b5c180069c42e4fc607680e11188386a",
+    "size_bytes": 8392
+  },
+  "source_test_file_count": 32,
+  "frozen_file_count": 2,
+  "source_file_proofs": [
+    {
+      "path": "config/families/tm-income-tax-source-label-discrepancies-v1.json",
+      "sha256": "c8788461c2e3aed5068c9ba3c329f39bfd13d2cf8dea7aede724bbff6b017bcf",
+      "size_bytes": 2004,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "scripts/experiments/run_gemini_json_income_tax_accounting_family_v1.py",
+      "sha256": "f94b6c6b732cf259eed04b6a07ca57124f2ae84076111c5429b6e81f2af462fe",
+      "size_bytes": 93811,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "scripts/experiments/run_gemini_json_multitable_hierarchical_accounting_family_v1.py",
+      "sha256": "d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5",
+      "size_bytes": 149733,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
+      "sha256": "370236b18345bea95315e9e41492ea4306dce35b5da0a2fb7dad6b54cdf26d88",
+      "size_bytes": 606504,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "src/bctc_ai/evaluation/gemini_json_income_tax_source_label_discrepancy_v1.py",
+      "sha256": "96f72e7343e20b888414bd1ff9fb62719acf85d6743a27c4e5ba2e0e9aa879f4",
+      "size_bytes": 15735,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py",
+      "sha256": "bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2",
+      "size_bytes": 608721,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_income_tax_raw_money_census_v1.py",
+      "sha256": "e729d294b6aa4104f2b46786b28be2d8b930ca82a1e642c2dc472b1266317da6",
+      "size_bytes": 38033,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_income_tax_source_page_loader_v1.py",
+      "sha256": "3babfd905e5d1dd0636d032c9794da850c13d67fffe01b687fba2db9cf7b4d19",
+      "size_bytes": 11804,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_ancestry_recognition_frontier_v1.py",
+      "sha256": "489a25960765a065c5716480a75bf59303660d653cb80ed018b478942ba9218b",
+      "size_bytes": 18258,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_comparative_flow_policy_v1.py",
+      "sha256": "9f4e3a8ff68106d0fc7274c2bea3215e610ca261c219ba28f4dc674902c5b8ac",
+      "size_bytes": 188677,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_competing_taxable_stages_v1.py",
+      "sha256": "7eeb5f60dfe324289dc3af16576a3018a2024705962e1ff79cbe26c7d75c69df",
+      "size_bytes": 9570,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_document_period_cache_v1.py",
+      "sha256": "4702e84d8a4e59f1c07ef0eb49e73ecb562aeb80507f4d6b30b0cdbce9e632e3",
+      "size_bytes": 43891,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_family_v1.py",
+      "sha256": "e48076ce609e0b56b9f8e0f45ef9bc6b4c1677db6ac6d0f47b3e5ea74de306bc",
+      "size_bytes": 200764,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_first_months_narrative_v1.py",
+      "sha256": "e1ea0840a3408c66879266844c8450b39a366293ad7a76774490f52de733267d",
+      "size_bytes": 8437,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_flow_period_controls_v1.py",
+      "sha256": "da4ea1c4141c80f480788a46befe8e815025a37de854ce83af61d1ba8e4d112c",
+      "size_bytes": 20086,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_frontier_guards_v1.py",
+      "sha256": "ee20a6f0b562fe287bdf3769980261043540e07117bd00eff07351c22f5def84",
+      "size_bytes": 12762,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_named_quarter_ytd_scaffold_v2.py",
+      "sha256": "2aba0e60fa396ce517625072140b38502ba67d57ebcced63597a870744150d5f",
+      "size_bytes": 8198,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_owned_explicit_range_caption_v1.py",
+      "sha256": "e9ce061a5d5069080e8dd1ba43b461c65eeee86e945ec388d3a36b087ab5ac0a",
+      "size_bytes": 10862,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_part_period_catalog_v1.py",
+      "sha256": "1d293b3104fe72306c791c2f7650747898ab34b28c30779c1e469dfa61062b59",
+      "size_bytes": 35149,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_part_period_context_v1.py",
+      "sha256": "c5dcbe916c6e74c22bc93aa18c0e843b051fd8707013e401e88ebebe2af58b17",
+      "size_bytes": 26759,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_payable_subtotal_role_v1.py",
+      "sha256": "b030f4a1ad516723a5239110d452d648e8c3f394faa33cd25593bc25d63aa0b1",
+      "size_bytes": 15289,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_printed_outline_v1.py",
+      "sha256": "6880b90395095b0c6eb1f8fd166b4777dcf9c218ad44be92eed4a98588dcb615",
+      "size_bytes": 11206,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_quarter_endpoint_ytd_scaffold_v1.py",
+      "sha256": "6dd525ed00686212f413475db7b6b223755bee6f65c72644a3f22129d636d92a",
+      "size_bytes": 14297,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_recognition_frontier_v1.py",
+      "sha256": "0b9a09eebd4cdd4a8301f501fc642fda684b7d19b493db7a794965ada4123305",
+      "size_bytes": 23163,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_recognition_rate_effect_v1.py",
+      "sha256": "9ec9de9aa4bed7430a2e719c35f044bfceb8ca138b45a2a057c3ba998a6212eb",
+      "size_bytes": 27343,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_registered_part_period_integration_v1.py",
+      "sha256": "8101a1ecb1123aeead41a99f74e1c6013aa6078cc7d65364c2da789a44e3fc7c",
+      "size_bytes": 45755,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_registered_section_caption_integration_v1.py",
+      "sha256": "b66478ca34497722e3f4c845f01648f09c1e2a212b56d3621ecf994f1442d7e5",
+      "size_bytes": 34191,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_root_controls_v1.py",
+      "sha256": "26d73b4c2e94af03b13662dfb8a6e34b1e0577ec92b4d5093f216aa528db1e4c",
+      "size_bytes": 20424,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_section_caption_repair_v1.py",
+      "sha256": "606b366aba0e4153867eea2b3274aaa3ebb0dae5c6d9358c5512ed7640895e35",
+      "size_bytes": 24482,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_signed_display_v1.py",
+      "sha256": "bcf3770f56dc2fdea214819ee3ec2ad9ffc481e97e9f7d43e87eb3c54774d38d",
+      "size_bytes": 109421,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_source_context_v1.py",
+      "sha256": "825e10a031c51a5cc4b0bd89bd48120e2d0065aabc84055243bd1ae33eb64960",
+      "size_bytes": 13125,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_gemini_json_income_tax_source_label_discrepancy_v1.py",
+      "sha256": "2a374de600efec800461b5a71e6db3e38af6f86dc4c1891f15f5c4279e64156e",
+      "size_bytes": 22215,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_income_tax_variant_graph_v1.py",
+      "sha256": "aa6e92f28fd55b21a70586d22c6675aac731158015b978368c74bc24ede3cebf",
+      "size_bytes": 6355,
+      "tested_git_blob_equals_runtime_git_blob": true
+    },
+    {
+      "path": "tests/unit/test_run_gemini_json_income_tax_accounting_family_v1.py",
+      "sha256": "e76ac65ff34592227fa35100ac19498e332d1d19754528893df475276abbc9c5",
+      "size_bytes": 64505,
+      "tested_git_blob_equals_runtime_git_blob": true
+    }
+  ],
+  "extra_import_origin_file": {
+    "src/bctc_ai/__init__.py": {
+      "sha256": "64493c2a975d7a185a1c3e43d9f2d1c9bac3a3d01eda9caf33c2b3e38a33df74",
+      "size_bytes": 46
+    }
+  },
+  "eol_contract": "Git LF bytes only. Native working CRLF is not normalized or accepted by runtime reader. Future fresh Linux clone must match actual raw source bytes.",
+  "historical_metadata": {
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "mode": "nonlegacy",
+    "status": "PASS_SYNTHETIC_ONLY",
+    "pytest_exit_code": 0,
+    "ruff_exit_code": 0,
+    "selected_test_modules": 28,
+    "reported_caps": [
+      2147483648,
+      2147483648
+    ],
+    "test_import_origins": {
+      "bctc_ai": "/home/bctc/codex-runs/f39-t5-nonlegacy-20261026-v2/repo/src/bctc_ai/__init__.py",
+      "bctc_ai.evaluation.gemini_json_income_tax_family_v1": "/home/bctc/codex-runs/f39-t5-nonlegacy-20261026-v2/repo/src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
+      "bctc_ai.evaluation.gemini_json_income_tax_source_label_discrepancy_v1": "/home/bctc/codex-runs/f39-t5-nonlegacy-20261026-v2/repo/src/bctc_ai/evaluation/gemini_json_income_tax_source_label_discrepancy_v1.py"
+    }
+  },
+  "actual_junit_metadata_read_only": {
+    "sha256": "7305c5a85a180a99b7c0d78239f7fe0a85bdf65759788c2b9c109c87346462fc",
+    "size_bytes": 590865,
+    "suite_tests_including_subtests": 3012,
+    "testcase_nodes": 2889,
+    "distinct_classnames": 28,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0,
+    "qualification": "Existing root-owned JUnit metadata inspected, not tests executed by author. Pinned reader binds report SHA fields but does not reread JUnit/ruff bodies."
+  },
+  "reader_imported_or_executed": false,
+  "project_runtime_tests_AST_compile_lint_WSL_SQL_PDF_provider": false,
+  "financial_acceptance": false
+}

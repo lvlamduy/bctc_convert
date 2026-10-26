@@ -1,0 +1,33 @@
+{
+  "format_version": "F39_CLOSEOUT_5EA_APPROVED_FULL_RUN_PROFILE_V3",
+  "reviewed_and_approved": false,
+  "resolved": false,
+  "expected_head": "5ea0499e8745366c8a9cc11246484fabde78ee6c",
+  "family_id": "INCOME_TAX",
+  "family_run_id": "PENDING_ACTUAL_NEW_FULL_RUN",
+  "sweep_id": "PENDING_ACTUAL_NEW_FULL_SWEEP",
+  "expected_refs": {
+    "sweep": {"sha256": "PENDING", "size_bytes": null},
+    "audit": {"sha256": "PENDING", "size_bytes": null},
+    "results": {"sha256": "PENDING", "size_bytes": null},
+    "corpus_index": {"path": "PENDING_ABSOLUTE_PATH", "sha256": "PENDING", "size_bytes": null}
+  },
+  "metrics": {"document_count": 271, "ready_count": null, "not_observed_count": null, "unresolved_count": null, "mapping_count": null},
+  "selected_page_count": 14945,
+  "full_run_receipt_ref": {"path": "PENDING_ABSOLUTE_PATH", "sha256": "PENDING", "size_bytes": null},
+  "full_run_receipt_bindings": {
+    "head": ["PENDING_ACTUAL_RECEIPT_FIELD"],
+    "run_id": ["PENDING_ACTUAL_RECEIPT_FIELD"],
+    "sweep_sha256": ["PENDING_ACTUAL_RECEIPT_FIELD"],
+    "audit_sha256": ["PENDING_ACTUAL_RECEIPT_FIELD"],
+    "results_sha256": ["PENDING_ACTUAL_RECEIPT_FIELD"],
+    "exit_status": ["PENDING_ACTUAL_RECEIPT_FIELD"]
+  },
+  "synthetic_gate_receipt_ref": {"path": "PENDING_APPROVED_FULL_GATE_PATH", "sha256": "PENDING", "size_bytes": null},
+  "gate_reader_ref": {"path": "PENDING_APPROVED_READER_PATH", "sha256": "PENDING", "size_bytes": null},
+  "negative_admission_axis_sha256": "PENDING_ACTUAL_COMPLETE_WARM_AXIS",
+  "retained_hold_bindings": {
+    "110": {"index_document_sha256": "PENDING", "trial_reasons": ["SOURCE_TRANSCRIPTION_DISCREPANCY"]},
+    "225": {"index_document_sha256": "PENDING", "trial_reasons": ["ALGORITHM_CURRENT_TAX_PARENT_PAYABLE_SUBTOTAL_ROLE_UNPROVEN"]}
+  }
+}

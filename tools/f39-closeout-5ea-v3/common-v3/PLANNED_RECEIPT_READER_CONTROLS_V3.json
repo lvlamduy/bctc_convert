@@ -1,0 +1,109 @@
+{
+  "schema": "F39_FULL_SYNTHETIC_GATE_READER_V3_PLANNED_CONTROLS",
+  "status": "EXECUTABLE_TEST_SOURCE_AUTHORED_BUT_UNCOLLECTED_UNRUN",
+  "reader_ref": {
+    "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-5ea0499e-20261026-v3\\f39_synthetic_gate_reader_v3.py",
+    "sha256": "f1420be9028b3fe59ace246f11d8b2dd2f1d17acac51e2de59b637082d03431d",
+    "size_bytes": 23719
+  },
+  "test_ref": {
+    "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-5ea0499e-20261026-v3\\test_f39_synthetic_gate_reader_v3.py",
+    "sha256": "5a806b3b7bbd1a7e6a157c25616f05818098d471e7de5096ca4394e0e681e734",
+    "size_bytes": 8628
+  },
+  "controls": [
+    {
+      "id": "R01",
+      "input": "Approved exact7ac raw8392-byte full nonlegacy receipt, LF5ea repo with53b parent and sole added docs delta",
+      "expected": "Return VERIFIED_53B_SOURCE_EQUIVALENT_TO_5EA,28modules/35actual source proofs; owner-report scope only"
+    },
+    {
+      "id": "R02",
+      "input": "Focused/L2/failed/incomplete/truncated metadata with caller-computed replacement hash",
+      "expected": "Reject independent approved SHA/bytes, never caller reseal"
+    },
+    {
+      "id": "R03",
+      "input": "Expected commit is53b, c0e, short or annotated5ea",
+      "expected": "Reject; runtimeHEAD strict full5ea"
+    },
+    {
+      "id": "R04",
+      "input": "Different28module list/missing/duplicate module/source hash/frozen hash or source origin",
+      "expected": "Reject exact fixed fullgate axis"
+    },
+    {
+      "id": "R05",
+      "input": "Python3.14/nonzero Ruff/pytest/exit or Boolean exit metadata",
+      "expected": "Reject explicit historical Python3.12/typed0 gates"
+    },
+    {
+      "id": "R06",
+      "input": "Wrong cap/nice or corpus/financial-acceptance report claims",
+      "expected": "Reject historical synthetic boundary; no COMMON resource implication"
+    },
+    {
+      "id": "R07",
+      "input": "Foreign reported import/test-driver origin",
+      "expected": "Reject exact approved origin metadata; no arbitrary callable injection proof claimed"
+    },
+    {
+      "id": "R08",
+      "input": "Runtime actual CRLF with matching Git-normalized status or changed/dirty source",
+      "expected": "Reject actual raw byte hash; no LF normalization"
+    },
+    {
+      "id": "R09",
+      "input": "Runtime source differs from tested53b Git blob or docs-onlydelta changes",
+      "expected": "Reject; same source/Git bridge cannot be generic commit waiver"
+    },
+    {
+      "id": "R10",
+      "input": "Symlink/junction/nonregular/missing receipt/source or identity/bytes drift",
+      "expected": "Reject held metadata/file barriers before success"
+    },
+    {
+      "id": "R11",
+      "input": "Duplicate/nonfinite JSON metadata",
+      "expected": "Reject strict parser"
+    },
+    {
+      "id": "R12",
+      "input": "CLI expected commit invalid",
+      "expected": "Exit2 and FAIL_CLOSED stderr, no printed success"
+    },
+    {
+      "id": "R13",
+      "input": "COMMON pinned index differs in SHA/bytes/document204/page11454 axis",
+      "expected": "Command stops before corpus launch"
+    },
+    {
+      "id": "R14",
+      "input": "Output/cache exists or namespace runtimeHEAD/status not exact",
+      "expected": "Stop; preserve old attempt, no overwrite or retry"
+    },
+    {
+      "id": "R15",
+      "input": "Subset/base-cluster cache/provider flag introduced",
+      "expected": "Outside reviewed command; forbidden"
+    },
+    {
+      "id": "R16",
+      "input": "Reader file changes during captured-byte gate execution",
+      "expected": "Final FD/path/hash barrier fails before COMMON"
+    },
+    {
+      "id": "R17",
+      "input": "Synthetic gate passes but no Claude schedule/resources/private namespace",
+      "expected": "Still no launch authorization; owner scheduling prerequisite"
+    },
+    {
+      "id": "R18",
+      "input": "Adapter/promoter attempts old focused gate or misses discrepancyaxis",
+      "expected": "Separate V3 profile/adapter review required; no OFFICIAL permission here"
+    }
+  ],
+  "tests_executed": false,
+  "AST_compile_lint_or_import_by_author": false,
+  "financial_acceptance": false
+}

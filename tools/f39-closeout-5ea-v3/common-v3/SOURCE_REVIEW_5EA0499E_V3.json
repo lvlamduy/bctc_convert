@@ -1,0 +1,122 @@
+{
+  "schema": "F39_COMMON204_5EA_V3_STATIC_SOURCE_AND_RECEIPT_REVIEW",
+  "status": "UNRUN_PENDING_ROOT_SYNTHETIC_CONTROLS_AND_CLAUDE_RUNTIME_SCHEDULE",
+  "runtime_head": "5ea0499e8745366c8a9cc11246484fabde78ee6c",
+  "tested_commit": "53b6b16a6818b5f71ccb7285e55ed730c4ae14ae",
+  "approved_receipt_ref": {
+    "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-5ea0499e-20261026-v3\\fixtures\\approved_full_nonlegacy_test_receipt.json",
+    "sha256": "7acbb5d786678af256db1847f2276031b5c180069c42e4fc607680e11188386a",
+    "size_bytes": 8392
+  },
+  "reader_ref": {
+    "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-5ea0499e-20261026-v3\\f39_synthetic_gate_reader_v3.py",
+    "sha256": "f1420be9028b3fe59ace246f11d8b2dd2f1d17acac51e2de59b637082d03431d",
+    "size_bytes": 23719
+  },
+  "command_ref": {
+    "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-5ea0499e-20261026-v3\\COMMON204_COMMAND_5EA0499E_V3.md",
+    "sha256": "082a95b866ff1fa77888cdef4f1765a45f73d882f03e82af257846c5e341f192",
+    "size_bytes": 8912
+  },
+  "test_ref": {
+    "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-5ea0499e-20261026-v3\\test_f39_synthetic_gate_reader_v3.py",
+    "sha256": "5a806b3b7bbd1a7e6a157c25616f05818098d471e7de5096ca4394e0e681e734",
+    "size_bytes": 8628
+  },
+  "source_equivalence_ref": {
+    "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-5ea0499e-20261026-v3\\SOURCE_EQUIVALENCE_53B_TO_5EA_V3.json",
+    "sha256": "a32c14dd928569cb7e4c5afe68dde92653f082f2bcd67463b5d050b0d397d660",
+    "size_bytes": 11496
+  },
+  "old_V2_refs_preserved": [
+    {
+      "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-c0e85a59-20261026-v1\\COMMON204_COMMAND_C0E85A59_V2.md",
+      "sha256": "0861cef7c8aab811adf334c424dde34e87dcf5d53aca89249aace3e8c7694f77",
+      "size_bytes": 12314
+    },
+    {
+      "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-c0e85a59-20261026-v1\\SOURCE_REVIEW_C0E85A59_V2.json",
+      "sha256": "5e70271cb2588c052805fa982aa200ea133f623b7997cd015e19c04a6a1fddd9",
+      "size_bytes": 5823
+    },
+    {
+      "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-c0e85a59-20261026-v1\\PLANNED_RECEIPT_READER_CONTROLS_V2.json",
+      "sha256": "6b464bc5269f1cb43f9d7bc98e286ca5089083f7c491f84e4ace0dc94f9e1e20",
+      "size_bytes": 3061
+    },
+    {
+      "path": "D:\\bctc_bank\\restore-tools\\drafts\\f39-current-code-common-c0e85a59-20261026-v1\\SHA256SUMS_V2",
+      "sha256": "1b52d2553ec6147cb7c5f12f30f6f86e91b3fbc2e389d2543041faaf71bb2a1e",
+      "size_bytes": 302
+    }
+  ],
+  "native_git_blob_pins": [
+    {
+      "repo_relative_path": "scripts/experiments/run_gemini_json_income_tax_accounting_family_v1.py",
+      "git_blob_sha256": "f94b6c6b732cf259eed04b6a07ca57124f2ae84076111c5429b6e81f2af462fe",
+      "git_blob_size_bytes": 93811
+    },
+    {
+      "repo_relative_path": "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
+      "git_blob_sha256": "370236b18345bea95315e9e41492ea4306dce35b5da0a2fb7dad6b54cdf26d88",
+      "git_blob_size_bytes": 606504
+    },
+    {
+      "repo_relative_path": "src/bctc_ai/evaluation/gemini_json_income_tax_source_label_discrepancy_v1.py",
+      "git_blob_sha256": "96f72e7343e20b888414bd1ff9fb62719acf85d6743a27c4e5ba2e0e9aa879f4",
+      "git_blob_size_bytes": 15735
+    },
+    {
+      "repo_relative_path": "config/families/tm-income-tax-source-label-discrepancies-v1.json",
+      "git_blob_sha256": "c8788461c2e3aed5068c9ba3c329f39bfd13d2cf8dea7aede724bbff6b017bcf",
+      "git_blob_size_bytes": 2004
+    },
+    {
+      "repo_relative_path": "data/registered/gemini_json_first_27bank_vietnamese_page_scope_v2.json",
+      "git_blob_sha256": "72431fa5e6bd5679a0c9701296da9a5b037b34ec2734da50c9b6bbefacec16be",
+      "git_blob_size_bytes": 9032
+    }
+  ],
+  "reader_API": "validate_f39_synthetic_gate_v1(*,repo:Path,receipt_ref:dict,expected_head:str)->dict",
+  "reader_success_status": "VERIFIED_53B_SOURCE_EQUIVALENT_TO_5EA",
+  "reader_scope": "Approved owner-reported actual synthetic execution metadata plus exact35source/Git bodies and immutable receipt raw hash. Not independent test attestation, corpus acceptance or financial source truth.",
+  "common_authority": {
+    "artifact_root": "/srv/bctc-restore/dev-shm/bctc-ai-27-bank-family-live-v1",
+    "index": {
+      "relative_path": "current-corpus-manifest-indexes/32c474f657f9484244e9675a0ca4801cb49b4923971dfb7bea17081904154747.json",
+      "sha256": "acc1d08e45e5a05925c434ae1c96fd6bc481a0e6ca61fc9f78e155efca7365b1",
+      "size_bytes": 317566
+    },
+    "source_database": {
+      "relative_path": "current-corpus-freeze-inputs/store-a14904a492e6beae165b81f7aa1738352a9824e113f1b163a46ee277d37e0220.sqlite3",
+      "sha256": "a14904a492e6beae165b81f7aa1738352a9824e113f1b163a46ee277d37e0220",
+      "size_bytes": 553984000
+    },
+    "documents": 204,
+    "selected_pages": 11454,
+    "source_pdf_root": "/mnt/d/bctc_bank/restore-20260905T014806Z/source",
+    "canonical_repo_root": "/mnt/d/bctc_bank/bctc-ai-2025-current",
+    "runtime_namespace": "Claude-prepared private readonly5ea clone bind; not actual5092 checkout",
+    "source_index_database_rehashed_by_author": false,
+    "pin_provenance": "Retained reviewed c0e/11380 authority; future Claude command must rehash exact file bytes."
+  },
+  "scope": {
+    "reports_from": 2025,
+    "standalone2024_excluded": true,
+    "printed2024_comparative_retained": true,
+    "subset_flags": false,
+    "base_cluster_cache": false,
+    "fresh_empty_X_pycache_prefix": true,
+    "provider": false,
+    "reextract": false,
+    "immutable_old_artifact_changes": false
+  },
+  "runtime_plan_owner": "Claude0440 serial F37ingest->F39FULL271->COMMON204; resources/namespace/log/attemptparent only owner selects. Root may execute only new synthetic controls in own captured branch/fresh Linux clone.",
+  "actual_project_test_job_run_by_author": false,
+  "reader_import_AST_compile_lint_test_or_WSL_by_author": false,
+  "source_SQLite_PDF_workbook_body_access": false,
+  "actual_COMMON_outcome": "UNKNOWN_UNRUN",
+  "financial_acceptance": false,
+  "family_terminal": false,
+  "F41_unlocked": false
+}
