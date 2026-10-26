@@ -1,9 +1,12 @@
 # Closed F40 source replay profile for TM Excel — V2
 
-**UNRUN implementation checkpoint.** No actual restored database/SQL, PDF,
-provider or workbook job, project import, AST/compile, lint or test was executed
-by the author. The coordinator owns the synthetic test lease; Claude owns real
-data execution. The previously pushed V1 branch remains unchanged.
+**Synthetic gate PASS; real-store proof pending.** Root ran the reviewed code
+at `9d6ead806ebbaffa8f6328e5bb29cc6785f577be` in a fresh clean Linux clone:
+Ruff PASS and all 115 tests PASS in 68.27 seconds, Python 3.12.3, 2 GiB AS cap,
+nice 19. This includes the complete V1/publication/canonical regression modules
+and the new F40 profile controls. Claude retains actual restored-store, SQL,
+PDF and data-job execution. Authoring itself used source text only. The
+previously pushed V1 branch remains unchanged.
 
 This branch starts at `0bcf8bbfe0ef37392064e1d79a4f5cc03b132b81`. AGENTS was
 read; the five mandatory operating/migration documents are unchanged from the
@@ -104,7 +107,7 @@ The separate full transitive consumer/environment manifest remains a design
 under review; the historical 15-file producer axis is not rewritten to claim a
 stronger past proof. A fresh trusted clean Python3.12 process is required.
 
-## Synthetic verification plan
+## Synthetic verification
 
 The existing tiny source/store fixture gains an opt-in F40 route; default V1
 fixtures stay unchanged. New tests use real source ingestion, manifest/index,
@@ -123,6 +126,23 @@ Negative loader seams are explicitly fault injection after real cold replay;
 they are not successful authentication substitutes. The complete old V1
 synthetic/publication/canonical suites must also be rerun by the coordinator on
 this exact descendant before any push or data proof.
+
+Root completed that four-module gate. Receipt/logs/JUnit and exact source/import
+pins are retained outside the repo under
+`D:\bctc_bank\restore-receipts\CODEX_TM_EXCEL_BRIDGE_TESTS_20261026_V1\tm-excel-tests-20261026-v3\`.
+Receipt SHA-256:
+`f7ca019cdff60da806382190120b71657c6019e9f9aea69666a711abb912da0b`.
+The first attempt at `a36a1b17` had 114 passed and one invalid narrative fixture
+rejected by the real page-schema validator. The descendant changes only that
+test's empty hierarchy to a valid flat self-label/null-terminal path; no source
+value, owner, production validator or runtime code changed. The failed receipt
+and logs remain in the neighboring `tm-excel-tests-20261026-v2/` directory.
+
+Independent source review found no material blocker in its stated scope and
+confirmed that all eight original V1 rules and whole-run family replay remain
+in place. These synthetic tests still have zero applicable historical repairs;
+they do not prove the real nine-repair render/crop axis or inspect the actual
+stored producer metadata. A real F40 proof remains Claude-owned and pending.
 
 Whole-page source replay and repeated DB hashing remain expensive. Releasing
 the extra warm map avoids retaining two complete maps, but actual peak RAM/time
