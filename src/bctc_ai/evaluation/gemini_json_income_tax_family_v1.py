@@ -9493,12 +9493,123 @@ def _authenticated_root_comparison_orientations(candidate: Mapping[str, Any]) ->
     return canonical_clone_v1(orientations)
 
 
+def _current_tax_payable_subtotal_conflicts_v1(
+    candidate: Mapping[str, Any], *, source_context: Mapping[str, Any],
+    repaired_records: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Withhold a weak payable subtotal's expense role from its printed row sequence.
+
+    A computed tax row followed by a prior-year payable adjustment and the weak
+    subtotal is source evidence of an unproved role. Values, ROOT and equations
+    cannot supply the missing role, including when every displayed value is zero.
+    """
+    conflicts = []
+    for mapping in candidate.get("mappings", []):
+        if mapping.get("role") != "CURRENT_TAX_PARENT":
+            continue
+        for ref in mapping.get("source_refs", []):
+            if _without_leading_ordinal(_normalized(ref.get("label_exact"))) != "thue tndn trong nam":
+                continue
+            locator = _record_locator(ref["locator"], section_id=ref["locator"]["section_id"],
+                                      table_id=ref["locator"]["table_id"])
+            records = [record for record in repaired_records
+                       if record["page_json_version_id"] == locator["page_json_version_id"]]
+            if len(records) != 1 or not same_typed_json_v1(
+                _record_locator(records[0], section_id=locator["section_id"], table_id=locator["table_id"]), locator
+            ):
+                raise _error("income-tax payable-subtotal source locator drifted")
+            page = records[0]["page_json"]
+            section, table = _source_table(page, section_id=locator["section_id"], table_id=locator["table_id"])
+            if section.get("content_kind") != "FINANCIAL_NOTE":
+                continue
+            context_material = {key: value for key, value in source_context.items() if key != "receipt_id"}
+            if source_context.get("receipt_id") != "gjitfav1:source-context:" + canonical_json_sha256_v1(context_material):
+                raise _error("income-tax payable-subtotal source context receipt drifted")
+            populations = [item for item in source_context["tax_population_inventory"]
+                           if same_typed_json_v1(item["locator"], locator)]
+            if len(populations) != 1:
+                raise _error("income-tax payable-subtotal source population join is not unique")
+            population = populations[0]
+            material = {key: value for key, value in population.items() if key != "receipt_id"}
+            if (population.get("receipt_id") != "gjitfav1:tax-population:" + canonical_json_sha256_v1(material)
+                    or population["original_page_json_sha256"] != canonical_json_sha256_v1(page)
+                    or population["original_table_json_sha256"] != canonical_json_sha256_v1(table)
+                    or not same_typed_json_v1(population["source_table_rows_exact"], table.get("rows") or [])):
+                raise _error("income-tax payable-subtotal original source hashes drifted")
+            money = population["lane_axis"]["money_column_ordinals"]
+            rows = _supplemental_source_rows(table, money_column_ordinals=money,
+                                            role_alias_axis=_supplemental_role_alias_axis(compiled_specs))
+            if not same_typed_json_v1(rows, population["source_table_row_axis"]):
+                raise _error("income-tax payable-subtotal source row axis drifted")
+            ordinal = ref.get("row_ordinal")
+            if type(ordinal) is not int or not 1 <= ordinal <= len(rows):
+                raise _error("income-tax payable-subtotal source row ordinal drifted")
+            selected = rows[ordinal - 1]
+            if (not same_typed_json_v1(ref.get("money_column_ordinals"), money)
+                    or ref.get("row_id") != f"r{ordinal}"
+                    or any(not same_typed_json_v1(ref.get(key), selected[key])
+                           for key in ("label_exact", "row_kind", "hierarchy_path_exact"))):
+                raise _error("income-tax payable-subtotal selected source row drifted")
+            computed = [row for row in rows[:ordinal - 1]
+                        if row["matched_role"] in {"CURRENT_TAX_AT_RATE", "STATUTORY_TAX_AMOUNT_SOURCE_ONLY"}]
+            if not computed:
+                continue
+            start = computed[-1]
+            interval = rows[start["row_ordinal"]:ordinal - 1]
+            if any(row["row_kind"] == "GROUP" for row in interval):
+                continue
+            def same_printed_scope(
+                row: Mapping[str, Any], *, selected_row: Mapping[str, Any] = selected,
+            ) -> bool:
+                path, target = row["hierarchy_path_exact"], selected_row["hierarchy_path_exact"]
+                return (type(path) is list and bool(path) and type(target) is list and bool(target)
+                        and same_typed_json_v1(path[:-1], target[:-1]))
+            if not same_printed_scope(start):
+                continue
+            prior = [row for row in interval if same_printed_scope(row) and (
+                row["matched_role"] == "PRIOR_PERIOD_TAX_ADJUSTMENT" or (
+                    re.match(r"dieu chinh\b", row["normalized_label"]) is not None
+                    and re.search(r"\bthue (?:tndn|thu nhap doanh nghiep)\b", row["normalized_label"]) is not None
+                    and re.search(r"\bphai nop\b", row["normalized_label"]) is not None
+                    and re.search(r"\b(?:cac )?nam truoc\b", row["normalized_label"]) is not None
+                ))]
+            if not prior:
+                continue
+            proof = {
+                "status": "ALGORITHM_HOLD", "classification": "ALGORITHM_ROLE_UNPROVEN",
+                "candidate_id_before_hold": candidate["candidate_id"],
+                "selected_mapping": canonical_clone_v1(mapping), "selected_source_ref": canonical_clone_v1(ref),
+                "source_population_receipt_id": population["receipt_id"],
+                "source_population_sha256": canonical_json_sha256_v1(population),
+                "source_locator": canonical_clone_v1(locator),
+                "original_page_json_sha256": population["original_page_json_sha256"],
+                "original_table_json_sha256": population["original_table_json_sha256"],
+                "computed_tax_source_row": canonical_clone_v1(start),
+                "intervening_prior_year_adjustment_rows": canonical_clone_v1(prior),
+                "weak_subtotal_source_row": canonical_clone_v1(selected),
+                "source_values_changed": False,
+                "rule": "SOURCE_OWNED_COMPUTED_TAX_PRIOR_YEAR_PAYABLE_ADJUSTMENT_WEAK_SUBTOTAL_CANNOT_PROVE_CURRENT_EXPENSE_ROLE",
+            }
+            conflicts.append({**proof, "receipt_id": "gjitfav1:payable-subtotal-role:" + canonical_json_sha256_v1(proof)})
+    return conflicts
+
+
 def _seal_income_tax_source_controls(
     candidate: Mapping[str, Any], *, source_context: Mapping[str, Any],
     repaired_records: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
     if candidate.get("status") != READY:
         return canonical_clone_v1(candidate)
+    payable_subtotal_conflicts = _current_tax_payable_subtotal_conflicts_v1(
+        candidate, source_context=source_context, repaired_records=repaired_records, compiled_specs=compiled_specs,
+    )
+    if payable_subtotal_conflicts:
+        return _unresolved_from_candidate(
+            candidate, reason="ALGORITHM_CURRENT_TAX_PARENT_PAYABLE_SUBTOTAL_ROLE_UNPROVEN",
+            evidence={"classification": "ALGORITHM_ROLE_UNPROVEN",
+                      "payable_subtotal_role_conflicts": payable_subtotal_conflicts,
+                      "source_context_receipt": canonical_clone_v1(source_context)},
+        )
     competing_stages = [item for item in source_context["tax_population_inventory"]
                         if item["competing_taxable_stage_control"]["status"] == "ALGORITHM_HOLD"]
     if competing_stages:
