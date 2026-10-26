@@ -219,7 +219,9 @@ def _producer_files_v1(request: dict[str, Any], stored: list[dict[str, Any]]) ->
     return actuals
 
 
-def authenticate_multitable_store_run_v1(request: dict[str, Any]) -> dict[str, Any]:
+def _authenticate_multitable_store_run_v1(
+    request: dict[str, Any], *, replay_profile: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Revalidate read-only run, persisted traces, selected corpus and source replay.
 
     This does not create a new store or assert the family's PDF residual audits.
@@ -265,6 +267,15 @@ def authenticate_multitable_store_run_v1(request: dict[str, Any]) -> dict[str, A
         require(type(producer_refs) is list and producer_refs == sorted(producer_refs, key=lambda item: item["path"]), "producer axis order drift")
         require(sha256(json_bytes(producer_refs)).hexdigest() == run["implementation_axis_sha256"], "producer axis hash drift")
         producer_files = _producer_files_v1(request, producer_refs)
+        if replay_profile is not None:
+            from bctc_ai.export.gemini_tm_family_replay_profiles_v2 import (
+                validate_f40_profile_axis_v2,
+            )
+
+            validate_f40_profile_axis_v2(
+                request=request, profile=replay_profile, stored_refs=producer_refs,
+                stored_axis_bytes=bytes(run["implementation_refs_json"]),
+            )
         require(run["corpus_index_sha256"] == refs["corpus_index_ref"]["sha256"], "stored corpus index hash drift")
         sweep = load_gemini_accounting_family_sweep_v1(store, run_id)
         require(run["family_id"] == sweep["family_id"]
@@ -304,10 +315,19 @@ def authenticate_multitable_store_run_v1(request: dict[str, Any]) -> dict[str, A
                                       if request["effective_page_artifact_root"] is not None else None),
         checked_sweep=sweep, source_page_database=page_db,
     )
-    replayed = validate_selected_multitable_hierarchical_family_candidate_replays_v1(
-        page_db, selected_page_json_version_ids=selected, compiled_specs=compiled,
-        indexed_query_evidence=sweep["indexed_query_evidence"], trials=sweep["trials"],
-    )
+    profile_receipt, extra_refs = None, []
+    if replay_profile is None:
+        replayed = validate_selected_multitable_hierarchical_family_candidate_replays_v1(
+            page_db, selected_page_json_version_ids=selected, compiled_specs=compiled,
+            indexed_query_evidence=sweep["indexed_query_evidence"], trials=sweep["trials"],
+        )
+    else:
+        from bctc_ai.export.gemini_tm_family_replay_profiles_v2 import replay_f40_profile_v2
+
+        replayed, profile_receipt, extra_refs = replay_f40_profile_v2(
+            request=request, profile=replay_profile, sweep=sweep, compiled_specs=compiled,
+            selected=selected, source_page_database=page_db,
+        )
     require(json_bytes(replayed) == json_bytes(sweep["trials"]), "fresh source replay trial axis drift")
     index = validate_current_corpus_manifest_index_v1(strict_json_v1(pinned_bytes_v1(refs["corpus_index_ref"])))
     ordinal = request["document_ordinal"]
@@ -333,14 +353,21 @@ def authenticate_multitable_store_run_v1(request: dict[str, Any]) -> dict[str, A
         loaded = page_map[item["page_json_version_id"]]
         require(loaded["source_sha256"] == document["source_sha256"]
                 and loaded["physical_page"] == item["physical_page"], "page provenance/source drift")
-    for reference in [*refs.values(), *producer_files, pdf_ref]:
+    for reference in [*refs.values(), *producer_files, pdf_ref, *extra_refs]:
         authenticate_ref_v1(reference)
     assert_sealed_sqlite_snapshot_v1(store)
     assert_sealed_sqlite_snapshot_v1(page_db)
     return {"sweep": sweep, "trial": trial, "document": {**document, **axis, "status": trial["status"]},
             "compiled": compiled, "pages": page_map, "page_axis": page_axis,
             "refs": refs, "producer_files": producer_files, "pdf_ref": pdf_ref,
-            "run_metadata": run_metadata, "request": request}
+            "run_metadata": run_metadata, "request": request,
+            **({"source_replay_profile_receipt": profile_receipt, "extra_input_refs": extra_refs}
+               if profile_receipt is not None else {})}
+
+
+def authenticate_multitable_store_run_v1(request: dict[str, Any]) -> dict[str, Any]:
+    """Legacy V1 strict request and generic MTH replay; no family profile fallback."""
+    return _authenticate_multitable_store_run_v1(request)
 
 
 def period_from_source_lane_v1(key: list[str], period_type: str) -> dict[str, str]:
@@ -459,6 +486,12 @@ def export_tm_multitable_store_document_v1(*, request: dict[str, Any]) -> dict[s
     require(type(request) is dict, "request must be a JSON object")
     request = strict_json_v1(json_bytes(request))
     bundle = authenticate_multitable_store_run_v1(request)
+    return _export_authenticated_multitable_document_v1(request=request, bundle=bundle)
+
+
+def _export_authenticated_multitable_document_v1(
+    *, request: dict[str, Any], bundle: dict[str, Any],
+) -> dict[str, Any]:
     records = project_multitable_document_v1(bundle)
     template = template_rows_v1(pinned_bytes_v1(bundle["refs"]["template_ref"]))
     provenance = {"format_version": FORMAT, "label": LABEL, "run_metadata": bundle["run_metadata"],
@@ -469,6 +502,8 @@ def export_tm_multitable_store_document_v1(*, request: dict[str, Any]) -> dict[s
                   "trial": bundle["trial"], "projection_sha256": sha256(json_bytes(records)).hexdigest(),
                   "bridge_implementation_ref": file_ref_v1(Path(__file__).resolve()),
                   "renderer_implementation_ref": file_ref_v1(Path(inspect.getsourcefile(render_projected_tm_workbook_v1)).resolve())}
+    if "source_replay_profile_receipt" in bundle:
+        provenance["source_replay_profile"] = bundle["source_replay_profile_receipt"]
     require(len(json_bytes(provenance)) <= MAX_DOCUMENT_PROJECTION_BYTES,
             "document provenance exceeds V1 memory bound")
     payload, verification = render_projected_tm_workbook_v1(
@@ -476,7 +511,8 @@ def export_tm_multitable_store_document_v1(*, request: dict[str, Any]) -> dict[s
     )
     # Final byte authentication after replay/render and before any output mutation.
     for ref in [*bundle["refs"].values(), *bundle["producer_files"], bundle["pdf_ref"],
-                provenance["bridge_implementation_ref"], provenance["renderer_implementation_ref"]]:
+                provenance["bridge_implementation_ref"], provenance["renderer_implementation_ref"],
+                *bundle.get("extra_input_refs", [])]:
         authenticate_ref_v1(ref)
     assert_sealed_sqlite_snapshot_v1(Path(bundle["refs"]["store_ref"]["path"]))
     assert_sealed_sqlite_snapshot_v1(Path(bundle["refs"]["source_page_database_ref"]["path"]))
@@ -492,6 +528,7 @@ def export_tm_multitable_store_document_v1(*, request: dict[str, Any]) -> dict[s
         forbidden_roots.append(Path(request["effective_page_artifact_root"]).resolve())
     forbidden_roots += [Path(ref["path"]).parent for ref in bundle["refs"].values()]
     forbidden_roots += [Path(ref["path"]).parent for ref in bundle["producer_files"]]
+    forbidden_roots += [Path(ref["path"]).parent for ref in bundle.get("extra_input_refs", [])]
     require(not any(output.resolve().is_relative_to(root) for root in forbidden_roots), "output overlaps input authority")
     receipt = {"format_version": FORMAT, "label": LABEL, "document": bundle["document"],
                "provenance": provenance, "projection_count": len(records),

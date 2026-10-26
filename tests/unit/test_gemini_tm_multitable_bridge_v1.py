@@ -352,7 +352,9 @@ def test_template_pin_is_fixed_before_workbook_parsing() -> None:
         renderer.template_rows_v1(b"not the pinned workbook")
 
 
-def _real_store_request(tmp_path: Path) -> dict:
+def _real_store_request(
+    tmp_path: Path, *, f40_profile: bool = False, page_json_override: dict | None = None,
+) -> dict:
     """Real base MTH/store/frontier APIs over tiny SYNTHETIC inputs only.
 
     No validator/authenticator is mocked. The provider result is the existing
@@ -409,6 +411,8 @@ def _real_store_request(tmp_path: Path) -> dict:
             _row(None, ["30", "20"], kind="TOTAL", hierarchy=[None]),
         ],
     )))
+    if page_json_override is not None:
+        page_json = page_json_override
     ingested = _ingest(pages, physical_page=1, source_logical_name="synthetic.pdf",
                        source_sha256=source_sha, page_json=page_json)
     selected = [ingested["page_json_version_id"]]
@@ -455,16 +459,39 @@ def _real_store_request(tmp_path: Path) -> dict:
     specs = [_json(f"tm-cash-equivalents-{kind}-v1.json") for kind in
              ("topology", "evaluation", "schema-binding")]
     compiled = bridge.compile_gemini_json_flat_family_specs_v1(*specs)
+    runner = None
+    query_compiled = compiled
+    if f40_profile:
+        from bctc_ai.export import gemini_tm_family_replay_profiles_v2 as profiles
+
+        runner = profiles._load_f40_runner_v2(root)
+        query_compiled = runner.bind_gemini_json_cash_equivalents_source_repairs_v1(
+            compiled, runner.generic._json(runner.SOURCE_REPAIR_PATH),
+        )
     evidence = query_selected_multitable_hierarchical_family_regions_v1(
-        pages, selected_page_json_version_ids=selected, compiled_specs=compiled,
+        pages, selected_page_json_version_ids=selected, compiled_specs=query_compiled,
     )
+    if runner is not None:
+        page_map = runner.generic._load_selected_pages_by_document(
+            pages, selected_ids=selected, selected_page_axis=evidence["selected_page_axis"],
+        )
+        evidence, _ = runner.adapt_gemini_json_cash_equivalents_indexed_query_evidence_v1(
+            evidence, page_json_by_document=page_map, compiled_specs=query_compiled,
+        )
     assert evidence["query_receipt"]["disposition_counts"][READY] == 1
     cluster = evidence["accepted_clusters"][0]
-    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
-        regions=cluster["component_regions"], page_json_by_version={selected[0]: page_json},
-        compiled_specs=compiled,
-        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(cluster["component_regions"]),
-    )
+    if runner is None:
+        candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+            regions=cluster["component_regions"], page_json_by_version={selected[0]: page_json},
+            compiled_specs=compiled,
+            query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(cluster["component_regions"]),
+        )
+    else:
+        candidate = runner.evaluate_gemini_json_cash_equivalents_family_cluster_v1(
+            regions=cluster["component_regions"], page_json_by_version={selected[0]: page_json},
+            compiled_specs=query_compiled,
+            query_receipt=runner.build_gemini_json_cash_equivalents_region_query_receipt_v1(cluster["component_regions"]),
+        )
     assert candidate["status"] == READY, candidate["reasons"]
     trial = _trial(evidence["selected_document_axis"][0], candidate, READY)
     sweep = build_gemini_json_flat_family_sweep_v1(
@@ -482,23 +509,34 @@ def _real_store_request(tmp_path: Path) -> dict:
     ]
     producer_refs = sorted([{**bridge.file_ref_v1(root / path), "path": path}
                             for path in producer_paths], key=lambda ref: ref["path"])
+    replay_kwargs = {}
+    run_kind = "OFFICIAL"
+    if runner is not None:
+        producer_refs = profiles.approved_f40_producer_refs_v2()
+        replay_kwargs = {"source_replay_adapter": runner.replay_cash_equivalents_trials_from_source_v1,
+                         "source_replay_adapter_ref": profiles.approved_f40_runner_ref_v2()}
+        run_kind = "EXPERIMENTAL"
     store = authority / "family.sqlite3"
     stored = ingest_gemini_accounting_family_sweep_v1(
         store, sweep=sweep, corpus_index_ref=index_ref, implementation_refs=producer_refs,
-        run_kind="OFFICIAL", source_page_database=pages, selected_page_json_version_ids=selected,
-        corpus_artifact_root=artifacts,
+        run_kind=run_kind, source_page_database=pages, selected_page_json_version_ids=selected,
+        corpus_artifact_root=artifacts, **replay_kwargs,
     )
     (tmp_path / "published").mkdir()
-    return {
+    request = {
         "store_ref": bridge.file_ref_v1(store), "family_run_id": stored["family_run_id"],
         "corpus_index_ref": index_ref, "source_page_database_ref": bridge.file_ref_v1(pages),
         "corpus_artifact_root": str(artifacts), "effective_page_artifact_root": None,
         "source_pdf_root": str(pdfs), "producer_root": str(root), "producer_refs": producer_refs,
-        "document_ordinal": 1, "expected_family_id": "CASH_EQUIVALENTS", "expected_run_kind": "OFFICIAL",
-        "require_current_selection": True,
+        "document_ordinal": 1, "expected_family_id": "CASH_EQUIVALENTS", "expected_run_kind": run_kind,
+        "require_current_selection": run_kind == "OFFICIAL",
         "template_ref": bridge.file_ref_v1(root / "template/Bank_TM_ReportNormId.v2.xlsx"),
         "output_dir": str(tmp_path / "published" / "export-v1"),
     }
+    if runner is not None:
+        request.update(request_format_version=profiles.REQUEST_FORMAT, source_replay_profile=profiles.F40_PROFILE,
+                       source_replay_runner_ref=profiles.approved_f40_runner_ref_v2())
+    return request
 
 
 def test_real_synthetic_multitable_authentication_and_linked_export(tmp_path: Path) -> None:
