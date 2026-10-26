@@ -1289,7 +1289,9 @@ def _authenticate_repairs_v1(document, loaded, compiled, pdf_path):
 
 
 def _authenticate_source_label_discrepancies_v1(document, original_records, source_pdf_root):
-    from bctc_ai.evaluation import gemini_json_income_tax_source_label_discrepancy_v1 as negative_labels
+    from bctc_ai.evaluation import (
+        gemini_json_income_tax_source_label_discrepancy_v1 as negative_labels,
+    )
 
     if not negative_labels.registered_negative_source_label_observation_axis_v1(original_records):
         return []
