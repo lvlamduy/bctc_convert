@@ -3350,3 +3350,60 @@ def test_other_quarters_or_windows_never_match_a_three_month_root(detail_surface
     assert not allowed
     if reason is not None:
         assert why == reason
+
+
+# Transposed root keeps its period evidence (Codex review 0406); existing partial-detail fixture unchanged.
+def test_partial_transposed_root_keeps_both_original_lane_scopes_and_ref() -> None:
+    _indexed, trials, pages = _run_pages(_partial_period_lane_fixture())
+    trial = trials[0]
+    assert trial["status"] == READY
+    mapped = _mapped(trial)
+    assert mapped["CUSTOMER_PROVISION"]["values"][1] == {
+        "coefficient": None, "source_text": None, "state": "UNOBSERVED_SOURCE_LANE"
+    }
+    root_mapping = mapped["FAMILY_ROOT_TOTAL"]
+    assert [cell["coefficient"] for cell in root_mapping["values"]] == [-100, -80]
+    candidate = trial["candidates"][0]
+    structural = candidate["closure_receipt"]["structural_root_receipt"]
+    evidence = structural["source_period_evidence"]
+    assert structural["emitted_mapping"] is True
+    assert same_typed_json_v1(evidence["source_ref"], root_mapping["source_refs"][0])
+    assert evidence["source_ref"]["locator"]["page_json_version_id"] == VERSION_1
+    assert evidence["lane_axis"]["money_column_ordinals"] == [1, 2]
+    assert evidence["source_ref"]["money_column_ordinals"] == [1, 2]
+    scopes = evidence["period_scope_by_lane"]
+    assert set(scopes) == {"CURRENT_PERIOD", "COMPARATIVE_PERIOD"}
+    table = pages[1][VERSION_1]["sections"][0]["tables"][0]
+    for index, (lane, year) in enumerate((("CURRENT_PERIOD", 2026), ("COMPARATIVE_PERIOD", 2025))):
+        scope = scopes[lane]
+        assert scope["semantic_role"] == lane and scope["calendar_year"] == year
+        assert scope["basis"] == "ELAPSED_FROM_YEAR_START"
+        assert scope["elapsed_month_count"] == 6 and scope["quarter_ordinal"] == 2
+        assert scope["start_date"] is None and scope["end_date"] is None
+        assert all(raw in scope["raw_surface_axis"] for raw in table["columns"][index]["header_path_exact"])
+    # The final selected candidate ID includes the added evidence object.
+    material = {key: value for key, value in candidate.items() if key != "candidate_id"}
+    assert candidate["candidate_id"] == "gjmthfcv1:candidate:" + canonical_json_sha256_v1(material)
+    altered = canonical_clone_v1(material)
+    altered["closure_receipt"]["structural_root_receipt"]["source_period_evidence"] = None
+    assert candidate["candidate_id"] != "gjmthfcv1:candidate:" + canonical_json_sha256_v1(altered)
+
+
+def test_detail_only_transposed_root_period_evidence_is_explicitly_none() -> None:
+    note = _movement_note([
+        _movement_table(
+            [_row("Tr\u00edch l\u1eadp trong k\u1ef3", ["20", "80", "100"])],
+            title="K\u1ef3 n\u00e0y t\u1eeb 01/01/2025 \u0111\u1ebfn 30/06/2025",
+        ),
+        _movement_table(
+            [_row("Tr\u00edch l\u1eadp trong k\u1ef3", ["15", "65", "80"])],
+            title="K\u1ef3 tr\u01b0\u1edbc t\u1eeb 01/01/2024 \u0111\u1ebfn 30/06/2024",
+        ),
+    ])
+    _indexed, trials, _pages = _run_pages([(VERSION_1, 1, note)])
+    trial = trials[0]
+    assert trial["status"] == READY
+    assert set(_mapped(trial)) == {"CUSTOMER_GENERAL", "CUSTOMER_PROVISION", "CUSTOMER_SPECIFIC"}
+    structural = trial["candidates"][0]["closure_receipt"]["structural_root_receipt"]
+    assert structural["emitted_mapping"] is False
+    assert structural["source_period_evidence"] is None

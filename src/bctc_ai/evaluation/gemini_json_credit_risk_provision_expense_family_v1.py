@@ -1721,6 +1721,39 @@ def _family37_source_dates_v1(surface: str) -> list[date] | None:
     return [parsed for _position, parsed in sorted(matches)]
 
 
+def _family37_single_duration_end_v1(
+    exact_axis: list[str], dates: list[date]
+) -> str | None:
+    """Keep a sole duration-owned end; a bare/report/legal date is not an end.
+
+    Ownership must occur within one original clause. No start or date is inferred,
+    and dates from separate contextual snippets are never paired here.
+    """
+
+    if len(dates) != 1:
+        return None
+    for exact in exact_axis:
+        for clause in re.split(r"[;\n]+", exact):
+            if _family37_source_dates_v1(clause) != dates:
+                continue
+            surface = _normalized(clause)
+            if not re.search(r"\b(?:ky|cho nam|luy ke|tu dau (?:nam|ky))\b", surface):
+                continue
+            ending = re.search(
+                r"\b(?:k[eế]t\s+th[uú]c|[đd][eế]n)\s+"
+                r"(?P<date>(?:ng[aà]y\s+)?\d{1,2}[./-]\d{1,2}[./-]20\d{2}"
+                r"|ng[aà]y\s+\d{1,2}\s+th[aá]ng\s+\d{1,2}\s+n[aă]m\s+20\d{2})(?!\d)",
+                clause,
+                flags=re.IGNORECASE,
+            )
+            if (
+                ending is not None
+                and _family37_source_dates_v1(ending.group("date")) == dates
+            ):
+                return dates[0].isoformat()
+    return None
+
+
 def _family37_full_twelve_month_range_v1(start: date, end: date) -> bool:
     next_year = start.year + 1
     next_day = min(start.day, monthrange(next_year, start.month)[1])
@@ -1903,7 +1936,11 @@ def _family37_period_scope_v1(
         "basis": basis,
         "calendar_year": calendar_year,
         "elapsed_month_count": elapsed_month_count,
-        "end_date": dates[1].isoformat() if len(dates) >= 2 else None,
+        "end_date": (
+            dates[1].isoformat()
+            if len(dates) >= 2
+            else _family37_single_duration_end_v1(exact_axis, dates)
+        ),
         "quarter_ordinal": quarter,
         "raw_surface_axis": exact_axis,
         "reasons": reasons,
@@ -2111,7 +2148,9 @@ def _family37_calendar_year_endpoints_only_v1(
     if dates is None or any((item.month, item.day) not in {(1, 1), (12, 31)} for item in dates):
         return False
     start, end = scope.get("start_date"), scope.get("end_date")
-    return start == end or (start, end) == (
+    return start == end or (
+        start is None and end == date(calendar_year, 12, 31).isoformat()
+    ) or (start, end) == (
         date(calendar_year, 1, 1).isoformat(),
         date(calendar_year, 12, 31).isoformat(),
     )
@@ -2125,6 +2164,47 @@ def _family37_printed_dates_within_v1(scope: Mapping[str, Any], allowed: set[dat
     return dates is not None and all(item in allowed for item in dates)
 
 
+def _family37_has_owned_calendar_q1_start_v1(scope: Mapping[str, Any], year: int) -> bool:
+    """Prove calendar-Q1 start from this source-bound scope, not its legacy basis label."""
+
+    raw_axis = scope.get("raw_surface_axis")
+    if type(raw_axis) is not list:
+        return False
+    surfaces = [_normalized(raw) for raw in raw_axis if type(raw) is str]
+    year_start_pattern = re.compile(
+        r"(?:(?:(?:so )?luy ke(?: (?:3|ba) thang)?|(?:ky )?(?:3|ba) thang) )?"
+        r"(?:tu dau nam|from year start|from (?:the )?(?:start|beginning) of (?:the )?year)"
+        r"(?: (?P<year>20\d{2}))?"
+    )
+    year_start_matches = [match for surface in surfaces if (match := year_start_pattern.fullmatch(surface)) is not None]
+    if any(match.group("year") is not None and int(match.group("year")) != year for match in year_start_matches):
+        return False
+    year_start_asserted = bool(year_start_matches)
+    if (scope.get("start_date"), scope.get("end_date")) == (
+        date(year, 1, 1).isoformat(), date(year, 3, 31).isoformat()
+    ):
+        for raw in raw_axis:
+            if type(raw) is not str or _family37_source_dates_v1(raw) != [date(year, 1, 1), date(year, 3, 31)]:
+                continue
+            match = re.fullmatch(
+                r"(?:(?:cho )?(?:ky(?: nay| truoc)?|nam tai chinh(?: 20\d{2})?) )?"
+                r"(?P<start_connector>tu|from) (?:ngay )?0?1 (?:thang )?0?1 (?:nam )?(?P<year>20\d{2}) "
+                r"(?P<end_connector>den|to) (?:ngay )?31 (?:thang )?0?3 (?:nam )?(?P=year)", _normalized(raw),
+            )
+            if (
+                match is not None
+                and (match.group("start_connector"), match.group("end_connector")) in {("tu", "den"), ("from", "to")}
+                and int(match.group("year")) == year
+            ):
+                return True
+    # A fiscal year has no proved January start merely because its quarter is Q1.
+    if any(re.search(r"\b(?:nam tai chinh|fiscal year|financial year)\b|\bfy\s*20\d{2}\b", surface) for surface in surfaces):
+        return False
+    if scope.get("quarter_ordinal") == 1:
+        return True
+    return year_start_asserted
+
+
 def _family37_period_compatibility_v1(
     detail: Mapping[str, Any], root: Mapping[str, Any]
 ) -> tuple[bool, str]:
@@ -2132,6 +2212,11 @@ def _family37_period_compatibility_v1(
         return False, "SEMANTIC_LANE_CONFLICT"
     detail_basis = detail.get("basis")
     root_basis = root.get("basis")
+    known_end_conflict = (
+        detail.get("end_date") is not None
+        and root.get("end_date") is not None
+        and detail["end_date"] != root["end_date"]
+    )
     if detail_basis == "RELATIVE_REPORTING_PERIOD":
         invalid_parent_reasons = {
             "AMBIGUOUS_WITHIN_YEAR",
@@ -2160,6 +2245,8 @@ def _family37_period_compatibility_v1(
             # FULL271 docs 37 / 38 (Q4 report, year-to-date root): "Kỳ này" runs 01.10-31.12.2025 (the quarter) and
             # "Kỳ trước" 01.07-30.09.2025 (the previous quarter). Only an annual root lane lends its window.
             return False, "RELATIVE_DETAIL_UNDER_INTERIM_PARENT_SCOPE"
+        if known_end_conflict:
+            return False, "EXACT_DATE_RANGE_ENDPOINT_CONFLICT"
         return True, "PRIMARY_PARENT_INHERITED"
     if detail_basis in {
         "AMBIGUOUS_WITHIN_YEAR",
@@ -2194,6 +2281,8 @@ def _family37_period_compatibility_v1(
                 for scope in (detail, root)
             ):
                 return False, "FULL_YEAR_WINDOW_NOT_THE_CALENDAR_YEAR"
+            if known_end_conflict:
+                return False, "EXACT_DATE_RANGE_ENDPOINT_CONFLICT"
             return True, "FULL_YEAR_EQUIVALENT_TWELVE_MONTH_SCOPE"
         first_quarter_equivalent = (
             {detail_basis, root_basis} == {"SINGLE_QUARTER", "ELAPSED_FROM_YEAR_START"}
@@ -2211,6 +2300,11 @@ def _family37_period_compatibility_v1(
             year = detail.get("calendar_year")
             if year is None or year != root.get("calendar_year"):
                 return False, "CALENDAR_YEAR_CONFLICT"
+            if not all(
+                _family37_has_owned_calendar_q1_start_v1(scope, year)
+                for scope in (detail, root)
+            ):
+                return False, "FIRST_QUARTER_WINDOW_NOT_PROVEN"
             if not all(
                 _family37_printed_dates_within_v1(scope, {date(year, 1, 1), date(year, 3, 31)})
                 for scope in (detail, root)
@@ -2232,6 +2326,8 @@ def _family37_period_compatibility_v1(
         and detail.get("calendar_year") != root.get("calendar_year")
     ):
         return False, "CALENDAR_YEAR_CONFLICT"
+    if known_end_conflict:
+        return False, "EXACT_DATE_RANGE_ENDPOINT_CONFLICT"
     detail_bounds = (detail.get("start_date"), detail.get("end_date"))
     root_bounds = (root.get("start_date"), root.get("end_date"))
     if (
@@ -6567,6 +6663,20 @@ def _transposed_candidate(
                 receipt["source_only_rows"]
             ),
             "structural_root_receipt": {
+                "source_period_evidence": (
+                    {
+                        "lane_axis": canonical_clone_v1(root["lane_axis"]),
+                        "period_scope_by_lane": canonical_clone_v1(root["period_scope_by_lane"]),
+                        "source_ref": _source_ref(
+                            region=primary_region,
+                            row=root["row"],
+                            row_ordinal=root["row_ordinal"],
+                            money_ordinals=root["money_column_ordinals"],
+                        ),
+                    }
+                    if root is not None
+                    else None
+                ),
                 "emitted_mapping": root is not None,
                 "mapping_policy": (
                     "DIRECT_PRIMARY_SOURCE_VISIBLE_FAMILY_ROOT"
