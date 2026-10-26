@@ -40,10 +40,10 @@ _FIELDS = ("value", "state", "unit", "role", "source")
 _PRINTED = "RAW_SIGNED_INTEGER"
 _DASH = "DASH_ZERO"
 _DASH_TEXT = re.compile(r"[-_–—]+")  # printed dash runs as the engine reads them ("-", "--", "_")
-_EMPTY = {"UNOBSERVED_SOURCE_LANE", "BLANK_SOURCE_CELL"}
+_EMPTY = {"UNOBSERVED_SOURCE_LANE", "BLANK_SOURCE_CELL", "DERIVED_INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"}
 _DERIVED = {"EXACT_DECLARED_SOURCE_COMPONENT_SUM", "EXACT_COMPLETE_VISIBLE_SCOPED_CHILD_FRONTIER_SUM",
             "EXACT_VISIBLE_CUSTOMER_COMPONENT_SUM", "EXACT_VISIBLE_GENERAL_AND_SPECIFIC_SUM",
-            "EXACT_SAME_ROLE_SOURCE_ROW_SUM"}
+            "EXACT_SAME_ROLE_SOURCE_ROW_SUM", "EXACT_VISIBLE_PROVISION_AND_REVERSAL_SUM"}
 
 
 class F37CanonicalWorkbookError(ValueError):
@@ -159,7 +159,11 @@ def verify_f37_canonical_workbook_v1(payload: bytes, document: dict[str, Any], t
         for name, rows in expected.items():
             actual = [list(row) for row in workbook[name].iter_rows(values_only=True)]
             actual = [row + [None] * (len(rows[0]) - len(row)) for row in actual]
-            _need(actual == rows, f"Sheet {name} does not read back exactly")
+            _need(actual == rows and all(
+                type(got) is type(want)
+                for got_row, want_row in zip(actual, rows, strict=True)
+                for got, want in zip(got_row, want_row, strict=True)
+            ), f"Sheet {name} does not read back exactly")
     finally:
         workbook.close()
     values = sum(1 for (_rnid, _lane), slot in _tm_slots(trial, {r for r, _ in template}).items() if slot[0] is not None)

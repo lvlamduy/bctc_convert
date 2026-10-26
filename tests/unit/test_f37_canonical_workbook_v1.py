@@ -6,6 +6,7 @@ from pathlib import Path
 import openpyxl
 import pytest
 
+from bctc_ai.export.canonical_xlsx import deterministic_workbook_bytes
 from bctc_ai.export.f37_canonical_workbook_v1 import (
     READY,
     F37CanonicalWorkbookError,
@@ -109,3 +110,47 @@ def test_projection_fails_closed(template, mutate) -> None:
 
     with pytest.raises(F37CanonicalWorkbookError):
         build_f37_canonical_workbook_v1(DOCUMENT, trial, template, head="a" * 40)
+
+
+def test_producer_incomplete_derived_lane_preserves_other_observed_lane(template) -> None:
+    trial = _trial()
+    trial["mappings"][2]["values"] = [
+        _value(None, None, "DERIVED_INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"),
+        _value(143748, None, "EXACT_VISIBLE_GENERAL_AND_SPECIFIC_SUM"),
+    ]
+    payload, _receipt = build_f37_canonical_workbook_v1(DOCUMENT, trial, template, head="a" * 40)
+    rows, _header = _tm(payload)
+    assert rows[6031][3] is None
+    assert rows[6031][4] == "DERIVED_INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"
+    assert rows[6031][8] == 143748
+    assert rows[6031][9] == "EXACT_VISIBLE_GENERAL_AND_SPECIFIC_SUM"
+
+
+def test_producer_provision_reversal_sum_preserves_signed_coefficient(template) -> None:
+    trial = _trial()
+    mapping = trial["mappings"][0]
+    mapping["values"][0] = _value(-12, None, "EXACT_VISIBLE_PROVISION_AND_REVERSAL_SUM")
+    mapping["source_refs"] = [_ref(1, "Synthetic provision"), _ref(2, "Synthetic reversal")]
+    payload, _receipt = build_f37_canonical_workbook_v1(DOCUMENT, trial, template, head="a" * 40)
+    rows, _header = _tm(payload)
+    assert rows[1224][3] == -12
+    assert rows[1224][4] == "EXACT_VISIBLE_PROVISION_AND_REVERSAL_SUM"
+    assert ";" in rows[1224][7]
+
+
+@pytest.mark.parametrize(("coefficient", "as_boolean"), [(0, False), (1, True)])
+def test_readback_rejects_boolean_equal_to_original_integer(template, coefficient, as_boolean) -> None:
+    trial = _trial()
+    trial["mappings"][0]["values"][0] = _value(coefficient, str(coefficient), "RAW_SIGNED_INTEGER")
+    payload, _receipt = build_f37_canonical_workbook_v1(DOCUMENT, trial, template, head="a" * 40)
+    workbook = openpyxl.load_workbook(BytesIO(payload))
+    try:
+        row = next(r for r in range(2, workbook["TM"].max_row + 1)
+                   if workbook["TM"].cell(r, 2).value == 1224)
+        workbook["TM"].cell(row, 4).value = as_boolean
+        tampered = deterministic_workbook_bytes(workbook, creator="synthetic boolean tamper")
+    finally:
+        workbook.close()
+    # Same original trial: only actual workbook bytes were changed.
+    with pytest.raises(F37CanonicalWorkbookError, match="does not read back exactly"):
+        verify_f37_canonical_workbook_v1(tampered, DOCUMENT, trial, template, head="a" * 40)
