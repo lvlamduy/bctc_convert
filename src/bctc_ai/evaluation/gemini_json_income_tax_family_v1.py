@@ -27,6 +27,9 @@ from typing import Any
 from bctc_ai.evaluation import (
     gemini_json_income_tax_section_caption_repair_v1 as section_caption_core,
 )
+from bctc_ai.evaluation import (
+    gemini_json_income_tax_source_label_discrepancy_v1 as source_label_discrepancy,
+)
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _normalized,
     _path_has_role,
@@ -167,6 +170,7 @@ def _error(message: str) -> GeminiJsonIncomeTaxFamilyV1Error:
 
 _DOCUMENT_PERIOD_OPERATION = ContextVar("f39_document_period_operation", default=None)
 _PERIOD_INVENTORY_DEPENDENCY_PATHS = (
+    "evaluation/gemini_json_income_tax_source_label_discrepancy_v1.py",
     "evaluation/gemini_json_income_tax_section_caption_repair_v1.py",
     "evaluation/gemini_json_income_tax_family_v1.py",
     "evaluation/gemini_json_income_tax_part_period_context_v1.py",
@@ -4494,10 +4498,10 @@ def _source_context_receipt(
         "document_statement_period_inventory": _document_statement_period_inventory(page_records, compiled_specs=compiled_specs),
         "rule": "EXACT_INCOME_TAX_SOURCE_CONTEXT_ALL_QUERY_STRATEGIES",
     }
-    return {
-        **material,
-        "receipt_id": "gjitfav1:source-context:" + canonical_json_sha256_v1(material),
-    }
+    negative_axis = source_label_discrepancy.registered_negative_source_label_observation_axis_v1(page_records)
+    if negative_axis:
+        material["registered_source_label_discrepancy_observations"] = negative_axis
+    return {**material, "receipt_id": "gjitfav1:source-context:" + canonical_json_sha256_v1(material)}
 
 
 def _bind_source_context(
@@ -9594,12 +9598,34 @@ def _current_tax_payable_subtotal_conflicts_v1(
     return conflicts
 
 
+def _registered_negative_source_label_conflicts_v1(
+    candidate: Mapping[str, Any], *, source_context: Mapping[str, Any],
+    repaired_records: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    try:
+        return source_label_discrepancy.registered_negative_source_label_conflicts_v1(
+            candidate, source_context=source_context, repaired_records=repaired_records, compiled_specs=compiled_specs,
+        )
+    except source_label_discrepancy.IncomeTaxSourceLabelDiscrepancyV1Error as error:
+        raise _error(str(error)) from error
+
+
 def _seal_income_tax_source_controls(
     candidate: Mapping[str, Any], *, source_context: Mapping[str, Any],
     repaired_records: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
     if candidate.get("status") != READY:
         return canonical_clone_v1(candidate)
+    negative_source_labels = _registered_negative_source_label_conflicts_v1(
+        candidate, source_context=source_context, repaired_records=repaired_records, compiled_specs=compiled_specs,
+    )
+    if negative_source_labels:
+        return _unresolved_from_candidate(
+            candidate, reason="SOURCE_TRANSCRIPTION_DISCREPANCY",
+            evidence={"classification": "SOURCE_TRANSCRIPTION_DISCREPANCY",
+                      "registered_negative_source_label_observations": negative_source_labels,
+                      "source_context_receipt": canonical_clone_v1(source_context)},
+        )
     payable_subtotal_conflicts = _current_tax_payable_subtotal_conflicts_v1(
         candidate, source_context=source_context, repaired_records=repaired_records, compiled_specs=compiled_specs,
     )

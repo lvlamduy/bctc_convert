@@ -975,6 +975,7 @@ def _recheck_section_caption_admission_v1(bundles, documents, compiled, *, index
 def _make_authenticated_source_replay_adapter_v1(
     *, database, database_ref, artifact_root, corpus_index_ref, documents, expected_census_refs,
     source_pdf_root=None, implementation_refs=(), authority_refs=(), expected_caption_admission_axis=None,
+    expected_source_label_discrepancy_axis=None,
 ):
     """Bind an independent cold pass to original authority and warm raw bytes.
 
@@ -988,6 +989,8 @@ def _make_authenticated_source_replay_adapter_v1(
     authority_bytes = canonical_json_bytes_v1(list(authority_refs))
     expected_caption_bytes = (None if expected_caption_admission_axis is None else
                               canonical_json_bytes_v1(expected_caption_admission_axis))
+    expected_negative_bytes = (None if expected_source_label_discrepancy_axis is None else
+                               canonical_json_bytes_v1(expected_source_label_discrepancy_axis))
     database_ref_bytes, index_ref_bytes = map(canonical_json_bytes_v1, (database_ref, corpus_index_ref))
     database, artifact_root = Path(database), Path(artifact_root)
     source_pdf_root = None if source_pdf_root is None else Path(source_pdf_root)
@@ -1017,11 +1020,13 @@ def _make_authenticated_source_replay_adapter_v1(
         require(same_typed_json_v1(compiled_specs, compile_gemini_json_flat_family_specs_v1(
             specs["topology"], specs["evaluation"], specs["schema"],
         )), "Cold replay declarative specs differ")
-        seen, part_pdf_receipts, part_pdf_bundles, caption_admissions = [], [], [], []
+        seen, part_pdf_receipts, part_pdf_bundles, caption_admissions, negative_admissions = [], [], [], [], []
 
         def authenticate_original(document, loaded, original_records):
             # Independent cold authentication, never a warm approval token.
             # A missing PDF root is permitted only for nonapplicable sources.
+            negative_admissions.append(_authenticate_source_label_discrepancies_v1(
+                document, original_records, source_pdf_root))
             bundle = _authenticate_registered_part_catalog_pdf_v1(
                 document, loaded, original_records, family_compiled, source_pdf_root,
             )
@@ -1061,6 +1066,10 @@ def _make_authenticated_source_replay_adapter_v1(
                     "Nonempty fresh caption authentication requires the complete warm admission axis")
             require(expected_caption_bytes is None or canonical_json_bytes_v1(caption_admissions) == expected_caption_bytes,
                     "Cold fresh caption admission axis differs from warm original authentication")
+            require(expected_negative_bytes is not None or not any(negative_admissions),
+                    "Applicable negative source observation requires the complete warm PDF admission axis")
+            require(expected_negative_bytes is None or canonical_json_bytes_v1(negative_admissions) == expected_negative_bytes,
+                    "Cold fresh negative-label pixel authentication differs from warm source evidence")
         require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed at cold source close")
         # The original owned context has exited successfully. Hold a fresh
         # readonly FD across every later callback; no trial reaches the store
@@ -1087,6 +1096,8 @@ def _make_authenticated_source_replay_adapter_v1(
                             "Cold source PDF changed during final PDF callbacks: " + str(path))
             require(same_typed_json_v1(_raw_census_summary_v1(refs), before),
                     "Warm census files changed during final cold PDF callbacks")
+            require(expected_negative_bytes is None or canonical_json_bytes_v1(negative_admissions) == expected_negative_bytes,
+                    "Cold negative-label admission axis changed during final PDF callbacks")
         return trials
 
     return replay
@@ -1277,6 +1288,19 @@ def _authenticate_repairs_v1(document, loaded, compiled, pdf_path):
     return checked
 
 
+def _authenticate_source_label_discrepancies_v1(document, original_records, source_pdf_root):
+    from bctc_ai.evaluation import gemini_json_income_tax_source_label_discrepancy_v1 as negative_labels
+
+    if not negative_labels.registered_negative_source_label_observation_axis_v1(original_records):
+        return []
+    require(source_pdf_root is not None, "Registered source-label discrepancy requires original PDF pixels")
+    source = document["manifest"]["document"]
+    return negative_labels.authenticate_registered_negative_source_labels_v1(
+        document_source=source, original_records=original_records,
+        pdf_path=_safe_path(Path(source_pdf_root) / source["source_logical_name"]),
+    )
+
+
 def run(args):
     require(args.repo_root.resolve() == ROOT, "Runner checkout differs from explicit repo root")
     _assert_shared_pins_v1()
@@ -1338,6 +1362,7 @@ def run(args):
         ROOT / DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
         ROOT / DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
         ROOT / "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
+        ROOT / "config/families/tm-income-tax-source-label-discrepancies-v1.json",
         *(ROOT / p for p in SHARED_PINS),
         *SPEC_PATHS.values(),
         RENDER_BINDINGS_PATH,
@@ -1368,6 +1393,7 @@ def run(args):
     corpus_index_ref = {**generic._file_ref(args.corpus_index),
                         "path": args.corpus_index.relative_to(args.artifact_root).as_posix()}
     pdf_checked, repair_ids, census_refs, part_pdf_receipts, part_pdf_bundles, caption_admissions = [], [], [], [], [], []
+    negative_label_admissions = []
     args.output_dir.mkdir(mode=0o700)
     cache = BaseClusterCache(args.base_cluster_cache)
 
@@ -1388,6 +1414,8 @@ def run(args):
             coverage = _check_page_scope_v1(document, len(source_pdf), scope_rows)
         pdf_checked.append({**source, **coverage, "status": "PASS_BYTES_ONLY_NOT_VISUAL_AUDIT"})
         repair_ids.extend(_authenticate_repairs_v1(document, loaded, compiled, path))
+        negative_label_admissions.append(_authenticate_source_label_discrepancies_v1(
+            document, original_records, args.source_pdf_root))
         bundle = _authenticate_registered_part_catalog_pdf_v1(
             document, loaded, original_records, compiled, args.source_pdf_root,
         )
@@ -1480,6 +1508,7 @@ def run(args):
             source_pdf_root=args.source_pdf_root,
             implementation_refs=implementation_refs, authority_refs=authority_refs,
             expected_caption_admission_axis=caption_admissions,
+            expected_source_label_discrepancy_axis=negative_label_admissions,
         )
         started = time.perf_counter()
         stored = ingest_gemini_accounting_family_sweep_v1(
@@ -1560,6 +1589,7 @@ def run(args):
             "authenticated_repair_ids": repair_ids,
             "registered_part_period_pdf_authentication": part_pdf_receipts,
             "registered_section_caption_admission": caption_admission,
+            "registered_source_label_discrepancy_admission_axis": negative_label_admissions,
             "implementation_refs": implementation_refs,
             "immutable_input_refs": authority_refs,
         }
@@ -1593,6 +1623,7 @@ def run(args):
         "authenticated_repair_ids": repair_ids,
         "registered_part_period_pdf_authentication": part_pdf_receipts,
         "registered_section_caption_admission": caption_admission,
+        "registered_source_label_discrepancy_admission_axis": negative_label_admissions,
         "registered_part_period_cold_authentication": "FRESH_PER_APPLICABLE_SOURCE_IN_COLD_REPLAY_ADAPTER",
         "selected_page_ids_sha256": canonical_json_sha256_v1(selected_ids),
         "implementation_refs": implementation_refs,
