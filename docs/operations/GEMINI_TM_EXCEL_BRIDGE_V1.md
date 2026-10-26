@@ -1,9 +1,12 @@
 # Read-only Gemini canonical-store to TM Excel bridge V1
 
-Implementation checkpoint: **UNRUN — pending independent review and the
-coordinator's Python 3.12 synthetic test lease**. No corpus, restored database,
-PDF, workbook-export job, provider call, project import, AST/compile, lint or
-test has been run by the author. Authoring used native source text only.
+Implementation checkpoint: **synthetic gate PASS; no real-store/financial
+acceptance**. Root ran the reviewed implementation at
+`a050d1ce5940ee7b4cdf5cdcb2792db0071ddee0` in a fresh clean Linux clone:
+Ruff PASS and 85 tests PASS in 46.62 seconds, Python 3.12.3, 2 GiB address-space
+cap, nice 19, under the serialized test lease. Real restored-store, corpus,
+PDF and provider jobs remain coordinator-owned. Authoring itself used native
+source text only; the tests use owned synthetic source/store/PDF bytes.
 
 Branch `codex/tm-excel-bridge-v1` starts at exact migration base
 `8efd618b6c77f0cdbb402a440e7ba3b3549184f1`. The isolated native clone was made
@@ -190,7 +193,7 @@ import substitution is performed. Metadata duplicate keys/nonfinite tokens are
 rejected. Output receipts are separate linked XLSX receipts, not insertions into
 the existing JSON-only `family_export` table.
 
-## Synthetic controls authored, execution pending
+## Verified synthetic controls
 
 `tests/unit/test_gemini_tm_multitable_bridge_v1.py` covers direct source joins,
 global ordinals, exact stock/flow periods, absent/full period distinctions,
@@ -211,7 +214,26 @@ identity fixture, never rendered; provider observations use the existing inert
 unit fixture, never a network call. Additional fault-injection controls create
 new SQLite sidecars after callbacks and mutate the external request dictionary.
 
-No execution PASS, real-store coverage, runtime memory result or financial
-acceptance is asserted by this document. The initial bridge still needs the
-coordinator's static review, synthetic test execution and a separately owned
-real-store proof before any release claim.
+Root executed the two new bridge/publication modules plus existing
+`tests/unit/test_canonical_xlsx.py`: all 85 tests passed. The complete run
+receipt, source hashes, actual import origins, resource limits and JUnit are
+retained under
+`D:\bctc_bank\restore-receipts\CODEX_TM_EXCEL_BRIDGE_TESTS_20261026_V1\tm-excel-tests-20261026-v1\`.
+Receipt SHA-256:
+`27954694fa51cdef73935200b9da85e8b769093ca8ea3cfbd2eb6c6d6c1a1e0a`.
+This includes the real synthetic store/source E2E with unmocked authentication
+and validation, all six post-render DB-sidecar controls, request snapshots and
+the explicitly labelled publication-wiring/readback fault controls.
+
+Independent static review of the source/final delta found no material finding
+in its stated scope. Its external receipt
+`CODEX_TM_EXCEL_BRIDGE_STATIC_REVIEW_20261026_V1.json` has SHA-256
+`c5fa97eb8415400e9c33d1fe8e5bc7e57726a005a5226120a5b06677e60e4d83`.
+That receipt is source review, not a second execution claim.
+
+The initial bridge still needs a separately owned real-store proof. No real
+export coverage, corpus-scale memory/performance result, complete transitive
+consumer-source attestation or financial acceptance is asserted. The approved
+consumer-manifest and efficient authenticated-run/session designs need separate
+implementation/review; the current entry point repeats full-run authentication
+for each requested document. Existing frozen/template files remain unchanged.
