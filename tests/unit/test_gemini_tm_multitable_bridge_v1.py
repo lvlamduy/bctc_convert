@@ -350,3 +350,255 @@ def test_publish_creates_nothing_when_authenticated_input_gate_fails(tmp_path: P
 def test_template_pin_is_fixed_before_workbook_parsing() -> None:
     with pytest.raises(ValueError, match="template SHA mismatch"):
         renderer.template_rows_v1(b"not the pinned workbook")
+
+
+def _real_store_request(tmp_path: Path) -> dict:
+    """Real base MTH/store/frontier APIs over tiny SYNTHETIC inputs only.
+
+    No validator/authenticator is mocked. The provider result is the existing
+    inert unit fixture, not a provider call. PDF bytes are identity fixtures,
+    never rendered or parsed. Plan/selection/ledger metadata are synthetic.
+    """
+    from test_gemini_financial_page_store_v1 import _ingest
+    from test_gemini_json_multitable_hierarchical_family_v1 import (
+        _json,
+        _page,
+        _row,
+        _section,
+        _table,
+    )
+    from test_gemini_json_multitable_hierarchical_indexed_wiring_v1 import _trial
+
+    from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
+        build_gemini_json_flat_family_sweep_v1,
+    )
+    from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+        READY,
+        build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
+        evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
+    )
+    from bctc_ai.storage.gemini_accounting_family_store_v1 import (
+        ingest_gemini_accounting_family_sweep_v1,
+    )
+    from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (
+        build_current_corpus_manifest_index_v1,
+    )
+    from bctc_ai.storage.gemini_financial_page_store_v1 import (
+        build_financial_document_manifest_v1,
+        initialize_gemini_financial_page_store_v1,
+        query_selected_multitable_hierarchical_family_regions_v1,
+        usage_summary_v1,
+    )
+
+    root = Path(__file__).resolve().parents[2]
+    authority = tmp_path / "authority"
+    artifacts = authority / "artifacts"
+    artifacts.mkdir(parents=True)
+    pdfs = tmp_path / "synthetic-pdfs"
+    pdfs.mkdir()
+    synthetic_pdf = (b"%PDF-SYNTHETIC-IDENTITY-FIXTURE-NOT-A-REAL-REPORT\n").ljust(123, b" ")
+    pdf_path = pdfs / "synthetic.pdf"
+    pdf_path.write_bytes(synthetic_pdf)
+    source_sha = sha256(synthetic_pdf).hexdigest()
+    pages = artifacts / "pages.sqlite3"
+    initialize_gemini_financial_page_store_v1(pages)
+    page_json = _page(_section("Tiền và các khoản tương đương tiền", _table(
+        "Tiền và các khoản tương đương tiền", [
+            _row("Tiền mặt", ["10", "8"]),
+            _row("Tiền gửi tại Ngân hàng Nhà nước", ["20", "12"]),
+            _row(None, ["30", "20"], kind="TOTAL", hierarchy=[None]),
+        ],
+    )))
+    ingested = _ingest(pages, physical_page=1, source_logical_name="synthetic.pdf",
+                       source_sha256=source_sha, page_json=page_json)
+    selected = [ingested["page_json_version_id"]]
+    manifest = build_financial_document_manifest_v1(
+        pages, source_sha256=source_sha, source_logical_name="synthetic.pdf",
+        expected_physical_pages=[1], prompt_sha256="d" * 64,
+        response_schema_sha256="e" * 64, requested_model="gemini-3.7-flash",
+        requested_service_tier="flex", selected_provider="GOOGLE_GEMINI_API",
+    )
+
+    def write_json(name: str, value: dict) -> dict:
+        path = artifacts / name
+        path.write_bytes(bridge.json_bytes(value))
+        return {**bridge.file_ref_v1(path), "path": name}
+
+    manifest_ref = write_json("document-manifest.json", manifest)
+    plan = {"format_version": "SYNTHETIC_UNIT_CORPUS_PLAN_V1", "source_sha256": source_sha}
+    plan_ref = write_json("plan.json", plan)
+    selection = {"format_version": "SYNTHETIC_UNIT_SELECTION_V1", "document_manifest_id": manifest["document_manifest_id"]}
+    selection_ref = write_json("selection.json", selection)
+    ledger_ref = write_json("ledger.json", {"format_version": "SYNTHETIC_UNIT_LEDGER_V1", "requests_sent": 0})
+    document = {
+        "document_manifest_id": manifest["document_manifest_id"],
+        "document_manifest_ref": manifest_ref,
+        "document_plan_id": "gjfpdocv1:" + bridge.canonical_json_sha256_v1(plan),
+        "page_count": 1, "page_json_frontier_sha256": bridge.canonical_json_sha256_v1(manifest["pages"]),
+        "page_status_counts": {"FINANCIAL_NOTE_CONTENT": 1, "MIXED_FINANCIAL_CONTENT": 0,
+                               "NO_RELEVANT_FINANCIAL_CONTENT": 0, "PRIMARY_FINANCIAL_STATEMENT": 0},
+        "provider_counts": [{"count": 1, "gateway": "GOOGLE_GEMINI_API",
+                             "selected_provider": "GOOGLE_GEMINI_API", "selected_service_tier": "flex"}],
+        "relative_path": "synthetic.pdf",
+        "selection_id": "gjfcdmsv1:selection:" + bridge.canonical_json_sha256_v1(selection),
+        "selection_ref": selection_ref, "source_ordinal": 1,
+        "source_sha256": source_sha, "source_size_bytes": len(synthetic_pdf),
+    }
+    index = build_current_corpus_manifest_index_v1(
+        corpus_plan_id="gjfpcorpusv1:" + bridge.canonical_json_sha256_v1(plan),
+        corpus_run_id="gjfpcrunv1:" + bridge.canonical_json_sha256_v1({"synthetic_run": 1}),
+        corpus_plan_ref=plan_ref, database_ref={**bridge.file_ref_v1(pages), "path": "pages.sqlite3"},
+        ledger_ref=ledger_ref, documents=[document], store_usage_summary=usage_summary_v1(pages),
+    )
+    write_json("index.json", index)
+    index_ref = bridge.file_ref_v1(artifacts / "index.json")
+    specs = [_json(f"tm-cash-equivalents-{kind}-v1.json") for kind in
+             ("topology", "evaluation", "schema-binding")]
+    compiled = bridge.compile_gemini_json_flat_family_specs_v1(*specs)
+    evidence = query_selected_multitable_hierarchical_family_regions_v1(
+        pages, selected_page_json_version_ids=selected, compiled_specs=compiled,
+    )
+    assert evidence["query_receipt"]["disposition_counts"][READY] == 1
+    cluster = evidence["accepted_clusters"][0]
+    candidate = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
+        regions=cluster["component_regions"], page_json_by_version={selected[0]: page_json},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(cluster["component_regions"]),
+    )
+    assert candidate["status"] == READY, candidate["reasons"]
+    trial = _trial(evidence["selected_document_axis"][0], candidate, READY)
+    sweep = build_gemini_json_flat_family_sweep_v1(
+        corpus_manifest_index_id=index["corpus_manifest_index_id"],
+        topology_spec=specs[0], evaluation_spec=specs[1], schema_binding_spec=specs[2],
+        trials=[trial], indexed_query_evidence=evidence,
+    )
+    producer_paths = [
+        "scripts/experiments/run_gemini_json_multitable_hierarchical_accounting_family_v1.py",
+        "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
+        "src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py",
+        "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
+        "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
+    ]
+    producer_refs = sorted([{**bridge.file_ref_v1(root / path), "path": path}
+                            for path in producer_paths], key=lambda ref: ref["path"])
+    store = authority / "family.sqlite3"
+    stored = ingest_gemini_accounting_family_sweep_v1(
+        store, sweep=sweep, corpus_index_ref=index_ref, implementation_refs=producer_refs,
+        run_kind="OFFICIAL", source_page_database=pages, selected_page_json_version_ids=selected,
+        corpus_artifact_root=artifacts,
+    )
+    (tmp_path / "published").mkdir()
+    return {
+        "store_ref": bridge.file_ref_v1(store), "family_run_id": stored["family_run_id"],
+        "corpus_index_ref": index_ref, "source_page_database_ref": bridge.file_ref_v1(pages),
+        "corpus_artifact_root": str(artifacts), "effective_page_artifact_root": None,
+        "source_pdf_root": str(pdfs), "producer_root": str(root), "producer_refs": producer_refs,
+        "document_ordinal": 1, "expected_family_id": "CASH_EQUIVALENTS", "expected_run_kind": "OFFICIAL",
+        "require_current_selection": True,
+        "template_ref": bridge.file_ref_v1(root / "template/Bank_TM_ReportNormId.v2.xlsx"),
+        "output_dir": str(tmp_path / "published" / "export-v1"),
+    }
+
+
+def test_real_synthetic_multitable_authentication_and_linked_export(tmp_path: Path) -> None:
+    request = _real_store_request(tmp_path)
+    before = {key: Path(request[key]["path"]).read_bytes() for key in ("store_ref", "source_page_database_ref")}
+    bundle = bridge.authenticate_multitable_store_run_v1(request)
+    assert bundle["run_metadata"]["family_run_id"] == request["family_run_id"]
+    assert bundle["trial"]["document_ordinal"] == 1
+    assert len(bundle["trial"]["mappings"]) == 3  # CASH, CENTRAL_BANK, source-visible ROOT1248.
+    records = bridge.project_multitable_document_v1(bundle)
+    assert len(records) == 6
+    assert {record["report_norm_id"] for record in records} == {1248, 1249, 1250}
+    result = bridge.export_tm_multitable_store_document_v1(request=request)
+    output = Path(request["output_dir"])
+    receipt_payload = (output / "receipt.json").read_bytes()
+    receipt = json.loads(receipt_payload)
+    assert result["receipt_sha256"] == sha256(receipt_payload).hexdigest()
+    assert (output / "receipt.sha256").read_text(encoding="ascii").strip() == result["receipt_sha256"] + "  receipt.json"
+    material_hash = receipt.pop("receipt_material_sha256")
+    assert material_hash == sha256(bridge.json_bytes(receipt)).hexdigest()
+    assert receipt["xlsx"]["sha256"] == sha256((output / "tm.xlsx").read_bytes()).hexdigest()
+    assert receipt["provenance"]["run_metadata"]["family_run_id"] == request["family_run_id"]
+    assert receipt["provenance"]["source_pdf_ref"]["sha256"] == bundle["document"]["source_sha256"]
+    assert receipt["provenance"]["schema_binding"]["value"]["family_root_report_norm_id"] == 1248
+    assert receipt["store_modified"] is False and receipt["financial_acceptance"] == "NOT_CLAIMED"
+    for key, payload in before.items():
+        assert Path(request[key]["path"]).read_bytes() == payload
+        bridge.assert_sealed_sqlite_snapshot_v1(Path(request[key]["path"]))
+
+
+@pytest.mark.parametrize("database_key,suffix", [("store_ref", "-wal"), ("store_ref", "-shm"),
+                                                ("store_ref", "-journal"),
+                                                ("source_page_database_ref", "-wal"),
+                                                ("source_page_database_ref", "-shm"),
+                                                ("source_page_database_ref", "-journal")])
+def test_new_sidecar_after_real_render_blocks_publish(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+                                                     database_key: str, suffix: str) -> None:
+    request = _real_store_request(tmp_path)
+    render = bridge.render_projected_tm_workbook_v1
+
+    def add_sidecar(**kwargs):
+        result = render(**kwargs)
+        Path(request[database_key]["path"] + suffix).write_bytes(b"new-sidecar")
+        return result
+
+    monkeypatch.setattr(bridge, "render_projected_tm_workbook_v1", add_sidecar)
+    with pytest.raises(ValueError, match="sealed snapshot"):
+        bridge.export_tm_multitable_store_document_v1(request=request)
+    assert not Path(request["output_dir"]).exists()
+
+
+def test_external_request_mutation_cannot_change_checked_policy_or_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    request = _real_store_request(tmp_path)
+    expected = copy.deepcopy(request)
+    render = bridge.render_projected_tm_workbook_v1
+
+    def mutate_caller_request(**kwargs):
+        request["expected_run_kind"] = "EXPERIMENTAL"
+        request["require_current_selection"] = False
+        request["output_dir"] = str(tmp_path / "mutated-output")
+        request["producer_refs"][0]["sha256"] = "0" * 64
+        return render(**kwargs)
+
+    monkeypatch.setattr(bridge, "render_projected_tm_workbook_v1", mutate_caller_request)
+    result = bridge.export_tm_multitable_store_document_v1(request=request)
+    assert result["output_dir"] == expected["output_dir"]
+    assert not (tmp_path / "mutated-output").exists()
+    receipt = json.loads((Path(expected["output_dir"]) / "receipt.json").read_bytes())
+    assert receipt["run_kind_requested"] == "OFFICIAL"
+    assert receipt["current_selection_required"] is True
+    assert receipt["provenance"]["checked_request_sha256"] == sha256(bridge.json_bytes(expected)).hexdigest()
+
+
+def test_authentication_snapshots_caller_controls_before_source_callbacks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    request = _real_store_request(tmp_path)
+    expected = copy.deepcopy(request)
+    load_pages = bridge.load_page_json_versions_v1
+
+    def mutate_original_request(*args, **kwargs):
+        request["expected_run_kind"] = "EXPERIMENTAL"
+        request["require_current_selection"] = False
+        request["output_dir"] = str(tmp_path / "unchecked-output")
+        return load_pages(*args, **kwargs)
+
+    monkeypatch.setattr(bridge, "load_page_json_versions_v1", mutate_original_request)
+    bundle = bridge.authenticate_multitable_store_run_v1(request)
+    assert bundle["request"] == expected
+    assert request != expected
+
+
+def test_authentication_rechecks_sidecars_after_source_callback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    request = _real_store_request(tmp_path)
+    load_pages = bridge.load_page_json_versions_v1
+
+    def add_new_journal(*args, **kwargs):
+        result = load_pages(*args, **kwargs)
+        Path(request["source_page_database_ref"]["path"] + "-journal").write_bytes(b"new-journal")
+        return result
+
+    monkeypatch.setattr(bridge, "load_page_json_versions_v1", add_new_journal)
+    with pytest.raises(ValueError, match="sealed snapshot"):
+        bridge.authenticate_multitable_store_run_v1(request)
+    assert not Path(request["output_dir"]).exists()

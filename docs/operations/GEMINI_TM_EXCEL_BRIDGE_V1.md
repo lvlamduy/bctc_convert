@@ -37,6 +37,33 @@ existing authenticated-frontier helper is a private base API, intentionally
 named and pinned here; a future incompatible base requires review, not a
 dynamic API fallback.
 
+Both public entry points snapshot the request through strict canonical JSON
+before reading policy controls; callbacks cannot relabel checked run-kind,
+selection policy or output roots by mutating the caller's dictionary. Both
+SQLite inputs are checked for new `-wal`, `-shm` and `-journal` sidecars after
+source loading and again after workbook readback/final byte checks, before
+publication. A writer must remain excluded for the life of the sealed snapshot;
+these barriers do not claim to lock an unrelated writer process atomically.
+
+The implementation axis authenticates the producer files recorded in the run
+and the loaded callable origins named above. It is not an independent hash pin
+of every transitive Python/helper/environment dependency. A fresh, clean pinned
+project environment is required. A broader consumer/dependency manifest remains
+a separate proposed extension; no full Python dependency-closure claim is made.
+
+Proposed extension, not implemented or an acceptance gate in V1: retain the
+historical stored producer axis unchanged, and link a separate reviewed
+`consumer_manifest` by canonical JSON digest. Its explicit authority would bind
+the bridge, renderer, canonical XLSX helper, observation/contract helpers and
+every actually used transitive project module by repository-relative path,
+SHA/bytes and loaded origin; it would also bind Python 3.12 patch version and
+the approved OpenPyXL/dependency distribution artifacts. The reviewed manifest
+must declare the dependency frontier in advance. Runtime discovery is only a
+check against that frontier, never authority to approve newly discovered code.
+Fresh import/cache provenance and any producer-to-consumer compatibility review
+would be separate fields. Missing/drifted/extra used dependencies would stop;
+historical producer refs would not be rewritten to current consumer bytes.
+
 `project_multitable_document_v1(bundle) -> list[dict]` converts **all** mapping
 lanes in the requested READY document or stops the entire document. Initial
 support is deliberately a source grammar subset of codec
@@ -174,6 +201,15 @@ provenance, duplicate equal-value slots, boolean-vs-zero readback, historical
 imputation rejection, 2024-report exclusion with 2024-comparative retention,
 non-READY rejection, strict JSON, actual callable origins, readonly synthetic
 SQLite, source-file pins, sidecars and untruncated provenance chunks.
+
+The added real synthetic end-to-end fixture uses the existing base F40 configs,
+source-page store, document-manifest/index builders, indexed region query,
+candidate evaluation, persisted OFFICIAL store ingest, full source replay and
+the real pinned TM template asset. It calls the bridge authenticator and exporter
+without mocks of admission/validators. Its PDF bytes are a 123-byte synthetic
+identity fixture, never rendered; provider observations use the existing inert
+unit fixture, never a network call. Additional fault-injection controls create
+new SQLite sidecars after callbacks and mutate the external request dictionary.
 
 No execution PASS, real-store coverage, runtime memory result or financial
 acceptance is asserted by this document. The initial bridge still needs the

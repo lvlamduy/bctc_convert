@@ -122,10 +122,15 @@ def pinned_bytes_v1(reference: dict[str, Any]) -> bytes:
     return payload
 
 
-def _ro(path: Path) -> sqlite3.Connection:
+def assert_sealed_sqlite_snapshot_v1(path: Path) -> None:
+    """Reject sidecars before use and again after replay/render callbacks."""
     regular_path_v1(path)
     for suffix in ("-wal", "-shm", "-journal"):
         require(not Path(str(path) + suffix).exists(), "SQLite must be a sealed snapshot without sidecars")
+
+
+def _ro(path: Path) -> sqlite3.Connection:
+    assert_sealed_sqlite_snapshot_v1(path)
     connection = sqlite3.connect(path.as_uri() + "?mode=ro&immutable=1", uri=True)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA query_only=ON")
@@ -220,7 +225,9 @@ def authenticate_multitable_store_run_v1(request: dict[str, Any]) -> dict[str, A
     This does not create a new store or assert the family's PDF residual audits.
     Existing loader/replay materializes one bounded sweep, up to 256 MiB.
     """
-    require(type(request) is dict and set(request) == _REQUEST_FIELDS, "request fields drift")
+    require(type(request) is dict, "request must be a JSON object")
+    request = strict_json_v1(json_bytes(request))
+    require(set(request) == _REQUEST_FIELDS, "request fields drift")
     require(type(request["document_ordinal"]) is int and request["document_ordinal"] > 0,
             "document ordinal must be the global positive integer")
     require(type(request["require_current_selection"]) is bool, "selection policy must be explicit")
@@ -326,6 +333,10 @@ def authenticate_multitable_store_run_v1(request: dict[str, Any]) -> dict[str, A
         loaded = page_map[item["page_json_version_id"]]
         require(loaded["source_sha256"] == document["source_sha256"]
                 and loaded["physical_page"] == item["physical_page"], "page provenance/source drift")
+    for reference in [*refs.values(), *producer_files, pdf_ref]:
+        authenticate_ref_v1(reference)
+    assert_sealed_sqlite_snapshot_v1(store)
+    assert_sealed_sqlite_snapshot_v1(page_db)
     return {"sweep": sweep, "trial": trial, "document": {**document, **axis, "status": trial["status"]},
             "compiled": compiled, "pages": page_map, "page_axis": page_axis,
             "refs": refs, "producer_files": producer_files, "pdf_ref": pdf_ref,
@@ -445,6 +456,8 @@ def project_multitable_document_v1(bundle: dict[str, Any]) -> list[dict[str, Any
 
 
 def export_tm_multitable_store_document_v1(*, request: dict[str, Any]) -> dict[str, Any]:
+    require(type(request) is dict, "request must be a JSON object")
+    request = strict_json_v1(json_bytes(request))
     bundle = authenticate_multitable_store_run_v1(request)
     records = project_multitable_document_v1(bundle)
     template = template_rows_v1(pinned_bytes_v1(bundle["refs"]["template_ref"]))
@@ -452,6 +465,7 @@ def export_tm_multitable_store_document_v1(*, request: dict[str, Any]) -> dict[s
                   "input_refs": bundle["refs"], "producer_files": bundle["producer_files"],
                   "source_pdf_ref": bundle["pdf_ref"], "source_replay": "EXACT_FULL_STORED_TRIAL_AXIS",
                   "schema_binding": bundle["sweep"]["specs"]["schema_binding"],
+                  "checked_request_sha256": sha256(json_bytes(request)).hexdigest(),
                   "trial": bundle["trial"], "projection_sha256": sha256(json_bytes(records)).hexdigest(),
                   "bridge_implementation_ref": file_ref_v1(Path(__file__).resolve()),
                   "renderer_implementation_ref": file_ref_v1(Path(inspect.getsourcefile(render_projected_tm_workbook_v1)).resolve())}
@@ -464,6 +478,8 @@ def export_tm_multitable_store_document_v1(*, request: dict[str, Any]) -> dict[s
     for ref in [*bundle["refs"].values(), *bundle["producer_files"], bundle["pdf_ref"],
                 provenance["bridge_implementation_ref"], provenance["renderer_implementation_ref"]]:
         authenticate_ref_v1(ref)
+    assert_sealed_sqlite_snapshot_v1(Path(bundle["refs"]["store_ref"]["path"]))
+    assert_sealed_sqlite_snapshot_v1(Path(bundle["refs"]["source_page_database_ref"]["path"]))
     output = Path(request["output_dir"])
     require(output.is_absolute() and not output.exists(), "output directory must be new and absolute")
     require(output.parent.is_dir(), "output parent must already exist")
