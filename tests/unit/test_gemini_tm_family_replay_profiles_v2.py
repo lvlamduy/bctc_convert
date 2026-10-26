@@ -87,7 +87,13 @@ def test_exact_f40_real_synthetic_source_store_replay_and_export(tmp_path: Path)
 
 
 def test_actual_family_local_narrative_recovery_cannot_use_generic_fallback(tmp_path: Path) -> None:
-    page = _page(_rows(), owner="Thuyết minh báo cáo tài chính")
+    rows = _rows()
+    # The evaluator-only fixture uses [] for an unlabeled total. The canonical
+    # page contract requires a nonempty path, including [None] for that total.
+    # Keep every row flat/self-labelled; invent no owner, relation or value.
+    for row in rows:
+        row["hierarchy_path_exact"] = [row["label_exact"]]
+    page = _page(rows, owner="Thuyết minh báo cáo tài chính")
     page["sections"][0]["narratives_exact"] = ["30. Tiền và các khoản tương đương tiền"]
     request = _real_store_request(tmp_path, f40_profile=True, page_json_override=page)
     bundle = profiles.authenticate_family_store_run_v2(request)
