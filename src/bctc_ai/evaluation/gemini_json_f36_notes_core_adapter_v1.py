@@ -683,6 +683,23 @@ def _quarter_frame_lane_v1(descriptor: Any, context: Any) -> Any:
             or (context.range_start and context.range_start[5:] != "01-01")
             or context.months not in (None, 3, 3 * quarter)):
         return descriptor
+    # Reuse the parser token grammar, but do not let its fiscal-year fallback
+    # choose between conflicting/missing printed quarter-frame years.
+    from bctc_ai.primary_statements import periods_v1 as periods
+
+    frames = set()
+    for text in context.evidence:
+        if type(text) is not str:
+            return descriptor
+        folded = periods.fold_vietnamese(text.replace('\\n', '\n'))
+        for pattern in (periods._QUARTER, periods._Q_SHORT):
+            for match in pattern.finditer(folded):
+                if match.group('y') is not None:
+                    token = match.group('q')
+                    frame_quarter = periods._ROMAN.get(token) or int(token)
+                    frames.add((frame_quarter, int(match.group('y'))))
+    if frames != {(quarter, year)}:
+        return descriptor
     fields = dict(descriptor.fields)
     end = fields.get("end")
     if type(end) is not str or len(end) != 10 or end[5:] != _QUARTER_END[quarter]:
