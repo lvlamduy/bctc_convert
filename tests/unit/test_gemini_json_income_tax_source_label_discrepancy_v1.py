@@ -8,12 +8,13 @@ from copy import deepcopy
 from hashlib import sha256
 
 import pytest
+import test_run_gemini_json_income_tax_accounting_family_v1 as runner_tests
 from test_gemini_json_income_tax_family_v1 import _adapter_compiled, _primary_page, _record
 
 from bctc_ai.evaluation import gemini_json_income_tax_family_v1 as family
 from bctc_ai.evaluation import gemini_json_income_tax_source_label_discrepancy_v1 as negative
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import READY, UNRESOLVED
-from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1, same_typed_json_v1
 
 REASON = "SOURCE_TRANSCRIPTION_DISCREPANCY"
 
@@ -369,3 +370,106 @@ def test_pixel_protocol_rejects_wrong_bytes_and_post_callback_mutation(registry,
         negative.authenticate_registered_negative_source_labels_v1(
             document_source=source, original_records=records, pdf_path=path,
         )
+
+
+def _runner_negative_axis_wiring_case(tmp_path, monkeypatch, *, applicable=True):
+    """Real synthetic source replay; only the I/O adapter callback is substituted.
+
+    The three-document SQLite/census fixture is owned by this unit test. The
+    dictionaries below are deliberately NOT PDF-authentication receipts: these
+    controls test admission-vector transport, not the already separate pixel
+    authenticator. No require/_need, source validator or pixel validator is mocked.
+    """
+    runner = runner_tests.runner
+    fixture = runner_tests._raw_census_authority_fixture(tmp_path, monkeypatch, documents=3)
+    before = runner_tests._raw_census_authority_refs(fixture)
+    (indexed, trials, _timing), references, _censuses = (
+        runner_tests._written_authenticated_raw_census_stream(fixture, tmp_path / "warm-axis-wiring")
+    )
+    vectors = [[{
+        "status": "SYNTHETIC_WIRING_ONLY_NOT_PDF_AUTHENTICATION",
+        "document_ordinal": 1, "token": "first-document",
+    }], [], [{
+        "status": "SYNTHETIC_WIRING_ONLY_NOT_PDF_AUTHENTICATION",
+        "document_ordinal": 3, "token": "third-document",
+    }]] if applicable else [[], [], []]
+    observed = []
+
+    def synthetic_admission_callback(document, original_records, source_pdf_root):
+        del source_pdf_root  # No real PDF is available or opened in this wiring test.
+        ordinal = original_records[0]["document_ordinal"]
+        assert document == fixture.documents[ordinal - 1]
+        observed.append(ordinal)
+        return deepcopy(vectors[ordinal - 1])
+
+    monkeypatch.setattr(
+        runner, "_authenticate_source_label_discrepancies_v1", synthetic_admission_callback,
+    )
+
+    def adapter(expected):
+        return runner._make_authenticated_source_replay_adapter_v1(
+            database=fixture.options["database"], database_ref=fixture.options["database_ref"],
+            artifact_root=fixture.options["artifact_root"], corpus_index_ref=fixture.options["corpus_index_ref"],
+            documents=fixture.documents, expected_census_refs=references,
+            expected_source_label_discrepancy_axis=expected,
+        )
+
+    def invoke(callback):
+        try:
+            return runner_tests._invoke_authenticated_raw_cold(fixture, callback, indexed)
+        finally:
+            assert observed == [1, 2, 3]
+            assert runner_tests._raw_census_authority_refs(fixture) == before
+
+    return vectors, trials, adapter, invoke
+
+
+def test_runner_wiring_requires_a_warm_axis_when_cold_admission_is_nonempty(tmp_path, monkeypatch):
+    _vectors, _trials, adapter, invoke = _runner_negative_axis_wiring_case(tmp_path, monkeypatch)
+    with pytest.raises(runner_tests.runner.RunGeminiJsonIncomeTaxV1Error, match="complete warm PDF admission axis"):
+        invoke(adapter(None))
+
+
+def test_runner_wiring_rejects_a_changed_cold_receipt_after_matching_source_replay(tmp_path, monkeypatch):
+    vectors, _trials, adapter, invoke = _runner_negative_axis_wiring_case(tmp_path, monkeypatch)
+    warm = deepcopy(vectors)
+    warm[0][0]["token"] = "different-warm-admission"
+    with pytest.raises(runner_tests.runner.RunGeminiJsonIncomeTaxV1Error, match="negative-label pixel authentication differs"):
+        invoke(adapter(warm))
+
+
+@pytest.mark.parametrize("mutation", ["compact_empty_slot", "omit_document", "reverse_documents", "duplicate_document"])
+def test_runner_wiring_requires_the_complete_ordered_per_document_admission_axis(tmp_path, monkeypatch, mutation):
+    vectors, _trials, adapter, invoke = _runner_negative_axis_wiring_case(tmp_path, monkeypatch)
+    warm = deepcopy(vectors)
+    if mutation == "compact_empty_slot":
+        warm = [entry for entry in warm if entry]
+    elif mutation == "omit_document":
+        warm.pop()
+    elif mutation == "reverse_documents":
+        warm.reverse()
+    else:
+        warm[1] = deepcopy(warm[0])
+    with pytest.raises(runner_tests.runner.RunGeminiJsonIncomeTaxV1Error, match="negative-label pixel authentication differs"):
+        invoke(adapter(warm))
+
+
+def test_runner_wiring_accepts_exact_vectors_including_unrelated_empty_document_slots(tmp_path, monkeypatch):
+    vectors, trials, adapter, invoke = _runner_negative_axis_wiring_case(tmp_path, monkeypatch)
+    assert same_typed_json_v1(invoke(adapter(deepcopy(vectors))), trials)
+
+
+def test_runner_wiring_keeps_the_legacy_none_axis_for_wholly_unrelated_sources(tmp_path, monkeypatch):
+    _vectors, trials, adapter, invoke = _runner_negative_axis_wiring_case(
+        tmp_path, monkeypatch, applicable=False,
+    )
+    assert same_typed_json_v1(invoke(adapter(None)), trials)
+
+
+def test_runner_wiring_captures_warm_admission_bytes_before_caller_mutation(tmp_path, monkeypatch):
+    vectors, trials, adapter, invoke = _runner_negative_axis_wiring_case(tmp_path, monkeypatch)
+    warm = deepcopy(vectors)
+    captured = adapter(warm)
+    warm[0][0]["token"] = "changed-after-adapter-construction"
+    warm.pop()
+    assert same_typed_json_v1(invoke(captured), trials)

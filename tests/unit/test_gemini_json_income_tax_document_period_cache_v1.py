@@ -39,6 +39,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 ERROR = family.GeminiJsonIncomeTaxFamilyV1Error
 DEPENDENCY_FILES = (
+    "evaluation/gemini_json_income_tax_source_label_discrepancy_v1.py",
     "evaluation/gemini_json_income_tax_section_caption_repair_v1.py",
     "evaluation/gemini_json_income_tax_family_v1.py",
     "evaluation/gemini_json_income_tax_part_period_context_v1.py",
@@ -50,6 +51,7 @@ DEPENDENCY_FILES = (
     "evaluation/source_observation_lane_math_v1.py",
     "evaluation/gemini_json_flat_accounting_family_v1.py",
     "source_structure/contracts_v1.py",
+    "config/families/tm-income-tax-source-label-discrepancies-v1.json",
     "config/families/tm-income-tax-part-period-contexts-v1.json",
     "config/families/tm-income-tax-part-period-contexts-common204-v1.json",
     "config/families/tm-income-tax-source-repair-v1.json",
@@ -411,7 +413,7 @@ def test_dependency_refs_are_actual_complete_reviewed_file_bytes():
         raw = (dependency_root / reference["path"]).read_bytes()
         assert reference["size_bytes"] == len(raw)
         assert reference["sha256"] == sha256(raw).hexdigest()
-    assert len(refs) == len({ref["path"] for ref in refs}) == 15
+    assert len(refs) == len({ref["path"] for ref in refs}) == 17
     assert [ref["sha256"] for ref in refs[-4:]] == [
         "c98624ac7822b44fa53c055ad094968a7fb11f3e96751a1c06e875b4999c140b",
         "7ba529e7878c1fd5d6af27abe4b5a7d2937bd395b40e3ea1160ee261448adaeb",

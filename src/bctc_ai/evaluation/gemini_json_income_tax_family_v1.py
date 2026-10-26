@@ -271,7 +271,8 @@ def _period_inventory_dependency_refs_v1() -> list[dict[str, Any]]:
         # Registry bytes are also checked at the operation's exit barrier,
         # including after the last memo hit. This path is relative to repo,
         # unlike the implementation paths above; it is never caller-supplied.
-        for relative in (DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH, DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
+        for relative in (source_label_discrepancy.REGISTRY_RELATIVE_PATH,
+                         DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH, DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
                          DEFAULT_SOURCE_REPAIR_SPEC_PATH, DEFAULT_SECTION_CAPTION_AUTH_ENVELOPE_PATH):
             raw = (root.parents[1] / relative).read_bytes()
             refs.append({"path": relative, "size_bytes": len(raw), "sha256": sha256(raw).hexdigest()})
