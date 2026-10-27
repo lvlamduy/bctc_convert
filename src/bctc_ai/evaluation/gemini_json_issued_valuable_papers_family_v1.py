@@ -18,10 +18,7 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import (
-    _document_unit_context_axis,
-    _two_period_axis,
-)
+from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import _two_period_axis
 from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
     _normalized,
     _without_leading_ordinal,
@@ -32,6 +29,7 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
     UNRESOLVED,
+    _outline_number_path,
     _transposed_period_axis,
     _unit_axis,
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
@@ -3185,11 +3183,294 @@ def _project_exact_validation_rows_v1(
     return projected_pages, projected_regions, receipts
 
 
+def _source_unit_scope_key_v1(locator: Mapping[str, Any]) -> tuple[Any, ...]:
+    return tuple(locator.get(key) for key in ("page_json_version_id", "section_id", "table_id"))
+
+
+def _numbered_source_unit_owner_surface_v1(value: Any, *, compiled_specs: Mapping[str, Any]) -> bool:
+    body = _without_leading_ordinal(_normalized(value))
+    if not body:
+        return True
+    for prefix in ("chi tiet ve ", "chi tiet cac ", "chi tiet "):
+        if body.startswith(prefix):
+            body = body[len(prefix):]
+            break
+    aliases = {*compiled_specs["query_policy"]["owner_aliases"],
+               *compiled_specs["topology"]["parent"]["aliases"]}
+    for child in compiled_specs["topology"]["children"]:
+        for matcher in child.get("matchers", []):
+            aliases.update(matcher.get("aliases", []))
+    return body in {_without_leading_ordinal(_normalized(alias)) for alias in aliases}
+
+
+def _original_source_unit_proofs_v1(
+    *, pages: Mapping[str, dict[str, Any]], regions: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[tuple[Any, ...], dict[str, Any]]:
+    """Read unit authority from original surfaces, never projected metadata."""
+    by_key = {_source_unit_scope_key_v1(region): region for region in regions}
+    if len(by_key) != len(regions):
+        raise _error("issued-paper original source unit scope is duplicate")
+    proved: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+    def resolve(key, visiting):
+        if key in proved:
+            return proved[key]
+        if key in visiting or key not in by_key:
+            return None
+        region = by_key[key]
+        page = pages[region["page_json_version_id"]]
+        table = _region_table(pages, region)
+        section = page["sections"][int(region["section_id"][1:]) - 1]
+        unit = _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None)
+        material = {
+            "locator": canonical_clone_v1(region),
+            "original_page_sha256": canonical_json_sha256_v1(page),
+            "original_table_sha256": canonical_json_sha256_v1(table),
+            "raw_unit_exact": table.get("unit_exact"),
+            "raw_columns_exact": canonical_clone_v1(table.get("columns")),
+            "original_unit_axis": canonical_clone_v1(unit),
+        }
+        if (unit.get("complete") is True
+                and unit.get("source") in {"LOCAL_TABLE_UNIT", "LOCAL_UNIFORM_ALL_MONEY_COLUMN_UNITS"}
+                and unit.get("canonical_unit") in {"MILLION_VND", "VND"}
+                and not unit.get("undeclared_evidence") and not unit.get("conflicts")):
+            proof = {**material, "canonical_unit": unit["canonical_unit"],
+                     "source_kind": "ORIGINAL_TABLE_OR_ALL_MONEY_COLUMN_UNIT"}
+            proved[key] = proof
+            return proof
+        # A blank note cannot inherit an explicit override, conflict or an
+        # unrecognized local token. No note-wide/PDF registry is activated.
+        if (table.get("unit_exact") is not None or unit.get("evidence")
+                or unit.get("undeclared_evidence")):
+            return None
+        # Preserve only the already-declared, independently note-owned
+        # numbered-subsection rule. Its printed outline supplies the scope;
+        # period equality merely vetoes an inconsistent source graph.
+        if (compiled_specs.get("numbered_subsection_unit_axis_policy")
+                == "SAME_PAGE_ADJACENT_EXPLICIT_OWNER_SUBSECTION_INHERITS_UNIT"
+                and section.get("content_kind") == "FINANCIAL_NOTE"):
+            current_path = _outline_number_path(table.get("title_exact")) or _outline_number_path(section.get("title_exact"))
+            positions = [(f"s{section_index}", f"t{table_index}")
+                         for section_index, item in enumerate(page.get("sections", []), 1)
+                         for table_index, _table in enumerate(item.get("tables", []), 1)]
+            current_position = (region["section_id"], region["table_id"])
+            numbered = []
+            for prior_key, prior in by_key.items():
+                if (prior_key == key or any(prior.get(field) != region.get(field) for field in (
+                        "document_id", "document_ordinal", "source_logical_name", "source_sha256",
+                        "page_json_version_id", "physical_page", "selected_page_ordinal"))):
+                    continue
+                prior_position = (prior["section_id"], prior["table_id"])
+                if (current_position not in positions or prior_position not in positions
+                        or positions.index(prior_position) + 1 != positions.index(current_position)):
+                    continue
+                prior_table = _region_table(pages, prior)
+                prior_section = page["sections"][int(prior["section_id"][1:]) - 1]
+                prior_path = _outline_number_path(prior_table.get("title_exact")) or _outline_number_path(prior_section.get("title_exact"))
+                if (prior_section.get("content_kind") != "FINANCIAL_NOTE"
+                        or current_path is None or prior_path is None
+                        or len(current_path) <= len(prior_path)
+                        or current_path[:len(prior_path)] != prior_path
+                        or not any(_exact_owner_alias(surface, compiled_specs=compiled_specs) is not None
+                                   or _exact_parent_alias(surface, compiled_specs=compiled_specs) is not None
+                                   for surface in (prior_table.get("title_exact"), prior_section.get("title_exact")))
+                        or any(_exact_boundary_alias(surface, compiled_specs=compiled_specs) is not None
+                               for surface in (table.get("title_exact"), section.get("title_exact"), *(section.get("narratives_exact") or [])))):
+                    continue
+                if (not _numbered_source_unit_owner_surface_v1(table.get("title_exact"), compiled_specs=compiled_specs)
+                        or _normalized(section.get("title_exact")) != "thuyet minh"
+                        and not _numbered_source_unit_owner_surface_v1(section.get("title_exact"), compiled_specs=compiled_specs)):
+                    continue
+                prior_axis, current_axis = _two_period_axis(prior_table), _two_period_axis(table)
+                if (prior_axis.get("complete") is not True or current_axis.get("complete") is not True
+                        or not same_typed_json_v1(prior_axis.get("signatures"), current_axis.get("signatures"))):
+                    continue
+                prior_proof = resolve(prior_key, visiting | {key})
+                if prior_proof is not None:
+                    numbered.append({**material, "canonical_unit": prior_proof["canonical_unit"],
+                        "source_kind": "EXISTING_RAW_EXPLICIT_OWNER_NUMBERED_SUBSECTION",
+                        "prior_source_proof": prior_proof,
+                        "raw_parent_outline_path": list(prior_path), "raw_child_outline_path": list(current_path),
+                        "raw_parent_period_axis": prior_axis, "raw_child_period_axis": current_axis,
+                        "source_values_used_as_unit_authority": False})
+            if len(numbered) == 1:
+                proved[key] = numbered[0]
+                return numbered[0]
+        if table.get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE":
+            return None
+        candidates = []
+        for prior_key, prior in by_key.items():
+            if (prior_key == key or any(prior.get(field) != region.get(field) for field in (
+                    "document_id", "document_ordinal", "source_logical_name", "source_sha256"))
+                    or type(prior.get("physical_page")) is not int
+                    or type(prior.get("selected_page_ordinal")) is not int
+                    or prior["physical_page"] + 1 != region.get("physical_page")
+                    or prior["selected_page_ordinal"] + 1 != region.get("selected_page_ordinal")):
+                continue
+            prior_page = pages[prior["page_json_version_id"]]
+            prior_table = _region_table(pages, prior)
+            prior_section = prior_page["sections"][int(prior["section_id"][1:]) - 1]
+            if (prior_table.get("continuation") != "CONTINUES_ON_NEXT_PAGE"
+                    or prior_section.get("content_kind") != section.get("content_kind")
+                    or prior_section.get("statement_type") != section.get("statement_type")
+                    or prior_page.get("status") != page.get("status")
+                    or not _table_is_page_edge_v1(page=prior_page, section_id=prior["section_id"], table_id=prior["table_id"], edge="LAST")
+                    or not _table_is_page_edge_v1(page=page, section_id=region["section_id"], table_id=region["table_id"], edge="FIRST")):
+                continue
+            prior_surfaces = [prior_section.get("title_exact"), prior_table.get("title_exact")]
+            receiver_surfaces = [section.get("title_exact"), table.get("title_exact")]
+            if not any(_exact_owner_alias(surface, compiled_specs=compiled_specs) is not None
+                       or _exact_parent_alias(surface, compiled_specs=compiled_specs) is not None
+                       for surface in prior_surfaces):
+                continue
+            if any(_exact_boundary_alias(surface, compiled_specs=compiled_specs) is not None
+                   for surface in [*receiver_surfaces, *(section.get("narratives_exact") or [])]):
+                continue
+            prior_titles = {_without_leading_ordinal(_normalized(value)) for value in prior_surfaces
+                            if _normalized(value)}
+            receiver_allowed = all(
+                not _normalized(surface)
+                or _without_leading_ordinal(_normalized(surface)) in prior_titles
+                or _exact_owner_alias(surface, compiled_specs=compiled_specs) is not None
+                or _exact_parent_alias(surface, compiled_specs=compiled_specs) is not None
+                or index == 0 and _normalized(surface) == "thuyet minh"
+                for index, surface in enumerate(receiver_surfaces)
+            )
+            if not receiver_allowed:
+                continue
+            prior_money, receiver_money = _money_ordinals(prior_table), _money_ordinals(table)
+            if not prior_money or len(prior_money) != len(receiver_money):
+                continue
+            prior_headers = [prior_table["columns"][column - 1].get("header_path_exact") for column in prior_money]
+            receiver_headers = [table["columns"][column - 1].get("header_path_exact") for column in receiver_money]
+            blank_receiver = all(type(path) is list and not any(_normalized(value) for value in path)
+                                 for path in receiver_headers)
+            repeated = same_typed_json_v1(prior_headers, receiver_headers) and any(
+                _normalized(value) for path in prior_headers if type(path) is list for value in path)
+            if not repeated and not (blank_receiver and _two_period_axis(prior_table).get("complete") is True):
+                continue
+            prior_proof = resolve(prior_key, visiting | {key})
+            if prior_proof is None:
+                continue
+            candidates.append({**material, "canonical_unit": prior_proof["canonical_unit"],
+                "source_kind": "EXPLICIT_RAW_CONTINUATION_OF_SOURCE_OWNED_UNIT",
+                "prior_source_proof": prior_proof,
+                "raw_sender_continuation": prior_table["continuation"],
+                "raw_receiver_continuation": table["continuation"],
+                "receiver_header_rule": "EXACT_REPEATED_RAW_HEADERS" if repeated else "GENUINELY_BLANK_RAW_RECEIVER_HEADERS",
+                "raw_sender_money_headers": canonical_clone_v1(prior_headers),
+                "raw_receiver_money_headers": canonical_clone_v1(receiver_headers),
+                "source_values_used_as_unit_authority": False})
+        if len(candidates) != 1:
+            return None
+        proved[key] = candidates[0]
+        return candidates[0]
+
+    for key in by_key:
+        resolve(key, set())
+    return proved
+
+
+def _enforce_original_source_unit_ownership_v1(
+    candidate: dict[str, Any], *, original_pages: Mapping[str, dict[str, Any]],
+    regions: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Veto units donated through values, projected units or document consensus."""
+    original_regions = {_source_unit_scope_key_v1(region): region for region in regions}
+    proofs = _original_source_unit_proofs_v1(
+        pages=original_pages, regions=regions, compiled_specs=compiled_specs,
+    )
+    scopes: dict[tuple[Any, ...], dict[str, Any]] = {}
+    failures = set()
+
+    def consume(locator, use, expected_unit=None):
+        if type(locator) is not dict:
+            failures.add("FINANCIAL_SOURCE_LOCATOR_ABSENT")
+            return
+        key = _source_unit_scope_key_v1(locator)
+        if key not in original_regions:
+            failures.add("FINANCIAL_SOURCE_SCOPE_NOT_IN_ORIGINAL_QUERY")
+            return
+        original = original_regions[key]
+        if any(locator.get(field) is not None and not same_typed_json_v1(locator[field], original.get(field))
+               for field in ("document_id", "document_ordinal", "source_logical_name", "source_sha256", "physical_page", "selected_page_ordinal")):
+            failures.add("FINANCIAL_SOURCE_IDENTITY_DIFFERS_FROM_ORIGINAL_QUERY")
+        scope = scopes.setdefault(key, {"locator": canonical_clone_v1(original), "uses": set(), "expected_units": set()})
+        scope["uses"].add(use)
+        if expected_unit is not None:
+            scope["expected_units"].add(expected_unit)
+
+    for region in regions:
+        if _money_ordinals(_region_table(original_pages, region)):
+            consume(region, "SELECTED_ORIGINAL_MONEY_TABLE")
+    for mapping in candidate.get("mappings", []):
+        if mapping.get("unit") not in {"MILLION_VND", "VND"}:
+            failures.add("FINANCIAL_MAPPING_UNIT_NOT_DECLARED")
+        refs = mapping.get("source_refs")
+        if type(refs) is not list or not refs:
+            failures.add("MAPPING_FINANCIAL_SOURCE_INPUT_ABSENT")
+            continue
+        for ref in refs:
+            consume(ref.get("locator"), "MAPPING_SOURCE_INPUT", mapping.get("unit"))
+    closure = candidate.get("closure_receipt", {})
+    for equation in closure.get("equations", []):
+        for refs in [*equation.get("component_source_refs", []), equation.get("result_source_refs", [])]:
+            for ref in refs:
+                consume(ref.get("locator"), "EQUATION_FINANCIAL_SOURCE_INPUT")
+    for table_receipt in closure.get("table_receipts", []):
+        consume(table_receipt.get("region"), "ACCEPTANCE_TABLE_RECEIPT",
+                table_receipt.get("unit_axis", {}).get("canonical_unit"))
+    checks, canonical_units = [], set()
+    for key in sorted(scopes, key=lambda item: tuple(str(value) for value in item)):
+        scope = scopes[key]
+        proof = proofs.get(key)
+        if proof is None:
+            failures.add("ORIGINAL_SOURCE_MONEY_UNIT_NOT_OWNED")
+        else:
+            canonical_units.add(proof["canonical_unit"])
+            if any(unit != proof["canonical_unit"] for unit in scope["expected_units"]):
+                failures.add("ACCEPTED_UNIT_DIFFERS_FROM_ORIGINAL_SOURCE_UNIT")
+        checks.append({"locator": scope["locator"], "uses": sorted(scope["uses"]),
+            "expected_units": sorted(scope["expected_units"]), "original_source_unit_proof": proof,
+            "status": "SOURCE_OWNED" if proof is not None else "HOLD"})
+    if len(canonical_units) > 1:
+        failures.add("FINANCIAL_SOURCE_UNIT_POPULATIONS_CONFLICT")
+    before = canonical_clone_v1(candidate) if failures else None
+    material = {
+        "format_version": "ISSUED_PAPERS_ORIGINAL_SOURCE_UNIT_OWNERSHIP_V1",
+        "checks": checks, "failures": sorted(failures),
+        "rule": "ORIGINAL_LOCAL_LITERAL_OR_DECLARED_RAW_OWNER_SUBSECTION_OR_EXACT_RAW_TWO_MARKER_CONTINUATION_NO_PRIMARY_VALUE_OR_DOCUMENT_CONSENSUS_PERMISSION",
+        "financial_permission_granted": False, "source_values_and_units_changed": False,
+        "withheld_mappings": _mapping_beforeimage_evidence_v1(before["mappings"]) if before is not None and before.get("mappings") else None,
+        "withheld_candidate_beforeimage": _mapping_beforeimage_evidence_v1(before) if before is not None else None,
+    }
+    receipt = {**material, "source_unit_ownership_receipt_id": "gjivpsuov1:receipt:" + canonical_json_sha256_v1(material)}
+    if failures:
+        old_root = closure.get("structural_root_receipt", {})
+        candidate["mappings"] = []
+        candidate["status"] = UNRESOLVED
+        candidate["reasons"] = sorted(set(candidate.get("reasons", [])) | {
+            "ISSUED_PAPER_ORIGINAL_SOURCE_UNIT_NOT_PROVEN:" + failure for failure in failures})
+        # Financial grants on an unowned unit remain exact inactive evidence,
+        # including when an earlier gate had already withheld every mapping.
+        closure["equations"] = []
+        closure["root_component_sum_receipts"] = []
+        closure.pop("issued_valuable_papers_adapter_receipt", None)
+        closure["structural_root_receipt"] = {
+            "emitted_mapping": False, "mapping_policy": "ORIGINAL_SOURCE_UNIT_OWNERSHIP_HOLD",
+            "report_norm_id": old_root.get("report_norm_id"), "role": old_root.get("role"),
+            "source_unit_ownership_receipt_id": receipt["source_unit_ownership_receipt_id"],
+        }
+    return receipt
+
+
 def _project_adjacent_source_syntax_v1(
     *,
     pages: Mapping[str, dict[str, Any]],
     regions: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
+    original_pages: Mapping[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Restore only the missing sender edge and blank receiver axes.
 
@@ -3205,6 +3486,10 @@ def _project_adjacent_source_syntax_v1(
         version_id: canonical_clone_v1(page) for version_id, page in pages.items()
     }
     projected_regions = canonical_clone_v1(list(regions))
+    original_unit_proofs = _original_source_unit_proofs_v1(
+        pages=pages if original_pages is None else original_pages,
+        regions=regions, compiled_specs=compiled_specs,
+    )
     receipts_by_locator: dict[tuple[str, str, str], dict[str, Any]] = {}
 
     def receipt_for(
@@ -3365,6 +3650,8 @@ def _project_adjacent_source_syntax_v1(
         if (
             not _normalized(receiver_table.get("unit_exact"))
             and _normalized(prior_table.get("unit_exact"))
+            and original_unit_proofs.get(_source_unit_scope_key_v1(receiver_region), {}).get("source_kind")
+            == "EXPLICIT_RAW_CONTINUATION_OF_SOURCE_OWNED_UNIT"
         ):
             receiver_receipt["table_projections"].append(
                 {
@@ -4247,139 +4534,7 @@ def _project_adjacent_source_syntax_v1(
             }
         )
 
-    # Extend the shared exact owner-row unit rule across an explicitly joined
-    # fragment cluster.  Equality only authenticates that the primary owner
-    # row and the note terminal total are the same presentation; it never
-    # supplies or changes a monetary coefficient.
-    document_unit_context = _document_unit_context_axis(
-        projected_pages, compiled_specs=compiled_specs
-    )
-    owner_unit_evidence = document_unit_context.get("owner_row_evidence")
-    active_region_indices = [
-        index
-        for index in range(len(projected_regions))
-        if index not in dropped_region_indices
-    ]
-    root_observation_axis = []
-    for region_index in active_region_indices:
-        region = projected_regions[region_index]
-        table = _region_table(projected_pages, region)
-        rows = table.get("rows")
-        period_axis = _two_period_axis(table)
-        money = period_axis.get("money_column_ordinals")
-        if (
-            type(rows) is not list
-            or not rows
-            or type(rows[-1]) is not dict
-            or rows[-1].get("row_kind") != "TOTAL"
-            or period_axis.get("complete") is not True
-            or type(money) is not list
-        ):
-            continue
-        coefficients = _observed_money_coefficients_v1(
-            rows[-1], money_ordinals=money
-        )
-        if coefficients is not None:
-            root_observation_axis.append(
-                {
-                    "coefficients": coefficients,
-                    "locator": {
-                        field: region[field]
-                        for field in (
-                            "page_json_version_id",
-                            "physical_page",
-                            "section_id",
-                            "table_id",
-                        )
-                    },
-                    "period_signatures": canonical_clone_v1(
-                        period_axis["signatures"]
-                    ),
-                    "row_ordinal": len(rows),
-                }
-            )
-    matched_owner_units = []
-    if type(owner_unit_evidence) is list:
-        for evidence in owner_unit_evidence:
-            if type(evidence) is not dict:
-                continue
-            corroborating_roots = [
-                root
-                for root in root_observation_axis
-                if root["coefficients"] == evidence.get("coefficients")
-                and root["period_signatures"] == evidence.get("period_signatures")
-            ]
-            if corroborating_roots:
-                matched_owner_units.append(
-                    {
-                        "corroborating_roots": corroborating_roots,
-                        "owner_row_evidence": canonical_clone_v1(evidence),
-                    }
-                )
-    owner_unit_identities = {
-        (
-            item["owner_row_evidence"].get("canonical_unit"),
-            item["owner_row_evidence"].get("magnitude_power10"),
-        )
-        for item in matched_owner_units
-    }
-    if len(owner_unit_identities) == 1 and matched_owner_units:
-        canonical_unit, magnitude_power10 = next(iter(owner_unit_identities))
-        source_unit_strings = []
-        for item in matched_owner_units:
-            source_exact = item["owner_row_evidence"].get("source_exact")
-            if type(source_exact) is str and source_exact.strip():
-                source_unit_strings.append(source_exact)
-            elif type(source_exact) is list:
-                source_unit_strings.extend(
-                    evidence.get("source_exact")
-                    for evidence in source_exact
-                    if type(evidence) is dict
-                    and type(evidence.get("source_exact")) is str
-                    and evidence["source_exact"].strip()
-                )
-        source_unit_by_normalized = {
-            _normalized(source): source for source in source_unit_strings
-        }
-        if len(source_unit_by_normalized) == 1:
-            source_unit_exact = next(iter(source_unit_by_normalized.values()))
-            matched_signatures = {
-                canonical_json_sha256_v1(
-                    item["owner_row_evidence"]["period_signatures"]
-                )
-                for item in matched_owner_units
-            }
-            for region_index in active_region_indices:
-                region = projected_regions[region_index]
-                table = _region_table(projected_pages, region)
-                period_axis = _two_period_axis(table)
-                if (
-                    _normalized(table.get("unit_exact"))
-                    or period_axis.get("complete") is not True
-                    or canonical_json_sha256_v1(period_axis.get("signatures"))
-                    not in matched_signatures
-                ):
-                    continue
-                receipt = receipt_for(
-                    region=region,
-                    before_roles=regions[region_index]["component_roles"],
-                )
-                receipt["table_projections"].append(
-                    {
-                        "after_unit_exact": source_unit_exact,
-                        "before_unit_exact": table.get("unit_exact"),
-                        "canonical_unit": canonical_unit,
-                        "magnitude_power10": magnitude_power10,
-                        "matched_owner_unit_axis": canonical_clone_v1(
-                            matched_owner_units
-                        ),
-                        "projection_kind": (
-                            "EXACT_PRIMARY_OWNER_ROW_AND_NOTE_TERMINAL_TOTAL_"
-                            "ALL_LANE_PERIOD_MATCH_SCOPES_BLANK_FRAGMENT_UNIT"
-                        ),
-                    }
-                )
-                table["unit_exact"] = source_unit_exact
+    # Monetary equality and document-unit consensus grant no note-unit scope.
 
     receipts = []
     for key in sorted(receipts_by_locator):
@@ -6521,6 +6676,7 @@ def _reseal_candidate(
     visible_dash_transcription_repairs: Sequence[Mapping[str, Any]],
     source_local_lane_binding_receipt: Mapping[str, Any] | None = None,
     printed_net_frontier_total_receipt: Mapping[str, Any] | None = None,
+    original_source_unit_ownership_receipt: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if (
         not adjacent_source_syntax_projection_receipts
@@ -6534,6 +6690,7 @@ def _reseal_candidate(
         and not visible_dash_transcription_repairs
         and source_local_lane_binding_receipt is None
         and printed_net_frontier_total_receipt is None
+        and original_source_unit_ownership_receipt is None
     ):
         return candidate
     material = {
@@ -6574,6 +6731,10 @@ def _reseal_candidate(
     if printed_net_frontier_total_receipt is not None:
         material["printed_net_frontier_total_receipt"] = canonical_clone_v1(
             printed_net_frontier_total_receipt
+        )
+    if original_source_unit_ownership_receipt is not None:
+        material["original_source_unit_ownership_receipt"] = canonical_clone_v1(
+            original_source_unit_ownership_receipt
         )
     candidate["claim_boundary"] = ADAPTER_CLAIM_BOUNDARY
     candidate["closure_receipt"]["issued_valuable_papers_adapter_receipt"] = {
@@ -6636,6 +6797,10 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
             _restore_primary_root_mapping_source_refs_v1(
                 candidate, receipt=primary_projection
             )
+        unit_ownership_receipt = _enforce_original_source_unit_ownership_v1(
+            candidate, original_pages=page_json_by_version, regions=regions,
+            compiled_specs=compiled_specs,
+        )
         return _reseal_candidate(
             candidate,
             adjacent_source_syntax_projection_receipts=[],
@@ -6650,12 +6815,14 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
             source_local_lane_binding_receipt=_enforce_source_local_mapping_lanes_v1(
                 candidate, pages=pages
             ),
+            original_source_unit_ownership_receipt=unit_ownership_receipt,
         )
     adjacent_projected_pages, adjacent_projected_regions, adjacent_receipts = (
         _project_adjacent_source_syntax_v1(
             pages=pages,
             regions=regions,
             compiled_specs=compiled_specs,
+            original_pages=page_json_by_version,
         )
     )
     adjacent_projected_query_receipt = (
@@ -6789,6 +6956,10 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
             original_regions=regions,
             original_query_receipt=query_receipt,
         )
+    unit_ownership_receipt = _enforce_original_source_unit_ownership_v1(
+        candidate, original_pages=page_json_by_version, regions=regions,
+        compiled_specs=compiled_specs,
+    )
     printed_total_receipt = _bind_printed_total_from_closed_net_frontier_v1(
         candidate, pages=pages, compiled_specs=compiled_specs
     )
@@ -6808,6 +6979,7 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
             maturity_projection_receipts=maturity_receipts,
         ),
         printed_net_frontier_total_receipt=printed_total_receipt,
+        original_source_unit_ownership_receipt=unit_ownership_receipt,
     )
 
 
