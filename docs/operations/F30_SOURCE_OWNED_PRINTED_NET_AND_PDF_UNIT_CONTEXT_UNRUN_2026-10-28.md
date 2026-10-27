@@ -155,6 +155,17 @@ Frozen shared evaluator and generic runner remain unchanged at
 `bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2`
 and `d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5`.
 
+## Old conflict test receipt boundary
+
+The actual corrected-encoding V2 gate completed with175 passes and one failure:
+an old conflict test required the entire adapter receipt to be absent on a
+held result. The active mapping axis was already empty and status unresolved.
+The receipt may retain local-unit or period corroboration without granting a
+PRIMARY-parent fallback. The test now checks absence of that actual fallback
+and printed-net permission, keeps both original fail-closed assertions, and
+requires fresh candidate replay. Production and original fixture bytes are
+unchanged by this test-only follow-up; the failed V2 receipt is retained.
+
 ## Source-only correction after the first actual focused failure
 
 Root's immutable `f30-focused-20261028-v1` gate at `1723d62d` passed Ruff,

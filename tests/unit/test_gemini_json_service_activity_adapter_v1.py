@@ -29,6 +29,7 @@ from bctc_ai.evaluation.gemini_json_service_activity_family_v1 import (
     compile_gemini_json_service_activity_family_specs_v1,
     evaluate_gemini_json_service_activity_family_cluster_v1,
     recover_gemini_json_service_activity_query_cluster_v1,
+    validate_gemini_json_service_activity_family_candidate_replay_v1,
 )
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
     validate_source_observation_mapping_contract_v1,
@@ -1739,7 +1740,20 @@ def test_service_activity_partial_parent_primary_observed_conflict_fails_closed(
     )
     assert candidate["status"] == "UNRESOLVED_GEMINI_JSON_FAMILY"
     assert candidate["mappings"] == []
-    assert "service_activity_adapter_receipt" not in candidate["closure_receipt"]
+    # Local-unit/period corroboration may be recorded on an unresolved result;
+    # it must grant no primary-parent fallback or printed-net permission.
+    adapter = candidate["closure_receipt"].get("service_activity_adapter_receipt", {})
+    assert "root_alternative_legacy_fallback_receipt" not in adapter
+    assert "printed_net_source_control_receipt" not in adapter
+    assert validate_gemini_json_service_activity_family_candidate_replay_v1(
+        candidate,
+        regions=regions,
+        page_json_by_version={
+            record["page_json_version_id"]: record["page_json"] for record in records
+        },
+        compiled_specs=_compiled(),
+        query_receipt=build_gemini_json_service_activity_region_query_receipt_v1(regions),
+    ) == candidate
 
 
 def test_service_activity_vib_income_insurance_alias_maps_visible_source_row() -> None:
