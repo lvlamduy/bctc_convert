@@ -388,6 +388,7 @@ def test_explicit_adjacent_continuation_keeps_visible_second_page_roles() -> Non
     second_table["continuation"] = "CONTINUES_FROM_PREVIOUS_PAGE"
     first = _page(first_table)
     second = _page(second_table)
+    original_pages = copy.deepcopy({NOTE_VERSION: first, PRIMARY_VERSION: second})
     compiled = _compiled()
     cluster, candidate = _cluster_and_candidate(
         compiled=compiled,
@@ -414,6 +415,14 @@ def test_explicit_adjacent_continuation_keeps_visible_second_page_roles() -> Non
         "OTHER_CREDIT_INCOME",
         "SECURITIES_INTEREST",
     }
+    securities = next(mapping for mapping in candidate["mappings"] if mapping["role"] == "SECURITIES_INTEREST")
+    assert [cell["coefficient"] for cell in securities["values"]] == [5, 4]
+    assert [cell["source_text"] for cell in securities["values"]] == ["5", "4"]
+    assert [(ref["locator"]["page_json_version_id"], ref["row_ordinal"]) for ref in securities["source_refs"]] == [(NOTE_VERSION, 3)]
+    root = next(mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL")
+    assert [cell["coefficient"] for cell in root["values"]] == [38, 27]
+    assert [(ref["locator"]["page_json_version_id"], ref["row_ordinal"]) for ref in root["source_refs"]] == [(PRIMARY_VERSION, 5)]
+    assert {NOTE_VERSION: first, PRIMARY_VERSION: second} == original_pages
 
 
 def _same_role_cross_fragment_candidate(

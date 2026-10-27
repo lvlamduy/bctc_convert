@@ -34,6 +34,7 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     _row_local_record as _frozen_row_local_record,
 )
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    audit_source_observation_mapping_contract_v1,
     validate_source_observation_mapping_contract_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
@@ -117,6 +118,235 @@ def test_local_printed_root_observation_does_not_fill_missing_or_nonlist_source_
     assert family._printed_root_source_observation_v1(1, row, region={},
         lane_axis={"money_column_ordinals": [1, 2]}, state="SOURCE_ONLY") is None
     assert row == before
+
+
+def _nonadditive_group_options(*, split=False):
+    sender = _page(_table([
+        _row("Thu nhập lãi tiền gửi", ["10", "8"]),
+        _row("Thu nhập lãi cho vay khách hàng", ["20", "12"]),
+        _row("Thu lãi từ kinh doanh, đầu tư chứng khoán nợ", ["5", "4"], kind="GROUP"),
+    ]))
+    details = ([_row("Thu lãi từ chứng khoán kinh doanh", ["2", "1"]),
+                _row("Thu lãi từ chứng khoán đầu tư", ["3", "3"])] if split
+               else [_row("Thu lãi từ chứng khoán đầu tư", ["5", "4"])])
+    receiver = _page(_table([
+        *details, _row("Thu phí từ nghiệp vụ bảo lãnh", ["1", "1"]),
+        _row("Thu nhập lãi cho thuê tài chính", ["-", "-"]),
+        _row("Thu khác từ hoạt động tín dụng", ["2", "2"]),
+        _row(None, ["38", "27"], kind="TOTAL"),
+    ], columns=_columns([None], [None]), title=None, unit=None))
+    sender["sections"][0]["tables"][0]["continuation"] = "CONTINUES_ON_NEXT_PAGE"
+    receiver["sections"][0]["tables"][0]["continuation"] = "CONTINUES_FROM_PREVIOUS_PAGE"
+    compiled = _compiled()
+    records = [_record(sender), _record(receiver, version=PRIMARY_VERSION,
+        physical_page=3, selected_page_ordinal=3)]
+    cluster = family.coalesce_gemini_json_interest_income_document_v1(page_records=records, compiled_specs=compiled)
+    assert cluster["status"] == READY and len(cluster["component_regions"]) == 2
+    regions = cluster["component_regions"]
+    return {"regions": regions, "page_json_by_version": {NOTE_VERSION: sender, PRIMARY_VERSION: receiver},
+        "compiled_specs": compiled, "query_receipt": family.build_gemini_json_interest_income_region_query_receipt_v1(regions)}
+
+
+@pytest.mark.parametrize("split", [False, True])
+def test_raw_semantic_group_owns_securities_and_narrower_continued_detail_is_nonadditive(split):
+    options = _nonadditive_group_options(split=split)
+    original = deepcopy(options["page_json_by_version"])
+    before = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(**options)
+    assert before["status"] == READY
+    old_securities = next(item for item in before["mappings"] if item["role"] == "SECURITIES_INTEREST")
+    assert [cell["coefficient"] for cell in old_securities["values"]] == [10, 8]
+    assert [cell["coefficient"] for cell in _root(before)["values"]] == [43, 31]
+    actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    assert actual["status"] == READY, actual["reasons"]
+    securities = next(item for item in actual["mappings"] if item["role"] == "SECURITIES_INTEREST")
+    assert securities["values"] == [
+        {"coefficient": 5, "source_text": "5", "state": "RAW_SIGNED_INTEGER"},
+        {"coefficient": 4, "source_text": "4", "state": "RAW_SIGNED_INTEGER"},
+    ]
+    assert [(ref["locator"]["page_json_version_id"], ref["row_ordinal"]) for ref in securities["source_refs"]] == [(NOTE_VERSION, 3)]
+    assert [cell["coefficient"] for cell in _root(actual)["values"]] == [38, 27]
+    assert [cell["source_text"] for cell in _root(actual)["values"]] == ["38", "27"]
+    assert _root(actual)["source_refs"][0]["locator"]["page_json_version_id"] == PRIMARY_VERSION
+    control = _control(actual)
+    assert control["shared_candidate_before_sha256"] == canonical_json_sha256_v1(before)
+    proof = control["nonadditive_group_continuation_receipt"]
+    assert proof["status"] == "SOURCE_OWNED_GROUP_SUBTOTAL_DETAIL_NONADDITIVE"
+    assert proof["amounts_select_scope"] is False and proof["missing_components_inferred"] is False
+    assert proof["child_amounts_only_corroborate_or_veto"] is True
+    assert proof["bound_role_mapping_id"] == securities["item_mapping_id"]
+    retired = _retired(proof["retired_role_authority"])
+    assert retired["role_mappings"] == [old_securities]
+    assert retired["root_mappings"] == [_root(before)]
+    assert retired["cluster_aggregation_receipts"] == before["closure_receipt"]["cluster_aggregation_receipts"]
+    assert actual["closure_receipt"]["cluster_aggregation_receipts"] == []
+    assert actual["closure_receipt"]["root_component_sum_receipts"] == []
+    assert not any(item["equation_kind"] == "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT" for item in actual["closure_receipt"]["equations"])
+    retained_local = [item for item in before["closure_receipt"]["equations"] if item["equation_kind"] != "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT"]
+    assert actual["closure_receipt"]["equations"][:-1] == retained_local
+    assert actual["closure_receipt"]["equations"][-1]["equation_id"] == proof["corroborating_equation_id"]
+    source_only = actual["closure_receipt"]["source_only_unmapped_rows"]
+    assert len(source_only) == (2 if split else 1)
+    assert all(item["declared_validation_role"] == "F28_NONADDITIVE_CONTINUED_SECURITIES_SUBSET_SOURCE_ONLY" for item in source_only)
+    assert {ref["row_ordinal"] for item in source_only for ref in item["source_refs"]} == set(range(1, 3 if split else 2))
+    assert audit_source_observation_mapping_contract_v1(actual)["mapping_count"] == len(actual["mappings"]) == 7
+    assert family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options) == actual
+    assert options["page_json_by_version"] == original
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing_sender_marker", "missing_receiver_marker", "parent_not_group", "wrong_parent", "qualified_parent",
+    "qualified_child", "partial_scope", "competing_group", "later_same_role", "child_blank",
+    "child_conflict", "parent_blank", "sender_unit_missing", "receiver_wrong_unit",
+    "receiver_owner_reset", "receiver_qualified_header", "extra_unmapped_row",
+    "sender_qualified_section", "sender_unrelated_section", "sender_qualified_table",
+])
+def test_nonadditive_group_requires_independent_semantic_scope_even_when_old_sum_can_match(mutation):
+    options = _nonadditive_group_options()
+    sender = options["page_json_by_version"][NOTE_VERSION]["sections"][0]["tables"][0]
+    receiver = options["page_json_by_version"][PRIMARY_VERSION]["sections"][0]["tables"][0]
+    # These scope negatives deliberately agree with the OLD double-counted sum.
+    # Numerical closure can never grant the absent semantic parent permission.
+    if mutation in {"parent_not_group", "wrong_parent", "qualified_parent", "qualified_child", "partial_scope", "competing_group", "later_same_role", "receiver_owner_reset", "receiver_qualified_header", "extra_unmapped_row", "sender_qualified_section", "sender_unrelated_section", "sender_qualified_table"}:
+        receiver["rows"][-1]["values_exact"] = ["43", "31"]
+    if mutation == "missing_sender_marker":
+        sender["continuation"] = "NONE"
+    elif mutation == "missing_receiver_marker":
+        receiver["continuation"] = "NONE"
+    elif mutation == "parent_not_group":
+        sender["rows"][-1]["row_kind"] = "ITEM"
+    elif mutation == "wrong_parent":
+        sender["rows"][-1]["label_exact"] = "Thu lãi từ đầu tư chứng khoán nợ"
+        sender["rows"][-1]["hierarchy_path_exact"] = [sender["rows"][-1]["label_exact"]]
+    elif mutation == "qualified_parent":
+        sender["rows"][-1]["label_exact"] += " của công ty con"
+        sender["rows"][-1]["hierarchy_path_exact"] = [sender["rows"][-1]["label_exact"]]
+    elif mutation == "qualified_child":
+        receiver["rows"][0]["label_exact"] += " của công ty con"
+        receiver["rows"][0]["hierarchy_path_exact"] = [receiver["rows"][0]["label_exact"]]
+    elif mutation == "partial_scope":
+        receiver["rows"][0]["hierarchy_path_exact"].insert(0, "Công ty con")
+    elif mutation == "competing_group":
+        sender["rows"][0]["row_kind"] = "GROUP"
+    elif mutation == "later_same_role":
+        receiver["rows"].insert(2, _row("Thu lãi từ chứng khoán kinh doanh", ["-", "-"]))
+    elif mutation == "child_blank":
+        receiver["rows"][0]["values_exact"][1] = None
+    elif mutation == "child_conflict":
+        receiver["rows"][0]["values_exact"] = ["4", "3"]
+    elif mutation == "parent_blank":
+        sender["rows"][-1]["values_exact"][0] = None
+    elif mutation == "sender_unit_missing":
+        sender["unit_exact"] = None
+    elif mutation == "receiver_wrong_unit":
+        receiver["unit_exact"] = "VND"
+    elif mutation == "receiver_owner_reset":
+        receiver["title_exact"] = "Thu nhập lãi và các khoản thu nhập tương tự của công ty con"
+    elif mutation == "receiver_qualified_header":
+        receiver["columns"] = _columns(["Từ ngày 01/01/2025 đến ngày 31/03/2025", "Công ty con"],
+            ["Từ ngày 01/01/2024 đến ngày 31/03/2024", "Công ty con"])
+    elif mutation == "sender_qualified_section":
+        options["page_json_by_version"][NOTE_VERSION]["sections"][0]["title_exact"] = sender["title_exact"] + " của công ty con"
+    elif mutation == "sender_unrelated_section":
+        options["page_json_by_version"][NOTE_VERSION]["sections"][0]["title_exact"] = "Thu nhập từ hoạt động dịch vụ"
+    elif mutation == "sender_qualified_table":
+        options["page_json_by_version"][NOTE_VERSION]["sections"][0]["title_exact"] = sender["title_exact"]
+        sender["title_exact"] += " của công ty con"
+    else:
+        receiver["rows"].insert(1, _row("Khoản khác chưa được phân loại", ["-", "-"]))
+    original = deepcopy(options["page_json_by_version"])
+    actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    assert actual["status"] == UNRESOLVED and actual["mappings"] == [], actual["reasons"]
+    assert actual["closure_receipt"]["cluster_aggregation_receipts"] == []
+    assert actual["closure_receipt"]["structural_root_receipt"]["emitted_mapping"] is False
+    assert audit_source_observation_mapping_contract_v1(actual)["mapping_count"] == 0
+    assert family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options) == actual
+    assert options["page_json_by_version"] == original
+
+
+def test_repeated_narrower_alias_with_different_ordinals_is_not_distinct_semantic_scope():
+    options = _nonadditive_group_options(split=True)
+    # Genuine frozen beforeimage, not a fabricated READY candidate. The source
+    # finalizer must independently reject drift to repeated semantic ownership.
+    before = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(**options)
+    assert before["status"] == READY
+    receiver = options["page_json_by_version"][PRIMARY_VERSION]["sections"][0]["tables"][0]
+    for ordinal, row in enumerate(receiver["rows"][:2], 1):
+        row["label_exact"] = f"{ordinal}. Thu lãi từ chứng khoán đầu tư"
+        row["hierarchy_path_exact"] = [row["label_exact"]]
+    original = deepcopy(options["page_json_by_version"])
+    controlled, receipts = family._apply_source_root_controls_v1(before,
+        pages=options["page_json_by_version"], original_pages=options["page_json_by_version"],
+        regions=options["regions"], compiled_specs=options["compiled_specs"])
+    assert controlled["status"] == UNRESOLVED and controlled["mappings"] == []
+    assert "F28_NONADDITIVE_GROUP_DECLARED_PREFIX_NOT_PROVEN" in receipts[0]["reasons"]
+    # Both children sum to the observed parent5/4, and the source total is38/27.
+    # Different row ordinals cannot manufacture two distinct narrower owners.
+    actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    assert actual["status"] == UNRESOLVED and actual["mappings"] == []
+    assert audit_source_observation_mapping_contract_v1(actual)["mapping_count"] == 0
+    assert family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options) == actual
+    assert options["page_json_by_version"] == original
+
+
+def test_nonadditive_group_scope_has_no_fixed_amount_or_zero_missing_component_rule():
+    options = _nonadditive_group_options()
+    sender = options["page_json_by_version"][NOTE_VERSION]["sections"][0]["tables"][0]
+    receiver = options["page_json_by_version"][PRIMARY_VERSION]["sections"][0]["tables"][0]
+    sender["rows"][-1]["values_exact"] = ["9", "7"]
+    receiver["rows"][0]["values_exact"] = ["9", "7"]
+    receiver["rows"][-1]["values_exact"] = ["42", "30"]
+    original = deepcopy(options["page_json_by_version"])
+    actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    assert actual["status"] == READY, actual["reasons"]
+    assert [cell["coefficient"] for cell in next(item for item in actual["mappings"] if item["role"] == "SECURITIES_INTEREST")["values"]] == [9, 7]
+    assert [cell["coefficient"] for cell in _root(actual)["values"]] == [42, 30]
+    assert _control(actual)["nonadditive_group_continuation_receipt"]["missing_components_inferred"] is False
+    assert family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options) == actual
+    assert options["page_json_by_version"] == original
+
+
+@pytest.mark.parametrize("field,value", [
+    ("source_sha256", "e" * 64), ("source_logical_name", "different.pdf"),
+    ("document_id", "gfpstorev1:document:" + "e" * 64),
+    ("physical_page", 4), ("selected_page_ordinal", 4),
+])
+def test_nonadditive_group_never_crosses_a_changed_selected_source_identity(field, value):
+    options = _nonadditive_group_options()
+    options["regions"][1][field] = value
+    try:
+        options["query_receipt"] = family.build_gemini_json_interest_income_region_query_receipt_v1(options["regions"])
+        actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    except ValueError:
+        return  # The source-axis contract can reject before financial evaluation.
+    assert actual["status"] == UNRESOLVED and actual["mappings"] == []
+    assert audit_source_observation_mapping_contract_v1(actual)["mapping_count"] == 0
+
+
+@pytest.mark.parametrize("field", ["retired_authority", "parent_ref", "source_only_cell"])
+def test_nonadditive_group_policy_and_self_resealed_source_authority_replay_fail_closed(field):
+    options = _nonadditive_group_options()
+    actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    assert actual["status"] == READY
+    proof = _control(actual)["nonadditive_group_continuation_receipt"]
+    if field == "retired_authority":
+        proof["retired_role_authority"] = family._retired_mapping_evidence_v1(None)
+    elif field == "parent_ref":
+        proof["source_parent_ref"]["row_ordinal"] = 1
+    else:
+        actual["closure_receipt"]["source_only_unmapped_rows"][0]["cells"][0]["coefficient"] = 999
+    proof["receipt_id"] = "gjiifav1:nonadditive-group:" + canonical_json_sha256_v1({key: value for key, value in proof.items() if key != "receipt_id"})
+    control = _control(actual)
+    control["receipt_id"] = "gjiifav1:source-root:" + canonical_json_sha256_v1({key: value for key, value in control.items() if key != "receipt_id"})
+    actual["closure_receipt"]["structural_root_receipt"]["source_root_control_receipt_id"] = control["receipt_id"]
+    adapter = actual["closure_receipt"]["interest_income_adapter_receipt"]
+    adapter["adapter_receipt_id"] = "gjiifav1:receipt:" + canonical_json_sha256_v1({key: value for key, value in adapter.items() if key != "adapter_receipt_id"})
+    actual["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1({key: value for key, value in actual.items() if key != "candidate_id"})
+    with pytest.raises(family.GeminiJsonInterestIncomeFamilyV1Error, match="candidate replay drifted"):
+        family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options)
+    options["compiled_specs"]["interest_income_nonadditive_group_scope"]["child_aliases"].append("Unproved alias")
+    options["compiled_specs"]["interest_income_nonadditive_group_scope_sha256"] = canonical_json_sha256_v1(options["compiled_specs"]["interest_income_nonadditive_group_scope"])
+    with pytest.raises(family.GeminiJsonInterestIncomeFamilyV1Error, match="nonadditive group scope drifted"):
+        family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
 
 
 def test_old_twenty_vs_twenty_four_positive_fixture_is_now_an_explicit_source_mismatch_negative():

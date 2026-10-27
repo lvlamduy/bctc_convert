@@ -7,6 +7,7 @@ adds independently replayable family-local source controls:
 * one governed cumulative-duration header normalisation; and
 * corroboration of an independently printed note unit, never PRIMARY unit donation;
 * explicit source-owned continuation recovery and completeness checks; and
+* exact semantic GROUP ownership with narrower continued detail kept nonadditive;
 * a printed-total veto and direct citation of the actual owned root row.
 
 None of the steps derives a numeric value or turns an unobserved cell into
@@ -63,12 +64,19 @@ ONE_SIDED_CONTINUATION_RECEIPT_FORMAT_VERSION = (
     "GEMINI_JSON_INTEREST_INCOME_ONE_SIDED_EXPLICIT_CONTINUATION_RECEIPT_V1"
 )
 SOURCE_ROOT_CONTROL_FORMAT_VERSION = "GEMINI_JSON_INTEREST_INCOME_SOURCE_ROOT_CONTROL_V1"
+_NONADDITIVE_SECURITIES_GROUP_SCOPE = {
+    "role": "SECURITIES_INTEREST",
+    "parent_aliases": ["Thu lãi từ kinh doanh, đầu tư chứng khoán nợ"],
+    "child_aliases": ["Thu lãi từ chứng khoán kinh doanh", "Thu lãi từ chứng khoán đầu tư"],
+    "rule": "EXACT_RAW_TERMINAL_GROUP_BROAD_SECURITIES_OWNER_AND_DECLARED_NARROWER_RECEIVER_PREFIX",
+}
 DEFAULT_SOURCE_REPAIR_PATH = "data/registered/gemini_json_interest_income_source_repairs_v1.json"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_INTEREST_INCOME_"
     "MULTITABLE_HIERARCHICAL_EXACT_PDF_DASH_TRANSCRIPTION_GOVERNED_DURATION_"
     "HEADER_AND_PRIMARY_STATEMENT_VALUE_PERIOD_UNIT_CORROBORATION_PRIVATE_CLONE_"
     "SOURCE_OWNED_FRAGMENT_PRINTED_ROOT_VETO_NO_PRIMARY_UNIT_DONATION_"
+    "DECLARED_NONADDITIVE_GROUP_CONTINUATION_"
     "ONLY_NO_BLANK_ZERO_NO_NUMERIC_BACKSOLVE_NO_MAGNITUDE_UNIT_INFERENCE_"
     "PROPOSAL_ONLY_" + SHARED_CLAIM_BOUNDARY
 )
@@ -313,6 +321,8 @@ def bind_gemini_json_interest_income_source_repair_artifact_v1(
         _compile_authenticated_source_repair_artifact_v1(raw_overlay)
     )
     compiled["interest_income_source_repair_spec_sha256"] = canonical_json_sha256_v1(raw_overlay)
+    compiled["interest_income_nonadditive_group_scope"] = canonical_clone_v1(_NONADDITIVE_SECURITIES_GROUP_SCOPE)
+    compiled["interest_income_nonadditive_group_scope_sha256"] = canonical_json_sha256_v1(_NONADDITIVE_SECURITIES_GROUP_SCOPE)
     return compiled
 
 
@@ -1459,7 +1469,223 @@ def _retired_mapping_evidence_v1(value: Any) -> dict[str, Any]:
             "sha256": canonical_json_sha256_v1(value), "size_bytes": len(raw)}
 
 
-def _retire_global_root_authority_v1(candidate: dict[str, Any]) -> dict[str, Any]:
+def _source_owned_nonadditive_group_v1(
+    candidate: dict[str, Any], *, fragments: Sequence[Mapping[str, Any]],
+    original_pages: Mapping[str, dict[str, Any]], compiled_specs: Mapping[str, Any],
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """A declared broader raw GROUP owns its subtotal across an exact edge.
+
+    Scope is selected from row kind, exact semantic labels and source boundaries.
+    Observed amounts only veto the selected scope. No absent trading/investment
+    component is inferred, and the narrower rows acquire no additive mapping.
+    """
+    policy = _NONADDITIVE_SECURITIES_GROUP_SCOPE
+    if (not same_typed_json_v1(compiled_specs.get("interest_income_nonadditive_group_scope"), policy)
+            or compiled_specs.get("interest_income_nonadditive_group_scope_sha256") != canonical_json_sha256_v1(policy)):
+        raise _error("interest-income nonadditive group scope drifted")
+    if len(fragments) != 2 or candidate["status"] != READY:
+        return None, []
+    prior, receiver = fragments
+    prior_section, prior_table = _region_table(original_pages, prior["region"])
+    receiver_section, receiver_table = _region_table(original_pages, receiver["region"])
+    prior_rows, receiver_rows = prior_table.get("rows", []), receiver_table.get("rows", [])
+    parent_aliases = {_without_leading_ordinal(_normalized(value)) for value in policy["parent_aliases"]}
+    child_aliases = {_without_leading_ordinal(_normalized(value)) for value in policy["child_aliases"]}
+    owner_aliases = {_without_leading_ordinal(_normalized(value)) for value in compiled_specs["topology"]["parent"]["aliases"]}
+    prior_table_heading = _without_leading_ordinal(_normalized(prior_table.get("title_exact")))
+    prior_section_heading = _without_leading_ordinal(_normalized(prior_section.get("title_exact")))
+    role = policy["role"]
+    role_mappings = [item for item in candidate["mappings"] if item["role"] == role]
+    roots = [item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL"]
+    # A source GROUP is essential for permission. A broader ITEM with the
+    # same overlap can only hold; the proven existing colon/ITEM route remains
+    # separate because it no longer has a duplicate-role aggregate mapping.
+    if (not prior_rows
+            or (prior_rows[-1].get("row_kind") != "GROUP"
+                and _without_leading_ordinal(_normalized(prior_rows[-1].get("label_exact"))) not in parent_aliases)
+            or len(role_mappings) != 1
+            or role_mappings[0]["state"] != "SOURCE_DISTINCT_LABEL_TABLES_AGGREGATED_AFTER_CLUSTER_CLOSURE"
+            or not any(item["role"] == role for item in prior["classification"].get("role_hits", []))
+            or not any(item["role"] == role for item in receiver["classification"].get("role_hits", []))):
+        return None, []
+    failures = []
+    parent = prior_rows[-1]
+    before_aggregation = [item for item in candidate["closure_receipt"]["cluster_aggregation_receipts"] if item.get("role") == role]
+    material = {"format_version": "F28_SOURCE_OWNED_NONADDITIVE_GROUP_CONTINUATION_V1",
+        "policy": canonical_clone_v1(policy), "policy_sha256": canonical_json_sha256_v1(policy),
+        "prior_locator": canonical_clone_v1(prior["region"]), "receiver_locator": canonical_clone_v1(receiver["region"]),
+        "prior_source_table_sha256": canonical_json_sha256_v1(prior_table),
+        "receiver_source_table_sha256": canonical_json_sha256_v1(receiver_table),
+        "parent_row_exact": canonical_clone_v1(parent), "narrower_source_rows": [],
+        "retired_role_authority": _retired_mapping_evidence_v1({"role_mappings": role_mappings,
+            "root_mappings": roots, "cluster_aggregation_receipts": before_aggregation}),
+        "amounts_select_scope": False, "missing_components_inferred": False, "source_values_changed": False}
+    if (receiver["edge_from_prior"] is None or not prior["owned"] or not receiver["owned"]
+            or not _exact_source_owner_v1(prior_section, prior_table, compiled_specs)
+            or (prior_table_heading and prior_table_heading not in owner_aliases)
+            or prior_section_heading not in owner_aliases | {"", "thuyet minh"}
+            or not _adjacent_source_identity(prior["region"], receiver["region"])
+            or prior_table.get("continuation") != "CONTINUES_ON_NEXT_PAGE"
+            or receiver_table.get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE"
+            or not same_typed_json_v1(prior_table, prior["table"])
+            or not same_typed_json_v1(receiver_table, receiver["table"])
+            or _normalized(receiver_table.get("title_exact"))
+            or _normalized(receiver_section.get("title_exact")) not in {"", "thuyet minh"}
+            or any(section.get("content_kind") != "FINANCIAL_NOTE" or section.get("statement_type") != "NOT_APPLICABLE" for section in (prior_section, receiver_section))
+            or parent.get("row_kind") != "GROUP"
+            or _without_leading_ordinal(_normalized(parent.get("label_exact"))) not in parent_aliases
+            or parent.get("hierarchy_path_exact") != [parent.get("label_exact")]
+            or sum(row.get("row_kind") == "GROUP" for row in [*prior_rows, *receiver_rows]) != 1):
+        failures.append("F28_NONADDITIVE_GROUP_SOURCE_SCOPE_NOT_PROVEN")
+    prior_receipt, receiver_receipt = prior["table_receipt"], receiver["table_receipt"]
+    if (type(prior_receipt) is not dict or type(receiver_receipt) is not dict
+            or prior["source_unit"] is None or prior["source_unit"] != receiver["source_unit"]
+            or prior["local_unit_axis"].get("complete") is not True):
+        failures.append("F28_NONADDITIVE_GROUP_LOCAL_UNIT_NOT_OWNED")
+    prefix = []
+    hits = {item["row_ordinal"]: item["role"] for item in receiver["classification"].get("role_hits", [])}
+    for ordinal, row in enumerate(receiver_rows, 1):
+        if hits.get(ordinal) != role:
+            break
+        prefix.append((ordinal, row))
+    if (not prefix or len(prefix) == len(receiver_rows)
+            or any(row.get("row_kind") != "ITEM" or row.get("hierarchy_path_exact") != [row.get("label_exact")]
+                   or _without_leading_ordinal(_normalized(row.get("label_exact"))) not in child_aliases for _, row in prefix)
+            or len({_without_leading_ordinal(_normalized(row.get("label_exact"))) for _, row in prefix}) != len(prefix)
+            or any(value == role for ordinal, value in hits.items() if ordinal > len(prefix))
+            or hits.get(len(prefix) + 1) not in set(compiled_specs["root_component_roles"]) - {role}
+            or [item["row_ordinal"] for item in prior["classification"].get("role_hits", []) if item["role"] == role] != [len(prior_rows)]):
+        failures.append("F28_NONADDITIVE_GROUP_DECLARED_PREFIX_NOT_PROVEN")
+    material["narrower_source_rows"] = [{"row_ordinal": ordinal, "source_row_exact": canonical_clone_v1(row)} for ordinal, row in prefix]
+    parent_observation = None
+    child_observations = []
+    if not failures:
+        axis = prior_receipt["lane_axis"]
+        other_axis = receiver_receipt["lane_axis"]
+        if (axis.get("complete") is not True or other_axis.get("complete") is not True
+                or len(axis.get("money_column_ordinals", [])) != 2
+                or any(not same_typed_json_v1(axis.get(key), other_axis.get(key)) for key in (
+                    "money_column_ordinals", "lane_keys", "source_lane_keys", "selected_metric_kinds"))):
+            failures.append("F28_NONADDITIVE_GROUP_PERIOD_OR_COLUMNS_DIFFER")
+        else:
+            parent_observation = _printed_root_source_observation_v1(len(prior_rows), parent,
+                region=prior["region"], lane_axis=axis, state="SOURCE_OBSERVED_GROUP_SUBTOTAL")
+            child_observations = [_printed_root_source_observation_v1(ordinal, row,
+                region=receiver["region"], lane_axis=other_axis, state="NONADDITIVE_SOURCE_ONLY_NARROWER_DETAIL") for ordinal, row in prefix]
+            observations = [parent_observation, *child_observations]
+            if any(item is None or any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in item["cells"]) for item in observations):
+                failures.append("F28_NONADDITIVE_GROUP_CELLS_NOT_OBSERVED")
+            elif [sum(item["cells"][lane]["coefficient"] for item in child_observations) for lane in range(2)] != [cell["coefficient"] for cell in parent_observation["cells"]]:
+                failures.append("F28_NONADDITIVE_GROUP_OBSERVED_PREFIX_CONFLICT")
+    replacement = None
+    frontier = []
+    root_observation = None
+    if not failures:
+        expected_refs = [ref for item in [parent_observation, *child_observations] for ref in item["source_refs"]]
+
+        def unique_refs(refs):
+            return {canonical_json_sha256_v1(ref): ref for ref in refs}
+
+        aggregate_coefficients = [sum(item["cells"][lane]["coefficient"] for item in [parent_observation, *child_observations]) for lane in range(2)]
+        if (len(before_aggregation) != 1 or before_aggregation[0].get("rule") != "CONFIGURED_ROLE_DISTINCT_VISIBLE_LABELS_DISTINCT_TABLES_DIRECT_SUM"
+                or unique_refs(before_aggregation[0].get("source_refs", [])) != unique_refs(expected_refs)
+                or before_aggregation[0].get("coefficients") != aggregate_coefficients
+                or unique_refs(role_mappings[0]["source_refs"]) != unique_refs(expected_refs)
+                or [cell["coefficient"] for cell in role_mappings[0]["values"]] != aggregate_coefficients
+                or len(roots) != 1 or roots[0]["state"] != "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"):
+            failures.append("F28_NONADDITIVE_GROUP_SHARED_BEFOREIMAGE_DIFFERS")
+        else:
+            record = parent_observation
+            replacement_material = {"report_norm_id": role_mappings[0]["report_norm_id"], "role": role,
+                "row_id": record["source_refs"][0]["row_id"], "source_refs": record["source_refs"],
+                "state": "F28_SOURCE_VISIBLE_GROUP_SUBTOTAL_WITH_NONADDITIVE_CONTINUED_DETAIL",
+                "unit": prior["source_unit"], "values": record["cells"]}
+            replacement = {**replacement_material, "item_mapping_id": "gjmthfmv1:item:" + canonical_json_sha256_v1(replacement_material)}
+            proposed = [replacement if item["role"] == role else item for item in candidate["mappings"] if item["role"] != "FAMILY_ROOT_TOTAL"]
+            fragment_by_key = {_fragment_key(item["region"]): item for item in fragments}
+            seen_refs = set()
+            for mapping in proposed:
+                observations = []
+                # The frozen mapping repeats the same whole-row ref per lane.
+                # Collapse identical references, never distinct rows or values.
+                for ref in unique_refs(mapping["source_refs"]).values():
+                    fragment = fragment_by_key.get(_fragment_key(ref["locator"]))
+                    if fragment is None or type(fragment["table_receipt"]) is not dict:
+                        failures.append("F28_NONADDITIVE_GROUP_COMPONENT_SOURCE_NOT_PROVEN")
+                        break
+                    rows = fragment["table"]["rows"]
+                    ordinal = ref["row_ordinal"]
+                    record = _printed_root_source_observation_v1(ordinal, rows[ordinal - 1],
+                        region=fragment["region"], lane_axis=fragment["table_receipt"]["lane_axis"], state="SOURCE_OBSERVED_FRONTIER") if 1 <= ordinal <= len(rows) else None
+                    ref_id = canonical_json_sha256_v1(ref)
+                    if (record is None or record["source_refs"] != [ref] or ref_id in seen_refs
+                            or any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in record["cells"])):
+                        failures.append("F28_NONADDITIVE_GROUP_COMPONENT_SOURCE_NOT_PROVEN")
+                        break
+                    seen_refs.add(ref_id)
+                    observations.append(record)
+                if (not observations or mapping["role"] not in compiled_specs["root_component_roles"]
+                        or mapping["unit"] != prior["source_unit"]
+                        or [sum(item["cells"][lane]["coefficient"] for item in observations) for lane in range(2)] != [cell["coefficient"] for cell in mapping["values"]]):
+                    failures.append("F28_NONADDITIVE_GROUP_COMPONENT_FRONTIER_NOT_DIRECT")
+                frontier.append({"role": mapping["role"], "mapping_id": mapping["item_mapping_id"],
+                    "source_refs": canonical_clone_v1(list(unique_refs(mapping["source_refs"]).values())),
+                    "cells": canonical_clone_v1(mapping["values"])})
+            totals = _terminal_source_root_rows_v1(receiver, compiled_specs)
+            if failures or len(totals) != 1 or totals[0][0] != len(receiver_rows) or _terminal_source_root_rows_v1(prior, compiled_specs):
+                failures.append("F28_NONADDITIVE_GROUP_PRINTED_ROOT_NOT_UNIQUE")
+            else:
+                ordinal, row = totals[0]
+                root_observation = _printed_root_source_observation_v1(ordinal, row,
+                    region=receiver["region"], lane_axis=other_axis, state="SOURCE_OBSERVED_PRINTED_TOTAL")
+                excluded = unique_refs([*root_observation["source_refs"], *[ref for item in child_observations for ref in item["source_refs"]]]) if root_observation is not None else {}
+                raw_refs = set()
+                for fragment in fragments:
+                    for ordinal, row in enumerate(fragment["table"]["rows"], 1):
+                        record = _printed_root_source_observation_v1(ordinal, row,
+                            region=fragment["region"], lane_axis=fragment["table_receipt"]["lane_axis"], state="SOURCE_FRONTIER_INVENTORY")
+                        if record is not None:
+                            raw_refs.update(canonical_json_sha256_v1(ref) for ref in record["source_refs"])
+                if (seen_refs != raw_refs - set(excluded) or len({item["role"] for item in frontier}) != len(frontier)
+                        or root_observation is None or any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in root_observation["cells"])
+                        or [sum(item["cells"][lane]["coefficient"] for item in frontier) for lane in range(2)] != [cell["coefficient"] for cell in root_observation["cells"]]):
+                    failures.append("F28_NONADDITIVE_GROUP_COMPLETE_FRONTIER_OR_PRINTED_ROOT_CONFLICT")
+    # Retire the old duplicate-role grant even when a recognized scope holds.
+    candidate["closure_receipt"]["cluster_aggregation_receipts"] = [item for item in candidate["closure_receipt"]["cluster_aggregation_receipts"] if item.get("role") != role]
+    if not failures:
+        root_material = {key: canonical_clone_v1(value) for key, value in roots[0].items() if key != "item_mapping_id"}
+        root_material["source_refs"] = [ref for item in frontier for ref in item["source_refs"]]
+        root_material["values"] = [{"coefficient": sum(item["cells"][lane]["coefficient"] for item in frontier),
+            "source_text": None, "state": "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM"} for lane in range(2)]
+        corrected_root = {**root_material, "item_mapping_id": "gjmthfmv1:item:" + canonical_json_sha256_v1(root_material)}
+        candidate["mappings"] = [replacement if item["role"] == role else corrected_root if item["role"] == "FAMILY_ROOT_TOTAL" else item for item in candidate["mappings"]]
+        equation_material = {"equation_kind": "F28_EXACT_SOURCE_OWNED_NONADDITIVE_GROUP_FRONTIER_EQUALS_PRINTED_ROOT",
+            "component_roles": [item["role"] for item in frontier], "component_source_refs": [item["source_refs"] for item in frontier],
+            "component_sums": [cell["coefficient"] for cell in root_observation["cells"]], "multipliers": [1] * len(frontier),
+            "lane_keys": canonical_clone_v1(other_axis["lane_keys"]), "result_role": "FAMILY_ROOT_TOTAL",
+            "result_coefficients": [cell["coefficient"] for cell in root_observation["cells"]],
+            "result_source_refs": root_observation["source_refs"], "status": "EXACT"}
+        equation = {**equation_material, "equation_id": "gjiifav1:frontier-equation:" + canonical_json_sha256_v1(equation_material)}
+        candidate["closure_receipt"]["equations"].append(equation)
+        for observation in child_observations:
+            candidate["closure_receipt"]["source_only_unmapped_rows"].append({
+                "declared_validation_role": "F28_NONADDITIVE_CONTINUED_SECURITIES_SUBSET_SOURCE_ONLY",
+                "source_refs": observation["source_refs"], "cells": observation["cells"],
+                "source_state": observation["state"], "source_parent_ref": parent_observation["source_refs"][0]})
+        material.update({"source_parent_ref": parent_observation["source_refs"][0], "bound_role_mapping_id": replacement["item_mapping_id"],
+            "source_component_frontier": frontier, "corroborating_equation_id": equation["equation_id"],
+            "source_edge": canonical_clone_v1(receiver["edge_from_prior"]),
+            "narrower_prefix_corroboration": {"parent_cells": canonical_clone_v1(parent_observation["cells"]),
+                "observed_children": canonical_clone_v1(child_observations),
+                "observed_prefix_sum": [sum(item["cells"][lane]["coefficient"] for item in child_observations) for lane in range(2)],
+                "scope_permission_granted_by_amounts": False, "unprinted_components_inferred": False},
+            "child_amounts_only_corroborate_or_veto": True})
+    material["reasons"] = sorted(set(failures))
+    material["status"] = "HELD_UNPROVEN_GROUP_SCOPE" if failures else "SOURCE_OWNED_GROUP_SUBTOTAL_DETAIL_NONADDITIVE"
+    return {**material, "receipt_id": "gjiifav1:nonadditive-group:" + canonical_json_sha256_v1(material)}, failures
+
+
+def _retire_global_root_authority_v1(candidate: dict[str, Any], *, retire_cluster_aggregations: bool = False) -> dict[str, Any]:
     closure = candidate["closure_receipt"]
     retired = [equation for equation in closure["equations"]
                if equation.get("equation_kind") == "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT"]
@@ -1468,29 +1694,43 @@ def _retire_global_root_authority_v1(candidate: dict[str, Any]) -> dict[str, Any
     permissions = canonical_clone_v1(closure.get("root_component_sum_receipts", []))
     if "root_component_sum_receipts" in closure:
         closure["root_component_sum_receipts"] = []
+    cluster_aggregations = canonical_clone_v1(closure.get("cluster_aggregation_receipts", [])) if retire_cluster_aggregations else []
+    if retire_cluster_aggregations:
+        closure["cluster_aggregation_receipts"] = []
     return _retired_mapping_evidence_v1({"global_root_equations": retired,
         "root_component_sum_receipts": permissions,
+        "cluster_aggregation_receipts": cluster_aggregations,
         "structural_root_receipt_before": canonical_clone_v1(closure["structural_root_receipt"])})
 
 
 def _apply_source_root_controls_v1(
     candidate: dict[str, Any], *, pages: Mapping[str, dict[str, Any]],
     regions: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+    original_pages: Mapping[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Veto incomplete roots; bind an equal, independently owned printed row.
 
     Shared candidates are all-or-nothing: a failed family root/fragment proof
     withholds the candidate's entire mapping axis, retaining the before-image.
-    No operand, unit, sign, raw token, row kind or hierarchy is repaired here.
+    Source GROUP ownership may replace an erroneous derived aggregate. No source
+    operand, unit, sign, raw token, row kind or hierarchy is repaired here.
     """
     fragments, reasons = _source_owned_fragment_axis_v1(
         candidate=candidate, pages=pages, regions=regions, compiled_specs=compiled_specs,
     )
-    roots = [item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL"]
-    if not roots and not reasons:
-        return candidate, []  # Existing partial observations remain partial.
     before_sha = canonical_json_sha256_v1(candidate)
     original_mappings = canonical_clone_v1(candidate["mappings"])
+    group_receipt, group_reasons = _source_owned_nonadditive_group_v1(
+        candidate, fragments=fragments,
+        original_pages=pages if original_pages is None else original_pages,
+        compiled_specs=compiled_specs,
+    )
+    reasons.extend(group_reasons)
+    roots = [item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL"]
+    if candidate["status"] == UNRESOLVED and candidate["closure_receipt"].get("cluster_aggregation_receipts"):
+        reasons.append("F28_UNRESOLVED_CANDIDATE_HAS_NO_ACTIVE_ROLE_AGGREGATION_AUTHORITY")
+    if not roots and not reasons:
+        return candidate, []  # Existing partial observations remain partial.
     controls, source_roots = [], []
     for fragment in fragments:
         region, table = fragment["region"], fragment["table"]
@@ -1555,15 +1795,16 @@ def _apply_source_root_controls_v1(
                     replacement = {**material, "item_mapping_id": "gjmthfmv1:item:" + canonical_json_sha256_v1(material)}
                     candidate["mappings"] = [replacement if item["role"] == "FAMILY_ROOT_TOTAL" else item for item in candidate["mappings"]]
                     binding = {"printed_root_source_ref": record["source_refs"][0],
-                               "prior_root_mapping": _retired_mapping_evidence_v1(root), "bound_mapping_id": replacement["item_mapping_id"]}
+                               "prior_root_mapping": _retired_mapping_evidence_v1(next(item for item in original_mappings if item["role"] == "FAMILY_ROOT_TOTAL")),
+                               "bound_mapping_id": replacement["item_mapping_id"]}
     withheld = []
     retired_root_authority = None
     rejected_binding = None
     if reasons or binding is not None:
-        retired_root_authority = _retire_global_root_authority_v1(candidate)
+        retired_root_authority = _retire_global_root_authority_v1(candidate, retire_cluster_aggregations=bool(reasons))
     if binding is not None:
         binding["retained_local_equation_ids"] = [equation["equation_id"] for equation in candidate["closure_receipt"]["equations"]]
-        binding["source_component_mapping_ids"] = [mapping["item_mapping_id"] for mapping in original_mappings if mapping["role"] != "FAMILY_ROOT_TOTAL"]
+        binding["source_component_mapping_ids"] = [mapping["item_mapping_id"] for mapping in candidate["mappings"] if mapping["role"] != "FAMILY_ROOT_TOTAL"]
     if reasons:
         withheld = original_mappings
         rejected_binding = None if binding is None else _retired_mapping_evidence_v1(binding)
@@ -1574,6 +1815,7 @@ def _apply_source_root_controls_v1(
         candidate["closure_receipt"]["structural_root_receipt"]["emitted_mapping"] = False
     material = {"format_version": SOURCE_ROOT_CONTROL_FORMAT_VERSION,
         "shared_candidate_before_sha256": before_sha, "fragments": controls,
+        "nonadditive_group_continuation_receipt": group_receipt,
         "direct_printed_root_binding": binding, "withheld_mapping_evidence": _retired_mapping_evidence_v1(withheld),
         "retired_global_root_authority": retired_root_authority,
         "rejected_direct_binding_evidence": rejected_binding,
@@ -1582,6 +1824,8 @@ def _apply_source_root_controls_v1(
     receipt = {**material, "receipt_id": "gjiifav1:source-root:" + canonical_json_sha256_v1(material)}
     structural_root = candidate["closure_receipt"]["structural_root_receipt"]
     structural_root["source_root_control_receipt_id"] = receipt["receipt_id"]
+    if binding is not None or reasons:
+        structural_root["mapping_policy"] = "F28_SOURCE_OWNED_PRINTED_TOTAL_ROW_ONLY"
     if binding is not None:
         structural_root["source_root_mapping_id"] = binding["bound_mapping_id"]
         structural_root["active_permission"] = "F28_SOURCE_OWNED_PRINTED_TOTAL_ROW"
@@ -1675,6 +1919,7 @@ def evaluate_gemini_json_interest_income_family_cluster_v1(
     )
     candidate, source_root_receipts = _apply_source_root_controls_v1(
         candidate, pages=pages, regions=region_axis, compiled_specs=compiled_specs,
+        original_pages=page_json_by_version,
     )
     return _reseal_candidate(
         candidate,

@@ -145,7 +145,9 @@ their count is retained historical evidence, not carryover permission.
 
 ## Authored controls and required next gates
 
-All tests remain **UNRUN**. Synthetic controls preserve the old20-vs24
+The source-authored controls initially remained **UNRUN**. Subsequent root-owned
+focused attempts and the diagnostic below are preserved separately; the new
+nonadditive-group delta remains **UNRUN**. Synthetic controls preserve the old20-vs24
 contradiction as a dedicated negative; only the artificial positive header
 fixture was made coherent. The old unit-positive is now a prohibited-donation
 negative, with new independently printed unit/column-unit positives and source
@@ -171,3 +173,90 @@ not relaxed here. New HOLDs and changed evidence must remain visible; the old
 residual, financial, store/replay/export and terminal gates remain required.
 No family seal, whole-corpus acceptance, source repair registration or automatic
 retry is granted by this candidate.
+
+## 2026-10-28 actual diagnostic and source-only nonadditive-group delta
+
+Root's preserved focused V7 stopped after69 passes at the unchanged old
+`test_explicit_adjacent_continuation_keeps_visible_second_page_roles` READY
+assertion. No source-owner, continuation, period or unit failure caused that
+HOLD. Root then executed the immutable record-only diagnostic V2 under the
+serialized lease, 2GiB address-space cap and source/origin guards. Its exact
+406017-byte `diagnostic.json` has SHA-256
+`7f776f269bf7161f64f88624733ada5dab53878506dd1f3c00234725d28454a8`,
+at `/home/bctc/codex-runs/f28-continuation-diagnostic-20261028-v2/`.
+The fixed source was `e569ba1dc06e79203bf80efd51be50e7d14a219b`, adapter
+`d97324e2dc817758d56d041c02b807911be0bb0e49e63d5e1308d55a83f596f7`;
+all recorded source pins/origins remained exact. The diagnostic's success is
+recording success, with the original test assertion still failing; it is no
+financial acceptance or source-ready result.
+
+The recorded frozen candidate emitted securities10 /8 by adding a page-final
+raw GROUP `Thu lãi từ kinh doanh, đầu tư chứng khoán nợ`5 /4 to the next page's
+leading narrower ITEM `Thu lãi từ chứng khoán đầu tư`5 /4. Its derived root was
+43 /31, while the actual terminal printed total was38 /27. The sole final
+reason was `F28_PRINTED_FAMILY_ROOT_DIFFERS_FROM_EMITTED_ROOT`. That HOLD was
+correct; restoring READY43 /31 would preserve a real double count. The failing
+attempt, diagnostic and raw synthetic fixture remain unchanged historical
+evidence.
+
+The new family-local declaration accepts only that exact broader securities
+label as a raw GROUP and the explicitly declared narrower trading/investment
+labels as consecutive leading raw ITEM rows. These are semantic scope rules,
+with no bank, file, page, ordinal or amount routing. They are compiled as an
+exact adapter-owned policy snapshot plus SHA and checked against the executing
+policy. No config, frozen source or new direct module dependency is added.
+
+Before considering any amount, the route requires one page-final broader GROUP,
+one exact family owner, a page-leading titleless receiver, the independently
+proved same-document/source and selected/physical page edge, both ORIGINAL raw
+continuation markers, source-owned printed sender unit and exact proven period
+axes. Original raw tables must equal the tables used for this route: the prior
+one-sided normalizer cannot manufacture a marker, GROUP or hierarchy proof.
+Extra qualifiers, unknown/partial prefix scope, competing GROUPs, a later
+same-role row, owner resets or incompatible unit/header evidence withhold the
+whole candidate. Every nonempty sender table heading must itself be an exact
+family owner; its section heading must be generic `Thuyết minh` or an exact
+family owner. An exact title on one surface cannot override a conflicting or
+qualified title on the other. Prefix uniqueness uses the same declared alias
+identity as eligibility, with leading ordinals removed; numbered repeats of
+one investment/trading population cannot create distinct narrower owners.
+The existing independently proved colon/ITEM route is kept
+separate.
+
+The directly observed GROUP subtotal owns securities5 /4. Its exact raw source
+ref and typed cells replace the erroneous aggregate. The narrower rows remain
+explicit source-only validation observations, with no additive schema mapping.
+Observed prefix/parent agreement only corroborates or vetoes an already proved
+scope; it never establishes the relation, invents another component or assigns
+zero to an unprinted trading/investment row. Every other active component is
+replayed from its exact raw row refs. The frozen mapping repeats an identical
+whole-row ref per lane; only those identical reference identities are collapsed
+for this source inventory, never distinct rows with equal labels or amounts.
+The complete inventory must account for all source rows except the explicitly
+nonadditive prefix and directly printed terminal root. Its direct component
+sum must corroborate that printed root on both lanes. No expense/sign/unit or
+source value is changed or backsolved.
+
+The old securities mapping, erroneous root mapping and duplicate-role global
+aggregation grant are retained in an inactive canonical JSON text/SHA/size
+envelope. The superseded global root equation, root-component permission and
+structural grant are also retired through the existing opaque envelope. A
+source-bound frontier equation, direct parent mapping and directly cited
+printed root provide the new active evidence. Independent local proofs remain
+exact. On HOLD, rejected role aggregations and root grants cannot remain active;
+the structural policy grants only the source-owned printed-root route and is
+emitted=false on rejection. Full-candidate recursive audits see precisely the
+active mappings, with zero on HOLD. Fresh candidate replay rebuilds the policy,
+scope, cells, source-only observations and all envelopes.
+
+The original old positive retains its raw rows, READY expectation and original
+role/cluster assertions, with stronger exact securities5 /4 and printed root
+38 /27 citations plus raw-page immutability assertions. New synthetic controls
+cover one or two declared narrower rows, changed amounts with the same scope,
+twenty marker/semantic/qualifier/group/frontier/unit/header negatives,
+an equal-sum repeated-alias/different-ordinal direct and public rejection,
+five changed source-axis cases, and compiled-policy/self-resealed retirement,
+parent-ref and source-only-cell tampering. Several semantic negatives deliberately print the old43 /31 sum,
+so numerical agreement cannot grant missing source scope. All tests/lint for
+this delta remain UNRUN; root must capture, independently review and execute
+the complete focused modules before any actual-source/corpus acceptance.
