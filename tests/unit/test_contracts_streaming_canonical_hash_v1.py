@@ -1,7 +1,8 @@
-"""canonical_json_sha256_v1 streams large trees but must hash exactly canonical_json_bytes_v1(value)."""
+"""canonical_json_sha256_v1 and canonical_clone_v1 avoid rendering large trees but stay exactly equivalent."""
 
 from __future__ import annotations
 
+import json
 import random
 import tracemalloc
 from enum import IntEnum
@@ -12,8 +13,11 @@ import pytest
 from bctc_ai.source_structure import contracts_v1
 from bctc_ai.source_structure.contracts_v1 import (
     SourceStructureContractError,
+    canonical_clone_v1,
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    decode_canonical_json_bytes_v1,
+    same_typed_json_v1,
 )
 
 VECTORS = [
@@ -27,7 +31,7 @@ VECTORS = [
 
 INVALID = [
     float("nan"), float("inf"), -float("inf"), "\ud800 lone", {"\udc00": 1}, (1, 2), {1, 2}, b"bytes",
-    {1: "int key"}, {True: "bool key"}, {None: 1}, [object()], 1 + 2j,
+    {1: "int key"}, {True: "bool key"}, {None: 1}, [object()], 1 + 2j, 10**5000, {"big": [-(10**4400)]},
 ]
 
 
@@ -111,3 +115,62 @@ def test_streamed_hash_peak_is_flat_and_far_below_the_rendering():
     (small_size, small_peak), (large_size, large_peak) = peaks
     assert large_size > 2.5 * small_size
     assert large_peak < 1.25 * small_peak + 65_536  # independent of the rendered size
+
+
+def _old_clone(value):
+    return decode_canonical_json_bytes_v1(canonical_json_bytes_v1(value))
+
+
+def _ordered(value):
+    """Order-sensitive spelling: dict insertion order and float bits both matter."""
+    return json.dumps(value, ensure_ascii=False, allow_nan=False)
+
+
+def _assert_same_clone(value):
+    old = _old_clone(value)
+    new = canonical_clone_v1(value)
+    assert same_typed_json_v1(new, old)
+    assert _ordered(new) == _ordered(old)
+    assert canonical_json_bytes_v1(new) == canonical_json_bytes_v1(value)
+    return new
+
+
+@pytest.mark.parametrize("value", VECTORS, ids=range(len(VECTORS)))
+def test_clone_vectors_equal_decoded_canonical_bytes(path, value):
+    _assert_same_clone(value)
+
+
+def test_clone_random_trees_and_independence(path):
+    rng = random.Random(28102026)
+    for _ in range(300):
+        _assert_same_clone(_random_tree(rng, 6))
+    shared = [1, {"z": 2, "a": [3]}]
+    source = {"b": shared, "a": shared}
+    clone = _assert_same_clone(source)
+    assert list(clone) == ["a", "b"] and clone["a"] is not clone["b"]
+    clone["a"][1]["a"].append(4)
+    assert source == {"b": [1, {"z": 2, "a": [3]}], "a": [1, {"z": 2, "a": [3]}]}
+
+
+@pytest.mark.parametrize("value", [*INVALID, _Small.ONE, [_Small.ONE]], ids=range(len(INVALID) + 2))
+def test_clone_invalid_values_raise_the_same_contract_error(path, value):
+    with pytest.raises(SourceStructureContractError):
+        _old_clone(value)
+    with pytest.raises(SourceStructureContractError):
+        canonical_clone_v1(value)
+
+
+def test_large_clone_does_not_render():
+    peaks = []
+    for count in (30_000, 90_000):
+        value = {"trials": [{"document": f"doc-{index:06d}", "values": [index, index * 1.5, "Triệu VND", None, True]}
+                            for index in range(count)]}
+        old, old_peak = _traced_peak(_old_clone, value)
+        new, new_peak = _traced_peak(canonical_clone_v1, value)
+        assert _ordered(new) == _ordered(old)
+        rendered = len(canonical_json_bytes_v1(value))
+        assert new_peak < old_peak
+        peaks.append((rendered, old_peak, new_peak))
+    # The rebuilt containers are the result itself; the old path additionally holds three renderings.
+    for rendered, old_peak, new_peak in peaks:
+        assert old_peak - new_peak > 2 * rendered
