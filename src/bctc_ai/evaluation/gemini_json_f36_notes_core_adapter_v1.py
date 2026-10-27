@@ -832,8 +832,9 @@ def _fragments(cells: list[dict[str, Any]], records: list[dict[str, Any]],
     return canonical_clone_v1(mappings), canonical_clone_v1(retained)
 
 
-def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any], config: Any,
-                                compiled_specs: dict[str, Any]) -> list[dict[str, Any]]:
+def _rebuild_f36_notes_trial_batch_v1(*, source: NotesSource, contexts: dict[int, Any], config: Any,
+                                     compiled_specs: dict[str, Any],
+                                     output_document_ordinal: int | None = None) -> list[dict[str, Any]]:
     """Actual financial/bridge/ROOT rebuild, not an encoder of caller classifications.
 
     The IO caller owns the authenticated original snapshot, PRIMARY/config refs,
@@ -854,13 +855,22 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
                  for k, v in config.crosswalk.items()]
     _need(_same(crosswalk, compiled["schema"]["crosswalk"]), "Fresh crosswalk differs")
     requested = set(topo["documents_requested"])
-    run = run_family_v1(FAMILY, config, source, contexts, document_ordinals=requested)
+    documents = topo["source"]["document_axis"]
+    if output_document_ordinal is not None:
+        _need(type(output_document_ordinal) is int and 1 <= output_document_ordinal <= len(documents),
+              "Original output document ordinal required")
+        documents = [documents[output_document_ordinal - 1]]
+    # Evaluation can be bounded without changing either the compiled requested
+    # axis or the full authenticated corpus identity. Unrequested output slots
+    # keep the original explicit outside-request trial.
+    evaluated = requested.intersection(doc["document_ordinal"] for doc in documents)
+    run = run_family_v1(FAMILY, config, source, contexts, document_ordinals=evaluated)
     dispositions = dispositions_v1(run)
     annual_payloads = {}
-    for doc in topo["source"]["document_axis"]:
+    for doc in documents:
         ordinal = doc["document_ordinal"]
         context = contexts.get(ordinal)
-        if (ordinal not in requested or context is None or context.scope not in {"SEPARATE", "CONSOLIDATED"}
+        if (ordinal not in evaluated or context is None or context.scope not in {"SEPARATE", "CONSOLIDATED"}
                 or type(context.annual_policy) is not PolicyCapture):
             continue
         table_texts = []
@@ -878,7 +888,7 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
     subjects = config.families[FAMILY].raw["subjects"]["OPERATING_EXPENSE_NOTE"]["any"]
     # Bounded per-page parsing; no whole-corpus ORIGINAL object cache.
     for doc in source.corpus.documents:
-        if doc.ordinal not in requested:
+        if doc.ordinal not in evaluated:
             continue
         for selected in doc.pages:
             loaded = source._load_originals([selected.page_json_version_id])[selected.page_json_version_id]
@@ -917,7 +927,7 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
                           contexts[doc["document_ordinal"]].income_context_texts)
                        for doc in topo["source"]["document_axis"] if doc["document_ordinal"] in annual_payloads}
     trials = []
-    for doc in topo["source"]["document_axis"]:
+    for doc in documents:
         ordinal = doc["document_ordinal"]
         own_indices = [i for i, c in enumerate(run.cells) if c["document_ordinal"] == ordinal]
         own_cells, own_records = [run.cells[i] for i in own_indices], [records[i] for i in own_indices]
@@ -966,6 +976,56 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
     return canonical_clone_v1(trials)
 
 
+def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any], config: Any,
+                                compiled_specs: dict[str, Any]) -> list[dict[str, Any]]:
+    """Legacy whole-list API; financial rules and whole-list result are unchanged."""
+    return _rebuild_f36_notes_trial_batch_v1(
+        source=source, contexts=contexts, config=config, compiled_specs=compiled_specs,
+    )
+
+
+def iter_rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any], config: Any,
+                                     compiled_specs: dict[str, Any]):
+    """Yield every original trial using document-bounded working state.
+
+    This is a producer primitive, not a persistence/acceptance grant. The IO
+    owner still authenticates and holds the complete source/code frontier before
+    and after exhausting the iterator. No subset topology is manufactured.
+    Annual policy is captured freshly for one document; a fresh NotesSource
+    bounds ORIGINAL bridge caches while retaining the SAME full corpus.
+    """
+    compiled = compile_f36_notes_core_specs_v1(
+        compiled_specs["topology"], compiled_specs["evaluation"], compiled_specs["schema"],
+    )
+    _need(_same(compiled, compiled_specs), "Compiled notes authority changed")
+    source_identity = canonical_clone_v1(source.corpus.identity())
+    requested = set(compiled["topology"]["documents_requested"])
+    for doc in compiled["topology"]["source"]["document_axis"]:
+        _need(_same(compiled, compiled_specs) and _same(source.corpus.identity(), source_identity),
+              "Stream authority changed between original documents")
+        ordinal = doc["document_ordinal"]
+        local_source = NotesSource(source.corpus, source.metrics, original_loader=source._original_loader)
+        local_contexts = {}
+        if ordinal in contexts:
+            context = contexts[ordinal]
+            policy = None
+            if ordinal in requested:
+                policy = local_source.annual_policies_v1({ordinal: context.scope}).get(ordinal)
+            local_contexts[ordinal] = replace(context, annual_policy=policy)
+        trials = _rebuild_f36_notes_trial_batch_v1(
+            source=local_source, contexts=local_contexts, config=config, compiled_specs=compiled,
+            output_document_ordinal=ordinal,
+        )
+        _need(len(trials) == 1 and trials[0]["document_ordinal"] == ordinal,
+              "Bounded rebuild changed original document axis")
+        trial = trials.pop()
+        del local_source, local_contexts, trials
+        yield trial
+        del trial
+    _need(_same(compiled, compiled_specs) and _same(source.corpus.identity(), source_identity),
+          "Stream authority changed before iterator completion")
+
+
 def build_f36_notes_query_evidence_v1(*, trials: list[dict[str, Any]], compiled_specs: dict[str, Any]) -> dict[str, Any]:
     material = {"format_version": COMPACT_QUERY_FORMAT if _compact(compiled_specs) else QUERY_FORMAT, "family_id": FAMILY,
                 "selected_document_axis": compiled_specs["topology"]["source"]["document_axis"],
@@ -974,121 +1034,140 @@ def build_f36_notes_query_evidence_v1(*, trials: list[dict[str, Any]], compiled_
     return {**canonical_clone_v1(material), "query_evidence_id": "gjf36nieqv1:evidence:" + canonical_json_sha256_v1(material)}
 
 
+def _validate_f36_notes_trial_v1(*, trial: Any, doc: dict[str, Any], compiled_specs: dict[str, Any]) -> None:
+    """The existing per-document financial/ledger rules, without whole-list cloning."""
+    _need(type(trial) is dict and set(trial) == {"document_ordinal", "source_logical_name", "source_sha256", "status",
+          "candidate_count", "candidates", "selected_candidate_id", "mappings", "reasons", "notes_ledger"}, "Trial fields")
+    _need(all(type(trial[k]) is type(doc[k]) and trial[k] == doc[k] for k in
+              ("document_ordinal", "source_logical_name", "source_sha256")), "Trial source axis")
+    _need(type(trial["mappings"]) is list and type(trial["candidates"]) is list
+          and type(trial["candidate_count"]) is int and trial["candidate_count"] == len(trial["candidates"]) <= 1,
+          "Candidate axis")
+    _need(trial["status"] in {"READY", "UNRESOLVED"} and type(trial["reasons"]) is list
+          and type(trial["notes_ledger"]) is dict, "Status/ledger axis")
+    ledger = trial["notes_ledger"]
+    base_fields = {"cells", "classifications", "retained", "dispositions", "root_closures",
+                   "source_ledger", "production_policy_receipts", "primary_income_context_texts", "scope"}
+    if _compact(compiled_specs):
+        base_fields.add("source_partition")
+    _need(set(ledger) in (base_fields, base_fields | {"annual_period_context"})
+          and all(type(ledger[k]) is list for k in base_fields - {"scope", "source_partition"})
+          and len(ledger["cells"]) == len(ledger["classifications"]), "Complete ledger fields")
+    expected_scope = ("REQUESTED_F36_NOTES_DOCUMENT" if doc["document_ordinal"] in compiled_specs["topology"]["documents_requested"]
+                      else "NOT_EVALUATED_REQUESTED_SUBSET_ONLY")
+    _need(ledger["scope"] == expected_scope, "Requested scope drift")
+    _need(all(c.get("document_ordinal") == doc["document_ordinal"] and c.get("family") == FAMILY for c in ledger["cells"]),
+          "Ledger cells belong to another source")
+    family = _family(compiled_specs["evaluation"])
+    inventories, inventory_rows = {}, {}
+    for source_record in ledger["source_ledger"]:
+        _need(type(source_record) is dict and set(source_record) == {"inventory", "table_classification", "rows"},
+              "Source ledger entry")
+        inv = source_record["inventory"]
+        table = inv["table"]
+        match = re.fullmatch(r"/sections/([0-9]+)/tables/([0-9]+)", table["pointer"])
+        _need(match is not None, "Original table pointer")
+        section, table_id = match.groups()
+        key = (table["page_json_version_id"], f"s{int(section) + 1}", f"t{int(table_id) + 1}")
+        _need(key not in inventories and any(p["page_json_version_id"] == key[0] for p in doc["pages"]),
+              "Duplicate/foreign source table")
+        inventories[key] = inv
+        for row in inv["rows"]:
+            coordinate = (key[0], int(section) + 1, int(table_id) + 1, row["row_ordinal"])
+            _need(coordinate not in inventory_rows, "Duplicate source row")
+            inventory_rows[coordinate] = row
+    if _compact(compiled_specs):
+        _validate_compact_partition(ledger, doc, compiled_specs, inventories,
+            family.raw["subjects"]["OPERATING_EXPENSE_NOTE"]["any"])
+    closures, policies = {}, {}
+    for disposition in ledger["dispositions"]:
+        loc = disposition["locator"]
+        key = (loc["page_json_version_id"], loc["section_id"], loc["table_id"])
+        if key in inventories:
+            _need(key not in closures, "Duplicate disposition")
+            closures[key] = root_closure_v1(inventories[key], disposition, family)
+            policies[key] = _production_table_policy_v1(inventories[key], disposition, closures[key], compiled_specs)
+    expected_closures = [{"table": list(k), "closure": v} for k, v in closures.items()]
+    _need(_same(expected_closures, ledger["root_closures"]), "ROOT proof does not recompute")
+    _need(_same([{"table": list(k), "receipt": v} for k, v in policies.items()], ledger["production_policy_receipts"]),
+          "Production owner/frontier policy does not recompute")
+    crosswalk = {(e["concept"], e["axis"], tuple(e["members"])): e["report_norm_id"]
+                 for e in compiled_specs["schema"]["crosswalk"]}
+    bindings = exact_rnid_bindings_v1(ledger["cells"], crosswalk)
+    classified = []
+    for cell, binding in zip(ledger["cells"], bindings, strict=True):
+        loc = cell["locator"]
+        classified.append(classify_observation_v1(cell, binding,
+            closures.get((loc["page_json_version_id"], loc["section_id"], loc["table_id"])), inventory_rows))
+    _need(_same(classified, ledger["classifications"]), "Original/RNID classification does not recompute")
+    assessed = {(k[0], int(k[1][1:]), int(k[2][1:])): v for k, v in closures.items()}
+    subjects = family.raw["subjects"]["OPERATING_EXPENSE_NOTE"]["any"]
+    for source_record in ledger["source_ledger"]:
+        inv = source_record["inventory"]
+        key = (inv["table"]["page_json_version_id"], inv["table"]["section_id"], inv["table"]["table_id"])
+        table_cells = [c for c in ledger["cells"] if (c["locator"]["page_json_version_id"], c["locator"]["section_id"],
+                       c["locator"]["table_id"]) == key]
+        _need(_same(source_record["table_classification"], classify_table_v1(inv["table"], inv["section"], assessed, subjects))
+              and _same(source_record["rows"], classify_rows_v1(inv["rows"], inv["columns"], table_cells, closures.get(key))),
+              "Table/row source accounting does not recompute")
+    allowed = {u["canonical_unit"] for u in compiled_specs["evaluation"]["production_policy"]["money_unit_bindings"] if u["accepted"] is True}
+    period_contexts = {doc["document_ordinal"]: statement_period_context_v1(ledger["primary_income_context_texts"])}
+    annual = _annual_context_v1(ledger.get("annual_period_context"), doc, ledger["primary_income_context_texts"])
+    expected_mappings, expected_retained = _fragments(ledger["cells"], ledger["classifications"], allowed, period_contexts, policies,
+                                                     compiled_specs["evaluation"]["production_schema_binding"],
+                                                     {doc["document_ordinal"]: annual})
+    _need(_same(expected_mappings, trial["mappings"]) and _same(expected_retained, ledger["retained"]),
+          "Mapping/raw/state/period/retention encoding differs from complete ledger")
+    for candidate in trial["candidates"]:
+        _need(type(candidate) is dict and set(candidate) == {"candidate_id", "document_ordinal", "physical_page",
+              "page_json_version_id", "section_id", "table_id", "status", "reasons", "mappings",
+              "closure_receipt", "component_regions"}, "Candidate fields")
+        material = {k: v for k, v in candidate.items() if k != "candidate_id"}
+        regions = [d["locator"] for d in ledger["dispositions"]]
+        _need(candidate.get("candidate_id") == "gjf36ncv1:candidate:" + canonical_json_sha256_v1(material)
+              and _same(candidate.get("mappings"), trial["mappings"])
+              and _same(candidate.get("closure_receipt"), trial["notes_ledger"])
+              and candidate.get("status") == trial["status"]
+              and _same(candidate.get("reasons"), trial["reasons"])
+              and _same(candidate["component_regions"], regions)
+              and bool(regions) and all(candidate[k] == regions[0][k] for k in regions[0]), "Candidate identity/evidence")
+    if trial["status"] == "READY":
+        _need(bool(trial["mappings"]) and len(trial["candidates"]) == 1 and not trial["reasons"]
+              and trial["selected_candidate_id"] == trial["candidates"][0]["candidate_id"], "READY selection")
+    else:
+        _need(not trial["mappings"] and trial["selected_candidate_id"] is None and bool(trial["reasons"]), "U has mappings")
+    for mapping in trial["mappings"]:
+        material = {k: v for k, v in mapping.items() if k != "item_mapping_id"}
+        _need(mapping.get("item_mapping_id") == "gjmthfmv1:item:" + canonical_json_sha256_v1(material)
+              and type(mapping.get("report_norm_id")) is int and mapping["report_norm_id"] > 0
+              and type(mapping.get("role")) is str and type(mapping.get("row_id")) is str
+              and type(mapping.get("source_refs")) is list and len(mapping["source_refs"]) == 2
+              and type(mapping.get("values")) is list and len(mapping["values"]) == 2
+              and type(mapping.get("period_axis")) is list and len(mapping["period_axis"]) == 2,
+              "Mapping codec/axes")
+    validate_source_observation_mapping_contract_v1(trial["mappings"])
+
+
+def validate_f36_notes_trial_v1(*, trial: Any, document_ordinal: int,
+                                compiled_specs: dict[str, Any]) -> dict[str, Any]:
+    """Validate one original slot; does not establish whole-frontier completion."""
+    compiled = compile_f36_notes_core_specs_v1(
+        compiled_specs["topology"], compiled_specs["evaluation"], compiled_specs["schema"],
+    )
+    _need(_same(compiled, compiled_specs), "Compiled notes authority changed")
+    docs = compiled["topology"]["source"]["document_axis"]
+    _need(type(document_ordinal) is int and 1 <= document_ordinal <= len(docs),
+          "Original trial document ordinal required")
+    _validate_f36_notes_trial_v1(trial=trial, doc=docs[document_ordinal - 1], compiled_specs=compiled)
+    return canonical_clone_v1(trial)
+
+
 def validate_f36_notes_trials_v1(*, trials: Any, indexed_query_evidence: Any,
                                 compiled_specs: dict[str, Any]) -> list[dict[str, Any]]:
     docs = compiled_specs["topology"]["source"]["document_axis"]
     _need(type(trials) is list and len(trials) == len(docs), "Complete trial denominator")
     for trial, doc in zip(trials, docs, strict=True):
-        _need(type(trial) is dict and set(trial) == {"document_ordinal", "source_logical_name", "source_sha256", "status",
-              "candidate_count", "candidates", "selected_candidate_id", "mappings", "reasons", "notes_ledger"}, "Trial fields")
-        _need(all(type(trial[k]) is type(doc[k]) and trial[k] == doc[k] for k in
-                  ("document_ordinal", "source_logical_name", "source_sha256")), "Trial source axis")
-        _need(type(trial["mappings"]) is list and type(trial["candidates"]) is list
-              and type(trial["candidate_count"]) is int and trial["candidate_count"] == len(trial["candidates"]) <= 1,
-              "Candidate axis")
-        _need(trial["status"] in {"READY", "UNRESOLVED"} and type(trial["reasons"]) is list
-              and type(trial["notes_ledger"]) is dict, "Status/ledger axis")
-        ledger = trial["notes_ledger"]
-        base_fields = {"cells", "classifications", "retained", "dispositions", "root_closures",
-                       "source_ledger", "production_policy_receipts", "primary_income_context_texts", "scope"}
-        if _compact(compiled_specs):
-            base_fields.add("source_partition")
-        _need(set(ledger) in (base_fields, base_fields | {"annual_period_context"})
-              and all(type(ledger[k]) is list for k in base_fields - {"scope", "source_partition"})
-              and len(ledger["cells"]) == len(ledger["classifications"]), "Complete ledger fields")
-        expected_scope = ("REQUESTED_F36_NOTES_DOCUMENT" if doc["document_ordinal"] in compiled_specs["topology"]["documents_requested"]
-                          else "NOT_EVALUATED_REQUESTED_SUBSET_ONLY")
-        _need(ledger["scope"] == expected_scope, "Requested scope drift")
-        _need(all(c.get("document_ordinal") == doc["document_ordinal"] and c.get("family") == FAMILY for c in ledger["cells"]),
-              "Ledger cells belong to another source")
-        family = _family(compiled_specs["evaluation"])
-        inventories, inventory_rows = {}, {}
-        for source_record in ledger["source_ledger"]:
-            _need(type(source_record) is dict and set(source_record) == {"inventory", "table_classification", "rows"},
-                  "Source ledger entry")
-            inv = source_record["inventory"]
-            table = inv["table"]
-            match = re.fullmatch(r"/sections/([0-9]+)/tables/([0-9]+)", table["pointer"])
-            _need(match is not None, "Original table pointer")
-            section, table_id = match.groups()
-            key = (table["page_json_version_id"], f"s{int(section) + 1}", f"t{int(table_id) + 1}")
-            _need(key not in inventories and any(p["page_json_version_id"] == key[0] for p in doc["pages"]),
-                  "Duplicate/foreign source table")
-            inventories[key] = inv
-            for row in inv["rows"]:
-                coordinate = (key[0], int(section) + 1, int(table_id) + 1, row["row_ordinal"])
-                _need(coordinate not in inventory_rows, "Duplicate source row")
-                inventory_rows[coordinate] = row
-        if _compact(compiled_specs):
-            _validate_compact_partition(ledger, doc, compiled_specs, inventories,
-                family.raw["subjects"]["OPERATING_EXPENSE_NOTE"]["any"])
-        closures, policies = {}, {}
-        for disposition in ledger["dispositions"]:
-            loc = disposition["locator"]
-            key = (loc["page_json_version_id"], loc["section_id"], loc["table_id"])
-            if key in inventories:
-                _need(key not in closures, "Duplicate disposition")
-                closures[key] = root_closure_v1(inventories[key], disposition, family)
-                policies[key] = _production_table_policy_v1(inventories[key], disposition, closures[key], compiled_specs)
-        expected_closures = [{"table": list(k), "closure": v} for k, v in closures.items()]
-        _need(_same(expected_closures, ledger["root_closures"]), "ROOT proof does not recompute")
-        _need(_same([{"table": list(k), "receipt": v} for k, v in policies.items()], ledger["production_policy_receipts"]),
-              "Production owner/frontier policy does not recompute")
-        crosswalk = {(e["concept"], e["axis"], tuple(e["members"])): e["report_norm_id"]
-                     for e in compiled_specs["schema"]["crosswalk"]}
-        bindings = exact_rnid_bindings_v1(ledger["cells"], crosswalk)
-        classified = []
-        for cell, binding in zip(ledger["cells"], bindings, strict=True):
-            loc = cell["locator"]
-            classified.append(classify_observation_v1(cell, binding,
-                closures.get((loc["page_json_version_id"], loc["section_id"], loc["table_id"])), inventory_rows))
-        _need(_same(classified, ledger["classifications"]), "Original/RNID classification does not recompute")
-        assessed = {(k[0], int(k[1][1:]), int(k[2][1:])): v for k, v in closures.items()}
-        subjects = family.raw["subjects"]["OPERATING_EXPENSE_NOTE"]["any"]
-        for source_record in ledger["source_ledger"]:
-            inv = source_record["inventory"]
-            key = (inv["table"]["page_json_version_id"], inv["table"]["section_id"], inv["table"]["table_id"])
-            table_cells = [c for c in ledger["cells"] if (c["locator"]["page_json_version_id"], c["locator"]["section_id"],
-                           c["locator"]["table_id"]) == key]
-            _need(_same(source_record["table_classification"], classify_table_v1(inv["table"], inv["section"], assessed, subjects))
-                  and _same(source_record["rows"], classify_rows_v1(inv["rows"], inv["columns"], table_cells, closures.get(key))),
-                  "Table/row source accounting does not recompute")
-        allowed = {u["canonical_unit"] for u in compiled_specs["evaluation"]["production_policy"]["money_unit_bindings"] if u["accepted"] is True}
-        period_contexts = {doc["document_ordinal"]: statement_period_context_v1(ledger["primary_income_context_texts"])}
-        annual = _annual_context_v1(ledger.get("annual_period_context"), doc, ledger["primary_income_context_texts"])
-        expected_mappings, expected_retained = _fragments(ledger["cells"], ledger["classifications"], allowed, period_contexts, policies,
-                                                         compiled_specs["evaluation"]["production_schema_binding"],
-                                                         {doc["document_ordinal"]: annual})
-        _need(_same(expected_mappings, trial["mappings"]) and _same(expected_retained, ledger["retained"]),
-              "Mapping/raw/state/period/retention encoding differs from complete ledger")
-        for candidate in trial["candidates"]:
-            _need(type(candidate) is dict and set(candidate) == {"candidate_id", "document_ordinal", "physical_page",
-                  "page_json_version_id", "section_id", "table_id", "status", "reasons", "mappings",
-                  "closure_receipt", "component_regions"}, "Candidate fields")
-            material = {k: v for k, v in candidate.items() if k != "candidate_id"}
-            regions = [d["locator"] for d in ledger["dispositions"]]
-            _need(candidate.get("candidate_id") == "gjf36ncv1:candidate:" + canonical_json_sha256_v1(material)
-                  and _same(candidate.get("mappings"), trial["mappings"])
-                  and _same(candidate.get("closure_receipt"), trial["notes_ledger"])
-                  and candidate.get("status") == trial["status"]
-                  and _same(candidate.get("reasons"), trial["reasons"])
-                  and _same(candidate["component_regions"], regions)
-                  and bool(regions) and all(candidate[k] == regions[0][k] for k in regions[0]), "Candidate identity/evidence")
-        if trial["status"] == "READY":
-            _need(bool(trial["mappings"]) and len(trial["candidates"]) == 1 and not trial["reasons"]
-                  and trial["selected_candidate_id"] == trial["candidates"][0]["candidate_id"], "READY selection")
-        else:
-            _need(not trial["mappings"] and trial["selected_candidate_id"] is None and bool(trial["reasons"]), "U has mappings")
-        for mapping in trial["mappings"]:
-            material = {k: v for k, v in mapping.items() if k != "item_mapping_id"}
-            _need(mapping.get("item_mapping_id") == "gjmthfmv1:item:" + canonical_json_sha256_v1(material)
-                  and type(mapping.get("report_norm_id")) is int and mapping["report_norm_id"] > 0
-                  and type(mapping.get("role")) is str and type(mapping.get("row_id")) is str
-                  and type(mapping.get("source_refs")) is list and len(mapping["source_refs"]) == 2
-                  and type(mapping.get("values")) is list and len(mapping["values"]) == 2
-                  and type(mapping.get("period_axis")) is list and len(mapping["period_axis"]) == 2,
-                  "Mapping codec/axes")
-        validate_source_observation_mapping_contract_v1(trial["mappings"])
+        _validate_f36_notes_trial_v1(trial=trial, doc=doc, compiled_specs=compiled_specs)
     expected = build_f36_notes_query_evidence_v1(trials=trials, compiled_specs=compiled_specs)
     _need(_same(expected, indexed_query_evidence), "Notes frontier/query binding")
     return canonical_clone_v1(trials)
