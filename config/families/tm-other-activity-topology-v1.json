@@ -32,6 +32,7 @@
             "Thu lãi trả chậm từ thanh lý tài sản",
             "Thu nhập từ chuyển nhượng, thanh lý tài sản",
             "Thu nhập thuần từ thanh lý tài sản cố định",
+            "Lãi từ thanh lý tài sản cố định",
             "Thu nhập từ thanh lý tài sản cố định",
             "Thu nhập từ thanh lý tài sản gán xiết nợ",
             "Thu nhập từ thanh lý tài sản khác",
@@ -67,7 +68,8 @@
             "Thu từ các công cụ tài chính phái sinh khác",
             "Thu từ các giao dịch phái sinh hàng hóa và lãi suất",
             "Thu từ nghiệp vụ hoán đổi lãi suất",
-            "Thu từ các hợp đồng hoán đổi lãi suất"
+            "Thu từ các hợp đồng hoán đổi lãi suất",
+            "Thu từ nghiệp vụ phái sinh khác"
           ],
           "within_role": "INCOME_PARENT"
         },
@@ -99,6 +101,10 @@
             "Thu hồi nợ xấu đã sử dụng dự phòng để xử lý rủi ro",
             "Thu hồi nợ đã xử lý rủi ro",
             "Thu hồi các khoản nợ đã xóa",
+            "Thu hồi các khoản nợ đã xử lý bằng quỹ dự phòng",
+            "Thu từ các khoản nợ đã được xử lý, bù đắp bằng nguồn dự phòng rủi ro",
+            "Thu từ các khoản nợ đã xử lý rủi ro",
+            "Thu hồi các khoản nợ xóa",
             "Thu nhập từ các khoản cho vay đã xử lý bằng quỹ dự phòng rủi ro",
             "Thu nhập từ nợ xấu đã được xử lý",
             "Thu nhập từ nợ đã xử lý rủi ro",
@@ -116,6 +122,7 @@
           "aliases": [
             "Thu từ các khoản nợ đã xử lý",
             "Thu hồi các khoản nợ đã xóa",
+            "Thu hồi các khoản nợ xóa",
             "Thu nợ khó đòi đã xử lý bằng dự phòng rủi ro",
             "Thu từ nợ xấu đã được xử lý",
             "Thu từ nợ đã xử lý rủi ro"
@@ -180,6 +187,7 @@
             "Thu nhập hỗ trợ và thu nhập khác",
             "Thu nhập từ hoạt động kinh doanh khác",
             "Thu nhập từ hoạt động cho thuê tài sản",
+            "Thu từ hoạt động cho thuê tài sản",
             "Thu từ hoạt động kinh doanh khác",
             "Thu từ hoạt động hỗ trợ đại lý bảo hiểm",
             "Thu về hoạt động kinh doanh khác",
@@ -216,6 +224,7 @@
             "Chi cho các công cụ tài chính phái sinh khác",
             "Chi phí cho nghiệp vụ hoán đổi lãi suất",
             "Chi phí từ công cụ phái sinh khác",
+            "Chi phí nghiệp vụ phái sinh khác",
             "Chi phí từ giao dịch phái sinh hàng hóa và lãi suất",
             "Chi từ các công cụ phái sinh khác",
             "Chi từ các công cụ tài chính phái sinh khác",
@@ -239,6 +248,7 @@
             "Chi thanh lý tài sản cố định",
             "Chi từ thanh lý tài sản khác",
             "Chi từ thanh lý, nhượng bán tài sản cố định",
+            "Chi cho thanh lý, nhượng bán tài sản cố định",
             "Chi phí từ thanh lý tài sản cố định",
             "Tài sản cố định giảm trong kỳ",
             "Chi về thanh lý tài sản cố định",
@@ -261,7 +271,7 @@
     },
     {
       "matchers": [
-        {"aliases": ["Chi công tác xã hội", "Chi hỗ trợ công tác xã hội", "Chi phí cho hoạt động công tác xã hội"], "within_role": "EXPENSE_PARENT"}
+        {"aliases": ["Chi công tác xã hội", "Chi về công tác xã hội", "Chi hỗ trợ công tác xã hội", "Chi phí cho hoạt động công tác xã hội"], "within_role": "EXPENSE_PARENT"}
       ],
       "presence": "OPTIONAL",
       "role": "EXPENSE_SOCIAL",

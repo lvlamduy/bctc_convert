@@ -1,0 +1,100 @@
+{
+ "index": {
+  "path": "/srv/bctc-restore/dev-shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/current-corpus-manifest-indexes/8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a.json",
+  "sha256": "969ff5f80732c39e4b7543ca1f5c1e5b5b827260f19981ed02945fe0c7379219"
+ },
+ "document": {
+  "document_manifest_id": "gfdmv1:manifest:1bd8debface952355c8332c39df42ea214711163daa68f1861624527ddc59b9a",
+  "document_plan_id": "gjfpdocv1:4b825d1535848f4940c230d25bd17aa79383f4514a51699c8fc37c11b690e3c7",
+  "page_count": 102,
+  "page_json_frontier_sha256": "d03bc4440bf8358fe46b280e7813548dbbe058d32fe3cb185b8c99e62118a524",
+  "relative_path": "vietstock_bctc/OCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+  "selection_id": "gjfcdmsv1:selection:31ca7d4a019da439a26d137e7c15996e39082cab3b1d19029d2090117a213b20",
+  "source_ordinal": 124,
+  "source_sha256": "a719d8f54e9a3e8fdadfea0039fb32d053a57ae2efe97b2209e7b2eb42f0f3a4",
+  "source_size_bytes": 14437515
+ },
+ "document_manifest_ref": {
+  "path": "/srv/bctc-restore/dev-shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/documents/4b825d1535848f4940c230d25bd17aa79383f4514a51699c8fc37c11b690e3c7/current-document-manifests/1bd8debface952355c8332c39df42ea214711163daa68f1861624527ddc59b9a.json",
+  "sha256": "0e876899cf93a643cd8fee293b7d040783c50f8dc15bc3cf4e1cdf339d0b685d",
+  "size_bytes": 148797,
+  "top_keys": [
+   "document",
+   "document_manifest_id",
+   "extraction_contract",
+   "format_version",
+   "page_count",
+   "pages",
+   "status_counts",
+   "totals"
+  ]
+ },
+ "document_manifest_ref_entries": [
+  {
+   "json_path": "/extraction_contract/page_image_sha256s[11]",
+   "image_sha256": "57ce827d439a070adb50e37f7cd1209235fd1b84b173a52a64b2294bab00ad64",
+   "physical_page": 12
+  },
+  {
+   "json_path": "/extraction_contract/page_image_sha256s[68]",
+   "image_sha256": "f67ce200155e2e0b9ddc463b693cd4d227e8c0c37a6f1bf5dae501b6cf01b17e",
+   "physical_page": 69
+  },
+  {
+   "json_path": "/extraction_contract/page_prompt_sha256s[11]",
+   "physical_page": 12,
+   "prompt_sha256": "2c1d1e6b26f96207616fbfbfc65b3cbaed1abff1b65a380bbb0b30c4d63b539c"
+  },
+  {
+   "json_path": "/extraction_contract/page_prompt_sha256s[68]",
+   "physical_page": 69,
+   "prompt_sha256": "2c1d1e6b26f96207616fbfbfc65b3cbaed1abff1b65a380bbb0b30c4d63b539c"
+  },
+  {
+   "json_path": "/pages[11]",
+   "canonical_json_sha256": "3929d049c98c98a819083d601265e01a8a960813dbc503439e0441a28cf6d391",
+   "cost_disposition": "BILLED_ACTUAL",
+   "cost_usd": "0.004195125000",
+   "extraction_run_id": "gfpstorev1:run:15e04058f192b21e45688652d8a45d37e6776b6d5186fa00b11a1846598a3976",
+   "page_id": "gfpstorev1:page:e14ebf9ec88090bc6d71152ebfde298c9e89b8f5f7e44a78d9c2b18274c40e19",
+   "page_json_version_id": "gfpstorev1:json:854dffd9947b9286e9f935664bfb4caebd2e3d80ca6a5d1397b1f77237cb9534",
+   "physical_page": 12,
+   "prompt_sha256": "2c1d1e6b26f96207616fbfbfc65b3cbaed1abff1b65a380bbb0b30c4d63b539c",
+   "response_id_sha256": "839025965b2a2bb7bd0059fa5f8c005ab3491092965a10deea2257949c2359db",
+   "selected_model": "google/gemini-3.7-flash",
+   "selected_service_tier": "flex",
+   "status": "PRIMARY_FINANCIAL_STATEMENT"
+  },
+  {
+   "json_path": "/pages[68]",
+   "canonical_json_sha256": "6330a39ec424be8746310ffc16d59f503f58b02cdb2f2d12c7a4e845429e17b3",
+   "cost_disposition": "BILLED_ACTUAL",
+   "cost_usd": "0.003465750000",
+   "extraction_run_id": "gfpstorev1:run:d68142a94c8b5dea2cfd8039f137f48002f56ca2e24bcd3062bce77d72f76ef2",
+   "page_id": "gfpstorev1:page:3abe373c2ac9d08bb47b9bf6c5097c687391f8fca15a2e4864e0ddd513393ba6",
+   "page_json_version_id": "gfpstorev1:json:74beffb2cdb4e72e0f0ff3ed2b4ea9e3325af705a770013a9135bb666273383e",
+   "physical_page": 69,
+   "prompt_sha256": "2c1d1e6b26f96207616fbfbfc65b3cbaed1abff1b65a380bbb0b30c4d63b539c",
+   "response_id_sha256": "3b7c9f6ab1d9cb570c0445ef0c47f3199122d0cb3b467c3a0d54486faf301b8e",
+   "selected_model": "google/gemini-3.7-flash",
+   "selected_service_tier": "flex",
+   "status": "FINANCIAL_NOTE_CONTENT"
+  }
+ ],
+ "selection_ref": {
+  "path": "/srv/bctc-restore/dev-shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/documents/4b825d1535848f4940c230d25bd17aa79383f4514a51699c8fc37c11b690e3c7/current-document-manifest-selections/31ca7d4a019da439a26d137e7c15996e39082cab3b1d19029d2090117a213b20.json",
+  "sha256": "d99a68023e536e158b5fe9d3cbac38e0e50c7e68dac8dbbb9c24f2f57ef1323c",
+  "size_bytes": 901,
+  "top_keys": [
+   "document_manifest_id",
+   "document_manifest_ref",
+   "document_plan_id",
+   "format_version",
+   "page_image_frontier_sha256",
+   "page_prompt_frontier_sha256",
+   "prior_selection_ids",
+   "selection_id",
+   "source_sha256"
+  ]
+ }
+}

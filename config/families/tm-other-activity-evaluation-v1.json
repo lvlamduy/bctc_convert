@@ -26,10 +26,7 @@
   "component_policy": "ONE_EXPLICIT_OWNER_RESET_FENCE_WITH_CONTIGUOUS_DECLARED_LEADING_ROOT_COMPONENTS_EXHAUSTIVE_MONEY_TABLE_INVENTORY",
   "continuation_period_axis_policy": "ADJACENT_PAGE_EXPLICIT_CONTINUATION_INHERITS_COMPLETE_BLANK_HEADER_AXIS",
   "context_total_mapping_roles": ["INCOME_PARENT", "EXPENSE_PARENT"],
-  "context_residual_bindings": [
-    {"context_role": "INCOME_PARENT", "residual_role": "INCOME_OTHER"},
-    {"context_role": "EXPENSE_PARENT", "residual_role": "EXPENSE_OTHER"}
-  ],
+  "context_residual_bindings": [],
   "corroboration_pairs": [],
   "derived_role_equations": [],
   "detail_context_roles": [],

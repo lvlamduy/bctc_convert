@@ -1,12 +1,12 @@
 """Family-38 adapter for other-activity disclosures.
 
 The shared multi-table engine remains the accounting authority.  This module
-adds only two source-bound operations on private clones: a direct primary
-income-statement result when the detailed note is absent, and exact
-same-document unit corroboration for an otherwise unitless selected note.
+adds a direct primary income-statement result when the detailed note is absent
+and family-local checks of independently source-owned units and role scope.
 When a complete note does not print its own result, its direct detail mappings
 are combined with the direct primary-statement result.  No source value is
-derived and a blank source cell is never converted to zero.
+derived and a blank source cell is never converted to zero. Unknown semantic
+rows and unproved mixed granularity remain held, even when totals close.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     _unit_axis,
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
+    classify_gemini_json_multitable_hierarchical_table_v1,
     coalesce_gemini_json_multitable_hierarchical_document_v1,
     compile_gemini_json_multitable_hierarchical_family_specs_v1,
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
@@ -45,6 +46,7 @@ from bctc_ai.evaluation.source_observation_lane_math_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
@@ -266,13 +268,11 @@ def _compile_adapter_spec(value: Any) -> dict[str, Any]:
         != "EXACT_ROOT_ROW_ONLY_NONFAMILY_PRIMARY_ROWS_EXCLUDED"
         or value.get("primary_unit_corroboration_policy")
         != (
-            "EXACT_SAME_DOCUMENT_ROOT_LABEL_AND_NONZERO_SCALAR_IN_EXPLICIT_UNIT_"
-            "TABLE_OR_EXACT_UNIQUE_IMMEDIATELY_PRECEDING_PRIMARY_STATEMENT_UNIT"
+            "NO_UNIT_DONATION_WITHOUT_TARGET_LOCAL_SOURCE_UNIT_SCOPE"
         )
         or value.get("unit_corroboration_policy")
         != (
-            "EXACT_SAME_DOCUMENT_ROOT_OR_TERMINAL_VECTOR_ALL_LANES_OR_"
-            "VND_TO_MILLION_WITHIN_HALF_DISPLAY_UNIT"
+            "SOURCE_OWNED_LOCAL_NOTE_UNIT_ONLY_NO_NUMERIC_PRIMARY_DONATION"
         )
         or value.get("unlabeled_structural_subtotal_policy")
         != "EXACT_NONTERMINAL_CONTIGUOUS_SOURCE_COMPONENT_SUM_PRIVATE_OMISSION"
@@ -291,6 +291,8 @@ def compile_gemini_json_other_activity_family_specs_v1(
     """Compile the base family plus private primary/detail projections."""
 
     adapter = _compile_adapter_spec(_load_adapter_spec() if adapter_spec is None else adapter_spec)
+    if type(evaluation_spec) is not dict or evaluation_spec.get("context_residual_bindings") != []:
+        raise _error("other-activity unknown source rows cannot gain OTHER roles from closure")
     source_repairs_raw = (
         _load_source_repair_spec() if source_repair_spec is None else source_repair_spec
     )
@@ -627,8 +629,10 @@ def _project_primary_occurrence(
     before_sha = canonical_json_sha256_v1(page)
     section["statement_type"] = "BALANCE_SHEET"
     table = section["tables"][int(occurrence["table_id"][1:]) - 1]
-    if unit_control is not None:
-        table["unit_exact"] = unit_control["unit_surface_exact"]
+    if unit_control is not None or not _unit_axis(
+        table, compiled_specs=compiled_specs, document_unit_context=None
+    ).get("complete"):
+        return None
     suppressed_nonfamily_row_ordinals = []
     for row_ordinal, row in enumerate(table.get("rows") or [], start=1):
         if row_ordinal == occurrence["row_ordinal"] or type(row) is not dict:
@@ -770,180 +774,12 @@ def _primary_unit_control(
     page_records: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any] | None:
-    source_record = occurrence["record"]
-    source_page = source_record["page_json"]
-    source_section, source_table = _source_table(
-        source_page,
-        section_id=occurrence["section_id"],
-        table_id=occurrence["table_id"],
-    )
-    if _unit_axis(source_table, compiled_specs=compiled_specs, document_unit_context=None).get(
-        "complete"
-    ):
-        return None
-    lane = _multitable_lane_axis(source_section, source_table, compiled_specs=compiled_specs)
-    money_ordinals = lane.get("money_column_ordinals")
-    try:
-        source_row = source_table["rows"][occurrence["row_ordinal"] - 1]
-        source_values = source_row["values_exact"]
-    except (IndexError, KeyError, TypeError) as exc:
-        raise _error("other-activity primary unit-control source is invalid") from exc
-    if (
-        not lane.get("complete")
-        or type(money_ordinals) is not list
-        or len(money_ordinals) < 2
-        or type(source_values) is not list
-    ):
-        return None
-    primary_cells = [
-        (ordinal, _source_money(source_values[ordinal - 1])["coefficient"])
-        for ordinal in money_ordinals
-        if ordinal <= len(source_values)
-    ]
-    primary_cells = [(ordinal, value) for ordinal, value in primary_cells if value not in {None, 0}]
-    if not primary_cells:
-        return None
+    """Neither scalar equality nor a neighbouring statement donates a unit.
 
-    aliases = set(compiled_specs["topology"]["parent"]["aliases"])
-    controls = []
-    for record in page_records:
-        page = record["page_json"]
-        for section_ordinal, section in enumerate(page.get("sections") or [], start=1):
-            if type(section) is not dict:
-                continue
-            for table_ordinal, table in enumerate(section.get("tables") or [], start=1):
-                if type(table) is not dict or table is source_table:
-                    continue
-                unit_axis = _unit_axis(
-                    table, compiled_specs=compiled_specs, document_unit_context=None
-                )
-                canonical_unit = unit_axis.get("canonical_unit")
-                if not unit_axis.get("complete") or canonical_unit not in _UNIT_SURFACE:
-                    continue
-                for row_ordinal, row in enumerate(table.get("rows") or [], start=1):
-                    if (
-                        type(row) is not dict
-                        or _without_leading_ordinal(_normalized(row.get("label_exact")))
-                        not in aliases
-                        or type(row.get("values_exact")) is not list
-                    ):
-                        continue
-                    for column_ordinal, source_text in enumerate(row["values_exact"], start=1):
-                        coefficient = _source_money(source_text)["coefficient"]
-                        for primary_column_ordinal, primary_coefficient in primary_cells:
-                            if coefficient != primary_coefficient:
-                                continue
-                            controls.append(
-                                {
-                                    "canonical_unit": canonical_unit,
-                                    "control_label_exact": row.get("label_exact"),
-                                    "control_page_json_sha256": canonical_json_sha256_v1(page),
-                                    "control_source_text_exact": source_text,
-                                    "control_value": coefficient,
-                                    "locator": {
-                                        "column_ordinal": column_ordinal,
-                                        "page_json_version_id": record["page_json_version_id"],
-                                        "physical_page": record["physical_page"],
-                                        "row_ordinal": row_ordinal,
-                                        "section_id": f"s{section_ordinal}",
-                                        "table_id": f"t{table_ordinal}",
-                                    },
-                                    "primary_column_ordinal": primary_column_ordinal,
-                                    "rule": (
-                                        "EXACT_SAME_DOCUMENT_FAMILY_ROOT_LABEL_AND_"
-                                        "NONZERO_SCALAR_IN_EXPLICIT_UNIT_TABLE"
-                                    ),
-                                    "unit_surface_exact": _UNIT_SURFACE[canonical_unit],
-                                }
-                            )
-    if len(controls) == 1:
-        material = controls[0]
-        return {
-            **material,
-            "receipt_id": "gjoafav1:primary-unit:" + canonical_json_sha256_v1(material),
-        }
-
-    adjacent_controls = []
-    for record in page_records:
-        if (
-            record.get("physical_page") + 1 != source_record.get("physical_page")
-            or record.get("selected_page_ordinal") + 1
-            != source_record.get("selected_page_ordinal")
-        ):
-            continue
-        page = record["page_json"]
-        if page.get("status") != "PRIMARY_FINANCIAL_STATEMENT":
-            continue
-        for section_ordinal, section in enumerate(page.get("sections") or [], start=1):
-            if (
-                type(section) is not dict
-                or section.get("content_kind") != "PRIMARY_STATEMENT"
-                or section.get("statement_type") != "BALANCE_SHEET"
-            ):
-                continue
-            for table_ordinal, table in enumerate(section.get("tables") or [], start=1):
-                if type(table) is not dict:
-                    continue
-                unit_axis = _unit_axis(
-                    table, compiled_specs=compiled_specs, document_unit_context=None
-                )
-                canonical_unit = unit_axis.get("canonical_unit")
-                evidence = unit_axis.get("evidence")
-                columns = table.get("columns")
-                money_ordinals = [
-                    ordinal
-                    for ordinal, column in enumerate(
-                        columns if type(columns) is list else [], start=1
-                    )
-                    if type(column) is dict and column.get("value_kind") == "MONEY"
-                ]
-                header_unit_ordinals = (
-                    {
-                        int(item["source_kind"].split(":", 2)[1])
-                        for item in evidence
-                        if type(item) is dict
-                        and type(item.get("source_kind")) is str
-                        and item["source_kind"].startswith("MONEY_COLUMN_HEADER:")
-                        and item.get("accepted") is True
-                        and item.get("canonical_unit") == canonical_unit
-                    }
-                    if type(evidence) is list
-                    else set()
-                )
-                if (
-                    not unit_axis.get("complete")
-                    or canonical_unit not in _UNIT_SURFACE
-                    or len(money_ordinals) < 2
-                    or set(range(1, len(money_ordinals) + 1)) != header_unit_ordinals
-                ):
-                    continue
-                adjacent_controls.append(
-                    {
-                        "canonical_unit": canonical_unit,
-                        "control_kind": "ADJACENT_PRIMARY_STATEMENT_EXPLICIT_UNIT",
-                        "control_page_json_sha256": canonical_json_sha256_v1(page),
-                        "control_unit_evidence": canonical_clone_v1(evidence),
-                        "locator": {
-                            "page_json_version_id": record["page_json_version_id"],
-                            "physical_page": record["physical_page"],
-                            "section_id": f"s{section_ordinal}",
-                            "selected_page_ordinal": record["selected_page_ordinal"],
-                            "table_id": f"t{table_ordinal}",
-                        },
-                        "rule": (
-                            "EXACT_UNIQUE_IMMEDIATELY_PRECEDING_PRIMARY_BALANCE_"
-                            "SHEET_TABLE_WITH_EXPLICIT_ACCEPTED_UNIT_IN_EVERY_MONEY_HEADER"
-                        ),
-                        "unit_surface_exact": _UNIT_SURFACE[canonical_unit],
-                    }
-                )
-    if len(adjacent_controls) != 1:
-        return None
-    material = adjacent_controls[0]
-    return {
-        **material,
-        "receipt_id": "gjoafav1:primary-unit:" + canonical_json_sha256_v1(material),
-    }
+    No independently scoped target-unit receipt is implemented here. A target
+    without its own printed local unit remains unusable.
+    """
+    return None
 
 
 def _select_primary(
@@ -1515,110 +1351,10 @@ def _project_primary_page(
         or row.get("label_exact") != receipt.get("label_exact")
     ):
         raise _error("other-activity primary projection semantic source drifted")
-    unit_control = receipt.get("primary_unit_corroboration_receipt")
-    if unit_control is not None:
-        if type(unit_control) is not dict:
-            raise _error("other-activity primary unit-control receipt is invalid")
-        unit_material = {
-            key: canonical_clone_v1(value)
-            for key, value in unit_control.items()
-            if key != "receipt_id"
-        }
-        if unit_control.get("receipt_id") != (
-            "gjoafav1:primary-unit:" + canonical_json_sha256_v1(unit_material)
-        ):
-            raise _error("other-activity primary unit-control identity drifted")
-        control_locator = unit_control.get("locator")
-        control_page = (
-            pages.get(control_locator.get("page_json_version_id"))
-            if type(control_locator) is dict
-            else None
-        )
-        if type(control_page) is not dict or canonical_json_sha256_v1(
-            control_page
-        ) != unit_control.get("control_page_json_sha256"):
-            raise _error("other-activity primary unit-control page drifted")
-        try:
-            control_section, control_table = _source_table(
-                control_page,
-                section_id=control_locator["section_id"],
-                table_id=control_locator["table_id"],
-            )
-        except (IndexError, KeyError, TypeError, ValueError) as exc:
-            raise _error("other-activity primary unit-control locator drifted") from exc
-        control_axis = _unit_axis(
-            control_table,
-            compiled_specs=compiled_specs,
-            document_unit_context=None,
-        )
-        if unit_control.get("control_kind") == "ADJACENT_PRIMARY_STATEMENT_EXPLICIT_UNIT":
-            columns = control_table.get("columns")
-            evidence = control_axis.get("evidence")
-            money_ordinals = [
-                ordinal
-                for ordinal, column in enumerate(
-                    columns if type(columns) is list else [], start=1
-                )
-                if type(column) is dict and column.get("value_kind") == "MONEY"
-            ]
-            header_unit_ordinals = (
-                {
-                    int(item["source_kind"].split(":", 2)[1])
-                    for item in evidence
-                    if type(item) is dict
-                    and type(item.get("source_kind")) is str
-                    and item["source_kind"].startswith("MONEY_COLUMN_HEADER:")
-                    and item.get("accepted") is True
-                    and item.get("canonical_unit") == control_axis.get("canonical_unit")
-                }
-                if type(evidence) is list
-                else set()
-            )
-            if (
-                control_page.get("status") != "PRIMARY_FINANCIAL_STATEMENT"
-                or control_section.get("content_kind") != "PRIMARY_STATEMENT"
-                or control_section.get("statement_type") != "BALANCE_SHEET"
-                or control_locator.get("physical_page") + 1
-                != locator.get("physical_page")
-                or control_locator.get("selected_page_ordinal") + 1
-                != locator.get("selected_page_ordinal")
-                or not control_axis.get("complete")
-                or control_axis.get("canonical_unit") != unit_control.get("canonical_unit")
-                or evidence != unit_control.get("control_unit_evidence")
-                or len(money_ordinals) < 2
-                or set(range(1, len(money_ordinals) + 1)) != header_unit_ordinals
-                or _UNIT_SURFACE.get(unit_control.get("canonical_unit"))
-                != unit_control.get("unit_surface_exact")
-            ):
-                raise _error("other-activity adjacent primary unit-control source drifted")
-        else:
-            try:
-                control_row = control_table["rows"][control_locator["row_ordinal"] - 1]
-                control_source_text = control_row["values_exact"][
-                    control_locator["column_ordinal"] - 1
-                ]
-                primary_source_text = row["values_exact"][
-                    unit_control["primary_column_ordinal"] - 1
-                ]
-            except (IndexError, KeyError, TypeError, ValueError) as exc:
-                raise _error("other-activity primary unit-control locator drifted") from exc
-            if (
-                _without_leading_ordinal(_normalized(control_row.get("label_exact")))
-                not in set(compiled_specs["topology"]["parent"]["aliases"])
-                or control_row.get("label_exact") != unit_control.get("control_label_exact")
-                or control_source_text != unit_control.get("control_source_text_exact")
-                or _source_money(control_source_text)["coefficient"]
-                != unit_control.get("control_value")
-                or _source_money(primary_source_text)["coefficient"]
-                != unit_control.get("control_value")
-                or unit_control.get("control_value") in {None, 0}
-                or not control_axis.get("complete")
-                or control_axis.get("canonical_unit") != unit_control.get("canonical_unit")
-                or _UNIT_SURFACE.get(unit_control.get("canonical_unit"))
-                != unit_control.get("unit_surface_exact")
-            ):
-                raise _error("other-activity primary unit-control source drifted")
-        table["unit_exact"] = unit_control["unit_surface_exact"]
+    if receipt.get("primary_unit_corroboration_receipt") is not None:
+        raise _error("other-activity borrowed primary unit is not source-owned")
+    if not _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None).get("complete"):
+        raise _error("other-activity primary unit is not locally source-owned")
     section["statement_type"] = "BALANCE_SHEET"
     suppressed = receipt.get("suppressed_nonfamily_row_ordinals")
     if type(suppressed) is not list or suppressed != sorted(set(suppressed)):
@@ -1837,130 +1573,16 @@ def _project_note_unit(
     primary_mapping: Mapping[str, Any],
     compiled_specs: Mapping[str, Any],
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
-    primary_unit = primary_mapping.get("unit")
-    primary_vector = _mapping_vector(primary_mapping)
-    if (
-        primary_unit not in _UNIT_SURFACE
-        or not primary_vector
-        or any(value is None for value in primary_vector)
-    ):
-        return pages, []
-    selected = []
-    incomplete = []
-    controls = []
+    """Retain printed note units; never populate a unit from PRIMARY values."""
     receipts = []
-    prior_control_fragment = None
     for region in note_regions:
-        page = pages[region["page_json_version_id"]]
-        section, table = _source_table(
-            page, section_id=region["section_id"], table_id=region["table_id"]
-        )
-        scope_receipt = _scope_repeated_owner_header_prefix(
-            region=region,
-            section=section,
-            table=table,
-            compiled_specs=compiled_specs,
-        )
-        if scope_receipt is not None:
-            receipts.append(scope_receipt)
-        selected.append((region, section, table))
-        axis = _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None)
-        if axis.get("complete"):
-            prior_control_fragment = (region, section, table)
-            continue
-        incomplete.append((region, section, table))
-        fallback_money_ordinals = None
-        if prior_control_fragment is not None:
-            prior_region, prior_section, prior_table = prior_control_fragment
-            prior_lane = _multitable_lane_axis(
-                prior_section, prior_table, compiled_specs=compiled_specs
-            )
-            columns = table.get("columns")
-            if (
-                prior_table.get("continuation") == "CONTINUES_ON_NEXT_PAGE"
-                and table.get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE"
-                and region["physical_page"] == prior_region["physical_page"] + 1
-                and prior_lane.get("complete")
-                and type(columns) is list
-                and len(prior_lane["money_column_ordinals"])
-                == sum(
-                    type(column) is dict and column.get("value_kind") == "MONEY"
-                    for column in columns
-                )
-            ):
-                fallback_money_ordinals = [
-                    ordinal
-                    for ordinal, column in enumerate(columns, start=1)
-                    if type(column) is dict and column.get("value_kind") == "MONEY"
-                ]
-        matches = _source_root_rows(
-            table=table,
-            section=section,
-            compiled_specs=compiled_specs,
-            fallback_money_ordinals=fallback_money_ordinals,
-        )
-        for ordinal, note_vector in matches:
-            for target_unit in _UNIT_SURFACE:
-                if _unit_control_match(
-                    primary_unit=primary_unit,
-                    primary_vector=primary_vector,
-                    note_vector=note_vector,
-                    target_unit=target_unit,
-                ):
-                    controls.append((region, ordinal, note_vector, target_unit))
-        prior_control_fragment = (region, section, table)
-    if not incomplete:
-        return pages, receipts
-    if len(controls) != 1:
-        return pages, receipts
-    if len(incomplete) > 1 and not _continuation_chain([item[2] for item in selected]):
-        return pages, receipts
-    control_region, control_row_ordinal, note_vector, unit = controls[0]
-    surface = _UNIT_SURFACE[unit]
-    projections = []
-    for region, _section, table in incomplete:
-        before_sha = canonical_json_sha256_v1(table)
-        table["unit_exact"] = surface
-        projections.append(
-            {
-                "after_table_sha256": canonical_json_sha256_v1(table),
-                "before_table_sha256": before_sha,
-                "locator": {
-                    key: region[key]
-                    for key in (
-                        "page_json_version_id",
-                        "physical_page",
-                        "section_id",
-                        "table_id",
-                    )
-                },
-            }
-        )
-    material = {
-        "canonical_unit": unit,
-        "control_mapping_id": primary_mapping["item_mapping_id"],
-        "control_row_ordinal": control_row_ordinal,
-        "control_table_locator": {
-            key: control_region[key]
-            for key in ("page_json_version_id", "physical_page", "section_id", "table_id")
-        },
-        "matched_note_vector": list(note_vector),
-        "matched_primary_vector": list(primary_vector),
-        "primary_canonical_unit": primary_unit,
-        "projections": projections,
-        "rule": (
-            "UNITLESS_SELECTED_NOTE_EXACT_ROOT_OR_TERMINAL_TOTAL_ALL_LANES_"
-            "EQUALS_DIRECT_PRIMARY_SOURCE_RESULT_OR_VND_TO_MILLION_WITHIN_HALF_"
-            "DISPLAY_UNIT_AND_EXACT_CONTINUATION_SCOPE"
-        ),
-    }
-    return pages, [
-        *receipts,
-        {
-            **material,
-            "receipt_id": "gjoafav1:unit:" + canonical_json_sha256_v1(material),
-        },
-    ]
+        section, table = _source_table(pages[region["page_json_version_id"]],
+            section_id=region["section_id"], table_id=region["table_id"])
+        scope = _scope_repeated_owner_header_prefix(region=region, section=section,
+            table=table, compiled_specs=compiled_specs)
+        if scope is not None:
+            receipts.append(scope)
+    return pages, receipts
 
 
 def _row_source_cells(
@@ -2156,6 +1778,20 @@ def _reseal_candidate(
         output["status"] = UNRESOLVED if output["reasons"] else READY
         if output["status"] == UNRESOLVED:
             output["mappings"] = []
+    retired_note_root_authority = None
+    direct_primary_root_mapping_id = None
+    if mappings is not None:
+        primary_roots = [mapping for mapping in output["mappings"]
+            if mapping.get("role") == "FAMILY_ROOT_TOTAL"
+            and mapping.get("state") == "SOURCE_VISIBLE_PRIMARY_STATEMENT_EXACT_RESULT"]
+        if len(primary_roots) == 1:
+            retired_note_root_authority = _retire_root_authority_v1(output,
+                root_mappings_before=[mapping for mapping in candidate.get("mappings", []) if mapping.get("role") == "FAMILY_ROOT_TOTAL"])
+            direct_primary_root_mapping_id = primary_roots[0]["item_mapping_id"]
+            structural_root = output["closure_receipt"]["structural_root_receipt"]
+            structural_root["emitted_mapping"] = output["status"] == READY
+            structural_root["source_root_mapping_id"] = direct_primary_root_mapping_id
+            structural_root["active_permission"] = "F38_DIRECT_PRIMARY_SOURCE_ROOT"
     output["closure_receipt"]["query_receipt"] = canonical_clone_v1(
         query_receipt["shared_query_receipt"]
     )
@@ -2168,6 +1804,8 @@ def _reseal_candidate(
             primary_candidate.get("candidate_id") if type(primary_candidate) is Mapping else None
         ),
         "strategy": strategy,
+        "retired_note_root_authority": retired_note_root_authority,
+        "direct_primary_root_mapping_id": direct_primary_root_mapping_id,
         "structural_projection_receipts": canonical_clone_v1(list(structural_receipts)),
         "unit_corroboration_receipts": canonical_clone_v1(list(unit_receipts)),
     }
@@ -2180,7 +1818,7 @@ def _reseal_candidate(
     return output
 
 
-def evaluate_gemini_json_other_activity_family_cluster_v1(
+def _evaluate_source_projected_cluster_v1(
     *,
     regions: Any,
     page_json_by_version: Mapping[str, dict[str, Any]],
@@ -2364,6 +2002,246 @@ def evaluate_gemini_json_other_activity_family_cluster_v1(
         mappings=mappings,
         reasons=[],
     )
+
+
+_UNPROVEN_MIXED_ROLE_LABELS_V1 = (
+    "Thu bán tài sản gán nợ",
+    "Thu từ bán tài sản gán nợ",
+    "Thu nhập từ thanh lý tài sản gán xiết nợ",
+    "Thu nhập từ thanh lý tài sản gán nợ",
+    "Chi từ thanh lý tài sản gán nợ",
+    "Thu nhập từ bán nhà cửa vật kiến trúc và quyền sử dụng đất (*)",
+    "Giá vốn từ bán nhà cửa vật kiến trúc và quyền sử dụng đất (*)",
+    "Thu từ thanh lý TSCĐ, công cụ lao động",
+    "Thu hồi các khoản nợ đã được xử lý rủi ro và từ nghiệp vụ mua bán nợ",
+)
+_SOURCE_IDENTITY_FIELDS_V1 = (
+    "document_id", "document_ordinal", "source_logical_name", "source_sha256",
+    "page_json_version_id", "selected_page_ordinal", "physical_page", "section_id", "table_id",
+)
+_SOURCE_GENERIC_TOTAL_LABELS_V1 = {"tong", "cong", "tong cong", "tong so", "total", "subtotal"}
+
+
+def _inactive_evidence_envelope_v1(value: Any) -> dict[str, Any]:
+    """Keep exact retired JSON outside the recursive active-mapping shape."""
+    raw = canonical_json_bytes_v1(value)
+    return {"format_version": "F38_INACTIVE_CANONICAL_JSON_UTF8_TEXT_V1",
+        "canonical_json_one_lf_utf8_text": raw.decode("utf-8"),
+        "sha256": canonical_json_sha256_v1(value), "size_bytes": len(raw)}
+
+
+def _source_identity_v1(region: Mapping[str, Any]) -> tuple[Any, ...]:
+    return tuple(region.get(field) for field in _SOURCE_IDENTITY_FIELDS_V1)
+
+
+def _retire_root_authority_v1(
+    candidate: dict[str, Any], *, root_mappings_before: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    closure = candidate["closure_receipt"]
+    root_kind = "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT"
+    retired = _inactive_evidence_envelope_v1({
+        "root_mappings_before": canonical_clone_v1(root_mappings_before),
+        "global_root_equations": [equation for equation in closure["equations"] if equation.get("equation_kind") == root_kind],
+        "root_component_sum_receipts": closure.get("root_component_sum_receipts", []),
+        "structural_root_receipt_before": closure["structural_root_receipt"]})
+    closure["equations"] = [equation for equation in closure["equations"] if equation.get("equation_kind") != root_kind]
+    if "root_component_sum_receipts" in closure:
+        closure["root_component_sum_receipts"] = []
+    return retired
+
+
+def _source_owned_continuation_unit_context_v1(
+    prior: Mapping[str, Any] | None, current: Mapping[str, Any], *, compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """A continued source table carries its printed unit, without amount tests."""
+    if prior is None:
+        return None
+    before, after = prior["region"], current["region"]
+    page, section, table = current["page"], current["section"], current["table"]
+    old_page, old_section, old_table = prior["page"], prior["section"], prior["table"]
+    local_unit, old_unit = current["scoped_axis"], prior["scoped_axis"]
+    source_fields = ("document_id", "document_ordinal", "source_logical_name", "source_sha256")
+    aliases = {_without_leading_ordinal(_normalized(value)) for value in compiled_specs["topology"]["parent"]["aliases"]}
+    owner_surfaces = [old_table.get("title_exact")]
+    if len(old_section.get("tables") or []) == 1:
+        owner_surfaces.append(old_section.get("title_exact"))
+    if (page.get("status") != "FINANCIAL_NOTE_CONTENT" or old_page.get("status") != "FINANCIAL_NOTE_CONTENT"
+            or section.get("content_kind") != "FINANCIAL_NOTE" or old_section.get("content_kind") != "FINANCIAL_NOTE"
+            or section.get("statement_type") != "NOT_APPLICABLE" or old_section.get("statement_type") != "NOT_APPLICABLE"
+            or any(before.get(field) != after.get(field) for field in source_fields)
+            or after["selected_page_ordinal"] != before["selected_page_ordinal"] + 1
+            or after["physical_page"] != before["physical_page"] + 1
+            or old_section is not old_page["sections"][-1] or old_table is not old_section["tables"][-1]
+            or section is not page["sections"][0] or table is not section["tables"][0]
+            or old_table.get("continuation") != "CONTINUES_ON_NEXT_PAGE"
+            or table.get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE"
+            or not any(_without_leading_ordinal(_normalized(value)) in aliases for value in owner_surfaces)
+            or _normalized(table.get("title_exact"))
+            or _normalized(section.get("title_exact")) not in {"", "thuyet minh"}
+            or not old_unit.get("complete") or local_unit.get("complete")
+            or local_unit.get("evidence") or local_unit.get("undeclared_evidence")
+            or _normalized(table.get("unit_exact"))):
+        return None
+    old_receipt, receipt = prior["table_receipt"], current["table_receipt"]
+    if type(old_receipt) is not dict or type(receipt) is not dict:
+        return None
+    old_axis, axis = old_receipt["lane_axis"], receipt["lane_axis"]
+    if (old_axis.get("complete") is not True or axis.get("complete") is not True
+            or old_axis.get("lane_keys") != axis.get("lane_keys")
+            or old_axis.get("source_lane_keys") != axis.get("source_lane_keys")
+            or old_axis.get("money_column_ordinals") != axis.get("money_column_ordinals")):
+        return None
+    ordinals = axis["money_column_ordinals"]
+    current_columns = current["semantic_table"]["columns"]
+    old_columns = prior["semantic_table"]["columns"]
+    current_headers = [current_columns[ordinal - 1].get("header_path_exact") for ordinal in ordinals]
+    old_headers = [old_columns[ordinal - 1].get("header_path_exact") for ordinal in ordinals]
+    inherited = axis.get("source_period_axis", {}).get("inherited_from_locator")
+    blank_inherited = bool(current_headers and all(header == [None] for header in current_headers)
+        and type(inherited) is dict and _source_identity_v1(inherited) == _source_identity_v1(before))
+    local_axis = _multitable_lane_axis(current["semantic_section"], current["semantic_table"], compiled_specs=compiled_specs)
+    repeated_local = bool(local_axis.get("complete") and current_headers == old_headers
+        and local_axis.get("lane_keys") == old_axis.get("lane_keys")
+        and local_axis.get("source_lane_keys") == old_axis.get("source_lane_keys"))
+    if not (blank_inherited or repeated_local):
+        return None
+    return {"rule": "SOURCE_OWNED_EXPLICIT_CONTINUED_TABLE_UNIT_SCOPE_NO_AMOUNT_PERMISSION",
+        "prior_locator": canonical_clone_v1(before), "receiver_locator": canonical_clone_v1(after),
+        "prior_source_table_sha256": canonical_json_sha256_v1(old_table),
+        "prior_local_printed_unit_axis": canonical_clone_v1(old_unit),
+        "canonical_unit": old_unit["canonical_unit"],
+        "period_source_axis": canonical_clone_v1(axis.get("source_period_axis")),
+        "period_proof_kind": "EXACT_INHERITED_BLANK_HEADERS" if blank_inherited else "EXACT_REPEATED_LOCAL_HEADERS"}
+
+
+def _apply_source_role_unit_control_v1(
+    candidate: Mapping[str, Any], *, regions: Sequence[Mapping[str, Any]],
+    pages: Mapping[str, dict[str, Any]], compiled_specs: Mapping[str, Any],
+    semantic_pages: Mapping[str, dict[str, Any]], source_repair_receipts: Any,
+) -> dict[str, Any]:
+    """Source permission precedes amount closure; unsupported scope holds all.
+
+    This checks the original selected tables, before private projection. A
+    schema ambiguity never splits a source value, and another table's unit
+    never supplies a missing note/PRIMARY unit.
+    """
+    reasons, fragments, mixed_rows = [], [], []
+    units_by_source = {}
+    table_receipts = {_source_identity_v1(item["region"]): item for item in candidate["closure_receipt"]["table_receipts"]}
+    prior_source = None
+    mixed_labels = {_without_leading_ordinal(_normalized(label)) for label in _UNPROVEN_MIXED_ROLE_LABELS_V1}
+    for region in regions:
+        page = pages[region["page_json_version_id"]]
+        section, table = _source_table(page, section_id=region["section_id"], table_id=region["table_id"])
+        semantic_page = semantic_pages[region["page_json_version_id"]]
+        semantic_section, semantic_table = _source_table(semantic_page,
+            section_id=region["section_id"], table_id=region["table_id"])
+        source_axis = _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None)
+        private = canonical_clone_v1(table)
+        scope = _scope_repeated_owner_header_prefix(region=region, section=section,
+            table=private, compiled_specs=compiled_specs)
+        scoped_axis = _unit_axis(private, compiled_specs=compiled_specs, document_unit_context=None)
+        source_key = _source_identity_v1(region)
+        current_source = {"region": region, "page": page, "section": section, "table": table,
+            "semantic_section": semantic_section, "semantic_table": semantic_table,
+            "scoped_axis": scoped_axis, "table_receipt": table_receipts.get(source_key)}
+        unit_context = _source_owned_continuation_unit_context_v1(prior_source, current_source, compiled_specs=compiled_specs)
+        effective_unit = scoped_axis.get("canonical_unit") if scoped_axis.get("complete") else (
+            unit_context["canonical_unit"] if unit_context is not None else None)
+        units_by_source[source_key] = effective_unit
+        fragments.append({"locator": canonical_clone_v1(region), "source_table_sha256": canonical_json_sha256_v1(table),
+            "authenticated_semantic_table_sha256": canonical_json_sha256_v1(semantic_table),
+            "source_local_unit_axis": source_axis, "scoped_local_unit_axis": scoped_axis,
+            "source_header_scope_receipt": scope, "source_owned_continuation_unit_context": unit_context,
+            "source_owned_canonical_unit": effective_unit})
+        if effective_unit is None:
+            reasons.append("F38_SOURCE_UNIT_NOT_LOCALLY_PROVEN")
+        if page.get("status") == "FINANCIAL_NOTE_CONTENT" and section.get("content_kind") == "FINANCIAL_NOTE":
+            classification = classify_gemini_json_multitable_hierarchical_table_v1(
+                semantic_page, semantic_section, semantic_table, compiled_specs=compiled_specs)
+            declared_rows = {hit["row_ordinal"] for hit in classification["role_hits"]}
+            declared_rows.update(classification.get("family_root_row_ordinals", []))
+            money_ordinals = [ordinal for ordinal, column in enumerate(semantic_table.get("columns") or [], 1)
+                              if type(column) is dict and column.get("value_kind") == "MONEY"]
+            for ordinal, row in enumerate(semantic_table.get("rows") or [], 1):
+                if type(row) is not dict:
+                    continue
+                values = row.get("values_exact")
+                try:
+                    observed = type(values) is list and any(column <= len(values)
+                        and _source_money(values[column - 1])["coefficient"] is not None for column in money_ordinals)
+                except (TypeError, ValueError):
+                    observed = True
+                    reasons.append("F38_ORIGINAL_SOURCE_MONEY_NOT_DIRECTLY_PARSEABLE")
+                generic_total = _without_leading_ordinal(_normalized(row.get("label_exact"))) in _SOURCE_GENERIC_TOTAL_LABELS_V1 or (
+                    not _normalized(row.get("label_exact")) and row.get("row_kind") in {"TOTAL", "SUBTOTAL"})
+                if observed and ordinal not in declared_rows and not generic_total:
+                    reasons.append("F38_NONDECLARED_SOURCE_MONEY_ROLE_NOT_PROVEN")
+                if type(row) is dict and _without_leading_ordinal(_normalized(row.get("label_exact"))) in mixed_labels:
+                    reasons.append("F38_SOURCE_TEMPLATE_ROLE_GRANULARITY_NOT_PROVEN")
+                    mixed_rows.append({"locator": canonical_clone_v1(region), "row_ordinal": ordinal,
+                        "source_row": canonical_clone_v1(table["rows"][ordinal - 1]),
+                        "authenticated_semantic_row": canonical_clone_v1(row), "rule": "NO_UNPROVEN_MIXED_ROLE_OR_VALUE_SPLIT"})
+        prior_source = current_source
+    for mapping in candidate.get("mappings", []):
+        for ref in mapping.get("source_refs", []):
+            locator = ref.get("locator", {})
+            source_key = _source_identity_v1(locator)
+            if source_key not in units_by_source or units_by_source[source_key] != mapping.get("unit"):
+                reasons.append("F38_MAPPING_UNIT_DIFFERS_FROM_ORIGINAL_SOURCE_SCOPE")
+    output = canonical_clone_v1(candidate)
+    retired = None
+    withheld = []
+    if reasons:
+        withheld = output["mappings"]
+        output["mappings"] = []
+        output["status"] = UNRESOLVED
+        output["reasons"] = sorted(set(output.get("reasons", []) + reasons))
+        closure = output["closure_receipt"]
+        retired = _retire_root_authority_v1(output,
+            root_mappings_before=[mapping for mapping in withheld if mapping.get("role") == "FAMILY_ROOT_TOTAL"])
+        closure["structural_root_receipt"]["emitted_mapping"] = False
+        closure["structural_root_receipt"]["active_permission"] = "NONE_HELD_BY_F38_SOURCE_ROLE_UNIT_CONTROL"
+    material = {"format_version": "F38_SOURCE_ROLE_UNIT_CONTROL_V1",
+        "candidate_before_sha256": canonical_json_sha256_v1(candidate), "fragments": fragments,
+        "source_repair_receipts": canonical_clone_v1(source_repair_receipts),
+        "unproven_role_source_rows": mixed_rows, "reasons": sorted(set(reasons)),
+        "withheld_mapping_evidence": _inactive_evidence_envelope_v1(withheld),
+        "retired_root_authority": retired,
+        "rule": "ORIGINAL_LOCAL_SOURCE_UNIT_AND_DECLARED_ROLE_SCOPE_NO_AMOUNT_PERMISSION_NO_SPLIT"}
+    receipt = {**material, "receipt_id": "gjoafav1:source-role-unit:" + canonical_json_sha256_v1(material)}
+    output["closure_receipt"]["other_activity_source_role_unit_control_receipt"] = receipt
+    output["closure_receipt"]["structural_root_receipt"]["source_role_unit_control_receipt_id"] = receipt["receipt_id"]
+    return {**output, "candidate_id": "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in output.items() if key != "candidate_id"})}
+
+
+def evaluate_gemini_json_other_activity_family_cluster_v1(
+    *, regions: Any, page_json_by_version: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any], query_receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    checked = _validate_query_receipt(query_receipt, regions=regions)
+    candidate = _evaluate_source_projected_cluster_v1(regions=regions,
+        page_json_by_version=page_json_by_version, compiled_specs=compiled_specs, query_receipt=checked)
+    adapter = checked["adapter_receipt"]
+    repairs = adapter.get("source_repair_receipts", []) if type(adapter) is dict else []
+    semantic_pages = _apply_source_repair_receipts_to_pages(
+        canonical_clone_v1(dict(page_json_by_version)), repairs)
+    return _apply_source_role_unit_control_v1(candidate, regions=regions,
+        pages=page_json_by_version, compiled_specs=compiled_specs,
+        semantic_pages=semantic_pages, source_repair_receipts=repairs)
+
+
+def validate_gemini_json_other_activity_family_candidate_replay_v1(
+    candidate: Any, *, regions: Any,
+    page_json_by_version: Mapping[str, dict[str, Any]], compiled_specs: Mapping[str, Any],
+    query_receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    expected = evaluate_gemini_json_other_activity_family_cluster_v1(regions=regions,
+        page_json_by_version=page_json_by_version, compiled_specs=compiled_specs, query_receipt=query_receipt)
+    if not same_typed_json_v1(candidate, expected):
+        raise _error("other-activity candidate replay drifted")
+    return expected
 
 
 def build_gemini_json_other_activity_trials_v1(

@@ -1,0 +1,981 @@
+{
+    "format_version":  "F38_ORIGINAL_SOURCE_PACKET_FIXTURE_V1",
+    "authority":  "Owner0494 exact selected source; all ten note images inspected; no runtime or financial acceptance",
+    "historical_producer_refs":  [
+                                     {
+                                         "path":  "config/families/tm-other-activity-adapter-v1.json",
+                                         "sha256":  "0374a8462614df8809aeb71161e568b1bad95247766c2fce59e6c6dcc34137ee",
+                                         "size_bytes":  747
+                                     },
+                                     {
+                                         "path":  "config/families/tm-other-activity-evaluation-v1.json",
+                                         "sha256":  "9c966e91271bd3209b408bbd8c8490ade12a5b7b8eaad1bbb2889c8b9f563753",
+                                         "size_bytes":  5034
+                                     },
+                                     {
+                                         "path":  "config/families/tm-other-activity-pdf-residual-audit-full271-v1.json",
+                                         "sha256":  "8d9254a1219d1be06debd4f6b9ca1571dac9d67ab04a36f762c4fe6b467954da",
+                                         "size_bytes":  1882
+                                     },
+                                     {
+                                         "path":  "config/families/tm-other-activity-schema-binding-v1.json",
+                                         "sha256":  "598b6eb67d8ed75df4a51e8b62d23faabb112bb050d69ba952f4a4948ec4c3d2",
+                                         "size_bytes":  1442
+                                     },
+                                     {
+                                         "path":  "config/families/tm-other-activity-source-repair-v1.json",
+                                         "sha256":  "0f8a044e5f0fd8680eb2c3e522483963992c35b5d9074ae1068deabbef78a150",
+                                         "size_bytes":  7896
+                                     },
+                                     {
+                                         "path":  "config/families/tm-other-activity-topology-v1.json",
+                                         "sha256":  "57f8af403711edca2f93d2531a2acd10d19685b917c03e86bff52cebc9e2866a",
+                                         "size_bytes":  12449
+                                     },
+                                     {
+                                         "path":  "scripts/experiments/run_gemini_json_multitable_hierarchical_accounting_family_v1.py",
+                                         "sha256":  "d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5",
+                                         "size_bytes":  149733
+                                     },
+                                     {
+                                         "path":  "scripts/experiments/run_gemini_json_other_activity_accounting_family_v1.py",
+                                         "sha256":  "bb5ab93eee6d32ff06deb476b65e5f7b3f2a87794fd60a494085f62572a26fd5",
+                                         "size_bytes":  39260
+                                     },
+                                     {
+                                         "path":  "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
+                                         "sha256":  "7d7846e1a8b15379a1489fce01e1f59a88b9ec0aa7e5ea54e506280fa90758ae",
+                                         "size_bytes":  82226
+                                     },
+                                     {
+                                         "path":  "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+                                         "sha256":  "8201799cdaeec765fa338ce473d5ec865ffd10aba02547539d05b1d55ff5d925",
+                                         "size_bytes":  251891
+                                     },
+                                     {
+                                         "path":  "src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py",
+                                         "sha256":  "bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2",
+                                         "size_bytes":  608721
+                                     },
+                                     {
+                                         "path":  "src/bctc_ai/evaluation/gemini_json_other_activity_family_v1.py",
+                                         "sha256":  "8277c454454f3030b251a9032cff70cf61f8e440155663dbe78134c8d97f2b9d",
+                                         "size_bytes":  103089
+                                     },
+                                     {
+                                         "path":  "src/bctc_ai/evaluation/source_observation_mapping_contract_v1.py",
+                                         "sha256":  "aeafa87f5d53c890d6a3640ca561946cfa5e68f9132b79d5f1fe0c741a2ede8a",
+                                         "size_bytes":  9134
+                                     },
+                                     {
+                                         "path":  "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
+                                         "sha256":  "6c6638bde3a1eea25c5382321a0a256323ea737bd691014c6e04d2308c8e8a17",
+                                         "size_bytes":  64710
+                                     },
+                                     {
+                                         "path":  "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
+                                         "sha256":  "dbcf3381f526b3abf7cf234148cd7be17b758cc5cb43268feece74a5ba53e27c",
+                                         "size_bytes":  367215
+                                     }
+                                 ],
+    "historical_family_run_id":  "gjfafstorev1:run:635e05c76edac90c783adda14fde86997698729bce7f4a91d8b3c4aa3e7dfcdb",
+    "historical_sweep_id":  "gjfafsv1:sweep:dcef5372574b19034f03bb1581cedda46aa1cdb2f570aaf9027acd647b0df981",
+    "historical_store_sha256":  "1d28ed3c1bcb35bff0a04a9b1ec0a37d18cd8519f027d55468010759d08ea2f9",
+    "corpus_index_sha256":  "969ff5f80732c39e4b7543ca1f5c1e5b5b827260f19981ed02945fe0c7379219",
+    "documents":  [
+                      {
+                          "case":  "abb-doc001",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/abb-doc001/packet.json",
+                                             "sha256":  "1bfe29b41d6d395b3de08de8fccbb83c26b74423bf50f570dbbff6454a7a54c3"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "0337ab9123f715a02723e721b4831df6a97d1580b02ff1e93f438786db51250c"
+                                                },
+                          "original_document_ordinal":  1,
+                          "original_document_id":  "gfpstorev1:document:a9f6542bd40cdaf94e3cd860f7c9c4f208debaa7fd01840d3a6687ac371aef71",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/ABB/2025/1_abb_2025_9_9_0dee6d3_bctc_hn_ktsx_30_06_2025_tv.pdf",
+                                      "sha256":  "3dd52dc68035949bd88b9e7752b725e651c725db0dd365b65105f0b996adcbee",
+                                      "size_bytes":  24674983
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:e9df3e5260a25a496de96a351c18cb478f90b563c884ddaefa16a9e8b4bbb26b",
+                          "original_candidate_sha256":  "b2b98f6a696e0cc5a18ea17c8cc4d9093f6caa1ad6d812f303c910d8ce78060c",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:a9f6542bd40cdaf94e3cd860f7c9c4f208debaa7fd01840d3a6687ac371aef71",
+                                                                 "document_ordinal":  1,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:07721e3cad213e30770af5691074f26629ca7c4f1a5cc3920546cff7a93a0081",
+                                                                 "physical_page":  10,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  10,
+                                                                 "source_logical_name":  "vietstock_bctc/ABB/2025/1_abb_2025_9_9_0dee6d3_bctc_hn_ktsx_30_06_2025_tv.pdf",
+                                                                 "source_sha256":  "3dd52dc68035949bd88b9e7752b725e651c725db0dd365b65105f0b996adcbee",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_DERIVATIVE",
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "EXPENSE_SOCIAL",
+                                                                                         "INCOME_ASSET_DISPOSAL",
+                                                                                         "INCOME_DEBT_RECOVERY",
+                                                                                         "INCOME_DEBT_SALE",
+                                                                                         "INCOME_DERIVATIVE",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:a9f6542bd40cdaf94e3cd860f7c9c4f208debaa7fd01840d3a6687ac371aef71",
+                                                                 "document_ordinal":  1,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:803443db3d81903478ec306b607d5e1329fc14b87e43d1e4316136d8563f1ba4",
+                                                                 "physical_page":  64,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  64,
+                                                                 "source_logical_name":  "vietstock_bctc/ABB/2025/1_abb_2025_9_9_0dee6d3_bctc_hn_ktsx_30_06_2025_tv.pdf",
+                                                                 "source_sha256":  "3dd52dc68035949bd88b9e7752b725e651c725db0dd365b65105f0b996adcbee",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-010-07721e3cad213e30.json",
+                                            "sha256":  "2abe03c44225941e6590daabe3113d1f082663fd0aa2832f9306b3aacfb8aebd",
+                                            "size_bytes":  5708,
+                                            "page_json_version_id":  "gfpstorev1:json:07721e3cad213e30770af5691074f26629ca7c4f1a5cc3920546cff7a93a0081",
+                                            "physical_page":  10,
+                                            "selected_page_ordinal":  10,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p010.png",
+                                                                        "sha256":  "d0ff7f5e4c115022571b549885f6c55c06e21a0f887823f9f37ab646559fc599",
+                                                                        "size_bytes":  472828,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-064-803443db3d819034.json",
+                                            "sha256":  "98c3c910ad75ddba8c34dadab758ed0c34e45d2b1ceb49a950708924c22896b3",
+                                            "size_bytes":  4220,
+                                            "page_json_version_id":  "gfpstorev1:json:803443db3d81903478ec306b607d5e1329fc14b87e43d1e4316136d8563f1ba4",
+                                            "physical_page":  64,
+                                            "selected_page_ordinal":  64,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p064.png",
+                                                                        "sha256":  "dda0bbfd2b27f81c2a4cb3afd5d300a3c13a21daad5bb35ba8f369e761a68a9a",
+                                                                        "size_bytes":  362015,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "bvb-doc023",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/bvb-doc023/packet.json",
+                                             "sha256":  "a1d45a64c9d5752cd849864341ee24791fc62354836c9d67b0291743ba9c3611"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "41e6fa7bee42189d0bd3015ec9e44b9b201778e7d427ed78a34bf6ffc8a50b11"
+                                                },
+                          "original_document_ordinal":  23,
+                          "original_document_id":  "gfpstorev1:document:41caf4650a104b415beb917b2ec75dd771c305272ba85c6cf29f876d95deac23",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+                                      "sha256":  "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+                                      "size_bytes":  11320313
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:4c8a765b7579f8c6f15814944fcd27b3ea61576d97d9e6e26b16d7b1ce745ae3",
+                          "original_candidate_sha256":  "24203818ac6f0b8fb297f28a09ce53fcf4a5fc73ab9718a3579b91b8bb3def2f",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:41caf4650a104b415beb917b2ec75dd771c305272ba85c6cf29f876d95deac23",
+                                                                 "document_ordinal":  23,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:8adf7366434c0ef0c9e8b2f0c152952b64edbf0aa8be459f655244beed0ff654",
+                                                                 "physical_page":  6,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  6,
+                                                                 "source_logical_name":  "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+                                                                 "source_sha256":  "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "EXPENSE_SOCIAL",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:41caf4650a104b415beb917b2ec75dd771c305272ba85c6cf29f876d95deac23",
+                                                                 "document_ordinal":  23,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:ef0352b6e0952f74b69c26d1e000e508c5ae15e2431c44a3e35a5ed4aa129e16",
+                                                                 "physical_page":  35,
+                                                                 "section_id":  "s3",
+                                                                 "selected_page_ordinal":  35,
+                                                                 "source_logical_name":  "vietstock_bctc/BVB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+                                                                 "source_sha256":  "4dd64e6f5a0f13695be17247ac821b84727eb7c661e13309909184455ad2155d",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-006-8adf7366434c0ef0.json",
+                                            "sha256":  "f2cfb36bc703e9bccfa6f4ef923d9129662026ebd919e4ae2cb644e41b99d3f0",
+                                            "size_bytes":  5868,
+                                            "page_json_version_id":  "gfpstorev1:json:8adf7366434c0ef0c9e8b2f0c152952b64edbf0aa8be459f655244beed0ff654",
+                                            "physical_page":  6,
+                                            "selected_page_ordinal":  6,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p006.png",
+                                                                        "sha256":  "612655daeba03c2fd37133d4cdaefc4feecddd53a2d0e3ece4d56aa710135955",
+                                                                        "size_bytes":  746873,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-035-ef0352b6e0952f74.json",
+                                            "sha256":  "9862b58569163701c145657e4d714f3eec505be4d4da1221a75e017de0c61722",
+                                            "size_bytes":  5230,
+                                            "page_json_version_id":  "gfpstorev1:json:ef0352b6e0952f74b69c26d1e000e508c5ae15e2431c44a3e35a5ed4aa129e16",
+                                            "physical_page":  35,
+                                            "selected_page_ordinal":  35,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p035.png",
+                                                                        "sha256":  "30c061527cfe33ef5b2a637d14848586962227606a3252a7f3fd0b65537f8146",
+                                                                        "size_bytes":  347603,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "klb-doc053",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/klb-doc053/packet.json",
+                                             "sha256":  "f937153bbbe0122462ac9fded6d9cd7bda9f28e5559d8fbb3cabc4157def3f0b"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "e880cb1a0e818a97aa64b2a5192999cece17a34a0ca3a77d3f93782d0f443919"
+                                                },
+                          "original_document_ordinal":  53,
+                          "original_document_id":  "gfpstorev1:document:d657ea3af31f190e3b6d10b3d945eed29bc0d9c9494b00413d7ed5854d62dc88",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/KLB/2025/BAO CAO TAI CHINH QUY 3.2025 HOP NHAT.pdf",
+                                      "sha256":  "66e07ea5075283291d4abda7fb550fe4277295944c8993dfd35400e6a4878da2",
+                                      "size_bytes":  8958235
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:bf43005d52221a695ee186a378f600e05102598bd3c715cf34c01f770df42f6b",
+                          "original_candidate_sha256":  "f60d484ca9ae3e54ea13b97307bbca7799f560c075d9868c55b412cf7deb5e0b",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:d657ea3af31f190e3b6d10b3d945eed29bc0d9c9494b00413d7ed5854d62dc88",
+                                                                 "document_ordinal":  53,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:79f10f3d39a302bf9432fbfef2a90e7e265521e0c9e7ff7d0091e2627ef1eacc",
+                                                                 "physical_page":  5,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  5,
+                                                                 "source_logical_name":  "vietstock_bctc/KLB/2025/BAO CAO TAI CHINH QUY 3.2025 HOP NHAT.pdf",
+                                                                 "source_sha256":  "66e07ea5075283291d4abda7fb550fe4277295944c8993dfd35400e6a4878da2",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_DEBT_SALE",
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "EXPENSE_SOCIAL",
+                                                                                         "INCOME_ASSET_DISPOSAL",
+                                                                                         "INCOME_DEBT_RECOVERY",
+                                                                                         "INCOME_OTHER"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:d657ea3af31f190e3b6d10b3d945eed29bc0d9c9494b00413d7ed5854d62dc88",
+                                                                 "document_ordinal":  53,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:dbe162622e743c26c7b598a4d45e47deb0879da626aaae364498307596337a61",
+                                                                 "physical_page":  29,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  29,
+                                                                 "source_logical_name":  "vietstock_bctc/KLB/2025/BAO CAO TAI CHINH QUY 3.2025 HOP NHAT.pdf",
+                                                                 "source_sha256":  "66e07ea5075283291d4abda7fb550fe4277295944c8993dfd35400e6a4878da2",
+                                                                 "table_id":  "t2"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-005-79f10f3d39a302bf.json",
+                                            "sha256":  "c4c8fa824a87eba88dbae4a9482e404561286568e44a015d859807c06a2e83f8",
+                                            "size_bytes":  5684,
+                                            "page_json_version_id":  "gfpstorev1:json:79f10f3d39a302bf9432fbfef2a90e7e265521e0c9e7ff7d0091e2627ef1eacc",
+                                            "physical_page":  5,
+                                            "selected_page_ordinal":  5,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p005.png",
+                                                                        "sha256":  "4d1b2cc5547a720def30feba02d964f17a1d9a8876d2721f3a10e200cf704ad5",
+                                                                        "size_bytes":  437130,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-029-dbe162622e743c26.json",
+                                            "sha256":  "716673e7b001b8eb1381fe45cfddf18c9c1ec72bbacb45c4c7260e2d4dacf7f4",
+                                            "size_bytes":  8414,
+                                            "page_json_version_id":  "gfpstorev1:json:dbe162622e743c26c7b598a4d45e47deb0879da626aaae364498307596337a61",
+                                            "physical_page":  29,
+                                            "selected_page_ordinal":  29,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p029.png",
+                                                                        "sha256":  "898ba5b87cfc75a47e765423f8a1305e91651d582c1aae277bdc1c1618189dfe",
+                                                                        "size_bytes":  391549,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "ocb-doc124",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/ocb-doc124/packet.json",
+                                             "sha256":  "2e5a8d5bf8873abd42bf2994a93c87409744ae569b99e1de5983f90079f4000f"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "f59686453f3d7b804084fa28202e0002bb779fc82b22e08289912d6235585fb8"
+                                                },
+                          "original_document_ordinal":  124,
+                          "original_document_id":  "gfpstorev1:document:df09bb44912d0ad4f0b794b62f9ace61ce8556704cc209de3cf8b4d57ae02533",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/OCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                      "sha256":  "a719d8f54e9a3e8fdadfea0039fb32d053a57ae2efe97b2209e7b2eb42f0f3a4",
+                                      "size_bytes":  14437515
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:7a7e35fcb8bd5f22952e101380db5fea5cfa005713b405f342f942a01f9668ca",
+                          "original_candidate_sha256":  "3f2863c9711653661b3b160eba28528d18d557d6c254a44a5b181b521c7305b7",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:df09bb44912d0ad4f0b794b62f9ace61ce8556704cc209de3cf8b4d57ae02533",
+                                                                 "document_ordinal":  124,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:854dffd9947b9286e9f935664bfb4caebd2e3d80ca6a5d1397b1f77237cb9534",
+                                                                 "physical_page":  12,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  12,
+                                                                 "source_logical_name":  "vietstock_bctc/OCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "a719d8f54e9a3e8fdadfea0039fb32d053a57ae2efe97b2209e7b2eb42f0f3a4",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_ASSET_DISPOSAL",
+                                                                                         "EXPENSE_DERIVATIVE",
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "INCOME_ASSET_DISPOSAL",
+                                                                                         "INCOME_DEBT_RECOVERY",
+                                                                                         "INCOME_DERIVATIVE",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:df09bb44912d0ad4f0b794b62f9ace61ce8556704cc209de3cf8b4d57ae02533",
+                                                                 "document_ordinal":  124,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:74beffb2cdb4e72e0f0ff3ed2b4ea9e3325af705a770013a9135bb666273383e",
+                                                                 "physical_page":  69,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  69,
+                                                                 "source_logical_name":  "vietstock_bctc/OCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "a719d8f54e9a3e8fdadfea0039fb32d053a57ae2efe97b2209e7b2eb42f0f3a4",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-012-854dffd9947b9286.json",
+                                            "sha256":  "3929d049c98c98a819083d601265e01a8a960813dbc503439e0441a28cf6d391",
+                                            "size_bytes":  4923,
+                                            "page_json_version_id":  "gfpstorev1:json:854dffd9947b9286e9f935664bfb4caebd2e3d80ca6a5d1397b1f77237cb9534",
+                                            "physical_page":  12,
+                                            "selected_page_ordinal":  12,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p012.png",
+                                                                        "sha256":  "3d8532ce3926f2920469a4cdeb4287c37550e4825ffdfb4046ba29d810d5a620",
+                                                                        "size_bytes":  318866,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-069-74beffb2cdb4e72e.json",
+                                            "sha256":  "6330a39ec424be8746310ffc16d59f503f58b02cdb2f2d12c7a4e845429e17b3",
+                                            "size_bytes":  4088,
+                                            "page_json_version_id":  "gfpstorev1:json:74beffb2cdb4e72e0f0ff3ed2b4ea9e3325af705a770013a9135bb666273383e",
+                                            "physical_page":  69,
+                                            "selected_page_ordinal":  69,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p069.png",
+                                                                        "sha256":  "9d80eaf0e6aa524d8f86d5fc0a62d95672e7bf27ff9bdbe6c66fec586af57ee4",
+                                                                        "size_bytes":  251035,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "ssb-doc177",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/ssb-doc177/packet.json",
+                                             "sha256":  "87ef3d9c85241ea2d8a053ebaab0f3df0c1b5d2e086d1ca683664581de67c70d"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "8d8843ea5805a7d101bf76a09ba1b77b15513f63864de77b202508a7c32acdd6"
+                                                },
+                          "original_document_ordinal":  177,
+                          "original_document_id":  "gfpstorev1:document:0803d018743b011d455cf87ea16fd9e5c20197521e8d842221216d4706af8597",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/SSB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                      "sha256":  "4899c93035ade7e1fce34b1f787c9008dd63b4690c651e79cdee30c1d1cb7e13",
+                                      "size_bytes":  8899790
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:f5efdcf0104478f14d19ae17de3fd84facc1865324a17cd330519da365d466e6",
+                          "original_candidate_sha256":  "2fd29a8446cd129812473b5b40ff5572f017b0fda61736e823aae93a4f69f522",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:0803d018743b011d455cf87ea16fd9e5c20197521e8d842221216d4706af8597",
+                                                                 "document_ordinal":  177,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:fa5defd6b88501cde374334c3d61c378a0b7095625dde33d6ca34fda65dad77e",
+                                                                 "physical_page":  11,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  11,
+                                                                 "source_logical_name":  "vietstock_bctc/SSB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "4899c93035ade7e1fce34b1f787c9008dd63b4690c651e79cdee30c1d1cb7e13",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "INCOME_DEBT_RECOVERY",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:0803d018743b011d455cf87ea16fd9e5c20197521e8d842221216d4706af8597",
+                                                                 "document_ordinal":  177,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:240641976d35dcdf3709a00903b2ad035e5818b82a5a0f2bace77803963261c8",
+                                                                 "physical_page":  53,
+                                                                 "section_id":  "s2",
+                                                                 "selected_page_ordinal":  53,
+                                                                 "source_logical_name":  "vietstock_bctc/SSB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "4899c93035ade7e1fce34b1f787c9008dd63b4690c651e79cdee30c1d1cb7e13",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-011-fa5defd6b88501cd.json",
+                                            "sha256":  "3a83a360013eab900830b0f1f60c6a4ff6e94b966fca6057abd531e936bd3dd6",
+                                            "size_bytes":  5350,
+                                            "page_json_version_id":  "gfpstorev1:json:fa5defd6b88501cde374334c3d61c378a0b7095625dde33d6ca34fda65dad77e",
+                                            "physical_page":  11,
+                                            "selected_page_ordinal":  11,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p011.png",
+                                                                        "sha256":  "275474242a8ae4d4e76a809eb87e38781a0bb900f9d29e79cfc7df138fceab30",
+                                                                        "size_bytes":  513483,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-053-240641976d35dcdf.json",
+                                            "sha256":  "9d64d569b9ca222566834390ac534082cbe7bb1e0e8908b850103acaee2a762b",
+                                            "size_bytes":  5605,
+                                            "page_json_version_id":  "gfpstorev1:json:240641976d35dcdf3709a00903b2ad035e5818b82a5a0f2bace77803963261c8",
+                                            "physical_page":  53,
+                                            "selected_page_ordinal":  53,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p053.png",
+                                                                        "sha256":  "3d9b6862411b644d2c91d57441982f97765d0f461a7432042855610287a88c70",
+                                                                        "size_bytes":  449453,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "stb-doc193",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/stb-doc193/packet.json",
+                                             "sha256":  "13334a9d451d2d17f4df54418c2fad5e386c502af7fcd2dafde708d70f6d5f40"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "908c27a12ffcb8e086ae8cf865a1eb5df7f6bd010e89b89ee7fb34fa9a1722b3"
+                                                },
+                          "original_document_ordinal":  193,
+                          "original_document_id":  "gfpstorev1:document:0c57e5f0c2ed975fc41dce3b29f51cef8971c2453ebce84649cd0736ed353bcc",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/STB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                      "sha256":  "557b255998a46c8f94be83401d3c25ea45e13811b006ca968606800f13e06902",
+                                      "size_bytes":  3972213
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:d9932a37ec6ae3602fe2a9332f8c327b5aa9175a129d8bd91422cef4f374edf9",
+                          "original_candidate_sha256":  "59bef510656c8d0c88029d67cea48b83161a2f12a3d898795773df237f3a5a9a",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:0c57e5f0c2ed975fc41dce3b29f51cef8971c2453ebce84649cd0736ed353bcc",
+                                                                 "document_ordinal":  193,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:d580b271975ddab8105d8fd6b272721db73a399e3ab5387c09507f3090fff1c3",
+                                                                 "physical_page":  10,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  10,
+                                                                 "source_logical_name":  "vietstock_bctc/STB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "557b255998a46c8f94be83401d3c25ea45e13811b006ca968606800f13e06902",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_DERIVATIVE",
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "EXPENSE_SOCIAL",
+                                                                                         "INCOME_DEBT_RECOVERY",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:0c57e5f0c2ed975fc41dce3b29f51cef8971c2453ebce84649cd0736ed353bcc",
+                                                                 "document_ordinal":  193,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:236b3f56e1543d2dadf1269f9e9c2f87aedb9a18b2f3c51dcbd24dfb5d2ad134",
+                                                                 "physical_page":  68,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  68,
+                                                                 "source_logical_name":  "vietstock_bctc/STB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "557b255998a46c8f94be83401d3c25ea45e13811b006ca968606800f13e06902",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-010-d580b271975ddab8.json",
+                                            "sha256":  "d8876514b7f880687acfe7cab7d4a3769b8a64098e6599dac687e5d2a2cdebd7",
+                                            "size_bytes":  4416,
+                                            "page_json_version_id":  "gfpstorev1:json:d580b271975ddab8105d8fd6b272721db73a399e3ab5387c09507f3090fff1c3",
+                                            "physical_page":  10,
+                                            "selected_page_ordinal":  10,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p010.png",
+                                                                        "sha256":  "61846b59b5225314d57ced8ea408e452bd56c904996b3397afa4cd58112292ed",
+                                                                        "size_bytes":  44684,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-068-236b3f56e1543d2d.json",
+                                            "sha256":  "febe8d938982511dfefe587b5c3a16e0319a0fd081c5687479e90e85040d044a",
+                                            "size_bytes":  4178,
+                                            "page_json_version_id":  "gfpstorev1:json:236b3f56e1543d2dadf1269f9e9c2f87aedb9a18b2f3c51dcbd24dfb5d2ad134",
+                                            "physical_page":  68,
+                                            "selected_page_ordinal":  68,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p068.png",
+                                                                        "sha256":  "1d682124146c55c43fa779b3f26feb15367e470c23baf24fe007bd4d68fe8fc3",
+                                                                        "size_bytes":  37569,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "tcb-doc209",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/tcb-doc209/packet.json",
+                                             "sha256":  "69ba813fe6129d56dc60132bdddcd89ee8a9b9e658530690c8e58737d207b15c"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "83c04a0841d13d63245c9ea4a7a66b235ee9ed1b2c13f725b4efacf8b9bc75e0"
+                                                },
+                          "original_document_ordinal":  209,
+                          "original_document_id":  "gfpstorev1:document:41d47ce18b38e576840f78357bef637474032879c9724c0194db342fc794df91",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/TCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                      "sha256":  "97f2ec73b020596d698f9a7aa24842585c7ed07c80d2c1c488c709a00c4982a8",
+                                      "size_bytes":  8105401
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:32e45818d2f837c114c9715751733df789e7e205a956fb32a5c3943303866708",
+                          "original_candidate_sha256":  "c770bcfe3e9a35e8be721e616bf5888bbb25608311f644f30f800a52a2c2d75b",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:41d47ce18b38e576840f78357bef637474032879c9724c0194db342fc794df91",
+                                                                 "document_ordinal":  209,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:4bf8c534e835d0b35d42a829f6408941172b91efda3fc299216cacac292622c9",
+                                                                 "physical_page":  15,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  15,
+                                                                 "source_logical_name":  "vietstock_bctc/TCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "97f2ec73b020596d698f9a7aa24842585c7ed07c80d2c1c488c709a00c4982a8",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_DERIVATIVE",
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "INCOME_DEBT_RECOVERY",
+                                                                                         "INCOME_DERIVATIVE",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:41d47ce18b38e576840f78357bef637474032879c9724c0194db342fc794df91",
+                                                                 "document_ordinal":  209,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:006d22b3a5ea45c6266f6bf1c2fe790ffedc2e3fc32ff5fa4df36acd6f0ef456",
+                                                                 "physical_page":  63,
+                                                                 "section_id":  "s2",
+                                                                 "selected_page_ordinal":  63,
+                                                                 "source_logical_name":  "vietstock_bctc/TCB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "97f2ec73b020596d698f9a7aa24842585c7ed07c80d2c1c488c709a00c4982a8",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-015-4bf8c534e835d0b3.json",
+                                            "sha256":  "5088dd1d7df92c26291d3bfe61c1d04c8f953acb9788189f84536679e6fce9ee",
+                                            "size_bytes":  5480,
+                                            "page_json_version_id":  "gfpstorev1:json:4bf8c534e835d0b35d42a829f6408941172b91efda3fc299216cacac292622c9",
+                                            "physical_page":  15,
+                                            "selected_page_ordinal":  15,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p015.png",
+                                                                        "sha256":  "950c4b3426a77861068288a674ba3ec468c08d29f827eb3802cfb9afb126b444",
+                                                                        "size_bytes":  447205,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-063-006d22b3a5ea45c6.json",
+                                            "sha256":  "9dd19876f541b64f738ebd3167da41f0fa241928a6ebc1b96bef334d14e4683c",
+                                            "size_bytes":  5711,
+                                            "page_json_version_id":  "gfpstorev1:json:006d22b3a5ea45c6266f6bf1c2fe790ffedc2e3fc32ff5fa4df36acd6f0ef456",
+                                            "physical_page":  63,
+                                            "selected_page_ordinal":  63,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p063.png",
+                                                                        "sha256":  "d17e70b28e0fe3ae8c9dd11bce45ea795047d4da9e3fedff86432e1fbef03f66",
+                                                                        "size_bytes":  395637,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "tpb-doc225",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/tpb-doc225/packet.json",
+                                             "sha256":  "93de952477a3b2f9d1dada3e182c17fae3ef6f7135389f0b25c7b440c6c89136"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "ddebe4c4ca5a6453daed0adf2fed2a20250508ed114bd2474337cf81bb932690"
+                                                },
+                          "original_document_ordinal":  225,
+                          "original_document_id":  "gfpstorev1:document:bdbcfa488a16a9934f326b076fd3bdb6da5b4942811af7b41419af0030b99377",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                      "sha256":  "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+                                      "size_bytes":  8082455
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:591c9cdb9e8cec2c2c0d38300d258e192fa5d3cc9e5047831aab17ad8f21b54c",
+                          "original_candidate_sha256":  "dc0ffc016fb51d8804fe2c4a5d46eeed8e6b1c9cfa22a1f9de855378523268bb",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:bdbcfa488a16a9934f326b076fd3bdb6da5b4942811af7b41419af0030b99377",
+                                                                 "document_ordinal":  225,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:f4c8b4e5ecf3aa9eb24fe65deb4d20a149b1abaf2bcbb02cc48d1677980391c4",
+                                                                 "physical_page":  13,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  13,
+                                                                 "source_logical_name":  "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_DERIVATIVE",
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "INCOME_ASSET_DISPOSAL",
+                                                                                         "INCOME_DERIVATIVE",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:bdbcfa488a16a9934f326b076fd3bdb6da5b4942811af7b41419af0030b99377",
+                                                                 "document_ordinal":  225,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:1c93a6a5d94f1640a4177acc5652ded70ec975b9630103662959cf0ab72a6038",
+                                                                 "physical_page":  61,
+                                                                 "section_id":  "s2",
+                                                                 "selected_page_ordinal":  61,
+                                                                 "source_logical_name":  "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                                 "source_sha256":  "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-013-f4c8b4e5ecf3aa9e.json",
+                                            "sha256":  "9598a5dbabde2391799fd239fe5f3045a5e81a7edf68b801b2cda3f37625e253",
+                                            "size_bytes":  4512,
+                                            "page_json_version_id":  "gfpstorev1:json:f4c8b4e5ecf3aa9eb24fe65deb4d20a149b1abaf2bcbb02cc48d1677980391c4",
+                                            "physical_page":  13,
+                                            "selected_page_ordinal":  13,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p013.png",
+                                                                        "sha256":  "f19fce0cc917c7fbb58ada99f8f0688870f64465273a249d5910d498643a3791",
+                                                                        "size_bytes":  423963,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-061-1c93a6a5d94f1640.json",
+                                            "sha256":  "8ee1b5d78c7987511f103d06a6142c7a45a819361546e35daeebc103ffc39502",
+                                            "size_bytes":  5318,
+                                            "page_json_version_id":  "gfpstorev1:json:1c93a6a5d94f1640a4177acc5652ded70ec975b9630103662959cf0ab72a6038",
+                                            "physical_page":  61,
+                                            "selected_page_ordinal":  61,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p061.png",
+                                                                        "sha256":  "393cb28331ff9e5dc579b47091644423fc31817b7fc251f6d117636fe6ae5bc5",
+                                                                        "size_bytes":  375853,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "vab-doc241",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/vab-doc241/packet.json",
+                                             "sha256":  "3e209c58cd36ff7df3e1d31e2274e6011f34506c70133cbcb2b92b0b01494363"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "1508d499f73545c42965c7da82b8a71ab4aa24e93ac5c1bff35bf470bfe974e8"
+                                                },
+                          "original_document_ordinal":  241,
+                          "original_document_id":  "gfpstorev1:document:34be6a3483bca82c311b771dfc3c63453c649ce944ee1cabd0fd585c21ff90c5",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/VAB/2025/20250815 - VAB - BCTC HN BAN NIEN 2025_0001.pdf",
+                                      "sha256":  "925bc21f1378480890477dd3d4b54208b597c8865c752cdabd0b05206ad6d7b0",
+                                      "size_bytes":  14783264
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:67777f509360ad26d80f32913659b0837b9f4f674c6b1f11ac49c59306f8b7b0",
+                          "original_candidate_sha256":  "689f6a0da052c9d3d46188fa1e483f2e88b14e284b3461a16b916071c08c9c51",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:34be6a3483bca82c311b771dfc3c63453c649ce944ee1cabd0fd585c21ff90c5",
+                                                                 "document_ordinal":  241,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:dea0ef8cf9e672908368bc63d078899afe32f892ad21c4535da20a62db9b64b9",
+                                                                 "physical_page":  13,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  13,
+                                                                 "source_logical_name":  "vietstock_bctc/VAB/2025/20250815 - VAB - BCTC HN BAN NIEN 2025_0001.pdf",
+                                                                 "source_sha256":  "925bc21f1378480890477dd3d4b54208b597c8865c752cdabd0b05206ad6d7b0",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_OTHER",
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:34be6a3483bca82c311b771dfc3c63453c649ce944ee1cabd0fd585c21ff90c5",
+                                                                 "document_ordinal":  241,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:8e3f1cb3776deb55438aef96a52e2d1bfa6e2d42da9fb6ec19a913f05b73bd20",
+                                                                 "physical_page":  42,
+                                                                 "section_id":  "s5",
+                                                                 "selected_page_ordinal":  42,
+                                                                 "source_logical_name":  "vietstock_bctc/VAB/2025/20250815 - VAB - BCTC HN BAN NIEN 2025_0001.pdf",
+                                                                 "source_sha256":  "925bc21f1378480890477dd3d4b54208b597c8865c752cdabd0b05206ad6d7b0",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-013-dea0ef8cf9e67290.json",
+                                            "sha256":  "ddfb395a979c90322364d205b7a3c8ed3e09b15ed747422ce89e298a50fd18ad",
+                                            "size_bytes":  6330,
+                                            "page_json_version_id":  "gfpstorev1:json:dea0ef8cf9e672908368bc63d078899afe32f892ad21c4535da20a62db9b64b9",
+                                            "physical_page":  13,
+                                            "selected_page_ordinal":  13,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p013.png",
+                                                                        "sha256":  "c5d2bcc9f5f9e7b7356b76c3240797981a55bf74d37e0a713acc880b93dfe2ff",
+                                                                        "size_bytes":  665679,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-042-8e3f1cb3776deb55.json",
+                                            "sha256":  "842c426fce696f8bff88d6fa19c9acf8039ccc519b69e51ca48f070f179ca8f9",
+                                            "size_bytes":  8333,
+                                            "page_json_version_id":  "gfpstorev1:json:8e3f1cb3776deb55438aef96a52e2d1bfa6e2d42da9fb6ec19a913f05b73bd20",
+                                            "physical_page":  42,
+                                            "selected_page_ordinal":  42,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p042.png",
+                                                                        "sha256":  "64b1d7d7a213d1f45e0c112a05868af5b38c4e79154674f6ce9ed69311fb7036",
+                                                                        "size_bytes":  656616,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      },
+                      {
+                          "case":  "vbb-doc256",
+                          "packet_ref":  {
+                                             "path":  "restore-receipts/F38_SOURCE_PACKETS_20261028_V1/vbb-doc256/packet.json",
+                                             "sha256":  "578f65569324cbb1d8fe516784f723acfaaf3c38d5e3410587885171f363ae63"
+                                         },
+                          "selected_axis_ref":  {
+                                                    "file":  "selected-axis.json",
+                                                    "sha256":  "77040c52f2d7917e8529b6b72f80d0aa83d43d5a2fbd0766bbdadd4346fe958e"
+                                                },
+                          "original_document_ordinal":  256,
+                          "original_document_id":  "gfpstorev1:document:0930f3c33c536b806d918e4dc02d5d0c2e9f861fcba670640ff167272d024f70",
+                          "pdf":  {
+                                      "source_logical_name":  "vietstock_bctc/VBB/2025/000000014895152_VI_BaoCaoTaiChinh_HopNhat_Q1_2025.pdf",
+                                      "sha256":  "b7ed875bfe1863d514222f81f2064fad1b7e08d9c8756767141ae264ea022eee",
+                                      "size_bytes":  10174390
+                                  },
+                          "original_candidate_id":  "gjmthfcv1:candidate:96cb1abb5f1768e736b9de00a4be346981a0448f45a8d11c3e3cee9b43126687",
+                          "original_candidate_sha256":  "b468c7dbd702168109ddf03820449b5f3f95f262aceb7823b5dcdca557d29e2a",
+                          "original_candidate_regions":  [
+                                                             {
+                                                                 "component_roles":  [
+
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:0930f3c33c536b806d918e4dc02d5d0c2e9f861fcba670640ff167272d024f70",
+                                                                 "document_ordinal":  256,
+                                                                 "fragment_ordinal":  1,
+                                                                 "page_json_version_id":  "gfpstorev1:json:ada0ad2b2d5632459d6e2f3b4c89a6caaf5b460aefbe8ef258b177f8a85e5a09",
+                                                                 "physical_page":  5,
+                                                                 "section_id":  "s1",
+                                                                 "selected_page_ordinal":  5,
+                                                                 "source_logical_name":  "vietstock_bctc/VBB/2025/000000014895152_VI_BaoCaoTaiChinh_HopNhat_Q1_2025.pdf",
+                                                                 "source_sha256":  "b7ed875bfe1863d514222f81f2064fad1b7e08d9c8756767141ae264ea022eee",
+                                                                 "table_id":  "t1"
+                                                             },
+                                                             {
+                                                                 "component_roles":  [
+                                                                                         "EXPENSE_PARENT",
+                                                                                         "INCOME_OTHER",
+                                                                                         "INCOME_PARENT"
+                                                                                     ],
+                                                                 "document_id":  "gfpstorev1:document:0930f3c33c536b806d918e4dc02d5d0c2e9f861fcba670640ff167272d024f70",
+                                                                 "document_ordinal":  256,
+                                                                 "fragment_ordinal":  2,
+                                                                 "page_json_version_id":  "gfpstorev1:json:efb0487f77df642751ea9d9b3d18ea73aefcc958c6aa4887a9c7d560bab43ee4",
+                                                                 "physical_page":  21,
+                                                                 "section_id":  "s6",
+                                                                 "selected_page_ordinal":  21,
+                                                                 "source_logical_name":  "vietstock_bctc/VBB/2025/000000014895152_VI_BaoCaoTaiChinh_HopNhat_Q1_2025.pdf",
+                                                                 "source_sha256":  "b7ed875bfe1863d514222f81f2064fad1b7e08d9c8756767141ae264ea022eee",
+                                                                 "table_id":  "t1"
+                                                             }
+                                                         ],
+                          "pages":  [
+                                        {
+                                            "file":  "page-005-ada0ad2b2d563245.json",
+                                            "sha256":  "e5d3b63b823aae522e6f59fa7e6d5f151463d5cb6c1431fadbc93b0fc7fee45d",
+                                            "size_bytes":  5991,
+                                            "page_json_version_id":  "gfpstorev1:json:ada0ad2b2d5632459d6e2f3b4c89a6caaf5b460aefbe8ef258b177f8a85e5a09",
+                                            "physical_page":  5,
+                                            "selected_page_ordinal":  5,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p005.png",
+                                                                        "sha256":  "a7ce9dce8f55b1cca72aba017c950bfa02e6fb8ffb5421db6a3d6e5c28e35239",
+                                                                        "size_bytes":  658572,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        },
+                                        {
+                                            "file":  "page-021-efb0487f77df6427.json",
+                                            "sha256":  "6a99127575640e74735e8f0301dda598ca378978c5b5d564799fc3758ae74fc4",
+                                            "size_bytes":  13743,
+                                            "page_json_version_id":  "gfpstorev1:json:efb0487f77df642751ea9d9b3d18ea73aefcc958c6aa4887a9c7d560bab43ee4",
+                                            "physical_page":  21,
+                                            "selected_page_ordinal":  21,
+                                            "original_render_ref":  {
+                                                                        "file":  "render-p021.png",
+                                                                        "sha256":  "4b0b142a90b3b473cfb556703c141d7d838227c7f18e344c2bc3750d15b80dc4",
+                                                                        "size_bytes":  419134,
+                                                                        "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                                        "colour":  "8-bit RGB, no alpha"
+                                                                    }
+                                        }
+                                    ]
+                      }
+                  ]
+}

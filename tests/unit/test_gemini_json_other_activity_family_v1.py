@@ -207,8 +207,7 @@ def test_other_activity_config_binds_complete_schema_axis() -> None:
         "DISPLAY_ROUNDING_PREFER_MILLION_VND"
     )
     assert compiled["other_activity_adapter_spec"]["primary_unit_corroboration_policy"] == (
-        "EXACT_SAME_DOCUMENT_ROOT_LABEL_AND_NONZERO_SCALAR_IN_EXPLICIT_UNIT_"
-        "TABLE_OR_EXACT_UNIQUE_IMMEDIATELY_PRECEDING_PRIMARY_STATEMENT_UNIT"
+        "NO_UNIT_DONATION_WITHOUT_TARGET_LOCAL_SOURCE_UNIT_SCOPE"
     )
     assert (
         compiled["other_activity_adapter_spec"]["unlabeled_structural_subtotal_policy"]
@@ -242,7 +241,7 @@ def test_other_activity_adapter_config_rejects_undeclared_primary_unit_policy() 
 
 def test_context_residual_config_rejects_structural_or_untyped_targets() -> None:
     evaluation = copy.deepcopy(_json("tm-other-activity-evaluation-v1.json"))
-    evaluation["context_residual_bindings"][0]["residual_role"] = "EXPENSE_PARENT"
+    evaluation["context_residual_bindings"] = [{"context_role": "INCOME_PARENT", "residual_role": "EXPENSE_PARENT"}]
     with pytest.raises(GeminiJsonMultitableHierarchicalFamilyV1Error):
         compile_gemini_json_multitable_hierarchical_family_specs_v1(
             _json("tm-other-activity-topology-v1.json"),
@@ -319,92 +318,32 @@ def test_contract_penalty_is_aggregated_into_schema_catchall_without_document_ro
     assert len(catchall["source_refs"]) == 2
 
 
-def test_unknown_direct_context_child_projects_to_declared_schema_residual() -> None:
+def test_unknown_direct_context_child_cannot_gain_other_permission_from_closure() -> None:
     rows = _gross_rows()
-    rows.insert(
-        3,
-        _row(
-            "Khoản thu hoạt động khác chưa khai báo",
-            "1",
-            "1",
-            parent="Thu nhập từ hoạt động khác",
-        ),
-    )
+    rows.insert(3, _row("Khoản thu hoạt động khác chưa khai báo", "1", "1", parent="Thu nhập từ hoạt động khác"))
     rows[0]["values_exact"] = ["101", "81"]
     rows[-1]["values_exact"] = ["71", "61"]
-    candidate, _cluster, _receipt = _evaluate(_page(rows))
-    assert candidate["status"] == READY
-    catchall = next(
-        mapping for mapping in candidate["mappings"] if mapping["role"] == "INCOME_OTHER"
-    )
-    assert [value["coefficient"] for value in catchall["values"]] == [41, 31]
-    receipts = candidate["closure_receipt"]["table_receipts"][0][
-        "context_residual_projection_receipts"
-    ]
-    assert [(item["context_role"], item["residual_role"]) for item in receipts] == [
-        ("INCOME_PARENT", "INCOME_OTHER")
-    ]
+    _cluster, candidate = _adapted_candidate([_page(rows)])
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    assert "F38_NONDECLARED_SOURCE_MONEY_ROLE_NOT_PROVEN" in candidate["reasons"]
 
 
-def test_candidate_replay_rejects_coherently_rehashed_context_residual_drift() -> None:
+def test_family_compile_rejects_declared_unknown_context_other_permission() -> None:
+    evaluation = copy.deepcopy(_json("tm-other-activity-evaluation-v1.json"))
+    evaluation["context_residual_bindings"] = [{"context_role": "INCOME_PARENT", "residual_role": "INCOME_OTHER"}]
+    with pytest.raises(GeminiJsonOtherActivityFamilyV1Error, match="cannot gain OTHER"):
+        compile_gemini_json_other_activity_family_specs_v1(_json("tm-other-activity-topology-v1.json"),
+            evaluation, _json("tm-other-activity-schema-binding-v1.json"))
+
+
+def test_unknown_expense_context_child_cannot_gain_other_permission_from_closure() -> None:
     rows = _gross_rows()
-    rows.insert(
-        3,
-        _row(
-            "Khoản thu hoạt động khác chưa khai báo",
-            "1",
-            "1",
-            parent="Thu nhập từ hoạt động khác",
-        ),
-    )
-    rows[0]["values_exact"] = ["101", "81"]
-    rows[-1]["values_exact"] = ["71", "61"]
-    page = _page(rows)
-    candidate, cluster, receipt = _evaluate(page)
-    forged = copy.deepcopy(candidate)
-    forged["closure_receipt"]["table_receipts"][0]["context_residual_projection_receipts"][0][
-        "residual_role"
-    ] = "EXPENSE_OTHER"
-    material = {key: value for key, value in forged.items() if key != "candidate_id"}
-    forged["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(material)
-    with pytest.raises(
-        GeminiJsonMultitableHierarchicalFamilyV1Error,
-        match="candidate replay drifted",
-    ):
-        validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1(
-            forged,
-            regions=cluster["component_regions"],
-            page_json_by_version={cluster["component_regions"][0]["page_json_version_id"]: page},
-            compiled_specs=_compiled(),
-            query_receipt=receipt,
-        )
-
-
-def test_unknown_expense_context_child_projects_only_to_expense_residual() -> None:
-    rows = _gross_rows()
-    rows.insert(
-        -1,
-        _row(
-            "Khoản chi hoạt động khác chưa khai báo",
-            "(1)",
-            "(1)",
-            parent="Chi phí từ hoạt động khác",
-        ),
-    )
+    rows.insert(-1, _row("Khoản chi hoạt động khác chưa khai báo", "(1)", "(1)", parent="Chi phí từ hoạt động khác"))
     rows[3]["values_exact"] = ["(31)", "(21)"]
     rows[-1]["values_exact"] = ["69", "59"]
-    candidate, _cluster, _receipt = _evaluate(_page(rows))
-    assert candidate["status"] == READY
-    catchall = next(
-        mapping for mapping in candidate["mappings"] if mapping["role"] == "EXPENSE_OTHER"
-    )
-    assert [value["coefficient"] for value in catchall["values"]] == [-21, -16]
-    assert not any(
-        source_ref["label_exact"] == "Khoản chi hoạt động khác chưa khai báo"
-        for mapping in candidate["mappings"]
-        if mapping["role"] == "INCOME_OTHER"
-        for source_ref in mapping["source_refs"]
-    )
+    _cluster, candidate = _adapted_candidate([_page(rows)])
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    assert "F38_NONDECLARED_SOURCE_MONEY_ROLE_NOT_PROVEN" in candidate["reasons"]
 
 
 def test_context_residual_projection_requires_exact_parent_equation() -> None:
@@ -781,24 +720,20 @@ def test_visible_note_details_bind_root_to_direct_primary_source_result() -> Non
     )
 
 
-def test_unitless_note_uses_only_exact_primary_root_vector_unit_control() -> None:
-    columns = [
-        {"header_path_exact": ["Năm 2026"], "value_kind": "MONEY"},
-        {"header_path_exact": ["Năm 2025"], "value_kind": "MONEY"},
-    ]
-    note = _page(_gross_rows(), columns=columns, unit=None)  # type: ignore[arg-type]
+def test_unitless_note_cannot_borrow_unit_from_exact_primary_root_vector() -> None:
+    columns = [{"header_path_exact": ["Năm 2026"], "value_kind": "MONEY"},
+               {"header_path_exact": ["Năm 2025"], "value_kind": "MONEY"}]
+    note = _page(_gross_rows(), columns=columns, unit=None)
+    before = copy.deepcopy(note)
     primary = _page([_row(OWNER, "70", "60", kind="TOTAL")], primary=True)
     _cluster, candidate = _adapted_candidate([primary, note])
-    assert candidate["status"] == READY
-    receipts = candidate["closure_receipt"]["other_activity_adapter_receipt"][
-        "unit_corroboration_receipts"
-    ]
-    assert len(receipts) == 1
-    assert receipts[0]["matched_note_vector"] == [70, 60]
-    assert receipts[0]["matched_primary_vector"] == [70, 60]
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    assert "F38_SOURCE_UNIT_NOT_LOCALLY_PROVEN" in candidate["reasons"]
+    assert candidate["closure_receipt"]["other_activity_adapter_receipt"]["unit_corroboration_receipts"] == []
+    assert note == before and note["sections"][0]["tables"][0]["unit_exact"] is None
 
 
-def test_unitless_primary_uses_exact_same_document_root_scalar_unit_control() -> None:
+def test_unitless_primary_cannot_borrow_same_document_numeric_scalar_unit() -> None:
     primary_columns = [
         {"header_path_exact": ["Quý II", "Năm 2026"], "value_kind": "MONEY"},
         {"header_path_exact": ["Quý II", "Năm 2025"], "value_kind": "MONEY"},
@@ -840,20 +775,13 @@ def test_unitless_primary_uses_exact_same_document_root_scalar_unit_control() ->
     )
     control["sections"][0]["title_exact"] = "Báo cáo bộ phận theo khu vực địa lý"
     control["sections"][0]["tables"][0]["title_exact"] = "Từ đầu năm đến cuối kỳ"
-    cluster, candidate = _adapted_candidate([primary, control])
-    assert candidate["status"] == READY
-    root = next(
-        mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL"
-    )
-    assert root["unit"] == "MILLION_VND"
-    assert [cell["coefficient"] for cell in root["values"]] == [70, 60]
-    receipt = cluster["owner_receipt"]["other_activity_query_adapter_receipt"][
-        "primary_projection_receipt"
-    ]["primary_unit_corroboration_receipt"]
-    assert receipt["canonical_unit"] == "MILLION_VND"
-    assert receipt["control_value"] == 70
-    assert receipt["locator"]["physical_page"] == 2
-    assert receipt["locator"]["column_ordinal"] == 5
+    records = [_record(primary, ordinal=1), _record(control, ordinal=2)]
+    compiled = _compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=records, compiled_specs=compiled)
+    cluster = recover_gemini_json_other_activity_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["reasons"] == ["PRIMARY_OTHER_ACTIVITY_SOURCE_RESULT_NOT_LOCALLY_USABLE"]
+    assert primary["sections"][0]["tables"][0]["unit_exact"] is None
 
 
 def _primary_balance_sheet_unit_control_page(unit: str = "VND") -> dict[str, Any]:
@@ -876,24 +804,15 @@ def _unitless_primary_other_activity_page() -> dict[str, Any]:
     )
 
 
-def test_unitless_primary_uses_exact_adjacent_primary_statement_unit_control() -> None:
-    control = _primary_balance_sheet_unit_control_page()
-    target = _unitless_primary_other_activity_page()
-    cluster, candidate = _adapted_candidate([control, target])
-    assert candidate["status"] == READY
-    root = next(
-        mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL"
-    )
-    assert root["unit"] == "VND"
-    assert [cell["coefficient"] for cell in root["values"]] == [70, 60]
-    receipt = cluster["owner_receipt"]["other_activity_query_adapter_receipt"][
-        "primary_projection_receipt"
-    ]["primary_unit_corroboration_receipt"]
-    assert receipt["control_kind"] == "ADJACENT_PRIMARY_STATEMENT_EXPLICIT_UNIT"
-    assert receipt["canonical_unit"] == "VND"
-    assert receipt["locator"]["physical_page"] == 1
-    assert receipt["locator"]["selected_page_ordinal"] == 1
-    assert receipt["control_unit_evidence"]
+def test_unitless_primary_cannot_borrow_adjacent_balance_sheet_unit_without_target_scope() -> None:
+    records = [_record(_primary_balance_sheet_unit_control_page(), ordinal=1),
+               _record(_unitless_primary_other_activity_page(), ordinal=2)]
+    compiled = _compiled()
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(page_records=records, compiled_specs=compiled)
+    cluster = recover_gemini_json_other_activity_query_cluster_v1(page_records=records, base_cluster=base, compiled_specs=compiled)
+    assert cluster["status"] == UNRESOLVED
+    assert cluster["reasons"] == ["PRIMARY_OTHER_ACTIVITY_SOURCE_RESULT_NOT_LOCALLY_USABLE"]
+    assert records[1]["page_json"]["sections"][0]["tables"][0]["unit_exact"] is None
 
 
 def test_unitless_primary_does_not_inherit_nonadjacent_primary_statement_unit() -> None:
@@ -918,27 +837,16 @@ def test_unitless_primary_does_not_inherit_nonadjacent_primary_statement_unit() 
     assert cluster["reasons"] == ["PRIMARY_OTHER_ACTIVITY_SOURCE_RESULT_NOT_LOCALLY_USABLE"]
 
 
-def test_unitless_million_note_uses_exact_vnd_rounding_interval_control() -> None:
-    columns = [
-        {"header_path_exact": ["Năm 2026"], "value_kind": "MONEY"},
-        {"header_path_exact": ["Năm 2025"], "value_kind": "MONEY"},
-    ]
-    note = _page(_gross_rows(), columns=columns, unit=None)  # type: ignore[arg-type]
-    primary = _page(
-        [_row(OWNER, "70,000,200", "59,999,800", kind="TOTAL")],
-        primary=True,
-        unit="VND",
-    )
+def test_unitless_note_cannot_gain_million_unit_from_primary_rounding_interval() -> None:
+    columns = [{"header_path_exact": ["Năm 2026"], "value_kind": "MONEY"},
+               {"header_path_exact": ["Năm 2025"], "value_kind": "MONEY"}]
+    note = _page(_gross_rows(), columns=columns, unit=None)
+    primary = _page([_row(OWNER, "70,000,200", "59,999,800", kind="TOTAL")], primary=True, unit="VND")
     _cluster, candidate = _adapted_candidate([primary, note])
-    assert candidate["status"] == READY
-    receipts = candidate["closure_receipt"]["other_activity_adapter_receipt"][
-        "unit_corroboration_receipts"
-    ]
-    assert len(receipts) == 1
-    assert receipts[0]["canonical_unit"] == "MILLION_VND"
-    assert receipts[0]["primary_canonical_unit"] == "VND"
-    assert receipts[0]["matched_note_vector"] == [70, 60]
-    assert receipts[0]["matched_primary_vector"] == [70_000_200, 59_999_800]
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    assert "F38_SOURCE_UNIT_NOT_LOCALLY_PROVEN" in candidate["reasons"]
+    assert candidate["closure_receipt"]["other_activity_adapter_receipt"]["unit_corroboration_receipts"] == []
+    assert note["sections"][0]["tables"][0]["unit_exact"] is None
 
 
 def test_unitless_note_mismatch_is_not_unit_inferred() -> None:
@@ -1000,7 +908,8 @@ def test_partial_blank_note_lane_never_becomes_numeric() -> None:
     )
 
 
-def test_pdf_visible_money_column_repair_unlocks_exact_adjacent_continuation() -> None:
+@pytest.mark.parametrize("receiver_unit", [None, "Triệu đồng"])
+def test_pdf_visible_repaired_continuation_preserves_source_owned_unit_scope_without_donation(receiver_unit) -> None:
     prior = _page(
         [
             _row("Thu từ hoạt động khác", "100", "80", kind="TOTAL"),
@@ -1014,7 +923,7 @@ def test_pdf_visible_money_column_repair_unlocks_exact_adjacent_continuation() -
             {"header_path_exact": [None], "value_kind": "UNKNOWN"},
             {"header_path_exact": [None], "value_kind": "MONEY"},
         ],
-        unit=None,  # type: ignore[arg-type]
+        unit=receiver_unit,
     )
     receiver["sections"][0]["title_exact"] = None
     receiver["sections"][0]["tables"][0]["title_exact"] = None
@@ -1072,6 +981,12 @@ def test_pdf_visible_money_column_repair_unlocks_exact_adjacent_continuation() -
     primary = _page([_row(OWNER, "70", "60", kind="TOTAL")], primary=True)
     cluster, candidate = _adapted_candidate([primary, prior, receiver], compiled=compiled)
     assert candidate["status"] == READY
+    if receiver_unit is None:
+        fragment = candidate["closure_receipt"]["other_activity_source_role_unit_control_receipt"]["fragments"][-1]
+        assert fragment["source_local_unit_axis"]["complete"] is False
+        assert fragment["source_owned_continuation_unit_context"]["canonical_unit"] == "MILLION_VND"
+        assert fragment["source_owned_continuation_unit_context"]["period_proof_kind"] == "EXACT_INHERITED_BLANK_HEADERS"
+        assert receiver["sections"][0]["tables"][0]["unit_exact"] is None
     assert [region["physical_page"] for region in cluster["component_regions"]] == [
         1,
         2,
@@ -1085,15 +1000,16 @@ def test_pdf_visible_money_column_repair_unlocks_exact_adjacent_continuation() -
         "COLUMN_VALUE_KIND_PDF_VISIBLE_MONEY",
     ]
     assert [mapping["role"] for mapping in candidate["mappings"]] == [
-        "INCOME_PARENT",
-        "EXPENSE_PARENT",
-        "FAMILY_ROOT_TOTAL",
-    ]
+        "INCOME_PARENT", "EXPENSE_PARENT", "FAMILY_ROOT_TOTAL"]
 
 
-def test_exact_unlabeled_nonterminal_subtotals_are_equation_bound_not_mapped() -> None:
+@pytest.mark.parametrize("first_label,expected_status", [
+    ("Thu bán tài sản gán nợ", UNRESOLVED),
+    ("Lãi từ các công cụ tài chính phái sinh khác", READY),
+])
+def test_exact_unlabeled_subtotal_projection_does_not_grant_unproven_source_role(first_label, expected_status) -> None:
     rows = [
-        _row("Thu bán tài sản gán nợ", "10", "8"),
+        _row(first_label, "10", "8"),
         _row("Thu hồi các khoản nợ đã xóa", "20", "12"),
         _row(None, "30", "20", kind="SUBTOTAL"),
         _row("Chi phí khác", None, None, kind="GROUP"),
@@ -1105,7 +1021,10 @@ def test_exact_unlabeled_nonterminal_subtotals_are_equation_bound_not_mapped() -
     note = _page(rows)
     primary = _page([_row(OWNER, "23", "15", kind="TOTAL")], primary=True)
     _cluster, candidate = _adapted_candidate([primary, note])
-    assert candidate["status"] == READY
+    assert candidate["status"] == expected_status
+    if expected_status == UNRESOLVED:
+        assert candidate["mappings"] == []
+        assert "F38_SOURCE_TEMPLATE_ROLE_GRANULARITY_NOT_PROVEN" in candidate["reasons"]
     receipts = candidate["closure_receipt"]["other_activity_adapter_receipt"][
         "structural_projection_receipts"
     ]
