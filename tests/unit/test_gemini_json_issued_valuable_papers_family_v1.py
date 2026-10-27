@@ -1607,13 +1607,21 @@ def test_face_value_wrapper_projection_maps_visible_tenors_and_restores_source_p
 def test_face_value_wrapper_projection_requires_immediate_exact_wrapper() -> None:
     page = _face_value_wrapper_page()
     page["sections"][1]["tables"][0]["rows"][1]["label_exact"] = "- Giá trị hợp lý"
-    candidate, _replay = _evaluate_with_repairs(page)
+    original = copy.deepcopy(page)
+    candidate, replay = _evaluate_with_repairs(page)
     assert candidate["status"] == READY
-    assert "issued_valuable_papers_adapter_receipt" not in candidate["closure_receipt"]
+    adapter = candidate["closure_receipt"]["issued_valuable_papers_adapter_receipt"]
+    assert adapter["face_value_wrapper_receipts"] == []
     short = next(mapping for mapping in candidate["mappings"] if mapping["role"] == "BOND_SHORT")
+    assert [cell["coefficient"] for cell in short["values"]] == [1, 1]
     assert short["source_refs"][0]["hierarchy_path_exact"] == [
         "Trái phiếu- Mệnh giá+ Kỳ hạn dưới 12 tháng"
     ]
+    assert page == original
+    assert audit_source_observation_mapping_contract_v1(candidate)["status"] == "PASS"
+    assert validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
+        candidate, page_json_by_version={VERSION_ID: page}, **replay
+    ) == candidate
 
 
 def _flattened_tenor_carrier_page() -> dict:
@@ -3111,13 +3119,12 @@ def test_repeated_face_value_summary_is_pruned_before_complete_shb_detail() -> N
         )
         for receipt in adapter["maturity_validation_projection_receipts"]
     )
-    lane_binding = adapter["source_local_lane_binding_receipt"]
-    assert lane_binding["withheld_mappings"] == []
-    assert all(
-        check["status"] == "EXACT_EXISTING_SAME_TABLE_TRANSPOSED_ROW_PERIODS"
-        and check["existing_transposed_source_proof"]["projection_receipt_id"]
-        for check in lane_binding["checks"]
-    )
+    lane_binding = adapter["original_source_mapping_lane_receipt"]
+    assert lane_binding["failures"] == []
+    assert all(check["failures"] == [] for check in lane_binding["checks"])
+    assert all(table["status"] == "SOURCE_OWNED"
+               and table["period_rule"] == "EXPLICIT_CURRENT_COMPARATIVE_GROUP_BLOCKS"
+               for table in lane_binding["source_lane_inventory"]["tables"])
     audit = audit_source_observation_mapping_contract_v1(candidate)
     assert audit["status"] == "PASS", audit["violations"]
     assert audit["mapping_count"] == len(candidate["mappings"])

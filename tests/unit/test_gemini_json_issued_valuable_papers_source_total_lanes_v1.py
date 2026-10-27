@@ -197,10 +197,11 @@ def test_one_period_maturity_cannot_acquire_summary_comparative() -> None:
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
     receipt = candidate["closure_receipt"]["issued_valuable_papers_adapter_receipt"][
-        "source_local_lane_binding_receipt"
+        "original_source_mapping_lane_receipt"
     ]
-    assert any(check["status"] == "HOLD" for check in receipt["checks"])
-    assert receipt["withheld_mappings"]
+    assert receipt["failures"]
+    assert any(table["status"] == "HOLD" for table in receipt["source_lane_inventory"]["tables"])
+    assert receipt["withheld_or_rebound_mappings"]
     assert validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
         candidate, **context
     ) == candidate
@@ -208,9 +209,9 @@ def test_one_period_maturity_cannot_acquire_summary_comparative() -> None:
 
     tampered = copy.deepcopy(candidate)
     binding = tampered["closure_receipt"]["issued_valuable_papers_adapter_receipt"][
-        "source_local_lane_binding_receipt"
+        "original_source_mapping_lane_receipt"
     ]
-    binding["withheld_mappings"]["sha256"] = "0" * 64
+    binding["withheld_or_rebound_mappings"]["sha256"] = "0" * 64
     with pytest.raises(
         GeminiJsonIssuedValuablePapersFamilyV1Error, match="candidate replay drifted"
     ):
@@ -424,29 +425,41 @@ def test_authenticated_printed_root_and_superseded_receipt_tamper_fail_replay(dr
 @pytest.mark.parametrize("case_id", ["f25-msb-doc076", "f25-vab-doc241"])
 def test_authenticated_single_period_detail_cannot_borrow_summary_comparative(case_id: str) -> None:
     _, context = _packet_context(case_id)
+    if case_id == "f25-msb-doc076":
+        # The immutable original now has independent current-only permission.
+        # Remove both printed period surfaces only in this counterfactual copy.
+        page = next(iter(context["page_json_by_version"].values()))
+        section = page["sections"][1]
+        section["narratives_exact"] = []
+        total = section["tables"][1]["rows"][-1]
+        total["label_exact"] = None
+        total["hierarchy_path_exact"] = [None]
+        _counterfactual_candidate, context = _evaluate(page)
     before = copy.deepcopy(context["page_json_by_version"])
     candidate = evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(**context)
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
-    binding = candidate["closure_receipt"]["issued_valuable_papers_adapter_receipt"][
-        "source_local_lane_binding_receipt"
-    ]
-    assert binding["withheld_mappings"]
-    assert _decode_beforeimage(binding["withheld_mappings"])
+    key = "original_source_mapping_lane_receipt" if case_id == "f25-msb-doc076" else "source_local_lane_binding_receipt"
+    withheld_key = "withheld_or_rebound_mappings" if case_id == "f25-msb-doc076" else "withheld_mappings"
+    binding = candidate["closure_receipt"]["issued_valuable_papers_adapter_receipt"][key]
+    assert binding[withheld_key]
+    assert _decode_beforeimage(binding[withheld_key])
     audit = audit_source_observation_mapping_contract_v1(candidate)
     assert audit["status"] == "PASS", audit["violations"]
     assert audit["mapping_count"] == len(candidate["mappings"]) == 0
-    assert any(check["mapping_lane_count"] == 2 and any(
-        len(source["source_ref"]["money_column_ordinals"]) == 1
-        for source in check["source_axis"]
-    ) for check in binding["checks"])
+    if case_id == "f25-msb-doc076":
+        assert "TRANSPOSED_ORIGINAL_SOURCE_PERIOD_OWNER_UNPROVEN" in binding["failures"]
+        assert any(table["status"] == "HOLD" for table in binding["source_lane_inventory"]["tables"])
+    else:
+        assert any(check["mapping_lane_count"] == 2 and any(
+            len(source["source_ref"]["money_column_ordinals"]) == 1
+            for source in check["source_axis"]
+        ) for check in binding["checks"])
     assert validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
         candidate, **context
     ) == candidate
     tampered = copy.deepcopy(candidate)
-    tampered["closure_receipt"]["issued_valuable_papers_adapter_receipt"][
-        "source_local_lane_binding_receipt"
-    ]["withheld_mappings"] = []
+    tampered["closure_receipt"]["issued_valuable_papers_adapter_receipt"][key][withheld_key] = []
     with pytest.raises(GeminiJsonIssuedValuablePapersFamilyV1Error, match="candidate replay drifted"):
         validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
             tampered, **context

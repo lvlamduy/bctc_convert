@@ -1,0 +1,3662 @@
+{
+ "source": "/home/bctc/codex-runs/f25-full271-6d4-20261028-v1/family25.json",
+ "source_sha256_file": "846daa197edcbd4adef211e6098d886c0b95c6d380234b9ceac6e2ef5fe43777",
+ "producer": "6d4a0d7babb3c90985b038d2830423d425ed0743",
+ "note": "sweep JSON written before the ingest MemoryError; no store exists",
+ "trial": {
+  "candidate_count": 1,
+  "candidates": [
+   {
+    "candidate_id": "gjmthfcv1:candidate:acecd715b3b27a4e46841559acec7ddef5414e8d9d72182a96063a01bfe071b6",
+    "claim_boundary": "MANIFEST_SELECTED_GEMINI_JSON_ONLY_FAMILY25_EXACT_LOCAL_OR_INTERNAL_ROOT_ROW_OWNER_FACE_VALUE_WRAPPER_TENOR_CARRIER_AND_UNSHADOWED_PRIMARY_ROOT_STRUCTURAL_RECEIPTS_GENERIC_ROLE_PERIOD_UNIT_AND_ACCOUNTING_CLOSURE_WITH_PDF_VISIBLE_DASH_OVERLAY_PROVED_BY_AUTHENTICATED_FULL_PAGE_AND_CELL_CROP_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_SOURCE_MUTATION_OCR_PROVIDER_BANK_FILE_YEAR_PAGE_VALUE_ROUTING_NULL_ZERO_BACKSOLVE_CANONICAL_OR_EXPORT_AUTHORITY",
+    "closure_receipt": {
+     "cluster_aggregation_receipts": [],
+     "context_total_corroboration_receipts": [],
+     "derived_role_receipts": [],
+     "document_period_context": {
+      "comparative_period_date": "2024-12-31",
+      "current_period_date": "2025-03-31",
+      "evidence": [
+       {
+        "page_json_version_id": "gfpstorev1:json:01bedc440a883c3558407ee47fb1ec416809b67a5b251ed811d1200008ec8df6",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:c1b072cdb0e4592f29b483211cf73d427056503056cc2ebc58a63ab385fab30a",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:8b90dc18a40e523bbd91d15d2f6c0d30c5a79fbabfa1e5351562dc04fcde4925",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:4357fc63143b3486ca9a5302ff4a3df8e59ad236cc75ca6495b03ec34f983360",
+        "section_id": "s6",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:4357fc63143b3486ca9a5302ff4a3df8e59ad236cc75ca6495b03ec34f983360",
+        "section_id": "s7",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:1aae8818f6d183da8dd195446edad5d3ae1dd96efa162f81b15c2be6b27cd482",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:1aae8818f6d183da8dd195446edad5d3ae1dd96efa162f81b15c2be6b27cd482",
+        "section_id": "s1",
+        "table_id": "t2"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:daa62053ae41a01490a25da656044fda6bf2a58b45149242a9ec5e7a8a5ecbc2",
+        "section_id": "s1",
+        "table_id": "t2"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:daa62053ae41a01490a25da656044fda6bf2a58b45149242a9ec5e7a8a5ecbc2",
+        "section_id": "s1",
+        "table_id": "t3"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:51a56c68745005a81047ec80c908c2ef0e20fbef20f40e81caba2fc4483edefd",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:51a56c68745005a81047ec80c908c2ef0e20fbef20f40e81caba2fc4483edefd",
+        "section_id": "s1",
+        "table_id": "t2"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:c66b8deff3401f0c6abe98978e1951a8ff1242f11def1a047156e9bc6c64acf4",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:806da76e83e7ee0d9b729f15f486e6509cf303f88259b53da10a17eb4d75b51a",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+        "section_id": "s2",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+        "section_id": "s3",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:87a1c8d7dc40313beadec9ad55ea0a5070861b22304aaf8219dd137b0d85f499",
+        "section_id": "s2",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:41c059ef1346db6ea6146d7099965ad36d677267eb6ad021ce7d2607656d8510",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:41c059ef1346db6ea6146d7099965ad36d677267eb6ad021ce7d2607656d8510",
+        "section_id": "s3",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:6d7020a9711f4ddb9b136826407208661b207880d2b25c115e8195417e73a6ba",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:6d7020a9711f4ddb9b136826407208661b207880d2b25c115e8195417e73a6ba",
+        "section_id": "s1",
+        "table_id": "t2"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:6d7020a9711f4ddb9b136826407208661b207880d2b25c115e8195417e73a6ba",
+        "section_id": "s1",
+        "table_id": "t3"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "section_id": "s2",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:94d13454098ab6a6b0b9aa2831792eb723b18084f1ea00b48430660b39ec16e7",
+        "section_id": "s3",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:94d13454098ab6a6b0b9aa2831792eb723b18084f1ea00b48430660b39ec16e7",
+        "section_id": "s4",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:8b84b114f0040b8a4be2f235f02f2553ee18004fa126319dd29bf79ad9484d31",
+        "section_id": "s1",
+        "table_id": "t2"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+        "section_id": "s2",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+        "section_id": "s3",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+        "section_id": "s4",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:d80576d20376c1ad568ca4a7394f660f0cb91372170d64b8980ff0ccdec00915",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:fc3ebe3ae8df5d95df1b373d94b11c6052d822b7e739f81f9751a9d7cc43a11c",
+        "section_id": "s1",
+        "table_id": "t1"
+       },
+       {
+        "page_json_version_id": "gfpstorev1:json:597c1417c97950deb4f9b3d41a2a18b398b5c20bebf276f5488c65ae6895d084",
+        "section_id": "s1",
+        "table_id": "t1"
+       }
+      ],
+      "resolution": "UNIQUE_LATEST_REPEATED_TWO_DATE_MONEY_TABLE_CONTEXT"
+     },
+     "document_unit_context": {
+      "canonical_unit": null,
+      "conflicts": [],
+      "distinct_page_version_count": 29,
+      "evidence": [
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:01bedc440a883c3558407ee47fb1ec416809b67a5b251ed811d1200008ec8df6",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:c1b072cdb0e4592f29b483211cf73d427056503056cc2ebc58a63ab385fab30a",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:8b90dc18a40e523bbd91d15d2f6c0d30c5a79fbabfa1e5351562dc04fcde4925",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:9a230268e0a7a46d88fec914de3cc960b2d9b9c6f7832e6e46597cbd0e84b4ae",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:4357fc63143b3486ca9a5302ff4a3df8e59ad236cc75ca6495b03ec34f983360",
+        "section_id": "s6",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:4357fc63143b3486ca9a5302ff4a3df8e59ad236cc75ca6495b03ec34f983360",
+        "section_id": "s7",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:1aae8818f6d183da8dd195446edad5d3ae1dd96efa162f81b15c2be6b27cd482",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:1aae8818f6d183da8dd195446edad5d3ae1dd96efa162f81b15c2be6b27cd482",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t2"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:daa62053ae41a01490a25da656044fda6bf2a58b45149242a9ec5e7a8a5ecbc2",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t2"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:daa62053ae41a01490a25da656044fda6bf2a58b45149242a9ec5e7a8a5ecbc2",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t3"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:51a56c68745005a81047ec80c908c2ef0e20fbef20f40e81caba2fc4483edefd",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:806da76e83e7ee0d9b729f15f486e6509cf303f88259b53da10a17eb4d75b51a",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:806da76e83e7ee0d9b729f15f486e6509cf303f88259b53da10a17eb4d75b51a",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t2"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:806da76e83e7ee0d9b729f15f486e6509cf303f88259b53da10a17eb4d75b51a",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t3"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+        "section_id": "s2",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+        "section_id": "s3",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:87a1c8d7dc40313beadec9ad55ea0a5070861b22304aaf8219dd137b0d85f499",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:87a1c8d7dc40313beadec9ad55ea0a5070861b22304aaf8219dd137b0d85f499",
+        "section_id": "s2",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:41c059ef1346db6ea6146d7099965ad36d677267eb6ad021ce7d2607656d8510",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:41c059ef1346db6ea6146d7099965ad36d677267eb6ad021ce7d2607656d8510",
+        "section_id": "s2",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:41c059ef1346db6ea6146d7099965ad36d677267eb6ad021ce7d2607656d8510",
+        "section_id": "s3",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:6d7020a9711f4ddb9b136826407208661b207880d2b25c115e8195417e73a6ba",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:6d7020a9711f4ddb9b136826407208661b207880d2b25c115e8195417e73a6ba",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t2"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t2"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "section_id": "s2",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "section_id": "s3",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:79723e2273292d90d3b4c40b4df09bb3807ba54c9bf4a49bf5bfaf7e7d3e8eb8",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:35a91fdb4976ad43e8fa95bab128b5abf3c1863ae0677710a3bf266d9f5a108b",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:35a91fdb4976ad43e8fa95bab128b5abf3c1863ae0677710a3bf266d9f5a108b",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t2"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:35a91fdb4976ad43e8fa95bab128b5abf3c1863ae0677710a3bf266d9f5a108b",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t3"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:0ec4d85d4adf3ab52a3f8b9a1c0b5cd45393088edec6763500c8ac621607c0e4",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:0ec4d85d4adf3ab52a3f8b9a1c0b5cd45393088edec6763500c8ac621607c0e4",
+        "section_id": "s2",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:0ec4d85d4adf3ab52a3f8b9a1c0b5cd45393088edec6763500c8ac621607c0e4",
+        "section_id": "s3",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:0ec4d85d4adf3ab52a3f8b9a1c0b5cd45393088edec6763500c8ac621607c0e4",
+        "section_id": "s4",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:142f63e03bb441b4edaad2a4db0f9d517b7ac7652bb91185b49e6e57a00200d0",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:59f7f2c73b6bfba5424de8a327044658f0bfab46eb0abce8149445f22c12c3e5",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:94d13454098ab6a6b0b9aa2831792eb723b18084f1ea00b48430660b39ec16e7",
+        "section_id": "s3",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:94d13454098ab6a6b0b9aa2831792eb723b18084f1ea00b48430660b39ec16e7",
+        "section_id": "s4",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:8b84b114f0040b8a4be2f235f02f2553ee18004fa126319dd29bf79ad9484d31",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:8b84b114f0040b8a4be2f235f02f2553ee18004fa126319dd29bf79ad9484d31",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t2"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+        "section_id": "s2",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+        "section_id": "s3",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+        "section_id": "s4",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:d80576d20376c1ad568ca4a7394f660f0cb91372170d64b8980ff0ccdec00915",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:fc3ebe3ae8df5d95df1b373d94b11c6052d822b7e739f81f9751a9d7cc43a11c",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:fc3ebe3ae8df5d95df1b373d94b11c6052d822b7e739f81f9751a9d7cc43a11c",
+        "section_id": "s2",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:f1dc86d59248d6e44fb72bba7438979bcf59dbe5ece66aca8f0cfb9f0007ba76",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:f1dc86d59248d6e44fb72bba7438979bcf59dbe5ece66aca8f0cfb9f0007ba76",
+        "section_id": "s2",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:2cfb067fce56d9b727c147349284b290803ff70b6b5312e2fd0e0b97e8c331b1",
+        "section_id": "s1",
+        "source_exact": "Đơn vị: triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:e555d1f79f54a2984c925cf7556d61a023253b5c2cdd139b9f7502155409cba0",
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "matched_aliases": [
+         "trieu dong"
+        ],
+        "page_json_version_id": "gfpstorev1:json:76110d60bb414e8924205ca31bfeeac5a13ab6d0da11b219dd32e960eced26af",
+        "section_id": "s1",
+        "source_exact": "Đơn vị: triệu đồng",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       },
+       {
+        "accepted": true,
+        "canonical_unit": "VND",
+        "magnitude_power10": 0,
+        "matched_aliases": [
+         "vnd"
+        ],
+        "page_json_version_id": "gfpstorev1:json:597c1417c97950deb4f9b3d41a2a18b398b5c20bebf276f5488c65ae6895d084",
+        "section_id": "s1",
+        "source_exact": "VND",
+        "source_kind": "TABLE_UNIT",
+        "table_id": "t1"
+       }
+      ],
+      "evidence_axis_sha256": "edbc804b73f4da454fd1f1b644dca6596c7e1ddf82c37186df7f9ed443e813f2",
+      "owner_row_evidence": [
+       {
+        "canonical_unit": "MILLION_VND",
+        "coefficients": [
+         21888796,
+         21210596
+        ],
+        "magnitude_power10": 6,
+        "page_json_version_id": "gfpstorev1:json:c1b072cdb0e4592f29b483211cf73d427056503056cc2ebc58a63ab385fab30a",
+        "period_axis_complete": true,
+        "period_signatures": [
+         [
+          "DATE",
+          "2025-03-31"
+         ],
+         [
+          "DATE",
+          "2024-12-31"
+         ]
+        ],
+        "row_ordinal": 9,
+        "section_id": "s1",
+        "source_exact": "triệu đồng",
+        "source_kind": "EXPLICIT_UNIT_CUSTOMER_DEPOSIT_OWNER_ROW",
+        "table_id": "t1"
+       }
+      ],
+      "owner_row_evidence_axis_sha256": "b4efe7d18fb45d6482ae4b5e3965257cb0e8e8c8c6786f42f96ae336821d8da5",
+      "rule": "EXPLICIT_SCALED_TABLE_UNIT_UNIQUE_ACROSS_AT_LEAST_TWO_SELECTED_PAGES",
+      "status": "NOT_UNIQUE"
+     },
+     "equations": [
+      {
+       "component_roles": [
+        "SOURCE_ROW",
+        "SOURCE_ROW"
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           "Chứng chỉ tiền gửi"
+          ],
+          "label_exact": "Chứng chỉ tiền gửi",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "CERTIFICATE_OF_DEPOSIT"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 1,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t1"
+          },
+          "money_column_ordinals": [
+           1,
+           2
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_ordinal": 1
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Trái phiếu thường"
+          ],
+          "label_exact": "Trái phiếu thường",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "CERTIFICATE_OF_DEPOSIT"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 1,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t1"
+          },
+          "money_column_ordinals": [
+           1,
+           2
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_ordinal": 2
+         }
+        ]
+       ],
+       "component_sums": [
+        21888796,
+        21210596
+       ],
+       "equation_id": "gjfoltiev1:equation:eeeb613e55843047023755c60cfae8c4a34ab0c0821a21bc3d06e573081cca40",
+       "equation_kind": "EXACT_ALL_PRECEDING_NON_TOTAL_ROWS_EQUAL_PRINTED_TOTAL",
+       "lane_keys": [
+        [
+         "SEMANTIC_ALIAS",
+         "CURRENT_PERIOD"
+        ],
+        [
+         "SEMANTIC_ALIAS",
+         "COMPARATIVE_PERIOD"
+        ]
+       ],
+       "multipliers": [
+        1,
+        1
+       ],
+       "result_coefficients": [
+        21888796,
+        21210596
+       ],
+       "result_role": "SOURCE_ROW",
+       "result_source_refs": [
+        {
+         "hierarchy_path_exact": [
+          null
+         ],
+         "label_exact": null,
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "CERTIFICATE_OF_DEPOSIT"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 1,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t1"
+         },
+         "money_column_ordinals": [
+          1,
+          2
+         ],
+         "row_id": "r3",
+         "row_kind": "TOTAL",
+         "row_ordinal": 3
+        }
+       ],
+       "status": "EXACT"
+      },
+      {
+       "component_roles": [
+        "BOND_SHORT",
+        "BOND_MEDIUM",
+        "BOND_LONG"
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           "Dưới 12 tháng"
+          ],
+          "label_exact": "Dưới 12 tháng",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1
+          ],
+          "row_id": "r1",
+          "row_kind": "GROUP",
+          "row_ordinal": 1
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Từ 12 tháng đến 5 năm"
+          ],
+          "label_exact": "Từ 12 tháng đến 5 năm",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1
+          ],
+          "row_id": "r3",
+          "row_kind": "GROUP",
+          "row_ordinal": 3
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Từ 5 năm trở lên"
+          ],
+          "label_exact": "Từ 5 năm trở lên",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1
+          ],
+          "row_id": "r5",
+          "row_kind": "GROUP",
+          "row_ordinal": 5
+         }
+        ]
+       ],
+       "component_sums": [
+        16800000
+       ],
+       "equation_id": "gjfoltiev1:equation:4b2cda778e3770e09ac4ec6682595425a8c9b75de6882525fa03d3bb279d65fc",
+       "equation_kind": "EXACT_TRANSPOSED_TENOR_FRONTIER_EQUALS_INSTRUMENT_TOTAL",
+       "lane_keys": [
+        [
+         "DATE",
+         "2025-03-31"
+        ]
+       ],
+       "multipliers": [
+        1,
+        1,
+        1
+       ],
+       "result_coefficients": [
+        16800000
+       ],
+       "result_role": "BOND",
+       "result_source_refs": [
+        {
+         "hierarchy_path_exact": [
+          null
+         ],
+         "label_exact": null,
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "BOND_LONG",
+           "BOND_MEDIUM",
+           "BOND_SHORT",
+           "CD_LONG",
+           "CD_MEDIUM",
+           "CD_SHORT",
+           "CERTIFICATE_OF_DEPOSIT",
+           "GENERIC_ISSUED_PAPER_SOURCE"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 2,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t2"
+         },
+         "money_column_ordinals": [
+          1
+         ],
+         "row_id": "r7",
+         "row_kind": "TOTAL",
+         "row_ordinal": 7
+        }
+       ],
+       "status": "EXACT"
+      },
+      {
+       "component_roles": [
+        "CD_SHORT",
+        "CD_MEDIUM",
+        "CD_LONG"
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           "Dưới 12 tháng"
+          ],
+          "label_exact": "Dưới 12 tháng",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           2
+          ],
+          "row_id": "r1",
+          "row_kind": "GROUP",
+          "row_ordinal": 1
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Từ 12 tháng đến 5 năm"
+          ],
+          "label_exact": "Từ 12 tháng đến 5 năm",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           2
+          ],
+          "row_id": "r3",
+          "row_kind": "GROUP",
+          "row_ordinal": 3
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Từ 5 năm trở lên"
+          ],
+          "label_exact": "Từ 5 năm trở lên",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           2
+          ],
+          "row_id": "r5",
+          "row_kind": "GROUP",
+          "row_ordinal": 5
+         }
+        ]
+       ],
+       "component_sums": [
+        5088796
+       ],
+       "equation_id": "gjfoltiev1:equation:2b94a324416f79cfc2dba925ac4ce25bf73d3931691454843e12aabe0b1bcc40",
+       "equation_kind": "EXACT_TRANSPOSED_TENOR_FRONTIER_EQUALS_INSTRUMENT_TOTAL",
+       "lane_keys": [
+        [
+         "DATE",
+         "2025-03-31"
+        ]
+       ],
+       "multipliers": [
+        1,
+        1,
+        1
+       ],
+       "result_coefficients": [
+        5088796
+       ],
+       "result_role": "CERTIFICATE_OF_DEPOSIT",
+       "result_source_refs": [
+        {
+         "hierarchy_path_exact": [
+          null
+         ],
+         "label_exact": null,
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "BOND_LONG",
+           "BOND_MEDIUM",
+           "BOND_SHORT",
+           "CD_LONG",
+           "CD_MEDIUM",
+           "CD_SHORT",
+           "CERTIFICATE_OF_DEPOSIT",
+           "GENERIC_ISSUED_PAPER_SOURCE"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 2,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t2"
+         },
+         "money_column_ordinals": [
+          2
+         ],
+         "row_id": "r7",
+         "row_kind": "TOTAL",
+         "row_ordinal": 7
+        }
+       ],
+       "status": "EXACT"
+      },
+      {
+       "component_roles": [
+        "BOND_SHORT",
+        "CD_SHORT"
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           "Dưới 12 tháng"
+          ],
+          "label_exact": "Dưới 12 tháng",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1
+          ],
+          "row_id": "r1",
+          "row_kind": "GROUP",
+          "row_ordinal": 1
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Dưới 12 tháng"
+          ],
+          "label_exact": "Dưới 12 tháng",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           2
+          ],
+          "row_id": "r1",
+          "row_kind": "GROUP",
+          "row_ordinal": 1
+         }
+        ]
+       ],
+       "component_sums": [
+        2950000
+       ],
+       "equation_id": "gjfoltiev1:equation:224b0df8f56798310c83194060a285ef044486b16d943a58bec7af27266bfa63",
+       "equation_kind": "EXACT_TRANSPOSED_INSTRUMENT_COLUMNS_EQUAL_VISIBLE_ROW_TOTAL",
+       "lane_keys": [
+        [
+         "DATE",
+         "2025-03-31"
+        ]
+       ],
+       "multipliers": [
+        1,
+        1
+       ],
+       "result_coefficients": [
+        2950000
+       ],
+       "result_role": "SOURCE_TRANSPOSED_ROW_TOTAL_r1",
+       "result_source_refs": [
+        {
+         "hierarchy_path_exact": [
+          "Dưới 12 tháng"
+         ],
+         "label_exact": "Dưới 12 tháng",
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "BOND_LONG",
+           "BOND_MEDIUM",
+           "BOND_SHORT",
+           "CD_LONG",
+           "CD_MEDIUM",
+           "CD_SHORT",
+           "CERTIFICATE_OF_DEPOSIT",
+           "GENERIC_ISSUED_PAPER_SOURCE"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 2,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t2"
+         },
+         "money_column_ordinals": [
+          3
+         ],
+         "row_id": "r1",
+         "row_kind": "GROUP",
+         "row_ordinal": 1
+        }
+       ],
+       "status": "EXACT"
+      },
+      {
+       "component_roles": [
+        "BOND_MEDIUM",
+        "CD_MEDIUM"
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           "Từ 12 tháng đến 5 năm"
+          ],
+          "label_exact": "Từ 12 tháng đến 5 năm",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1
+          ],
+          "row_id": "r3",
+          "row_kind": "GROUP",
+          "row_ordinal": 3
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Từ 12 tháng đến 5 năm"
+          ],
+          "label_exact": "Từ 12 tháng đến 5 năm",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           2
+          ],
+          "row_id": "r3",
+          "row_kind": "GROUP",
+          "row_ordinal": 3
+         }
+        ]
+       ],
+       "component_sums": [
+        17938796
+       ],
+       "equation_id": "gjfoltiev1:equation:5f43905e7a7a1b2807d501730e2b1b0e1984018eb04c7b8e2d3383819ce7288e",
+       "equation_kind": "EXACT_TRANSPOSED_INSTRUMENT_COLUMNS_EQUAL_VISIBLE_ROW_TOTAL",
+       "lane_keys": [
+        [
+         "DATE",
+         "2025-03-31"
+        ]
+       ],
+       "multipliers": [
+        1,
+        1
+       ],
+       "result_coefficients": [
+        17938796
+       ],
+       "result_role": "SOURCE_TRANSPOSED_ROW_TOTAL_r3",
+       "result_source_refs": [
+        {
+         "hierarchy_path_exact": [
+          "Từ 12 tháng đến 5 năm"
+         ],
+         "label_exact": "Từ 12 tháng đến 5 năm",
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "BOND_LONG",
+           "BOND_MEDIUM",
+           "BOND_SHORT",
+           "CD_LONG",
+           "CD_MEDIUM",
+           "CD_SHORT",
+           "CERTIFICATE_OF_DEPOSIT",
+           "GENERIC_ISSUED_PAPER_SOURCE"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 2,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t2"
+         },
+         "money_column_ordinals": [
+          3
+         ],
+         "row_id": "r3",
+         "row_kind": "GROUP",
+         "row_ordinal": 3
+        }
+       ],
+       "status": "EXACT"
+      },
+      {
+       "component_roles": [
+        "BOND_LONG",
+        "CD_LONG"
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           "Từ 5 năm trở lên"
+          ],
+          "label_exact": "Từ 5 năm trở lên",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1
+          ],
+          "row_id": "r5",
+          "row_kind": "GROUP",
+          "row_ordinal": 5
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Từ 5 năm trở lên"
+          ],
+          "label_exact": "Từ 5 năm trở lên",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           2
+          ],
+          "row_id": "r5",
+          "row_kind": "GROUP",
+          "row_ordinal": 5
+         }
+        ]
+       ],
+       "component_sums": [
+        1000000
+       ],
+       "equation_id": "gjfoltiev1:equation:42c94bf67fcf4a5c6f247d8030bdeb6a46de2697030a0d2f2dab1144bddf8a29",
+       "equation_kind": "EXACT_TRANSPOSED_INSTRUMENT_COLUMNS_EQUAL_VISIBLE_ROW_TOTAL",
+       "lane_keys": [
+        [
+         "DATE",
+         "2025-03-31"
+        ]
+       ],
+       "multipliers": [
+        1,
+        1
+       ],
+       "result_coefficients": [
+        1000000
+       ],
+       "result_role": "SOURCE_TRANSPOSED_ROW_TOTAL_r5",
+       "result_source_refs": [
+        {
+         "hierarchy_path_exact": [
+          "Từ 5 năm trở lên"
+         ],
+         "label_exact": "Từ 5 năm trở lên",
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "BOND_LONG",
+           "BOND_MEDIUM",
+           "BOND_SHORT",
+           "CD_LONG",
+           "CD_MEDIUM",
+           "CD_SHORT",
+           "CERTIFICATE_OF_DEPOSIT",
+           "GENERIC_ISSUED_PAPER_SOURCE"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 2,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t2"
+         },
+         "money_column_ordinals": [
+          3
+         ],
+         "row_id": "r5",
+         "row_kind": "GROUP",
+         "row_ordinal": 5
+        }
+       ],
+       "status": "EXACT"
+      },
+      {
+       "component_roles": [
+        "BOND",
+        "CERTIFICATE_OF_DEPOSIT"
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           null
+          ],
+          "label_exact": null,
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1
+          ],
+          "row_id": "r7",
+          "row_kind": "TOTAL",
+          "row_ordinal": 7
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           null
+          ],
+          "label_exact": null,
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           2
+          ],
+          "row_id": "r7",
+          "row_kind": "TOTAL",
+          "row_ordinal": 7
+         }
+        ]
+       ],
+       "component_sums": [
+        21888796
+       ],
+       "equation_id": "gjfoltiev1:equation:a4a58e2a4b046581a20cbdbf33030c6b5b0dd6a12636c0be0ac3b02da27ff833",
+       "equation_kind": "EXACT_TRANSPOSED_INSTRUMENT_TOTALS_EQUAL_VISIBLE_FAMILY_ROOT",
+       "lane_keys": [
+        [
+         "DATE",
+         "2025-03-31"
+        ]
+       ],
+       "multipliers": [
+        1,
+        1
+       ],
+       "result_coefficients": [
+        21888796
+       ],
+       "result_role": "FAMILY_ROOT_TOTAL",
+       "result_source_refs": [
+        {
+         "hierarchy_path_exact": [
+          null
+         ],
+         "label_exact": null,
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "BOND_LONG",
+           "BOND_MEDIUM",
+           "BOND_SHORT",
+           "CD_LONG",
+           "CD_MEDIUM",
+           "CD_SHORT",
+           "CERTIFICATE_OF_DEPOSIT",
+           "GENERIC_ISSUED_PAPER_SOURCE"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 2,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t2"
+         },
+         "money_column_ordinals": [
+          3
+         ],
+         "row_id": "r7",
+         "row_kind": "TOTAL",
+         "row_ordinal": 7
+        }
+       ],
+       "status": "EXACT"
+      }
+     ],
+     "issued_valuable_papers_adapter_receipt": {
+      "adapter_format_version": "GEMINI_JSON_ISSUED_VALUABLE_PAPERS_FAMILY_ADAPTER_V1",
+      "adapter_receipt_id": "gjivpfav1:receipt:da4292b81b4b109deec02e953e1410d1a89eadef90f538d8b5f14d1ed24ea146",
+      "adjacent_source_syntax_projection_receipts": [],
+      "authenticated_source_repairs": [],
+      "face_value_wrapper_receipts": [],
+      "maturity_validation_projection_receipts": [],
+      "primary_root_projection_receipt": null,
+      "shared_engine_claim_boundary": "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_MULTITABLE_HIERARCHICAL_OWNER_RESET_FENCE_EXHAUSTIVE_MONEY_TABLE_SOURCE_ONLY_UNMAPPED_DIRECT_FRONTIER_PERIOD_UNIT_SUBTOTAL_TOTAL_ROLLFORWARD_ALL_LANE_CLOSURE_SCHEMA_MAPPING_PROPOSAL_ONLY_NO_GEOMETRY_OCR_BANK_FILE_PAGE_NOTE_VALUE_PROMPT_ROUTING_BACKSOLVE_CANONICAL_OR_EXPORT_AUTHORITY",
+      "source_local_lane_binding_receipt": {
+       "checks": [
+        {
+         "existing_transposed_source_proof": null,
+         "item_mapping_id": "gjmthfmv1:item:df9c384e39b1d76f1586f912fa3ae77b01bf34cec73924459baf04691162ec75",
+         "mapping_lane_count": 2,
+         "role": "CERTIFICATE_OF_DEPOSIT",
+         "source_axis": [
+          {
+           "explicit_local_dates": [
+            "2024-12-31",
+            "2025-03-31"
+           ],
+           "source_ref": {
+            "hierarchy_path_exact": [
+             "Chứng chỉ tiền gửi"
+            ],
+            "label_exact": "Chứng chỉ tiền gửi",
+            "locator": {
+             "component_roles": [
+              "BOND",
+              "CERTIFICATE_OF_DEPOSIT"
+             ],
+             "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+             "document_ordinal": 84,
+             "fragment_ordinal": 1,
+             "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+             "physical_page": 40,
+             "section_id": "s1",
+             "selected_page_ordinal": 40,
+             "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+             "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+             "table_id": "t1"
+            },
+            "money_column_ordinals": [
+             1,
+             2
+            ],
+            "row_id": "r1",
+            "row_kind": "ITEM",
+            "row_ordinal": 1
+           },
+           "source_row_exact": {
+            "hierarchy_path_exact": [
+             "Chứng chỉ tiền gửi"
+            ],
+            "label_exact": "Chứng chỉ tiền gửi",
+            "row_kind": "ITEM",
+            "values_exact": [
+             "5.088.796",
+             "4.410.596"
+            ]
+           }
+          },
+          {
+           "explicit_local_dates": [],
+           "source_ref": {
+            "hierarchy_path_exact": [
+             null
+            ],
+            "label_exact": null,
+            "locator": {
+             "component_roles": [
+              "BOND",
+              "BOND_LONG",
+              "BOND_MEDIUM",
+              "BOND_SHORT",
+              "CD_LONG",
+              "CD_MEDIUM",
+              "CD_SHORT",
+              "CERTIFICATE_OF_DEPOSIT",
+              "GENERIC_ISSUED_PAPER_SOURCE"
+             ],
+             "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+             "document_ordinal": 84,
+             "fragment_ordinal": 2,
+             "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+             "physical_page": 40,
+             "section_id": "s1",
+             "selected_page_ordinal": 40,
+             "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+             "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+             "table_id": "t2"
+            },
+            "money_column_ordinals": [
+             2
+            ],
+            "row_id": "r7",
+            "row_kind": "TOTAL",
+            "row_ordinal": 7
+           },
+           "source_row_exact": {
+            "hierarchy_path_exact": [
+             null
+            ],
+            "label_exact": null,
+            "row_kind": "TOTAL",
+            "values_exact": [
+             "16.800.000",
+             "5.088.796",
+             "21.888.796"
+            ]
+           }
+          },
+          {
+           "explicit_local_dates": [
+            "2024-12-31",
+            "2025-03-31"
+           ],
+           "source_ref": {
+            "hierarchy_path_exact": [
+             "Chứng chỉ tiền gửi"
+            ],
+            "label_exact": "Chứng chỉ tiền gửi",
+            "locator": {
+             "component_roles": [
+              "BOND",
+              "CERTIFICATE_OF_DEPOSIT"
+             ],
+             "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+             "document_ordinal": 84,
+             "fragment_ordinal": 1,
+             "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+             "physical_page": 40,
+             "section_id": "s1",
+             "selected_page_ordinal": 40,
+             "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+             "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+             "table_id": "t1"
+            },
+            "money_column_ordinals": [
+             1,
+             2
+            ],
+            "row_id": "r1",
+            "row_kind": "ITEM",
+            "row_ordinal": 1
+           },
+           "source_row_exact": {
+            "hierarchy_path_exact": [
+             "Chứng chỉ tiền gửi"
+            ],
+            "label_exact": "Chứng chỉ tiền gửi",
+            "row_kind": "ITEM",
+            "values_exact": [
+             "5.088.796",
+             "4.410.596"
+            ]
+           }
+          }
+         ],
+         "status": "HOLD"
+        },
+        {
+         "existing_transposed_source_proof": null,
+         "item_mapping_id": "gjmthfmv1:item:ccc081e90bbc827b5204b951b255e74a145d1816aaaa1716b14709d5cca75093",
+         "mapping_lane_count": 2,
+         "role": "BOND",
+         "source_axis": [
+          {
+           "explicit_local_dates": [
+            "2024-12-31",
+            "2025-03-31"
+           ],
+           "source_ref": {
+            "hierarchy_path_exact": [
+             "Trái phiếu thường"
+            ],
+            "label_exact": "Trái phiếu thường",
+            "locator": {
+             "component_roles": [
+              "BOND",
+              "CERTIFICATE_OF_DEPOSIT"
+             ],
+             "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+             "document_ordinal": 84,
+             "fragment_ordinal": 1,
+             "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+             "physical_page": 40,
+             "section_id": "s1",
+             "selected_page_ordinal": 40,
+             "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+             "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+             "table_id": "t1"
+            },
+            "money_column_ordinals": [
+             1,
+             2
+            ],
+            "row_id": "r2",
+            "row_kind": "ITEM",
+            "row_ordinal": 2
+           },
+           "source_row_exact": {
+            "hierarchy_path_exact": [
+             "Trái phiếu thường"
+            ],
+            "label_exact": "Trái phiếu thường",
+            "row_kind": "ITEM",
+            "values_exact": [
+             "16.800.000",
+             "16.800.000"
+            ]
+           }
+          },
+          {
+           "explicit_local_dates": [],
+           "source_ref": {
+            "hierarchy_path_exact": [
+             null
+            ],
+            "label_exact": null,
+            "locator": {
+             "component_roles": [
+              "BOND",
+              "BOND_LONG",
+              "BOND_MEDIUM",
+              "BOND_SHORT",
+              "CD_LONG",
+              "CD_MEDIUM",
+              "CD_SHORT",
+              "CERTIFICATE_OF_DEPOSIT",
+              "GENERIC_ISSUED_PAPER_SOURCE"
+             ],
+             "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+             "document_ordinal": 84,
+             "fragment_ordinal": 2,
+             "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+             "physical_page": 40,
+             "section_id": "s1",
+             "selected_page_ordinal": 40,
+             "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+             "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+             "table_id": "t2"
+            },
+            "money_column_ordinals": [
+             1
+            ],
+            "row_id": "r7",
+            "row_kind": "TOTAL",
+            "row_ordinal": 7
+           },
+           "source_row_exact": {
+            "hierarchy_path_exact": [
+             null
+            ],
+            "label_exact": null,
+            "row_kind": "TOTAL",
+            "values_exact": [
+             "16.800.000",
+             "5.088.796",
+             "21.888.796"
+            ]
+           }
+          },
+          {
+           "explicit_local_dates": [
+            "2024-12-31",
+            "2025-03-31"
+           ],
+           "source_ref": {
+            "hierarchy_path_exact": [
+             "Trái phiếu thường"
+            ],
+            "label_exact": "Trái phiếu thường",
+            "locator": {
+             "component_roles": [
+              "BOND",
+              "CERTIFICATE_OF_DEPOSIT"
+             ],
+             "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+             "document_ordinal": 84,
+             "fragment_ordinal": 1,
+             "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+             "physical_page": 40,
+             "section_id": "s1",
+             "selected_page_ordinal": 40,
+             "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+             "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+             "table_id": "t1"
+            },
+            "money_column_ordinals": [
+             1,
+             2
+            ],
+            "row_id": "r2",
+            "row_kind": "ITEM",
+            "row_ordinal": 2
+           },
+           "source_row_exact": {
+            "hierarchy_path_exact": [
+             "Trái phiếu thường"
+            ],
+            "label_exact": "Trái phiếu thường",
+            "row_kind": "ITEM",
+            "values_exact": [
+             "16.800.000",
+             "16.800.000"
+            ]
+           }
+          }
+         ],
+         "status": "HOLD"
+        },
+        {
+         "existing_transposed_source_proof": null,
+         "item_mapping_id": "gjmthfmv1:item:de67fef322dc41febb0845e1e239347d1b824ddd0acd330c3646fc94097402db",
+         "mapping_lane_count": 2,
+         "role": "FAMILY_ROOT_TOTAL",
+         "source_axis": [
+          {
+           "explicit_local_dates": [
+            "2024-12-31",
+            "2025-03-31"
+           ],
+           "source_ref": {
+            "hierarchy_path_exact": [
+             null
+            ],
+            "label_exact": null,
+            "locator": {
+             "component_roles": [
+              "BOND",
+              "CERTIFICATE_OF_DEPOSIT"
+             ],
+             "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+             "document_ordinal": 84,
+             "fragment_ordinal": 1,
+             "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+             "physical_page": 40,
+             "section_id": "s1",
+             "selected_page_ordinal": 40,
+             "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+             "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+             "table_id": "t1"
+            },
+            "money_column_ordinals": [
+             1,
+             2
+            ],
+            "row_id": "r3",
+            "row_kind": "TOTAL",
+            "row_ordinal": 3
+           },
+           "source_row_exact": {
+            "hierarchy_path_exact": [
+             null
+            ],
+            "label_exact": null,
+            "row_kind": "TOTAL",
+            "values_exact": [
+             "21.888.796",
+             "21.210.596"
+            ]
+           }
+          },
+          {
+           "explicit_local_dates": [],
+           "source_ref": {
+            "hierarchy_path_exact": [
+             null
+            ],
+            "label_exact": null,
+            "locator": {
+             "component_roles": [
+              "BOND",
+              "BOND_LONG",
+              "BOND_MEDIUM",
+              "BOND_SHORT",
+              "CD_LONG",
+              "CD_MEDIUM",
+              "CD_SHORT",
+              "CERTIFICATE_OF_DEPOSIT",
+              "GENERIC_ISSUED_PAPER_SOURCE"
+             ],
+             "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+             "document_ordinal": 84,
+             "fragment_ordinal": 2,
+             "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+             "physical_page": 40,
+             "section_id": "s1",
+             "selected_page_ordinal": 40,
+             "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+             "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+             "table_id": "t2"
+            },
+            "money_column_ordinals": [
+             3
+            ],
+            "row_id": "r7",
+            "row_kind": "TOTAL",
+            "row_ordinal": 7
+           },
+           "source_row_exact": {
+            "hierarchy_path_exact": [
+             null
+            ],
+            "label_exact": null,
+            "row_kind": "TOTAL",
+            "values_exact": [
+             "16.800.000",
+             "5.088.796",
+             "21.888.796"
+            ]
+           }
+          }
+         ],
+         "status": "HOLD"
+        }
+       ],
+       "format_version": "GEMINI_JSON_ISSUED_PAPERS_SOURCE_LOCAL_LANE_BINDING_V1",
+       "rule": "NO_NEIGHBOUR_ROLE_VALUE_SUPPLIES_AN_UNSEEN_LOCAL_SOURCE_COLUMN",
+       "source_local_lane_binding_receipt_id": "gjivpsllbv1:receipt:f208941cbde7ad9d5cf3592dfdef48a40a3de082bca88ac325246c2cbe6d2c98",
+       "withheld_mappings": {
+        "canonical_json": "[{\"item_mapping_id\":\"gjmthfmv1:item:df9c384e39b1d76f1586f912fa3ae77b01bf34cec73924459baf04691162ec75\",\"report_norm_id\":1101,\"role\":\"CERTIFICATE_OF_DEPOSIT\",\"row_id\":\"corroborated:CERTIFICATE_OF_DEPOSIT\",\"source_refs\":[{\"hierarchy_path_exact\":[\"Chứng chỉ tiền gửi\"],\"label_exact\":\"Chứng chỉ tiền gửi\",\"locator\":{\"component_roles\":[\"BOND\",\"CERTIFICATE_OF_DEPOSIT\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":1,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t1\"},\"money_column_ordinals\":[1,2],\"row_id\":\"r1\",\"row_kind\":\"ITEM\",\"row_ordinal\":1},{\"hierarchy_path_exact\":[null],\"label_exact\":null,\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[2],\"row_id\":\"r7\",\"row_kind\":\"TOTAL\",\"row_ordinal\":7},{\"hierarchy_path_exact\":[\"Chứng chỉ tiền gửi\"],\"label_exact\":\"Chứng chỉ tiền gửi\",\"locator\":{\"component_roles\":[\"BOND\",\"CERTIFICATE_OF_DEPOSIT\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":1,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t1\"},\"money_column_ordinals\":[1,2],\"row_id\":\"r1\",\"row_kind\":\"ITEM\",\"row_ordinal\":1}],\"state\":\"SOURCE_OBSERVED_ROLE_ROW\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":5088796,\"source_text\":\"5.088.796\",\"state\":\"RAW_SIGNED_INTEGER\"},{\"coefficient\":4410596,\"source_text\":\"4.410.596\",\"state\":\"RAW_SIGNED_INTEGER\"}]},{\"item_mapping_id\":\"gjmthfmv1:item:213202138a082490d1738958f9eb65f2fa18c3f10d55b62757f806e59f565637\",\"report_norm_id\":1102,\"role\":\"CD_SHORT\",\"row_id\":\"r1\",\"source_refs\":[{\"hierarchy_path_exact\":[\"Dưới 12 tháng\"],\"label_exact\":\"Dưới 12 tháng\",\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[2],\"row_id\":\"r1\",\"row_kind\":\"GROUP\",\"row_ordinal\":1}],\"state\":\"SOURCE_VISIBLE_TRANSPOSED_TENOR_CARRIER\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":2950000,\"source_text\":\"2.950.000\",\"state\":\"RAW_SIGNED_INTEGER\"}]},{\"item_mapping_id\":\"gjmthfmv1:item:407469ac6ed4b46757858871052e141d852cd6a812fa19208e5298c7102ae540\",\"report_norm_id\":1103,\"role\":\"CD_MEDIUM\",\"row_id\":\"r3\",\"source_refs\":[{\"hierarchy_path_exact\":[\"Từ 12 tháng đến 5 năm\"],\"label_exact\":\"Từ 12 tháng đến 5 năm\",\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[2],\"row_id\":\"r3\",\"row_kind\":\"GROUP\",\"row_ordinal\":3}],\"state\":\"SOURCE_VISIBLE_TRANSPOSED_TENOR_CARRIER\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":2138796,\"source_text\":\"2.138.796\",\"state\":\"RAW_SIGNED_INTEGER\"}]},{\"item_mapping_id\":\"gjmthfmv1:item:3542b8dee55d2efedc0f3dd414feb88cee97d1f1112197798838a6f3abc0b638\",\"report_norm_id\":1104,\"role\":\"CD_LONG\",\"row_id\":\"r5\",\"source_refs\":[{\"hierarchy_path_exact\":[\"Từ 5 năm trở lên\"],\"label_exact\":\"Từ 5 năm trở lên\",\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[2],\"row_id\":\"r5\",\"row_kind\":\"GROUP\",\"row_ordinal\":5}],\"state\":\"SOURCE_VISIBLE_TRANSPOSED_TENOR_CARRIER\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":0,\"source_text\":\" -\",\"state\":\"DASH_ZERO\"}]},{\"item_mapping_id\":\"gjmthfmv1:item:ccc081e90bbc827b5204b951b255e74a145d1816aaaa1716b14709d5cca75093\",\"report_norm_id\":1109,\"role\":\"BOND\",\"row_id\":\"corroborated:BOND\",\"source_refs\":[{\"hierarchy_path_exact\":[\"Trái phiếu thường\"],\"label_exact\":\"Trái phiếu thường\",\"locator\":{\"component_roles\":[\"BOND\",\"CERTIFICATE_OF_DEPOSIT\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":1,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t1\"},\"money_column_ordinals\":[1,2],\"row_id\":\"r2\",\"row_kind\":\"ITEM\",\"row_ordinal\":2},{\"hierarchy_path_exact\":[null],\"label_exact\":null,\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[1],\"row_id\":\"r7\",\"row_kind\":\"TOTAL\",\"row_ordinal\":7},{\"hierarchy_path_exact\":[\"Trái phiếu thường\"],\"label_exact\":\"Trái phiếu thường\",\"locator\":{\"component_roles\":[\"BOND\",\"CERTIFICATE_OF_DEPOSIT\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":1,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t1\"},\"money_column_ordinals\":[1,2],\"row_id\":\"r2\",\"row_kind\":\"ITEM\",\"row_ordinal\":2}],\"state\":\"SOURCE_OBSERVED_ROLE_ROW\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":16800000,\"source_text\":\"16.800.000\",\"state\":\"RAW_SIGNED_INTEGER\"},{\"coefficient\":16800000,\"source_text\":\"16.800.000\",\"state\":\"RAW_SIGNED_INTEGER\"}]},{\"item_mapping_id\":\"gjmthfmv1:item:27b9269f7c8d89ade1f58524f9272d7366901f3332ff7967dc25d998c0d92e53\",\"report_norm_id\":1110,\"role\":\"BOND_SHORT\",\"row_id\":\"r1\",\"source_refs\":[{\"hierarchy_path_exact\":[\"Dưới 12 tháng\"],\"label_exact\":\"Dưới 12 tháng\",\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[1],\"row_id\":\"r1\",\"row_kind\":\"GROUP\",\"row_ordinal\":1}],\"state\":\"SOURCE_VISIBLE_TRANSPOSED_TENOR_CARRIER\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":0,\"source_text\":\"-\",\"state\":\"DASH_ZERO\"}]},{\"item_mapping_id\":\"gjmthfmv1:item:f9943a7783a29eb415bdeb8acf2bc379c400a2801fbcde2d8b64817a7dac1ce3\",\"report_norm_id\":1111,\"role\":\"BOND_MEDIUM\",\"row_id\":\"r3\",\"source_refs\":[{\"hierarchy_path_exact\":[\"Từ 12 tháng đến 5 năm\"],\"label_exact\":\"Từ 12 tháng đến 5 năm\",\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[1],\"row_id\":\"r3\",\"row_kind\":\"GROUP\",\"row_ordinal\":3}],\"state\":\"SOURCE_VISIBLE_TRANSPOSED_TENOR_CARRIER\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":15800000,\"source_text\":\"15.800.000\",\"state\":\"RAW_SIGNED_INTEGER\"}]},{\"item_mapping_id\":\"gjmthfmv1:item:b96c94df94657d9eeb6184be36a9e859362ff17e37b778f8a2ba44190867215b\",\"report_norm_id\":1112,\"role\":\"BOND_LONG\",\"row_id\":\"r5\",\"source_refs\":[{\"hierarchy_path_exact\":[\"Từ 5 năm trở lên\"],\"label_exact\":\"Từ 5 năm trở lên\",\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[1],\"row_id\":\"r5\",\"row_kind\":\"GROUP\",\"row_ordinal\":5}],\"state\":\"SOURCE_VISIBLE_TRANSPOSED_TENOR_CARRIER\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":1000000,\"source_text\":\"1.000.000\",\"state\":\"RAW_SIGNED_INTEGER\"}]},{\"item_mapping_id\":\"gjmthfmv1:item:de67fef322dc41febb0845e1e239347d1b824ddd0acd330c3646fc94097402db\",\"report_norm_id\":1100,\"role\":\"FAMILY_ROOT_TOTAL\",\"row_id\":\"corroborated:FAMILY_ROOT_TOTAL\",\"source_refs\":[{\"hierarchy_path_exact\":[null],\"label_exact\":null,\"locator\":{\"component_roles\":[\"BOND\",\"CERTIFICATE_OF_DEPOSIT\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":1,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t1\"},\"money_column_ordinals\":[1,2],\"row_id\":\"r3\",\"row_kind\":\"TOTAL\",\"row_ordinal\":3},{\"hierarchy_path_exact\":[null],\"label_exact\":null,\"locator\":{\"component_roles\":[\"BOND\",\"BOND_LONG\",\"BOND_MEDIUM\",\"BOND_SHORT\",\"CD_LONG\",\"CD_MEDIUM\",\"CD_SHORT\",\"CERTIFICATE_OF_DEPOSIT\",\"GENERIC_ISSUED_PAPER_SOURCE\"],\"document_id\":\"gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd\",\"document_ordinal\":84,\"fragment_ordinal\":2,\"page_json_version_id\":\"gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24\",\"physical_page\":40,\"section_id\":\"s1\",\"selected_page_ordinal\":40,\"source_logical_name\":\"vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf\",\"source_sha256\":\"bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb\",\"table_id\":\"t2\"},\"money_column_ordinals\":[3],\"row_id\":\"r7\",\"row_kind\":\"TOTAL\",\"row_ordinal\":7}],\"state\":\"SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_PROVEN_BY_DIRECT_FRONTIER\",\"unit\":\"MILLION_VND\",\"values\":[{\"coefficient\":21888796,\"source_text\":\"21.888.796\",\"state\":\"RAW_SIGNED_INTEGER\"},{\"coefficient\":21210596,\"source_text\":\"21.210.596\",\"state\":\"RAW_SIGNED_INTEGER\"}]}]\n",
+        "format_version": "GEMINI_JSON_ISSUED_PAPERS_MAPPING_BEFOREIMAGE_EVIDENCE_V1",
+        "sha256": "a0cb14ef9733267cf1454742557bfdba41d66e053feb6349d0063409a6d91534",
+        "size_bytes": 14327
+       }
+      },
+      "tenor_instrument_projection_receipts": [],
+      "transposed_axis_projection_receipts": [],
+      "validation_row_projection_receipts": [],
+      "visible_dash_transcription_repairs": []
+     },
+     "partial_role_observations": [],
+     "query_receipt": {
+      "format_version": "GEMINI_JSON_MULTITABLE_HIERARCHICAL_REGION_QUERY_RECEIPT_V1",
+      "query_receipt_id": "gjmthfrrv1:receipt:2e383806e11829c06bedd8938811152d5334561cc2c52950abe63001a92d493f",
+      "region_axis": [
+       {
+        "component_roles": [
+         "BOND",
+         "CERTIFICATE_OF_DEPOSIT"
+        ],
+        "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+        "document_ordinal": 84,
+        "fragment_ordinal": 1,
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "physical_page": 40,
+        "section_id": "s1",
+        "selected_page_ordinal": 40,
+        "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+        "table_id": "t1"
+       },
+       {
+        "component_roles": [
+         "BOND",
+         "BOND_LONG",
+         "BOND_MEDIUM",
+         "BOND_SHORT",
+         "CD_LONG",
+         "CD_MEDIUM",
+         "CD_SHORT",
+         "CERTIFICATE_OF_DEPOSIT",
+         "GENERIC_ISSUED_PAPER_SOURCE"
+        ],
+        "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+        "document_ordinal": 84,
+        "fragment_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "physical_page": 40,
+        "section_id": "s1",
+        "selected_page_ordinal": 40,
+        "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+        "table_id": "t2"
+       }
+      ],
+      "region_axis_sha256": "ac4e7a4e94ea92ef2312e75963cb817317d0db9bbdeb0d95e5cd8bf9e158dba2"
+     },
+     "root_component_sum_receipts": [
+      {
+       "coefficients": [
+        21888796,
+        21210596
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           "Chứng chỉ tiền gửi"
+          ],
+          "label_exact": "Chứng chỉ tiền gửi",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "CERTIFICATE_OF_DEPOSIT"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 1,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t1"
+          },
+          "money_column_ordinals": [
+           1,
+           2
+          ],
+          "row_id": "r1",
+          "row_kind": "ITEM",
+          "row_ordinal": 1
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           "Trái phiếu thường"
+          ],
+          "label_exact": "Trái phiếu thường",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "CERTIFICATE_OF_DEPOSIT"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 1,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t1"
+          },
+          "money_column_ordinals": [
+           1,
+           2
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_ordinal": 2
+         }
+        ]
+       ],
+       "result_state": "SOURCE_VISIBLE_FAMILY_ROOT_BOUND_TO_UNIQUE_EXACT_TABLE_FRONTIER",
+       "rule": "SOURCE_VISIBLE_FAMILY_ROOT_USES_UNIQUE_TABLE_LOCAL_DIRECT_FRONTIER_EACH_BLANK_LANE_REMAINS_INCOMPLETE_DISCLOSURE_MAPPINGS_ARE_NOT_ASSUMED_ADDITIVE",
+       "source_equation_id": "gjfoltiev1:equation:eeeb613e55843047023755c60cfae8c4a34ab0c0821a21bc3d06e573081cca40",
+       "source_refs": [
+        {
+         "hierarchy_path_exact": [
+          null
+         ],
+         "label_exact": null,
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "CERTIFICATE_OF_DEPOSIT"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 1,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t1"
+         },
+         "money_column_ordinals": [
+          1,
+          2
+         ],
+         "row_id": "r3",
+         "row_kind": "TOTAL",
+         "row_ordinal": 3
+        }
+       ]
+      },
+      {
+       "coefficients": [
+        21888796
+       ],
+       "component_source_refs": [
+        [
+         {
+          "hierarchy_path_exact": [
+           null
+          ],
+          "label_exact": null,
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1
+          ],
+          "row_id": "r7",
+          "row_kind": "TOTAL",
+          "row_ordinal": 7
+         }
+        ],
+        [
+         {
+          "hierarchy_path_exact": [
+           null
+          ],
+          "label_exact": null,
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           2
+          ],
+          "row_id": "r7",
+          "row_kind": "TOTAL",
+          "row_ordinal": 7
+         }
+        ]
+       ],
+       "result_state": "SOURCE_VISIBLE_FAMILY_ROOT_BOUND_TO_UNIQUE_EXACT_TABLE_FRONTIER",
+       "rule": "SOURCE_VISIBLE_FAMILY_ROOT_USES_UNIQUE_TABLE_LOCAL_DIRECT_FRONTIER_EACH_BLANK_LANE_REMAINS_INCOMPLETE_DISCLOSURE_MAPPINGS_ARE_NOT_ASSUMED_ADDITIVE",
+       "source_equation_id": "gjfoltiev1:equation:a4a58e2a4b046581a20cbdbf33030c6b5b0dd6a12636c0be0ac3b02da27ff833",
+       "source_refs": [
+        {
+         "hierarchy_path_exact": [
+          null
+         ],
+         "label_exact": null,
+         "locator": {
+          "component_roles": [
+           "BOND",
+           "BOND_LONG",
+           "BOND_MEDIUM",
+           "BOND_SHORT",
+           "CD_LONG",
+           "CD_MEDIUM",
+           "CD_SHORT",
+           "CERTIFICATE_OF_DEPOSIT",
+           "GENERIC_ISSUED_PAPER_SOURCE"
+          ],
+          "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+          "document_ordinal": 84,
+          "fragment_ordinal": 2,
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "physical_page": 40,
+          "section_id": "s1",
+          "selected_page_ordinal": 40,
+          "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+          "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+          "table_id": "t2"
+         },
+         "money_column_ordinals": [
+          3
+         ],
+         "row_id": "r7",
+         "row_kind": "TOTAL",
+         "row_ordinal": 7
+        }
+       ]
+      }
+     ],
+     "rule": "EXHAUSTIVE_OWNER_FENCED_SOURCE_DIRECT_FRONTIER_SUBTOTAL_TOTAL_SOURCE_ONLY_UNMAPPED_ALL_LANES",
+     "source_only_unmapped_rows": [
+      {
+       "consumed_by_exact_equation": false,
+       "row_ordinal": 2,
+       "source_ref": {
+        "hierarchy_path_exact": [
+         "Dưới 12 tháng",
+         " - Bằng VND"
+        ],
+        "label_exact": "- Bằng VND",
+        "locator": {
+         "component_roles": [
+          "BOND",
+          "BOND_LONG",
+          "BOND_MEDIUM",
+          "BOND_SHORT",
+          "CD_LONG",
+          "CD_MEDIUM",
+          "CD_SHORT",
+          "CERTIFICATE_OF_DEPOSIT",
+          "GENERIC_ISSUED_PAPER_SOURCE"
+         ],
+         "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+         "document_ordinal": 84,
+         "fragment_ordinal": 2,
+         "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+         "physical_page": 40,
+         "section_id": "s1",
+         "selected_page_ordinal": 40,
+         "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+         "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+         "table_id": "t2"
+        },
+        "money_column_ordinals": [
+         1,
+         2,
+         3
+        ],
+        "row_id": "r2",
+        "row_kind": "ITEM",
+        "row_ordinal": 2
+       }
+      },
+      {
+       "consumed_by_exact_equation": false,
+       "row_ordinal": 4,
+       "source_ref": {
+        "hierarchy_path_exact": [
+         "Từ 12 tháng đến 5 năm",
+         " - Bằng VND"
+        ],
+        "label_exact": "- Bằng VND",
+        "locator": {
+         "component_roles": [
+          "BOND",
+          "BOND_LONG",
+          "BOND_MEDIUM",
+          "BOND_SHORT",
+          "CD_LONG",
+          "CD_MEDIUM",
+          "CD_SHORT",
+          "CERTIFICATE_OF_DEPOSIT",
+          "GENERIC_ISSUED_PAPER_SOURCE"
+         ],
+         "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+         "document_ordinal": 84,
+         "fragment_ordinal": 2,
+         "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+         "physical_page": 40,
+         "section_id": "s1",
+         "selected_page_ordinal": 40,
+         "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+         "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+         "table_id": "t2"
+        },
+        "money_column_ordinals": [
+         1,
+         2,
+         3
+        ],
+        "row_id": "r4",
+        "row_kind": "ITEM",
+        "row_ordinal": 4
+       }
+      },
+      {
+       "consumed_by_exact_equation": false,
+       "row_ordinal": 6,
+       "source_ref": {
+        "hierarchy_path_exact": [
+         "Từ 5 năm trở lên",
+         " - Bằng VND"
+        ],
+        "label_exact": "- Bằng VND",
+        "locator": {
+         "component_roles": [
+          "BOND",
+          "BOND_LONG",
+          "BOND_MEDIUM",
+          "BOND_SHORT",
+          "CD_LONG",
+          "CD_MEDIUM",
+          "CD_SHORT",
+          "CERTIFICATE_OF_DEPOSIT",
+          "GENERIC_ISSUED_PAPER_SOURCE"
+         ],
+         "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+         "document_ordinal": 84,
+         "fragment_ordinal": 2,
+         "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+         "physical_page": 40,
+         "section_id": "s1",
+         "selected_page_ordinal": 40,
+         "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+         "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+         "table_id": "t2"
+        },
+        "money_column_ordinals": [
+         1,
+         2,
+         3
+        ],
+        "row_id": "r6",
+        "row_kind": "ITEM",
+        "row_ordinal": 6
+       }
+      },
+      {
+       "consumed_by_exact_equation": true,
+       "row_ordinal": 7,
+       "source_ref": {
+        "hierarchy_path_exact": [
+         null
+        ],
+        "label_exact": null,
+        "locator": {
+         "component_roles": [
+          "BOND",
+          "BOND_LONG",
+          "BOND_MEDIUM",
+          "BOND_SHORT",
+          "CD_LONG",
+          "CD_MEDIUM",
+          "CD_SHORT",
+          "CERTIFICATE_OF_DEPOSIT",
+          "GENERIC_ISSUED_PAPER_SOURCE"
+         ],
+         "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+         "document_ordinal": 84,
+         "fragment_ordinal": 2,
+         "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+         "physical_page": 40,
+         "section_id": "s1",
+         "selected_page_ordinal": 40,
+         "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+         "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+         "table_id": "t2"
+        },
+        "money_column_ordinals": [
+         1,
+         2,
+         3
+        ],
+        "row_id": "r7",
+        "row_kind": "TOTAL",
+        "row_ordinal": 7
+       }
+      }
+     ],
+     "structural_root_receipt": {
+      "emitted_mapping": false,
+      "mapping_policy": "SOURCE_VISIBLE_TOTAL_OR_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+      "report_norm_id": 1100,
+      "role": "ISSUED_VALUABLE_PAPERS_ROOT"
+     },
+     "table_receipts": [
+      {
+       "aggregation_receipts": [],
+       "classification": {
+        "ambiguous_rows": [],
+        "classification_id": "gjmthfcv1:classification:7eeb9b9a153fa126561183f32a01422054be0cef8e9a98d3558e81cf66540f0d",
+        "context_resolution_kind": "NO_CONTEXT_ROLE",
+        "context_roles": [],
+        "family_presence_anchor_visible": true,
+        "family_root_row_ordinals": [],
+        "inverted_hierarchy_scope_rows": [],
+        "layout_orientation": "ROW_ROLES_PERIOD_COLUMNS",
+        "money_column_ordinals": [
+         1,
+         2
+        ],
+        "owner_visible": true,
+        "role_hits": [
+         {
+          "role": "CERTIFICATE_OF_DEPOSIT",
+          "row_kind": "ITEM",
+          "row_ordinal": 1,
+          "source_order": 1
+         },
+         {
+          "role": "BOND",
+          "row_kind": "ITEM",
+          "row_ordinal": 2,
+          "source_order": 2
+         }
+        ],
+        "total_rows": [
+         {
+          "row_kind": "TOTAL",
+          "row_ordinal": 3,
+          "source_order": 3
+         }
+        ],
+        "transposed_column_role_hits": [],
+        "transposed_row_role_hits": [],
+        "typed_control_disposition": null,
+        "unbound_money_row_ordinals": [
+         3
+        ],
+        "unscoped_shared_child_rows": []
+       },
+       "hierarchical_duplicate_receipts": [],
+       "label_only_structural_group_receipts": [],
+       "lane_axis": {
+        "complete": true,
+        "lane_keys": [
+         [
+          "SEMANTIC_ALIAS",
+          "CURRENT_PERIOD"
+         ],
+         [
+          "SEMANTIC_ALIAS",
+          "COMPARATIVE_PERIOD"
+         ]
+        ],
+        "layout_kind": "TWO_PERIOD_MONEY_COLUMNS",
+        "money_column_ordinals": [
+         1,
+         2
+        ],
+        "reasons": [],
+        "selected_metric_kinds": [
+         "GENERIC_AMOUNT",
+         "GENERIC_AMOUNT"
+        ],
+        "source_lane_keys": [
+         [
+          "DATE",
+          "2025-03-31"
+         ],
+         [
+          "DATE",
+          "2024-12-31"
+         ]
+        ],
+        "source_period_axis": {
+         "complete": true,
+         "date_evidence_by_lane": [
+          [
+           "2025-03-31"
+          ],
+          [
+           "2024-12-31"
+          ]
+         ],
+         "headers_exact": [
+          "Ngày 31 tháng 03 năm 2025 triệu đồng",
+          "Ngày 31 tháng 12 năm 2024 triệu đồng"
+         ],
+         "money_column_ordinals": [
+          1,
+          2
+         ],
+         "reasons": [],
+         "semantic_roles_by_lane": [
+          [],
+          []
+         ],
+         "signatures": [
+          [
+           "DATE",
+           "2025-03-31"
+          ],
+          [
+           "DATE",
+           "2024-12-31"
+          ]
+         ],
+         "source": "LOCAL_MONEY_COLUMN_HEADERS"
+        }
+       },
+       "ratio_metric_reasons": [],
+       "region": {
+        "component_roles": [
+         "BOND",
+         "CERTIFICATE_OF_DEPOSIT"
+        ],
+        "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+        "document_ordinal": 84,
+        "fragment_ordinal": 1,
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "physical_page": 40,
+        "section_id": "s1",
+        "selected_page_ordinal": 40,
+        "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+        "table_id": "t1"
+       },
+       "source_only_rows": [],
+       "unit_axis": {
+        "canonical_unit": "MILLION_VND",
+        "complete": true,
+        "document_unit_context_evidence": null,
+        "evidence": [
+         {
+          "accepted": true,
+          "canonical_unit": "MILLION_VND",
+          "magnitude_power10": 6,
+          "matched_alias": "trieu dong",
+          "source_exact": "triệu đồng",
+          "source_kind": "TABLE_UNIT"
+         },
+         {
+          "accepted": true,
+          "canonical_unit": "MILLION_VND",
+          "magnitude_power10": 6,
+          "matched_alias": "trieu dong",
+          "source_exact": "trieu dong",
+          "source_kind": "MONEY_COLUMN_HEADER:1:2"
+         },
+         {
+          "accepted": true,
+          "canonical_unit": "MILLION_VND",
+          "magnitude_power10": 6,
+          "matched_alias": "trieu dong",
+          "source_exact": "trieu dong",
+          "source_kind": "MONEY_COLUMN_HEADER:2:2"
+         }
+        ],
+        "reasons": [],
+        "source": "LOCAL_TABLE_UNIT",
+        "undeclared_evidence": []
+       },
+       "unproven_conditional_zero_rows": [],
+       "unsealed_duplicate_roles": []
+      },
+      {
+       "classification": {
+        "ambiguous_rows": [],
+        "classification_id": "gjmthfcv1:classification:c8641778d58c342899955abeb372161150e88a44d890b5209c2a193f363a3d92",
+        "context_resolution_kind": "NO_CONTEXT_ROLE",
+        "context_roles": [],
+        "family_presence_anchor_visible": true,
+        "family_root_row_ordinals": [],
+        "inverted_hierarchy_scope_rows": [],
+        "layout_orientation": "INSTRUMENT_COLUMNS_TENOR_ROWS",
+        "money_column_ordinals": [
+         1,
+         2,
+         3
+        ],
+        "owner_visible": true,
+        "role_hits": [
+         {
+          "role": "GENERIC_ISSUED_PAPER_SOURCE",
+          "row_kind": "GROUP",
+          "row_ordinal": 1,
+          "source_order": 1
+         },
+         {
+          "role": "GENERIC_ISSUED_PAPER_SOURCE",
+          "row_kind": "ITEM",
+          "row_ordinal": 2,
+          "source_order": 2
+         },
+         {
+          "role": "GENERIC_ISSUED_PAPER_SOURCE",
+          "row_kind": "ITEM",
+          "row_ordinal": 4,
+          "source_order": 4
+         },
+         {
+          "role": "GENERIC_ISSUED_PAPER_SOURCE",
+          "row_kind": "GROUP",
+          "row_ordinal": 5,
+          "source_order": 5
+         },
+         {
+          "role": "GENERIC_ISSUED_PAPER_SOURCE",
+          "row_kind": "ITEM",
+          "row_ordinal": 6,
+          "source_order": 6
+         }
+        ],
+        "total_rows": [
+         {
+          "row_kind": "TOTAL",
+          "row_ordinal": 7,
+          "source_order": 7
+         }
+        ],
+        "transposed_column_role_hits": [
+         {
+          "column_ordinal": 1,
+          "role": "BOND",
+          "source_header_exact": "Trái phiếu thường triệu đồng",
+          "status": "EXACT_UNIQUE_LONGEST_DECLARED_INSTRUMENT_ROLE"
+         },
+         {
+          "column_ordinal": 2,
+          "role": "CERTIFICATE_OF_DEPOSIT",
+          "source_header_exact": "Chứng chỉ tiền gửi triệu đồng",
+          "status": "EXACT_UNIQUE_LONGEST_DECLARED_INSTRUMENT_ROLE"
+         }
+        ],
+        "transposed_row_role_hits": [
+         {
+          "parent_role": "BOND",
+          "role": "BOND_SHORT",
+          "row_ordinal": 1,
+          "source_order": 1
+         },
+         {
+          "parent_role": "CERTIFICATE_OF_DEPOSIT",
+          "role": "CD_SHORT",
+          "row_ordinal": 1,
+          "source_order": 1
+         },
+         {
+          "parent_role": "BOND",
+          "role": "BOND_MEDIUM",
+          "row_ordinal": 3,
+          "source_order": 3
+         },
+         {
+          "parent_role": "CERTIFICATE_OF_DEPOSIT",
+          "role": "CD_MEDIUM",
+          "row_ordinal": 3,
+          "source_order": 3
+         },
+         {
+          "parent_role": "BOND",
+          "role": "BOND_LONG",
+          "row_ordinal": 5,
+          "source_order": 5
+         },
+         {
+          "parent_role": "CERTIFICATE_OF_DEPOSIT",
+          "role": "CD_LONG",
+          "row_ordinal": 5,
+          "source_order": 5
+         }
+        ],
+        "typed_control_disposition": null,
+        "unbound_money_row_ordinals": [
+         7
+        ],
+        "unscoped_shared_child_rows": [
+         {
+          "matched_roles": [
+           "BOND_MEDIUM",
+           "CD_MEDIUM",
+           "PROMISSORY_AND_BOND_MEDIUM",
+           "PROMISSORY_MEDIUM"
+          ],
+          "row_ordinal": 3,
+          "rule": "UNSCOPED_MULTI_PARENT_TENOR_RETAINED_SOURCE_ONLY"
+         }
+        ]
+       },
+       "document_period_context": {
+        "comparative_period_date": "2024-12-31",
+        "current_period_date": "2025-03-31",
+        "evidence": [
+         {
+          "page_json_version_id": "gfpstorev1:json:01bedc440a883c3558407ee47fb1ec416809b67a5b251ed811d1200008ec8df6",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:c1b072cdb0e4592f29b483211cf73d427056503056cc2ebc58a63ab385fab30a",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:8b90dc18a40e523bbd91d15d2f6c0d30c5a79fbabfa1e5351562dc04fcde4925",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:4357fc63143b3486ca9a5302ff4a3df8e59ad236cc75ca6495b03ec34f983360",
+          "section_id": "s6",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:4357fc63143b3486ca9a5302ff4a3df8e59ad236cc75ca6495b03ec34f983360",
+          "section_id": "s7",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:1aae8818f6d183da8dd195446edad5d3ae1dd96efa162f81b15c2be6b27cd482",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:1aae8818f6d183da8dd195446edad5d3ae1dd96efa162f81b15c2be6b27cd482",
+          "section_id": "s1",
+          "table_id": "t2"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:daa62053ae41a01490a25da656044fda6bf2a58b45149242a9ec5e7a8a5ecbc2",
+          "section_id": "s1",
+          "table_id": "t2"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:daa62053ae41a01490a25da656044fda6bf2a58b45149242a9ec5e7a8a5ecbc2",
+          "section_id": "s1",
+          "table_id": "t3"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:51a56c68745005a81047ec80c908c2ef0e20fbef20f40e81caba2fc4483edefd",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:51a56c68745005a81047ec80c908c2ef0e20fbef20f40e81caba2fc4483edefd",
+          "section_id": "s1",
+          "table_id": "t2"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:c66b8deff3401f0c6abe98978e1951a8ff1242f11def1a047156e9bc6c64acf4",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:806da76e83e7ee0d9b729f15f486e6509cf303f88259b53da10a17eb4d75b51a",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+          "section_id": "s2",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:1d92e45d064b3f89ac9e2fd4078b4e40e85ec9575e541cba17ebef2fe9360a5d",
+          "section_id": "s3",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:87a1c8d7dc40313beadec9ad55ea0a5070861b22304aaf8219dd137b0d85f499",
+          "section_id": "s2",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:41c059ef1346db6ea6146d7099965ad36d677267eb6ad021ce7d2607656d8510",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:41c059ef1346db6ea6146d7099965ad36d677267eb6ad021ce7d2607656d8510",
+          "section_id": "s3",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:6d7020a9711f4ddb9b136826407208661b207880d2b25c115e8195417e73a6ba",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:6d7020a9711f4ddb9b136826407208661b207880d2b25c115e8195417e73a6ba",
+          "section_id": "s1",
+          "table_id": "t2"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:6d7020a9711f4ddb9b136826407208661b207880d2b25c115e8195417e73a6ba",
+          "section_id": "s1",
+          "table_id": "t3"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+          "section_id": "s2",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:94d13454098ab6a6b0b9aa2831792eb723b18084f1ea00b48430660b39ec16e7",
+          "section_id": "s3",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:94d13454098ab6a6b0b9aa2831792eb723b18084f1ea00b48430660b39ec16e7",
+          "section_id": "s4",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:8b84b114f0040b8a4be2f235f02f2553ee18004fa126319dd29bf79ad9484d31",
+          "section_id": "s1",
+          "table_id": "t2"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+          "section_id": "s2",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+          "section_id": "s3",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:0dd1dac36804e42be0c18d6c4002308601518ce096f0405482c13ced42c77f95",
+          "section_id": "s4",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:d80576d20376c1ad568ca4a7394f660f0cb91372170d64b8980ff0ccdec00915",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:fc3ebe3ae8df5d95df1b373d94b11c6052d822b7e739f81f9751a9d7cc43a11c",
+          "section_id": "s1",
+          "table_id": "t1"
+         },
+         {
+          "page_json_version_id": "gfpstorev1:json:597c1417c97950deb4f9b3d41a2a18b398b5c20bebf276f5488c65ae6895d084",
+          "section_id": "s1",
+          "table_id": "t1"
+         }
+        ],
+        "resolution": "UNIQUE_LATEST_REPEATED_TWO_DATE_MONEY_TABLE_CONTEXT"
+       },
+       "lane_axis": {
+        "blocks": [
+         {
+          "end_row_ordinal": 7,
+          "lane_key": [
+           "DATE",
+           "2025-03-31"
+          ],
+          "marker_row_ordinal": null,
+          "start_row_ordinal": 1,
+          "total_row_ordinal": 7
+         }
+        ],
+        "complete": true,
+        "instrument_column_ordinals": [
+         1,
+         2
+        ],
+        "reasons": [],
+        "rule": "EXACT_INSTRUMENT_COLUMNS_TENOR_ROWS_WITH_ONE_TOTAL_COLUMN_AND_SOURCE_VISIBLE_PERIOD_BLOCKS",
+        "total_column_ordinal": 3,
+        "unclassified_money_column_ordinals": []
+       },
+       "region": {
+        "component_roles": [
+         "BOND",
+         "BOND_LONG",
+         "BOND_MEDIUM",
+         "BOND_SHORT",
+         "CD_LONG",
+         "CD_MEDIUM",
+         "CD_SHORT",
+         "CERTIFICATE_OF_DEPOSIT",
+         "GENERIC_ISSUED_PAPER_SOURCE"
+        ],
+        "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+        "document_ordinal": 84,
+        "fragment_ordinal": 2,
+        "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+        "physical_page": 40,
+        "section_id": "s1",
+        "selected_page_ordinal": 40,
+        "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+        "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+        "table_id": "t2"
+       },
+       "source_only_rows": [
+        {
+         "consumed_by_exact_equation": false,
+         "row_ordinal": 2,
+         "source_ref": {
+          "hierarchy_path_exact": [
+           "Dưới 12 tháng",
+           " - Bằng VND"
+          ],
+          "label_exact": "- Bằng VND",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1,
+           2,
+           3
+          ],
+          "row_id": "r2",
+          "row_kind": "ITEM",
+          "row_ordinal": 2
+         }
+        },
+        {
+         "consumed_by_exact_equation": false,
+         "row_ordinal": 4,
+         "source_ref": {
+          "hierarchy_path_exact": [
+           "Từ 12 tháng đến 5 năm",
+           " - Bằng VND"
+          ],
+          "label_exact": "- Bằng VND",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1,
+           2,
+           3
+          ],
+          "row_id": "r4",
+          "row_kind": "ITEM",
+          "row_ordinal": 4
+         }
+        },
+        {
+         "consumed_by_exact_equation": false,
+         "row_ordinal": 6,
+         "source_ref": {
+          "hierarchy_path_exact": [
+           "Từ 5 năm trở lên",
+           " - Bằng VND"
+          ],
+          "label_exact": "- Bằng VND",
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1,
+           2,
+           3
+          ],
+          "row_id": "r6",
+          "row_kind": "ITEM",
+          "row_ordinal": 6
+         }
+        },
+        {
+         "consumed_by_exact_equation": true,
+         "row_ordinal": 7,
+         "source_ref": {
+          "hierarchy_path_exact": [
+           null
+          ],
+          "label_exact": null,
+          "locator": {
+           "component_roles": [
+            "BOND",
+            "BOND_LONG",
+            "BOND_MEDIUM",
+            "BOND_SHORT",
+            "CD_LONG",
+            "CD_MEDIUM",
+            "CD_SHORT",
+            "CERTIFICATE_OF_DEPOSIT",
+            "GENERIC_ISSUED_PAPER_SOURCE"
+           ],
+           "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+           "document_ordinal": 84,
+           "fragment_ordinal": 2,
+           "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+           "physical_page": 40,
+           "section_id": "s1",
+           "selected_page_ordinal": 40,
+           "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+           "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+           "table_id": "t2"
+          },
+          "money_column_ordinals": [
+           1,
+           2,
+           3
+          ],
+          "row_id": "r7",
+          "row_kind": "TOTAL",
+          "row_ordinal": 7
+         }
+        }
+       ],
+       "transposed_equation_count": 6,
+       "transposed_reasons": [],
+       "unit_axis": {
+        "canonical_unit": "MILLION_VND",
+        "complete": true,
+        "document_unit_context_evidence": null,
+        "evidence": [
+         {
+          "accepted": true,
+          "canonical_unit": "MILLION_VND",
+          "magnitude_power10": 6,
+          "matched_alias": "trieu dong",
+          "source_exact": "triệu đồng",
+          "source_kind": "TABLE_UNIT"
+         },
+         {
+          "accepted": true,
+          "canonical_unit": "MILLION_VND",
+          "magnitude_power10": 6,
+          "matched_alias": "trieu dong",
+          "source_exact": "trieu dong",
+          "source_kind": "MONEY_COLUMN_HEADER:1:2"
+         },
+         {
+          "accepted": true,
+          "canonical_unit": "MILLION_VND",
+          "magnitude_power10": 6,
+          "matched_alias": "trieu dong",
+          "source_exact": "trieu dong",
+          "source_kind": "MONEY_COLUMN_HEADER:2:2"
+         },
+         {
+          "accepted": true,
+          "canonical_unit": "MILLION_VND",
+          "magnitude_power10": 6,
+          "matched_alias": "trieu dong",
+          "source_exact": "trieu dong",
+          "source_kind": "MONEY_COLUMN_HEADER:3:2"
+         }
+        ],
+        "reasons": [],
+        "source": "LOCAL_TABLE_UNIT",
+        "undeclared_evidence": []
+       }
+      }
+     ],
+     "validation_only_roles": [
+      "GENERIC_ISSUED_PAPER_SOURCE",
+      "ISSUANCE_COST_SOURCE"
+     ]
+    },
+    "component_regions": [
+     {
+      "component_roles": [
+       "BOND",
+       "CERTIFICATE_OF_DEPOSIT"
+      ],
+      "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+      "document_ordinal": 84,
+      "fragment_ordinal": 1,
+      "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+      "physical_page": 40,
+      "section_id": "s1",
+      "selected_page_ordinal": 40,
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+      "table_id": "t1"
+     },
+     {
+      "component_roles": [
+       "BOND",
+       "BOND_LONG",
+       "BOND_MEDIUM",
+       "BOND_SHORT",
+       "CD_LONG",
+       "CD_MEDIUM",
+       "CD_SHORT",
+       "CERTIFICATE_OF_DEPOSIT",
+       "GENERIC_ISSUED_PAPER_SOURCE"
+      ],
+      "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+      "document_ordinal": 84,
+      "fragment_ordinal": 2,
+      "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+      "physical_page": 40,
+      "section_id": "s1",
+      "selected_page_ordinal": 40,
+      "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+      "table_id": "t2"
+     }
+    ],
+    "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+    "family_id": "ISSUED_VALUABLE_PAPERS",
+    "mappings": [],
+    "page_json_version_id": "gfpstorev1:json:75d688cebc42204538b8341ca04fcdb3cbd77268320205d231899f1488631e24",
+    "physical_page": 40,
+    "reasons": [
+     "ISSUED_PAPER_SOURCE_LOCAL_PERIOD_LANES_NOT_PROVEN:BOND",
+     "ISSUED_PAPER_SOURCE_LOCAL_PERIOD_LANES_NOT_PROVEN:CERTIFICATE_OF_DEPOSIT",
+     "ISSUED_PAPER_SOURCE_LOCAL_PERIOD_LANES_NOT_PROVEN:FAMILY_ROOT_TOTAL"
+    ],
+    "section_id": "s1",
+    "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+    "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+    "status": "UNRESOLVED_GEMINI_JSON_FAMILY",
+    "table_id": "t1"
+   }
+  ],
+  "document_ordinal": 84,
+  "mappings": [],
+  "reasons": [
+   "ISSUED_PAPER_SOURCE_LOCAL_PERIOD_LANES_NOT_PROVEN:BOND",
+   "ISSUED_PAPER_SOURCE_LOCAL_PERIOD_LANES_NOT_PROVEN:CERTIFICATE_OF_DEPOSIT",
+   "ISSUED_PAPER_SOURCE_LOCAL_PERIOD_LANES_NOT_PROVEN:FAMILY_ROOT_TOTAL"
+  ],
+  "selected_candidate_id": null,
+  "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+  "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb",
+  "status": "UNRESOLVED_GEMINI_JSON_FAMILY"
+ },
+ "indexed_query_evidence_selected_document": {
+  "document_id": "gfpstorev1:document:cd45052cfc53972ccb6f3bebed49c4f4d79e2dc1cecfb1fe43e0381d185609fd",
+  "document_ordinal": 84,
+  "source_logical_name": "vietstock_bctc/MSB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+  "source_sha256": "bcaab5f3ec299c237d00980b2c9faff7cd5f6e33655ed7380e425e31dd86fccb"
+ }
+}

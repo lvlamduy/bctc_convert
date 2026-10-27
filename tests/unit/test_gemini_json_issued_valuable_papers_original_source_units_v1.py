@@ -87,7 +87,7 @@ def test_genuine_original_unit_literals_preserve_financial_values_and_raw_pages(
 
 
 @pytest.mark.parametrize("case,status", [
-    ("f25-lpb-doc069", READY), ("f25-msb-doc076", UNRESOLVED), ("f25-vab-doc241", UNRESOLVED),
+    ("f25-lpb-doc069", READY), ("f25-msb-doc076", READY), ("f25-vab-doc241", UNRESOLVED),
 ])
 def test_actual_source_packets_keep_their_owned_units_and_existing_financial_dispositions(case, status):
     _case, options = _packet_context(case)
@@ -97,8 +97,14 @@ def test_actual_source_packets_keep_their_owned_units_and_existing_financial_dis
     assert _unit_receipt(candidate)["failures"] == []
     if status == READY:
         root = next(item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL")
-        assert [cell["coefficient"] for cell in root["values"]] == [64097013, 55458916]
-        assert [cell["source_text"] for cell in root["values"]] == ["64.097.013", "55.458.916"]
+        if case == "f25-lpb-doc069":
+            assert [cell["coefficient"] for cell in root["values"]] == [64097013, 55458916]
+            assert [cell["source_text"] for cell in root["values"]] == ["64.097.013", "55.458.916"]
+        else:
+            assert [cell["coefficient"] for cell in root["values"]] == [32634109, 21210596]
+            assert [cell["source_text"] for cell in root["values"]] == ["32.634.109", "21.210.596"]
+            assert all(len(mapping["values"]) == 1 for mapping in candidate["mappings"]
+                       if mapping["role"] not in {"FAMILY_ROOT_TOTAL", "CERTIFICATE_OF_DEPOSIT", "BOND"})
     else:
         assert candidate["mappings"] == []
         assert "source_local_lane_binding_receipt" in candidate["closure_receipt"]["issued_valuable_papers_adapter_receipt"]

@@ -6419,6 +6419,493 @@ def _bind_printed_total_from_closed_net_frontier_v1(
     return {**material, "printed_net_frontier_total_receipt_id": "gjivppnftv1:receipt:" + canonical_json_sha256_v1(material)}
 
 
+def _raw_lane_source_ref_v2(region, row_ordinal, row, columns):
+    return {"locator": canonical_clone_v1(region), "row_ordinal": row_ordinal,
+        "row_id": f"r{row_ordinal}", "row_kind": row["row_kind"],
+        "label_exact": row["label_exact"], "hierarchy_path_exact": canonical_clone_v1(row["hierarchy_path_exact"]),
+        "money_column_ordinals": list(columns)}
+
+
+def _raw_lane_cells_v2(row, columns):
+    try:
+        cells = [_source_money(row["values_exact"][column - 1]) for column in columns]
+    except (IndexError, KeyError, TypeError, ValueError):
+        return None
+    return cells if all(cell.get("state") in {"RAW_SIGNED_INTEGER", "DASH_ZERO"}
+        and type(cell.get("coefficient")) is int and type(cell.get("source_text")) is str for cell in cells) else None
+
+
+def _raw_lane_equation_v2(kind, components, result, lane_keys):
+    sums = [sum(item["cells"][lane]["coefficient"] for item in components)
+            for lane in range(len(result["cells"]))]
+    values = [cell["coefficient"] for cell in result["cells"]]
+    if sums != values:
+        return None
+    material = {"equation_kind": kind, "component_roles": [item["role"] for item in components],
+        "component_source_refs": [canonical_clone_v1(item["source_refs"]) for item in components],
+        "result_role": result["role"], "result_source_refs": canonical_clone_v1(result["source_refs"]),
+        "multipliers": [1] * len(components), "component_sums": sums, "result_coefficients": values,
+        "source_lane_keys": canonical_clone_v1(lane_keys), "lane_statuses": ["EXACT"] * len(values), "status": "EXACT"}
+    return {**material, "equation_id": "gjfoltiev1:equation:" + canonical_json_sha256_v1(material)}
+
+
+def _raw_transposed_headers_v2(table, compiled_specs, canonical_unit=None):
+    """Exact instrument/total/unit literals; no qualified-header prefix match."""
+    columns = table.get("columns")
+    if type(columns) is not list or len(columns) != 3 or any(column.get("value_kind") != "MONEY" for column in columns):
+        return None
+    units = {_normalized(alias) for binding in compiled_specs["evaluation"]["money_unit_bindings"]
+             if binding["accepted"] and (canonical_unit is None or binding["canonical_unit"] == canonical_unit)
+             for alias in binding["aliases"]}
+    roles = {}
+    for ordinal, column in enumerate(columns, 1):
+        hits = []
+        for part in column.get("header_path_exact", []):
+            body = _normalized(part)
+            role = _exact_declared_role(part, compiled_specs=compiled_specs,
+                roles={"BOND", "CERTIFICATE_OF_DEPOSIT"}, within_role=None)
+            if role is not None:
+                hits.append(role)
+            elif body in {"tong", "tong cong", "total"}:
+                hits.append("FAMILY_ROOT_TOTAL")
+            elif body and body not in units:
+                return None
+        if len(hits) != 1 or hits[0] in roles:
+            return None
+        roles[hits[0]] = ordinal
+    return roles if set(roles) == {"BOND", "CERTIFICATE_OF_DEPOSIT", "FAMILY_ROOT_TOTAL"} else None
+
+
+def _raw_transposed_block_v2(table, region, columns, start, end, marker, lane_key, compiled_specs):
+    """Close one raw three-tenor population without manufacturing blank carriers."""
+    rows = table["rows"]
+    if not 1 <= start <= end <= len(rows):
+        return None
+    total = rows[end - 1]
+    period_total_labels = ({"so du cuoi nam", "so du cuoi ky", "so du cuoi quy"}
+        if lane_key == ["SEMANTIC_ALIAS", "CURRENT_PERIOD"] else {"so du dau nam", "so du dau ky", "so du dau quy"})
+    if (total["row_kind"] != "TOTAL" or total["hierarchy_path_exact"] not in ([total["label_exact"]], [marker, total["label_exact"]] if marker is not None else [total["label_exact"]])
+            or _normalized(total["label_exact"]) not in {"", "tong", "tong cong", "total", *period_total_labels}):
+        return None
+    money = [columns[role] for role in ("BOND", "CERTIFICATE_OF_DEPOSIT", "FAMILY_ROOT_TOTAL")]
+    totals = _raw_lane_cells_v2(total, money)
+    if totals is None:
+        return None
+    observations, equations, signature, carriers = [], [], [], {}
+    prefix = [marker] if marker is not None else []
+    cursor = start
+    while cursor < end:
+        carrier = rows[cursor - 1]
+        if (carrier["row_kind"] not in {"GROUP", "SUBTOTAL", "ITEM"}
+                or carrier["hierarchy_path_exact"] != [*prefix, carrier["label_exact"]]):
+            return None
+        selected_roles = {}
+        for parent in ("BOND", "CERTIFICATE_OF_DEPOSIT"):
+            roles = {"BOND_SHORT", "BOND_MEDIUM", "BOND_LONG"} if parent == "BOND" else {"CD_SHORT", "CD_MEDIUM", "CD_LONG"}
+            role = _exact_declared_role(carrier["label_exact"], compiled_specs=compiled_specs,
+                roles=roles, within_role=parent)
+            if role is None or role in carriers:
+                return None
+            selected_roles[parent] = role
+        children = []
+        next_row = cursor + 1
+        while next_row < end:
+            child = rows[next_row - 1]
+            path = child.get("hierarchy_path_exact") or []
+            if len(path) != len(prefix) + 2 or [_normalized(value) for value in path[:-1]] != [_normalized(value) for value in [*prefix, carrier["label_exact"]]]:
+                break
+            if (child["row_kind"] != "ITEM" or _normalized(child["label_exact"]) != "bang vnd"
+                    or _normalized(path[-1]) != "bang vnd"):
+                return None
+            children.append((next_row, child))
+            next_row += 1
+        if len(children) > 1:
+            return None
+        cells = _raw_lane_cells_v2(carrier, money)
+        source_ordinal, source_row = cursor, carrier
+        if cells is None:
+            if (any(value is not None for value in carrier["values_exact"])
+                    or len(children) != 1):
+                return None
+            source_ordinal, source_row = children[0]
+            cells = _raw_lane_cells_v2(source_row, money)
+            if cells is None:
+                return None
+        elif children:
+            child = children[0][1]
+            for lane, column in enumerate(money):
+                if child["values_exact"][column - 1] is not None:
+                    observed = _raw_lane_cells_v2(child, [column])
+                    if observed is None or observed[0]["coefficient"] != cells[lane]["coefficient"]:
+                        return None
+        qualifier = {"carrier_label_exact": carrier["label_exact"], "carrier_kind": carrier["row_kind"],
+            "nonperiod_path_exact": canonical_clone_v1(carrier["hierarchy_path_exact"][len(prefix):]),
+            "currency": "VND" if children else None}
+        signature.append(qualifier)
+        line = []
+        for index, parent in enumerate(("BOND", "CERTIFICATE_OF_DEPOSIT")):
+            role = selected_roles[parent]
+            ref = _raw_lane_source_ref_v2(region, source_ordinal, source_row, [columns[parent]])
+            observation = {"role": role, "lane_key": list(lane_key), "cell": cells[index],
+                "source_ref": ref, "economic_qualifier": {**qualifier, "instrument": parent,
+                    "header_path_exact": canonical_clone_v1(table["columns"][columns[parent] - 1]["header_path_exact"])}}
+            observations.append(observation)
+            carriers[role] = {"role": role, "cells": [cells[index]], "source_refs": [ref]}
+            line.append(carriers[role])
+        result = {"role": "SOURCE_TRANSPOSED_ROW_TOTAL", "cells": [cells[2]],
+            "source_refs": [_raw_lane_source_ref_v2(region, source_ordinal, source_row, [columns["FAMILY_ROOT_TOTAL"]])]}
+        equation = _raw_lane_equation_v2("EXACT_F25_RAW_SOURCE_INSTRUMENT_ROW_TOTAL", line, result, [lane_key])
+        if equation is None:
+            return None
+        equations.append(equation)
+        cursor = next_row
+    if set(carriers) != {"BOND_SHORT", "BOND_MEDIUM", "BOND_LONG", "CD_SHORT", "CD_MEDIUM", "CD_LONG"}:
+        return None
+    parents = []
+    for index, parent in enumerate(("BOND", "CERTIFICATE_OF_DEPOSIT")):
+        ref = _raw_lane_source_ref_v2(region, end, total, [columns[parent]])
+        result = {"role": parent, "cells": [totals[index]], "source_refs": [ref]}
+        children = [carriers[role] for role in (("BOND_SHORT", "BOND_MEDIUM", "BOND_LONG") if parent == "BOND" else ("CD_SHORT", "CD_MEDIUM", "CD_LONG"))]
+        equation = _raw_lane_equation_v2("EXACT_F25_RAW_SOURCE_TENOR_FRONTIER", children, result, [lane_key])
+        if equation is None:
+            return None
+        equations.append(equation)
+        parents.append(result)
+        observations.append({"role": parent, "lane_key": list(lane_key), "cell": totals[index],
+            "source_ref": ref, "economic_qualifier": {"instrument": parent, "population": signature,
+                "header_path_exact": canonical_clone_v1(table["columns"][columns[parent] - 1]["header_path_exact"])}})
+    root_ref = _raw_lane_source_ref_v2(region, end, total, [columns["FAMILY_ROOT_TOTAL"]])
+    root = {"role": "FAMILY_ROOT_TOTAL", "cells": [totals[2]], "source_refs": [root_ref]}
+    equation = _raw_lane_equation_v2("EXACT_F25_RAW_SOURCE_INSTRUMENT_FRONTIER", parents, root, [lane_key])
+    if equation is None:
+        return None
+    equations.append(equation)
+    observations.append({"role": "FAMILY_ROOT_TOTAL", "lane_key": list(lane_key), "cell": totals[2],
+        "source_ref": root_ref, "economic_qualifier": {"population": signature,
+            "header_path_exact": canonical_clone_v1(table["columns"][columns["FAMILY_ROOT_TOTAL"] - 1]["header_path_exact"])}})
+    return {"observations": observations, "equations": equations, "population": signature,
+        "source_start_row": start, "source_end_row": end,
+        "period_marker_exact": marker, "lane_key": list(lane_key)}
+
+
+def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observation_pages=None, authenticated_repairs=()):
+    """Compute raw permission before any private period/unit/row projection."""
+    units = _original_source_unit_proofs_v1(pages=pages, regions=regions, compiled_specs=compiled_specs)
+    tables, direct, pending = [], [], []
+    current_sentence = re.compile(r"chi tiet ky han cua (?:cac )?giay to co gia phat hanh(?: theo menh gia)? tai thoi diem cuoi (?:ky|nam|quy) nhu sau")
+    for region in regions:
+        original_page = pages[region["page_json_version_id"]]
+        page = (observation_pages if observation_pages is not None else pages)[region["page_json_version_id"]]
+        section = page["sections"][int(region["section_id"][1:]) - 1]
+        table = _region_table(observation_pages if observation_pages is not None else pages, region)
+        original_table = _region_table(pages, region)
+        classification = classify_gemini_json_multitable_hierarchical_table_v1(page, section, table, compiled_specs=compiled_specs)
+        unit = units.get(_source_unit_scope_key_v1(region))
+        owner = section.get("content_kind") == "FINANCIAL_NOTE" and _exact_owner_alias(section.get("title_exact"), compiled_specs=compiled_specs) is not None
+        transposed = classification.get("layout_orientation") == "INSTRUMENT_COLUMNS_TENOR_ROWS"
+        columns = _raw_transposed_headers_v2(table, compiled_specs, unit["canonical_unit"] if unit else None)
+        if not transposed and columns is None:
+            axis = _two_period_axis(table)
+            if not owner or unit is None or not axis.get("complete"):
+                continue
+            money = axis["money_column_ordinals"]
+            if len(money) != 2:
+                continue
+            total_rows = [index for index, row in enumerate(table["rows"], 1) if row["row_kind"] == "TOTAL"]
+            for ordinal, row in enumerate(table["rows"], 1):
+                cells = _raw_lane_cells_v2(row, money)
+                if cells is None:
+                    continue
+                roles = {hit["role"] for hit in classification["role_hits"] if hit["row_ordinal"] == ordinal}
+                roles = {role for role in roles if any(_without_leading_ordinal(_normalized(row["label_exact"])) == _without_leading_ordinal(_normalized(alias))
+                    for matcher in compiled_specs.get("child_by_role", {}).get(role, {}).get("matchers", []) for alias in matcher["aliases"])}
+                if total_rows == [ordinal] and ordinal == len(table["rows"]):
+                    roles.add("FAMILY_ROOT_TOTAL")
+                for role in sorted(roles):
+                    direct.append({"role": role, "cells": cells, "source_ref": _raw_lane_source_ref_v2(region, ordinal, row, money),
+                        "lane_keys": [["SEMANTIC_ALIAS", "CURRENT_PERIOD"], ["SEMANTIC_ALIAS", "COMPARATIVE_PERIOD"]],
+                        "source_period_axis": axis, "source_unit_proof": unit,
+                        "raw_table_sha256": canonical_json_sha256_v1(original_table), "raw_page_sha256": canonical_json_sha256_v1(original_page),
+                        "authenticated_observation_table_sha256": canonical_json_sha256_v1(table)})
+            continue
+        item = {"region": canonical_clone_v1(region), "original_unit_proof": unit,
+            "raw_table_sha256": canonical_json_sha256_v1(original_table), "raw_page_sha256": canonical_json_sha256_v1(original_page),
+            "authenticated_observation_table_sha256": canonical_json_sha256_v1(table),
+            "classification_id": classification["classification_id"], "blocks": [], "failures": []}
+        tables.append(item)
+        if not owner or unit is None or columns is None or table.get("continuation") != "NONE":
+            item["failures"].append("RAW_OWNER_UNIT_OR_INSTRUMENT_HEADER_NOT_PROVEN")
+            continue
+        markers = [(index, row) for index, row in enumerate(table["rows"], 1)
+                   if row["row_kind"] == "GROUP" and _semantic_period_roles(row["label_exact"])]
+        if markers:
+            allowed = ({"so du cuoi nam", "so du cuoi ky", "so du cuoi quy"}, {"so du dau nam", "so du dau ky", "so du dau quy"})
+            if (len(markers) != 2 or markers[0][0] != 1 or _normalized(table.get("title_exact")) not in {"", "chi tiet ky han cua cac giay to co gia phat hanh"}
+                    or any(_normalized(row["label_exact"]) not in allowed[lane] or row["row_kind"] != "GROUP"
+                        or row["hierarchy_path_exact"] != [row["label_exact"]] or any(value is not None for value in row["values_exact"])
+                        for lane, (_index, row) in enumerate(markers))):
+                item["failures"].append("RAW_GROUP_PERIOD_MARKERS_NOT_EXACT")
+                continue
+            item["period_rule"] = "EXPLICIT_CURRENT_COMPARATIVE_GROUP_BLOCKS"
+            for lane, (index, row) in enumerate(markers):
+                end = markers[1][0] - 1 if lane == 0 else len(table["rows"])
+                block = _raw_transposed_block_v2(table, region, columns, index + 1, end, row["label_exact"],
+                    ["SEMANTIC_ALIAS", ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")[lane]], compiled_specs)
+                if block is None:
+                    item["failures"].append("RAW_GROUP_TENOR_POPULATION_OR_CONTROL_NOT_EXACT")
+                else:
+                    item["blocks"].append(block)
+            if len(item["blocks"]) == 2 and not same_typed_json_v1(item["blocks"][0]["population"], item["blocks"][1]["population"]):
+                item["failures"].append("PERIOD_BLOCK_ECONOMIC_POPULATIONS_DIFFER")
+            continue
+        title = _without_leading_ordinal(_normalized(table.get("title_exact")))
+        dates = sorted({value.isoformat() for value in _surface_dates(table.get("title_exact"))})
+        if re.fullmatch(r"tai ngay [0-9]{1,2} thang [0-9]{1,2} nam [0-9]{4}", title) and len(dates) == 1:
+            item["period_rule"] = "EXPLICIT_DATED_SAME_POPULATION_TABLE_PAIR"
+            item["source_date"] = dates[0]
+            pending.append((item, table, columns))
+            continue
+        candidates = sum(_raw_transposed_headers_v2(other, compiled_specs) is not None for other in section["tables"])
+        maturity_narratives = [text for text in section.get("narratives_exact", [])
+            if "ky han" in _normalized(text) and "giay to co gia" in _normalized(text)]
+        narratives = [text for text in maturity_narratives if current_sentence.fullmatch(_normalized(text))]
+        if not title and candidates == 1 and len(narratives) == len(maturity_narratives) == 1:
+            item["period_rule"] = "EXPLICIT_UNIQUE_CURRENT_ONLY_MATURITY_NARRATIVE"
+            item["period_narrative_exact"] = narratives[0]
+            block = _raw_transposed_block_v2(table, region, columns, 1, len(table["rows"]), None,
+                ["SEMANTIC_ALIAS", "CURRENT_PERIOD"], compiled_specs)
+            if block is None:
+                item["failures"].append("RAW_CURRENT_ONLY_POPULATION_OR_CONTROL_NOT_EXACT")
+            else:
+                item["blocks"] = [block]
+        else:
+            item["failures"].append("TRANSPOSED_ORIGINAL_SOURCE_PERIOD_OWNER_UNPROVEN")
+    groups = {}
+    for item, table, columns in pending:
+        region = item["region"]
+        key = tuple(region[field] for field in ("document_id", "source_sha256", "page_json_version_id", "section_id"))
+        groups.setdefault(key, []).append((item, table, columns))
+    for group in groups.values():
+        ordered = sorted(group, key=lambda value: value[0]["source_date"], reverse=True)
+        if len(ordered) != 2 or len({value[0]["source_date"] for value in ordered}) != 2:
+            for item, _table, _columns in ordered:
+                item["failures"].append("DATED_PERIOD_TABLE_PAIR_NOT_UNIQUE")
+            continue
+        first_region = ordered[0][0]["region"]
+        summary_date_axes = {tuple(signature[1] for signature in observation["source_period_axis"]["signatures"])
+            for observation in direct
+            if all(observation["source_ref"]["locator"][field] == first_region[field]
+                for field in ("document_id", "source_sha256", "page_json_version_id", "section_id"))
+            and all(signature[0] == "DATE" for signature in observation["source_period_axis"]["signatures"])}
+        pair_dates = tuple(value[0]["source_date"] for value in ordered)
+        if summary_date_axes and summary_date_axes != {pair_dates}:
+            for item, _table, _columns in ordered:
+                item["failures"].append("DATED_TABLE_PERIODS_CONFLICT_WITH_PRINTED_SUMMARY_AXIS")
+        for lane, (item, table, columns) in enumerate(ordered):
+            block = _raw_transposed_block_v2(table, item["region"], columns, 1, len(table["rows"]), None,
+                ["SEMANTIC_ALIAS", ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")[lane]], compiled_specs)
+            if block is None:
+                item["failures"].append("DATED_TABLE_RAW_POPULATION_OR_CONTROL_NOT_EXACT")
+            else:
+                item["blocks"] = [block]
+            item["paired_source_dates"] = [value[0]["source_date"] for value in ordered]
+            item["paired_source_regions"] = [value[0]["region"] for value in ordered]
+            item["printed_summary_date_axes_for_conflict_veto_only"] = [list(axis) for axis in sorted(summary_date_axes)]
+        left, right = ordered[0][0], ordered[1][0]
+        if (not left["blocks"] or not right["blocks"] or left["original_unit_proof"]["canonical_unit"] != right["original_unit_proof"]["canonical_unit"]
+                or not same_typed_json_v1(left["blocks"][0]["population"], right["blocks"][0]["population"])
+                or not same_typed_json_v1(ordered[0][2], ordered[1][2])
+                or not same_typed_json_v1(ordered[0][1]["columns"], ordered[1][1]["columns"])):
+            left["failures"].append("DATED_TABLE_NONPERIOD_ECONOMIC_POPULATIONS_DIFFER")
+            right["failures"].append("DATED_TABLE_NONPERIOD_ECONOMIC_POPULATIONS_DIFFER")
+    for item in tables:
+        item["failures"] = sorted(set(item["failures"]))
+        item["status"] = "SOURCE_OWNED" if item["blocks"] and not item["failures"] else "HOLD"
+        item["source_lane_table_proof_id"] = "gjivpsltv2:proof:" + canonical_json_sha256_v1(item)
+    material = {"format_version": "ISSUED_PAPERS_ORIGINAL_SOURCE_LANE_INVENTORY_V2", "tables": tables,
+        "direct_two_period_observations": direct,
+        "authenticated_source_repair_receipts": canonical_clone_v1(list(authenticated_repairs)),
+        "rule": "RAW_SOURCE_SEMANTIC_PERIOD_AND_COMPLETE_ECONOMIC_POPULATION_BEFORE_PROJECTION_NO_VALUE_DATE_UNIT_DONATION"}
+    return {**material, "source_lane_inventory_id": "gjivpsliv2:inventory:" + canonical_json_sha256_v1(material)}
+
+
+def _raw_lane_ref_equal_v2(left, right):
+    fields = ("row_ordinal", "row_id", "row_kind", "label_exact", "hierarchy_path_exact", "money_column_ordinals")
+    identity = ("document_id", "document_ordinal", "source_logical_name", "source_sha256", "page_json_version_id",
+                "physical_page", "selected_page_ordinal", "section_id", "table_id")
+    return (all(same_typed_json_v1(left.get(key), right.get(key)) for key in fields)
+        and all(same_typed_json_v1(left.get("locator", {}).get(key), right.get("locator", {}).get(key)) for key in identity))
+
+
+def _raw_lane_values_equal_v2(cells, observed):
+    if len(cells) != len(observed):
+        return False
+    try:
+        return all(observed_source_coefficient_v1(cell) == raw["coefficient"]
+                   for cell, raw in zip(cells, observed, strict=True))
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def _enforce_original_source_mapping_lanes_v2(candidate, *, inventory, original_pages, observation_pages, regions):
+    """Bind existing READY output to raw lanes; never promote a held result."""
+    if not inventory["tables"]:
+        return None
+    before = canonical_clone_v1(candidate)
+    tables = inventory["tables"]
+    atoms = []
+    failures = {failure for table in tables for failure in table["failures"]}
+    original_regions = {_source_unit_scope_key_v1(region): region for region in regions}
+    if inventory["source_lane_inventory_id"] != "gjivpsliv2:inventory:" + canonical_json_sha256_v1({
+        key: value for key, value in inventory.items() if key != "source_lane_inventory_id"
+    }):
+        failures.add("ORIGINAL_SOURCE_LANE_INVENTORY_ID_DRIFT")
+    for claim in [*tables, *inventory["direct_two_period_observations"]]:
+        region = claim.get("region", claim.get("source_ref", {}).get("locator"))
+        original = original_regions.get(_source_unit_scope_key_v1(region))
+        if (original is None or not same_typed_json_v1(region, original)
+                or claim["raw_table_sha256"] != canonical_json_sha256_v1(_region_table(original_pages, original))
+                or claim["raw_page_sha256"] != canonical_json_sha256_v1(original_pages[original["page_json_version_id"]])
+                or claim["authenticated_observation_table_sha256"] != canonical_json_sha256_v1(_region_table(observation_pages, original))):
+            failures.add("ORIGINAL_SOURCE_LANE_BEFOREIMAGE_OR_IDENTITY_DRIFT")
+    for table in tables:
+        if table["status"] == "SOURCE_OWNED":
+            for block in table["blocks"]:
+                atoms.extend({**observation, "table_proof_id": table["source_lane_table_proof_id"],
+                    "canonical_unit": table["original_unit_proof"]["canonical_unit"]} for observation in block["observations"])
+    direct = inventory["direct_two_period_observations"]
+    checks, detached, replacements = [], [], []
+    lane_roles = ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
+    for mapping in candidate.get("mappings", []):
+        refs = mapping.get("source_refs", [])
+        anchors = [item for item in direct if item["role"] == mapping["role"]
+                   and any(_raw_lane_ref_equal_v2(ref, item["source_ref"]) for ref in refs)]
+        anchors = list({canonical_json_sha256_v1(item["source_ref"]): item for item in anchors}.values())
+        check = {"item_mapping_id_before": mapping["item_mapping_id"], "role": mapping["role"],
+            "report_norm_id": mapping["report_norm_id"], "financial_source_refs": [], "source_lane_bindings": [], "failures": []}
+        chosen = None
+        if len(anchors) > 1:
+            check["failures"].append("COMPLETE_SUMMARY_SOURCE_OCCURRENCE_NOT_UNIQUE")
+        elif anchors:
+            chosen = anchors[0]
+            if mapping["unit"] != chosen["source_unit_proof"]["canonical_unit"] or not _raw_lane_values_equal_v2(mapping["values"], chosen["cells"]):
+                check["failures"].append("COMPLETE_SUMMARY_VALUES_OR_UNIT_DISAGREE")
+            check["financial_source_refs"] = [chosen["source_ref"]]
+            check["source_lane_bindings"] = [{"lane_key": key, "cell": cell,
+                "source_ref": chosen["source_ref"], "source_period_axis": chosen["source_period_axis"]}
+                for key, cell in zip(chosen["lane_keys"], chosen["cells"], strict=True)]
+        elif len(mapping["values"]) not in {1, 2}:
+            check["failures"].append("OUTPUT_LANE_COUNT_NOT_SUPPORTED_BY_RAW_PROOF")
+        bindings = {}
+        for ref in refs:
+            same_direct = [item for item in anchors if _raw_lane_ref_equal_v2(ref, item["source_ref"])]
+            if same_direct:
+                continue
+            matches = [atom for atom in atoms if atom["role"] == mapping["role"] and _raw_lane_ref_equal_v2(ref, atom["source_ref"])]
+            if len(matches) != 1:
+                check["failures"].append("SOURCE_REF_HAS_NO_UNIQUE_ORIGINAL_ROLE_AND_LANE")
+                continue
+            atom = matches[0]
+            role = atom["lane_key"][1]
+            if role not in lane_roles:
+                check["failures"].append("ORIGINAL_PERIOD_ROLE_NOT_DECLARED")
+                continue
+            lane = lane_roles.index(role)
+            if (lane >= len(mapping["values"]) or mapping["unit"] != atom["canonical_unit"]
+                    or not _raw_lane_values_equal_v2([mapping["values"][lane]], [atom["cell"]])):
+                check["failures"].append("SOURCE_LANE_VALUES_OR_UNIT_DISAGREE")
+            if role in bindings and not _raw_lane_ref_equal_v2(bindings[role]["source_ref"], atom["source_ref"]):
+                check["failures"].append("ORIGINAL_SOURCE_LANE_OCCURRENCE_NOT_UNIQUE")
+            bindings[role] = atom
+        if chosen is None:
+            expected = set(lane_roles[:len(mapping["values"])])
+            if set(bindings) != expected:
+                check["failures"].append("OUTPUT_LANES_NOT_ALL_INDEPENDENTLY_SOURCE_OWNED")
+            elif len(bindings) == 2 and not same_typed_json_v1(bindings[lane_roles[0]]["economic_qualifier"], bindings[lane_roles[1]]["economic_qualifier"]):
+                check["failures"].append("CURRENT_COMPARATIVE_ECONOMIC_QUALIFIERS_DIFFER")
+            check["source_lane_bindings"] = [bindings[role] for role in lane_roles if role in bindings]
+            check["financial_source_refs"] = [item["source_ref"] for item in check["source_lane_bindings"]]
+        else:
+            extra = [ref for ref in refs if not _raw_lane_ref_equal_v2(ref, chosen["source_ref"])]
+            if extra:
+                detached.append({"item_mapping_id_before": mapping["item_mapping_id"],
+                    "comparison_only_source_refs": canonical_clone_v1(extra),
+                    "source_lane_bindings": [bindings[role] for role in lane_roles if role in bindings]})
+        if not refs:
+            check["failures"].append("MAPPING_FINANCIAL_SOURCE_INPUT_ABSENT")
+        check["failures"] = sorted(set(check["failures"]))
+        if check["failures"]:
+            failures.update(failure + ":" + mapping["role"] for failure in check["failures"])
+        else:
+            replacement = canonical_clone_v1(mapping)
+            replacement["source_refs"] = canonical_clone_v1(check["financial_source_refs"])
+            replacement["row_id"] = check["financial_source_refs"][0]["row_id"]
+            replacement["item_mapping_id"] = "gjmthfmv1:item:" + canonical_json_sha256_v1({key: value for key, value in replacement.items() if key != "item_mapping_id"})
+            replacements.append(replacement)
+        checks.append(check)
+    closure = candidate["closure_receipt"]
+    retired_equations, kept_equations = [], []
+    by_scope = {_source_unit_scope_key_v1(region): region for region in regions}
+
+    def original_equation_refs(equation):
+        refs = [ref for axis in [*equation.get("component_source_refs", []), equation.get("result_source_refs", [])] for ref in axis]
+        scopes = {_source_unit_scope_key_v1(ref.get("locator", {})) for ref in refs}
+        if len(scopes) != 1 or not refs or equation.get("equation_kind") == "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT":
+            return False
+        for ref in refs:
+            region = by_scope.get(_source_unit_scope_key_v1(ref.get("locator", {})))
+            if region is None:
+                return False
+            table = _region_table(observation_pages, region)
+            ordinal = ref.get("row_ordinal")
+            columns = ref.get("money_column_ordinals")
+            if type(ordinal) is not int or not 1 <= ordinal <= len(table["rows"]) or type(columns) is not list or not columns:
+                return False
+            row = table["rows"][ordinal - 1]
+            if not _raw_lane_ref_equal_v2(ref, _raw_lane_source_ref_v2(region, ordinal, row, columns)) or _raw_lane_cells_v2(row, columns) is None:
+                return False
+        return True
+
+    for equation in closure.get("equations", []):
+        (kept_equations if original_equation_refs(equation) else retired_equations).append(equation)
+    material = {"format_version": "ISSUED_PAPERS_ORIGINAL_SOURCE_MAPPING_LANES_V2",
+        "source_lane_inventory": inventory, "checks": checks, "failures": sorted(failures),
+        "comparison_only_evidence": _mapping_beforeimage_evidence_v1(detached) if detached else None,
+        "known_printed_root_controls": _mapping_beforeimage_evidence_v1([item for item in direct if item["role"] == "FAMILY_ROOT_TOTAL"]),
+        "known_root_controls_grant_schema_mapping": False,
+        "withheld_or_rebound_mappings": _mapping_beforeimage_evidence_v1(before["mappings"]) if before.get("mappings") else None,
+        "retired_financial_permissions": _mapping_beforeimage_evidence_v1({
+            "equations": before["closure_receipt"].get("equations", []) if failures else retired_equations,
+            "root_component_sum_receipts": before["closure_receipt"].get("root_component_sum_receipts", []),
+            "structural_root_receipt": before["closure_receipt"].get("structural_root_receipt"),
+            "prior_adapter_receipt": before["closure_receipt"].get("issued_valuable_papers_adapter_receipt")}) if failures or before["status"] == READY else None,
+        "outcome": "HOLD" if failures else ("EXISTING_READY_SOURCE_LANES_BOUND" if before["status"] == READY else "PREEXISTING_UNRESOLVED_NOT_PROMOTED"),
+        "financial_permission_granted_to_preexisting_unresolved": False,
+        "rule": "EXISTING_READY_ONLY_EACH_OUTPUT_LANE_OWN_RAW_SCOPE_UNIT_ROLE_AND_POPULATION_NO_AMOUNT_BASED_PERIOD_JOIN"}
+    if failures:
+        candidate["status"] = UNRESOLVED
+        candidate["mappings"] = []
+        candidate["reasons"] = sorted(set(candidate.get("reasons", [])) | {"ISSUED_PAPER_ORIGINAL_SOURCE_LANE_NOT_PROVEN:" + failure for failure in failures})
+        closure["equations"] = []
+        closure["root_component_sum_receipts"] = []
+    elif before["status"] == READY:
+        candidate["mappings"] = replacements
+        raw_equations = [equation for table in tables for block in table["blocks"] for equation in block["equations"]]
+        closure["equations"] = list({item["equation_id"]: item for item in [*kept_equations, *raw_equations]}.values())
+        closure["root_component_sum_receipts"] = []
+    receipt = {**material, "source_mapping_lane_receipt_id": "gjivpsmlv2:receipt:" + canonical_json_sha256_v1(material)}
+    if failures or before["status"] == READY:
+        prior_root = closure.get("structural_root_receipt", {})
+        roots = [mapping for mapping in candidate["mappings"] if mapping["role"] == "FAMILY_ROOT_TOTAL"]
+        closure["structural_root_receipt"] = {**prior_root,
+            "emitted_mapping": len(roots) == 1 and candidate["status"] == READY,
+            "mapping_policy": "ORIGINAL_SOURCE_OWNED_OUTPUT_LANES_OR_TYPED_HOLD",
+            "source_mapping_lane_receipt_id": receipt["source_mapping_lane_receipt_id"],
+            "source_mapping_id": roots[0]["item_mapping_id"] if len(roots) == 1 else None}
+    closure.pop("issued_valuable_papers_adapter_receipt", None)
+    return receipt
+
+
 def _existing_same_table_transposed_lane_proof_v1(
     mapping: Mapping[str, Any],
     *,
@@ -6677,6 +7164,7 @@ def _reseal_candidate(
     source_local_lane_binding_receipt: Mapping[str, Any] | None = None,
     printed_net_frontier_total_receipt: Mapping[str, Any] | None = None,
     original_source_unit_ownership_receipt: Mapping[str, Any] | None = None,
+    original_source_mapping_lane_receipt: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if (
         not adjacent_source_syntax_projection_receipts
@@ -6691,6 +7179,7 @@ def _reseal_candidate(
         and source_local_lane_binding_receipt is None
         and printed_net_frontier_total_receipt is None
         and original_source_unit_ownership_receipt is None
+        and original_source_mapping_lane_receipt is None
     ):
         return candidate
     material = {
@@ -6736,6 +7225,10 @@ def _reseal_candidate(
         material["original_source_unit_ownership_receipt"] = canonical_clone_v1(
             original_source_unit_ownership_receipt
         )
+    if original_source_mapping_lane_receipt is not None:
+        material["original_source_mapping_lane_receipt"] = canonical_clone_v1(
+            original_source_mapping_lane_receipt
+        )
     candidate["claim_boundary"] = ADAPTER_CLAIM_BOUNDARY
     candidate["closure_receipt"]["issued_valuable_papers_adapter_receipt"] = {
         **material,
@@ -6772,6 +7265,10 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
         regions=regions,
         page_json_by_version=page_json_by_version,
         compiled_specs=compiled_specs,
+    )
+    original_lane_inventory = _original_source_lane_inventory_v2(
+        pages=page_json_by_version, regions=regions, compiled_specs=compiled_specs,
+        observation_pages=pages, authenticated_repairs=repairs,
     )
     primary_projection = None
     if len(regions) == 1:
@@ -6963,6 +7460,17 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
     printed_total_receipt = _bind_printed_total_from_closed_net_frontier_v1(
         candidate, pages=pages, compiled_specs=compiled_specs
     )
+    source_mapping_lane_receipt = _enforce_original_source_mapping_lanes_v2(
+        candidate, inventory=original_lane_inventory, original_pages=page_json_by_version,
+        observation_pages=pages, regions=regions,
+    )
+    if source_mapping_lane_receipt is not None and printed_total_receipt is not None:
+        source_mapping_lane_receipt["retired_printed_total_permission"] = _mapping_beforeimage_evidence_v1(printed_total_receipt)
+        source_mapping_lane_receipt["source_mapping_lane_receipt_id"] = "gjivpsmlv2:receipt:" + canonical_json_sha256_v1({
+            key: value for key, value in source_mapping_lane_receipt.items() if key != "source_mapping_lane_receipt_id"
+        })
+        candidate["closure_receipt"]["structural_root_receipt"]["source_mapping_lane_receipt_id"] = source_mapping_lane_receipt["source_mapping_lane_receipt_id"]
+        printed_total_receipt = None
     return _reseal_candidate(
         candidate,
         adjacent_source_syntax_projection_receipts=adjacent_receipts,
@@ -6977,9 +7485,10 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
         source_local_lane_binding_receipt=_enforce_source_local_mapping_lanes_v1(
             candidate, pages=pages, compiled_specs=compiled_specs,
             maturity_projection_receipts=maturity_receipts,
-        ),
+        ) if source_mapping_lane_receipt is None else None,
         printed_net_frontier_total_receipt=printed_total_receipt,
         original_source_unit_ownership_receipt=unit_ownership_receipt,
+        original_source_mapping_lane_receipt=source_mapping_lane_receipt,
     )
 
 
