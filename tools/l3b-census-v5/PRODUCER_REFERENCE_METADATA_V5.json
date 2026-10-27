@@ -1,0 +1,31 @@
+{
+  "schema": "L3B_ACTUAL_PRODUCER_REFERENCE_METADATA_V5",
+  "classification": "SMALL_ADMINISTRATIVE_REFERENCE_METADATA_SUPPLIED_BY_ROOT_NOT_FINANCIAL_SOURCE_DATA",
+  "authority": {
+    "inner_receipt_raw_sha256": "4936372ac91816ff50825eca3783e1292091e39c98ca199e244f7721f5ea9437",
+    "inner_receipt_size_bytes": 1949,
+    "outer_receipt_raw_sha256": "98a0677d48d6d52fba37a0cde4b2dc83df064ba65a26537c5b6e98df1457511c",
+    "outer_receipt_size_bytes": 1097083,
+    "inventory_result_equals_inner": "ROOT_NATIVE_POWERSHELL_COMPARISON_IDENTICAL",
+    "actual_receipt_bodies_read_by_author": false,
+    "root_metadata_instruction_date": "2026-10-26"
+  },
+  "producer_refs": {
+    "inventory_stream_ref": {
+      "path": "/srv/bctc-receipts/f36-neutral-original-inventory-full271-20261025-v1/inventory/selected-original-inventory.jsonl",
+      "sha256": "56167838f53dfd967c4d91ed7ae269350dd465ecfb19d8c1f529aafb77e99fe5",
+      "size_bytes": 228533818,
+      "identity": [2096, 707100, 33152, 228533818, 1792870114766128245, 1792870114766128245]
+    },
+    "inventory_receipt_ref": {
+      "path": "/srv/bctc-receipts/f36-neutral-original-inventory-full271-20261025-v1/inventory/F36_NEUTRAL_SELECTED_ORIGINAL_INVENTORY_V1.json",
+      "sha256": "4936372ac91816ff50825eca3783e1292091e39c98ca199e244f7721f5ea9437",
+      "size_bytes": 1949,
+      "identity": [2096, 707101, 33152, 1949, 1792870117226117413, 1792870117226117413]
+    }
+  },
+  "identity_semantics": "HISTORICAL_PRODUCER_STAT_CAPTURE_ONLY_NOT_RESTORED_CURRENT_INODE_AUTHORITY",
+  "current_input_authority": "INDEPENDENT_RAW_SHA_AND_BYTE_PINS_PLUS_FRESH_HELD_FD_BEFORE_AFTER_HASH_AND_IDENTITY_BARRIERS",
+  "actual_inventory_database_pdf_provider_access_by_author": false,
+  "test_or_census_execution_by_author": false
+}

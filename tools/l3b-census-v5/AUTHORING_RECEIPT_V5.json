@@ -1,0 +1,96 @@
+{
+    "schema":  "CODEX_L3B_CENSUS_AUTHORING_RECEIPT_V5",
+    "status":  "FROZEN_STATIC_PACKET_READY_FOR_ROOT_REVIEW_NOT_TEST_OR_CENSUS_PASS",
+    "helper_ref":  {
+                       "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\census_l3b_original_inventory_v5.py",
+                       "sha256":  "fcf01afa97feb50eb4d9d3d7109fa1c9aff9906bff54fb51f9c98e3319a6a562",
+                       "size_bytes":  46143
+                   },
+    "test_ref":  {
+                     "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\test_census_l3b_original_inventory_v5.py",
+                     "sha256":  "428047090c8f38e373e939c6f66495a6c444294e3c6c92288bfdab11a010fb16",
+                     "size_bytes":  34722
+                 },
+    "packet_refs":  [
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\AUTHOR_SYNTHETIC_FIXTURES_V3.py",
+                            "sha256":  "222dfc61591ea41a8024e8fc51c22e98629924d7bd0a794f342e609c3a619cb5",
+                            "size_bytes":  9560
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\census_l3b_original_inventory_v5.py",
+                            "sha256":  "fcf01afa97feb50eb4d9d3d7109fa1c9aff9906bff54fb51f9c98e3319a6a562",
+                            "size_bytes":  46143
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\PLANNED_CONTROLS_V5.json",
+                            "sha256":  "a6dd008d854e91917c47de24a0566a03e4b60362512272e85e98d58b087d1d33",
+                            "size_bytes":  7092
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\PRODUCER_REFERENCE_METADATA_V5.json",
+                            "sha256":  "92bbe89677632a940c8ac90c3fa70a592ac0d03d5e60b0d364a9ff64808005d5",
+                            "size_bytes":  1777
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\README_V5.md",
+                            "sha256":  "37b7808e9bc86249e7121e51be195bd3112c36eb58cdd1198975fa8aae825eca",
+                            "size_bytes":  4261
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\REGISTERED_LITERAL_CATALOG_V1.json",
+                            "sha256":  "13fc0706cfe231af1eb65335d0a81b77600be68a76be657d730eaa4621259b30",
+                            "size_bytes":  551625
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\synthetic-fixtures\\selected-original-inventory.SYNTHETIC.jsonl",
+                            "sha256":  "79751542f02760c4de287ea01487835730da8aec1b43e12d84d026db568a3eff",
+                            "size_bytes":  14466
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\synthetic-fixtures\\SYNTHETIC_FIXTURE_CONTRACT_V1.json",
+                            "sha256":  "91de0dfb0dc7ee02245fba8519ca0bc5cd3b8f0d60349cb0f34f68f144c9d083",
+                            "size_bytes":  1111
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\synthetic-fixtures\\SYNTHETIC_PAGE_OBJECTS_V3.json",
+                            "sha256":  "cafb306a8eb926fa593463a5ddf246c02c8354d03542b11556af2e5cad32e440",
+                            "size_bytes":  4008
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\test_census_l3b_original_inventory_v5.py",
+                            "sha256":  "428047090c8f38e373e939c6f66495a6c444294e3c6c92288bfdab11a010fb16",
+                            "size_bytes":  34722
+                        },
+                        {
+                            "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\V5_DIFFERENCES_AND_CONTRACT.json",
+                            "sha256":  "a86060d763b251b94044a986f108b0ecfd4e26aa4a0341fa5d8edb921bf71fcc",
+                            "size_bytes":  5379
+                        }
+                    ],
+    "planned_methods":  40,
+    "retained_old_methods":  34,
+    "new_contract_methods":  6,
+    "verified_source_test_pins_match_requested":  true,
+    "only_authoring_under_current_v5":  true,
+    "prior_v1_v4_overwritten":  false,
+    "prior_packet_rehash_during_resume":  false,
+    "production_family_config_shared_or_workbook_edited":  false,
+    "tests_lint_import_AST_project_runtime_or_census_executed_by_author":  false,
+    "real_inventory_completion_body_database_pdf_provider_access_by_author":  false,
+    "runtime_slot_status":  "NOT_OPEN_OWNER_QUEUE",
+    "independent_static_review":  {
+                                      "reviewer":  "/root/f37_owner_current_static_review",
+                                      "source_sha256":  "fcf01afa97feb50eb4d9d3d7109fa1c9aff9906bff54fb51f9c98e3319a6a562",
+                                      "test_sha256":  "428047090c8f38e373e939c6f66495a6c444294e3c6c92288bfdab11a010fb16",
+                                      "reported_result":  "NO_MATERIAL_FINDING_IN_BOUNDED_HISTORICAL_REFERENCE_DELTA",
+                                      "final_packet_ack_requested_after_freeze":  true,
+                                      "runtime_pass_claimed":  false
+                                  },
+    "root_review_capture_complete40_tests_and_slot_required":  true,
+    "financial_acceptance":  false,
+    "family_terminal":  false,
+    "production_F41_unlocked":  false,
+    "bank_counts":  null,
+    "notes_join_status":  "NOT_REQUESTED_NO_APPROVED_PINS"
+}

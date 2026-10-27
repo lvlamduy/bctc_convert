@@ -1,0 +1,82 @@
+{
+    "schema":  "L3B_PLANNED_SYNTHETIC_CONTROLS_V5",
+    "status":  "PLANNED_UNRUN_NO_RUNTIME_SLOT",
+    "planned_test_method_count":  40,
+    "retained_previous_method_count":  34,
+    "all_method_names":  [
+                             "test_all_synthetic_records_close_exact_source_version_frontier",
+                             "test_identical_pdf_sha_never_collapses_distinct_document_vid_contexts",
+                             "test_strong_owner_is_local_and_not_continuation_propagation",
+                             "test_competing_reset_literal_is_ambiguous_not_a_resolved_owner",
+                             "test_generic_geography_owner_needs_securities_context",
+                             "test_nulls_and_zero_hashes_are_metadata_not_numeric_values",
+                             "test_typed_presence_envelope_never_confuses_missing_with_empty",
+                             "test_foreign_vid_node_is_rejected",
+                             "test_boolean_global_document_or_page_ordinals_are_rejected",
+                             "test_boolean_page_proof_physical_number_is_rejected",
+                             "test_missing_duplicate_or_reordered_row_is_never_silently_skipped",
+                             "test_row_null_axis_requires_exact_none_type_positions",
+                             "test_unsupported_shape_is_retained_and_counted_not_dropped",
+                             "test_mixed_hierarchy_keeps_string_members_at_original_ordinals_and_reports_unknowns",
+                             "test_mixed_header_keeps_string_levels_without_coercing_null_into_text",
+                             "test_unknown_record_kind_or_unclosed_document_rejects_completion",
+                             "test_page_frontier_digest_and_complete_denominator_are_independent_gates",
+                             "test_normalization_is_whole_token_and_preserves_raw_label",
+                             "test_duplicate_nonfinite_blank_line_and_unterminated_tail_are_rejected",
+                             "test_stream_raw_hash_is_checked_after_whole_single_parse",
+                             "test_synthetic_completion_structure_cannot_change_profile_source_or_safety_boundary",
+                             "test_completion_reseal_and_wrong_outer_result_do_not_pass_bindings",
+                             "test_runtime_catalog_remains_all13_pinned_static_expectations",
+                             "test_memory_floor_is_checked_from_exact_available_field_not_total_ram",
+                             "test_held_descriptor_final_barrier_rejects_mutated_owned_synthetic_file",
+                             "test_declared_four_status_axis_preserves_explicit_zero_categories",
+                             "test_unknown_status_boolean_zero_or_sparse_declared_axis_rejects",
+                             "test_wrong_sparse_observed_frontier_or_unknown_page_status_rejects",
+                             "test_actual_pinned_catalog_constructor_keeps_all1030_including_two_footnotes",
+                             "test_punctuation_matches_only_distinct_whole_nfc_outer_trimmed_fields",
+                             "test_two_footnotes_never_infer_matrix_transpose_or_unrelated_rollforward",
+                             "test_punctuation_parent_or_reset_literals_remain_weak_side_evidence",
+                             "test_normal_cooccurrence_preserves_normal_hits_without_footnote_axis_inflation",
+                             "test_empty_and_unsupported_normalized_aliases_still_fail_closed",
+                             "test_actual_producer_reference_metadata_retains_all_four_fields_and_six_integers",
+                             "test_full_completion_accepts_real_wrapper_reference_shape_and_keeps_inner_equality",
+                             "test_historical_reference_missing_and_unknown_fields_are_not_ignored",
+                             "test_historical_identity_rejects_wrong_types_lengths_modes_sizes_and_bounds",
+                             "test_historical_reference_path_sha_and_both_sizes_remain_immutable",
+                             "test_historical_identity_is_not_compared_with_current_inode_and_validator_performs_no_io"
+                         ],
+    "new_method_names":  [
+                             "test_actual_producer_reference_metadata_retains_all_four_fields_and_six_integers",
+                             "test_full_completion_accepts_real_wrapper_reference_shape_and_keeps_inner_equality",
+                             "test_historical_reference_missing_and_unknown_fields_are_not_ignored",
+                             "test_historical_identity_rejects_wrong_types_lengths_modes_sizes_and_bounds",
+                             "test_historical_reference_path_sha_and_both_sizes_remain_immutable",
+                             "test_historical_identity_is_not_compared_with_current_inode_and_validator_performs_no_io"
+                         ],
+    "source_helper_ref":  {
+                              "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\census_l3b_original_inventory_v5.py",
+                              "sha256":  "fcf01afa97feb50eb4d9d3d7109fa1c9aff9906bff54fb51f9c98e3319a6a562",
+                              "size_bytes":  46143
+                          },
+    "test_file_ref":  {
+                          "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\test_census_l3b_original_inventory_v5.py",
+                          "sha256":  "428047090c8f38e373e939c6f66495a6c444294e3c6c92288bfdab11a010fb16",
+                          "size_bytes":  34722
+                      },
+    "administrative_metadata_fixture_ref":  {
+                                                "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\PRODUCER_REFERENCE_METADATA_V5.json",
+                                                "sha256":  "92bbe89677632a940c8ac90c3fa70a592ac0d03d5e60b0d364a9ff64808005d5",
+                                                "size_bytes":  1777
+                                            },
+    "new_controls":  [
+                         "Actual four-field producer refs retain six historical plain integers and clone them without aliasing.",
+                         "Producer-shaped synthetic wrapper passes structure; full inner canonical equality still rejects drift.",
+                         "Missing identity, unknown fields and missing entire refs fail closed.",
+                         "Boolean/noninteger members, wrong list lengths, invalid bounds, directories/symlinks and inconsistent stat sizes fail.",
+                         "Path/SHA/reference size and expected immutable input size remain exact.",
+                         "Historical inode changes do not invoke or substitute for current file I/O; raw outer pins remain independent."
+                     ],
+    "test_or_census_execution_by_author":  false,
+    "actual_new_test_result":  null,
+    "real_source_jsonl_database_pdf_provider_access":  false
+}

@@ -1,0 +1,70 @@
+{
+    "schema":  "L3B_V5_DIFFERENCES_AND_HISTORICAL_REFERENCE_CONTRACT",
+    "status":  "STATIC_ONLY_NOT_TEST_OR_CENSUS_PASS",
+    "root_authorized_scope":  "Exact producer wrapper reference shape correction; source matching and production remain unchanged",
+    "previous_v4_helper":  {
+                               "sha256":  "44f0764d5a4428d08c7d35e88bbcde0078ab0344de56cf33828e310770bf7f24",
+                               "size_bytes":  44077
+                           },
+    "previous_v4_tests":  {
+                              "sha256":  "2ad1db1fe99695aaa8f8f7dc6c3943128526bbf512278ff61d3bad496ba579de",
+                              "size_bytes":  27853
+                          },
+    "current_helper":  {
+                           "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\census_l3b_original_inventory_v5.py",
+                           "sha256":  "fcf01afa97feb50eb4d9d3d7109fa1c9aff9906bff54fb51f9c98e3319a6a562",
+                           "size_bytes":  46143
+                       },
+    "current_tests":  {
+                          "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\test_census_l3b_original_inventory_v5.py",
+                          "sha256":  "428047090c8f38e373e939c6f66495a6c444294e3c6c92288bfdab11a010fb16",
+                          "size_bytes":  34722
+                      },
+    "producer_metadata_ref":  {
+                                  "path":  "D:\\bctc_bank\\restore-receipts\\CODEX_L3B_CENSUS_20261026_V1\\v5\\PRODUCER_REFERENCE_METADATA_V5.json",
+                                  "sha256":  "92bbe89677632a940c8ac90c3fa70a592ac0d03d5e60b0d364a9ff64808005d5",
+                                  "size_bytes":  1777
+                              },
+    "producer_contract_source":  "Previously read restore-tools/run_f36_reviewed_manifest_focused_v2.py:48-61; root native metadata comparison of independently raw-pinned receipts",
+    "known_failure":  {
+                          "classification":  "REFERENCE_ENVELOPE_SCHEMA_MISMATCH_NOT_ARTIFACT_CORRUPTION",
+                          "inventory_result_vs_inner":  "IDENTICAL_ROOT_REPORTED_NATIVE_COMPARISON",
+                          "outer_reference_extra_field":  "identity",
+                          "raw_inventory_stream_opened":  false,
+                          "exact_failed_attempt_file_refs":  null,
+                          "failure_file_ref_status":  "NOT_SUPPLIED_DO_NOT_GUESS"
+                      },
+    "changes":  [
+                    "Validate exactly path/sha256/size_bytes/identity for the two producer wrapper refs.",
+                    "Require a six-element list of plain integers, valid regular-file mode, size cross-binding and explicit nonnegative bounds.",
+                    "Retain all historical identity fields in returned reference metadata and main receipt; mark historical identity as not current-inode authority.",
+                    "Keep validate_completion return value as counts and preserve complete canonical inventory_result equality.",
+                    "Use producer-shaped administrative refs in the synthetic completion helper; retain existing34 test methods and add6 contract controls."
+                ],
+    "unchanged":  [
+                      "Independent immutable stream, inner receipt and controlled receipt raw SHA/byte pins.",
+                      "Fresh Held before/after actual file identity and byte-hash barriers.",
+                      "V4 punctuation exact whole-field weak side evidence and exclusion from ownership or axis/layout inference.",
+                      "All1030 declarations and catalog13fc0706 byte content.",
+                      "V3/V4 UTF8 synthetic fixture, contract and page-object proof bytes.",
+                      "FULL271/page/table/row/value-slot and ordered source-version frontier guards.",
+                      "One parse pass for all13 families; nulls remain unknown, no numeric coefficient reconstruction.",
+                      "Resource/output-prefix limits, no automatic retry, no family unlock or provider access."
+                  ],
+    "runtime_queue":  {
+                          "authority_messages":  [
+                                                     "0446-claude-to-codex-f37-7b97-zero-diff-and-f39-full-live.md",
+                                                     "0449-claude-to-codex-runtime-queue.md"
+                                                 ],
+                          "status":  "NO_SLOT_OPEN_STATIC_AUTHORING_ONLY",
+                          "required_before_future_attempt":  [
+                                                                 "Coordinator explicit free slot after owner queue",
+                                                                 "Root independent capture/review",
+                                                                 "Passing V5 complete40-method test gate"
+                                                             ],
+                          "tests_or_census_executed_by_author":  false
+                      },
+    "v1_v4_preservation":  "No writes outside current v5 during this resumed task; earlier packet bodies not re-read or rehashed during this resume",
+    "financial_acceptance":  false,
+    "production_F41_unlocked":  false
+}
