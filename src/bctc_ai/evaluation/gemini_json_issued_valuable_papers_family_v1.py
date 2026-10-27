@@ -31,6 +31,8 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
+    UNRESOLVED,
+    _unit_axis,
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
     classify_gemini_json_multitable_hierarchical_table_v1,
@@ -48,6 +50,7 @@ from bctc_ai.evaluation.source_observation_lane_math_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
@@ -6031,6 +6034,331 @@ def _apply_authenticated_source_repairs(
     return pages, applicable
 
 
+def _mapping_beforeimage_evidence_v1(value: Any) -> dict[str, Any]:
+    """Keep exact retired/held content outside the active mapping grammar."""
+
+    payload = canonical_json_bytes_v1(value)
+    return {
+        "format_version": "GEMINI_JSON_ISSUED_PAPERS_MAPPING_BEFOREIMAGE_EVIDENCE_V1",
+        "canonical_json": payload.decode("utf-8"),
+        "sha256": canonical_json_sha256_v1(value),
+        "size_bytes": len(payload),
+    }
+
+
+def _bind_printed_total_from_closed_net_frontier_v1(
+    candidate: dict[str, Any],
+    *,
+    pages: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Bind a printed result already proved by the closed local net frontier.
+
+    Validation-only discounts belong inside their proven net parent subtotal.
+    They are not an additional component of this already closed population.
+    This route selects the existing structural equation and its source row;
+    no amount selects a row, fills a blank, or changes a net parent.
+    """
+
+    if candidate.get("status") != READY:
+        return None
+    roots = [item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL"]
+    if len(roots) != 1 or roots[0]["state"] != (
+        "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
+    ):
+        return None
+    closure = candidate["closure_receipt"]
+    local_kind = "EXACT_CLOSED_STRUCTURAL_GROUP_SUBTOTALS_EQUAL_TERMINAL_TOTAL"
+    equations = [item for item in closure["equations"] if item["equation_kind"] == local_kind]
+    if not equations:
+        return None
+    old_root = canonical_clone_v1(roots[0])
+    failures = []
+    equation = equations[0]
+    source_axis = []
+    parent_roles = set(compiled_specs["root_component_roles"]) - set(
+        compiled_specs["validation_only_roles"]
+    )
+    parent_mappings = [item for item in candidate["mappings"] if item["role"] in parent_roles]
+
+    def identity(ref: Mapping[str, Any]) -> tuple[Any, ...]:
+        locator = ref["locator"]
+        return (
+            *(locator.get(key) for key in (
+                "document_id", "source_sha256", "page_json_version_id", "physical_page",
+                "section_id", "table_id", "selected_page_ordinal",
+            )),
+            ref["row_ordinal"],
+            tuple(ref["money_column_ordinals"]),
+        )
+
+    def raw_cells(ref: Mapping[str, Any], *, kind: str) -> list[dict[str, Any]]:
+        table = _region_table(pages, ref["locator"])
+        ordinal = ref["row_ordinal"]
+        if type(ordinal) is not int or not 1 <= ordinal <= len(table["rows"]):
+            raise _error("issued-paper terminal proof row ordinal is invalid")
+        row = table["rows"][ordinal - 1]
+        if (
+            row.get("row_kind") != kind
+            or ref.get("row_id") != f"r{ordinal}"
+            or any(not same_typed_json_v1(ref.get(key), row.get(key)) for key in (
+                "hierarchy_path_exact", "label_exact", "row_kind",
+            ))
+        ):
+            failures.append("RAW_ROW_IDENTITY_OR_KIND")
+        columns = ref["money_column_ordinals"]
+        if columns != _money_ordinals(table):
+            failures.append("RAW_LOCAL_COLUMN_AXIS")
+        cells = [_source_money(row["values_exact"][column - 1]) for column in columns]
+        if any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in cells):
+            failures.append("UNOBSERVED_OR_CONDITIONAL_RAW_RESULT")
+        source_axis.append({"source_ref": canonical_clone_v1(ref), "row_exact": canonical_clone_v1(row)})
+        return cells
+
+    if len(equations) != 1:
+        failures.append("LOCAL_EQUATION_NOT_UNIQUE")
+    equation_material = {key: value for key, value in equation.items() if key != "equation_id"}
+    if equation.get("equation_id") != (
+        "gjfoltiev1:equation:" + canonical_json_sha256_v1(equation_material)
+    ):
+        failures.append("LOCAL_EQUATION_IDENTITY_DRIFT")
+    result_refs = equation.get("result_source_refs", [])
+    components = equation.get("component_source_refs", [])
+    if (
+        equation.get("status") != "EXACT"
+        or len(result_refs) != 1
+        or not components
+        or any(len(refs) != 1 for refs in components)
+        or equation.get("multipliers") != [1] * len(components)
+    ):
+        failures.append("LOCAL_NET_FRONTIER_INCOMPLETE")
+    result_cells = []
+    matched_parents = []
+    component_cells = []
+    if not failures:
+        result_ref = result_refs[0]
+        table = _region_table(pages, result_ref["locator"])
+        page = pages[result_ref["locator"]["page_json_version_id"]]
+        section = page["sections"][int(result_ref["locator"]["section_id"][1:]) - 1]
+        classification = classify_gemini_json_multitable_hierarchical_table_v1(
+            page, section, table, compiled_specs=compiled_specs
+        )
+        table_receipts = [item for item in closure["table_receipts"] if
+                          same_typed_json_v1(item["region"], result_ref["locator"])]
+        period = _two_period_axis(table)
+        unit = _unit_axis(table, compiled_specs=compiled_specs)
+        if (
+            len(table_receipts) != 1
+            or period.get("complete") is not True
+            or any(key[0] != "DATE" for key in period.get("signatures", []))
+            or unit.get("complete") is not True
+            or unit.get("canonical_unit") != old_root["unit"]
+            or any(item["unit"] != old_root["unit"] for item in parent_mappings)
+            or _exact_owner_alias(section.get("title_exact"), compiled_specs=compiled_specs) is None
+        ):
+            failures.append("LOCAL_PERIOD_OR_UNIT_NOT_PROVEN")
+        if table_receipts:
+            receipt = table_receipts[0]
+            if (
+                receipt["lane_axis"].get("source_lane_keys") != period.get("signatures")
+                or receipt["lane_axis"].get("complete") is not True
+                or not same_typed_json_v1(receipt["lane_axis"].get("source_period_axis"), period)
+                or receipt["lane_axis"].get("money_column_ordinals") != result_ref["money_column_ordinals"]
+                or receipt["lane_axis"].get("lane_keys") != equation.get("lane_keys")
+                or not same_typed_json_v1(receipt["unit_axis"], unit)
+                or not same_typed_json_v1(receipt["classification"], classification)
+            ):
+                failures.append("LOCAL_RECEIPT_AXIS_DRIFT")
+        if (
+            result_ref["row_ordinal"] != len(table["rows"])
+            or sum(row.get("row_kind") == "TOTAL" for row in table["rows"]) != 1
+        ):
+            failures.append("PRINTED_TERMINAL_TOTAL_NOT_UNIQUE")
+        result_cells = raw_cells(result_ref, kind="TOTAL")
+        for refs in components:
+            ref = refs[0]
+            if (
+                identity(ref)[:-2] != identity(result_ref)[:-2]
+                or ref["row_ordinal"] >= result_ref["row_ordinal"]
+            ):
+                failures.append("COMPONENT_SOURCE_POPULATION_DRIFT")
+            cells = raw_cells(ref, kind="SUBTOTAL")
+            component_cells.append(cells)
+            matches = [item for item in parent_mappings if any(
+                identity(source) == identity(ref) for source in item["source_refs"]
+            )]
+            if len(matches) != 1 or not same_typed_json_v1(matches[0]["values"], cells):
+                failures.append("NET_PARENT_SOURCE_JOIN_NOT_EXACT")
+            else:
+                matched_parents.append(matches[0]["role"])
+        if (
+            len(set(matched_parents)) != len(components)
+            or set(matched_parents) != {item["role"] for item in parent_mappings}
+            or equation.get("result_coefficients") != [cell["coefficient"] for cell in result_cells]
+            or equation.get("component_sums") != equation.get("result_coefficients")
+            or any(
+                any(type(cells[lane]["coefficient"]) is not int for cells in component_cells)
+                or sum(cells[lane]["coefficient"] for cells in component_cells)
+                != result_cells[lane]["coefficient"]
+                for lane in range(len(result_cells))
+            )
+        ):
+            failures.append("EXHAUSTIVE_NET_PARENT_FRONTIER_NOT_PROVEN")
+    retired_kind = "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT"
+    retired_equations = [item for item in closure["equations"] if item["equation_kind"] == retired_kind]
+    retired_receipts = canonical_clone_v1(closure.get("root_component_sum_receipts", []))
+    if (
+        len(retired_equations) != 1
+        or retired_equations[0].get("result_role") != "FAMILY_ROOT_TOTAL"
+        or retired_equations[0].get("result_coefficients")
+        != [cell["coefficient"] for cell in old_root["values"]]
+        or len(retired_receipts) != 1
+        or retired_receipts[0].get("result_state") != old_root["state"]
+    ):
+        failures.append("SUPERSEDED_ROOT_PERMISSION_NOT_UNIQUE")
+    material = {
+        "format_version": "GEMINI_JSON_ISSUED_PAPERS_PRINTED_NET_FRONTIER_TOTAL_V1",
+        "failures": sorted(set(failures)),
+        "local_equation": canonical_clone_v1(equation),
+        "net_parent_roles": matched_parents,
+        "source_axis": source_axis,
+        "superseded_derived_root": _mapping_beforeimage_evidence_v1(old_root),
+        "superseded_global_equations": canonical_clone_v1(retired_equations),
+        "superseded_root_permissions": retired_receipts,
+        "withheld_mappings": _mapping_beforeimage_evidence_v1(candidate["mappings"]) if failures else [],
+        "rule": "PRINTED_RAW_TOTAL_FROM_EXISTING_EXACT_CLOSED_NET_PARENT_SOURCE_FRONTIER",
+    }
+    # Once this local source-result route is attempted, a rejected global
+    # derivation grants no active root permission, including on HOLD. Its exact
+    # before-image remains available above as explicitly superseded evidence.
+    closure["equations"] = [item for item in closure["equations"] if item["equation_kind"] != retired_kind]
+    closure["root_component_sum_receipts"] = []
+    if failures:
+        candidate["mappings"] = []
+        candidate["status"] = UNRESOLVED
+        candidate["reasons"] = sorted(set(candidate["reasons"]) | {
+            "ISSUED_PAPER_PRINTED_NET_TOTAL_PROOF_NOT_EXACT:" + reason for reason in failures
+        })
+        closure["structural_root_receipt"]["emitted_mapping"] = False
+    else:
+        root_material = {
+            "report_norm_id": old_root["report_norm_id"],
+            "role": "FAMILY_ROOT_TOTAL",
+            "row_id": result_refs[0]["row_id"],
+            "source_refs": canonical_clone_v1(result_refs),
+            "state": "SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_PROVEN_BY_CLOSED_NET_PARENT_FRONTIER",
+            "unit": old_root["unit"],
+            "values": result_cells,
+        }
+        bound_root = {**root_material, "item_mapping_id": "gjmthfmv1:item:" + canonical_json_sha256_v1(root_material)}
+        candidate["mappings"] = [bound_root if item["role"] == "FAMILY_ROOT_TOTAL" else item for item in candidate["mappings"]]
+        closure["root_component_sum_receipts"] = [{
+            "coefficients": equation["result_coefficients"],
+            "component_roles": matched_parents,
+            "result_state": root_material["state"],
+            "rule": material["rule"],
+            "source_equation_id": equation["equation_id"],
+            "source_refs": canonical_clone_v1(result_refs),
+        }]
+    return {**material, "printed_net_frontier_total_receipt_id": "gjivppnftv1:receipt:" + canonical_json_sha256_v1(material)}
+
+
+def _enforce_source_local_mapping_lanes_v1(
+    candidate: dict[str, Any],
+    *,
+    pages: Mapping[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Veto a global role merge that assigns an unseen lane to a local row.
+
+    The shared role reconciler retains record-level references after merging
+    current/comparative observations. A one-period detail reference therefore
+    cannot independently support both cells of a neighbouring summary. Two
+    separately dated tables are not sufficient evidence of the same economic
+    population either. A separate reviewed population/qualifier proof is
+    required before a multi-source lane projection can be supported.
+    """
+
+    if candidate.get("status") != READY:
+        return None
+    checks = []
+    violations = []
+    for mapping in candidate.get("mappings", []):
+        width = len(mapping["values"])
+        refs = mapping.get("source_refs", [])
+        if not refs:
+            raise _error("issued-paper mapping source references are absent")
+        source_axis = []
+        for ref in refs:
+            locator = ref["locator"]
+            table = _region_table(pages, locator)
+            row_ordinal = ref.get("row_ordinal")
+            columns = ref.get("money_column_ordinals")
+            rows = table.get("rows")
+            if (
+                type(row_ordinal) is not int
+                or type(rows) is not list
+                or not 1 <= row_ordinal <= len(rows)
+                or type(columns) is not list
+                or not columns
+                or any(
+                    type(column) is not int
+                    or not 1 <= column <= len(table.get("columns", []))
+                    for column in columns
+                )
+            ):
+                raise _error("issued-paper local mapping source axis is invalid")
+            row = rows[row_ordinal - 1]
+            surfaces = [table.get("title_exact")]
+            for column in columns:
+                surfaces.extend(table["columns"][column - 1].get("header_path_exact", []))
+            dates = sorted({day.isoformat() for text in surfaces for day in _surface_dates(text)})
+            source_axis.append(
+                {
+                    "explicit_local_dates": dates,
+                    "source_ref": canonical_clone_v1(ref),
+                    "source_row_exact": canonical_clone_v1(row),
+                }
+            )
+        arities = [len(item["source_ref"]["money_column_ordinals"]) for item in source_axis]
+        if all(arity == width for arity in arities):
+            continue
+
+        # Dates, matching amounts and a global role do not prove that two
+        # distinct tables disclose one economic population. Until an explicit
+        # population/qualifier proof route exists, retain a truthful HOLD.
+        check = {
+            "item_mapping_id": mapping["item_mapping_id"],
+            "mapping_lane_count": width,
+            "role": mapping["role"],
+            "source_axis": source_axis,
+            "status": "HOLD",
+        }
+        checks.append(check)
+        violations.append(mapping["role"])
+    if not checks:
+        return None
+    material = {
+        "checks": checks,
+        "format_version": "GEMINI_JSON_ISSUED_PAPERS_SOURCE_LOCAL_LANE_BINDING_V1",
+        "rule": "NO_NEIGHBOUR_ROLE_VALUE_SUPPLIES_AN_UNSEEN_LOCAL_SOURCE_COLUMN",
+        "withheld_mappings": _mapping_beforeimage_evidence_v1(candidate["mappings"]) if violations else [],
+    }
+    if violations:
+        candidate["mappings"] = []
+        candidate["status"] = UNRESOLVED
+        candidate["reasons"] = sorted(
+            set(candidate.get("reasons", []))
+            | {"ISSUED_PAPER_SOURCE_LOCAL_PERIOD_LANES_NOT_PROVEN:" + role for role in violations}
+        )
+        candidate["closure_receipt"]["structural_root_receipt"]["emitted_mapping"] = False
+    return {
+        **material,
+        "source_local_lane_binding_receipt_id": (
+            "gjivpsllbv1:receipt:" + canonical_json_sha256_v1(material)
+        ),
+    }
+
+
 def _reseal_candidate(
     candidate: dict[str, Any],
     *,
@@ -6043,6 +6371,8 @@ def _reseal_candidate(
     transposed_axis_projection_receipts: Sequence[Mapping[str, Any]],
     validation_row_projection_receipts: Sequence[Mapping[str, Any]],
     visible_dash_transcription_repairs: Sequence[Mapping[str, Any]],
+    source_local_lane_binding_receipt: Mapping[str, Any] | None = None,
+    printed_net_frontier_total_receipt: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if (
         not adjacent_source_syntax_projection_receipts
@@ -6054,6 +6384,8 @@ def _reseal_candidate(
         and not transposed_axis_projection_receipts
         and not validation_row_projection_receipts
         and not visible_dash_transcription_repairs
+        and source_local_lane_binding_receipt is None
+        and printed_net_frontier_total_receipt is None
     ):
         return candidate
     material = {
@@ -6087,6 +6419,14 @@ def _reseal_candidate(
             list(visible_dash_transcription_repairs)
         ),
     }
+    if source_local_lane_binding_receipt is not None:
+        material["source_local_lane_binding_receipt"] = canonical_clone_v1(
+            source_local_lane_binding_receipt
+        )
+    if printed_net_frontier_total_receipt is not None:
+        material["printed_net_frontier_total_receipt"] = canonical_clone_v1(
+            printed_net_frontier_total_receipt
+        )
     candidate["claim_boundary"] = ADAPTER_CLAIM_BOUNDARY
     candidate["closure_receipt"]["issued_valuable_papers_adapter_receipt"] = {
         **material,
@@ -6159,6 +6499,9 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
             transposed_axis_projection_receipts=[],
             validation_row_projection_receipts=[],
             visible_dash_transcription_repairs=[],
+            source_local_lane_binding_receipt=_enforce_source_local_mapping_lanes_v1(
+                candidate, pages=pages
+            ),
         )
     adjacent_projected_pages, adjacent_projected_regions, adjacent_receipts = (
         _project_adjacent_source_syntax_v1(
@@ -6298,6 +6641,9 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
             original_regions=regions,
             original_query_receipt=query_receipt,
         )
+    printed_total_receipt = _bind_printed_total_from_closed_net_frontier_v1(
+        candidate, pages=pages, compiled_specs=compiled_specs
+    )
     return _reseal_candidate(
         candidate,
         adjacent_source_syntax_projection_receipts=adjacent_receipts,
@@ -6309,6 +6655,10 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
         transposed_axis_projection_receipts=transposed_receipts,
         validation_row_projection_receipts=validation_receipts,
         visible_dash_transcription_repairs=dash_repairs,
+        source_local_lane_binding_receipt=_enforce_source_local_mapping_lanes_v1(
+            candidate, pages=pages
+        ),
+        printed_net_frontier_total_receipt=printed_total_receipt,
     )
 
 
