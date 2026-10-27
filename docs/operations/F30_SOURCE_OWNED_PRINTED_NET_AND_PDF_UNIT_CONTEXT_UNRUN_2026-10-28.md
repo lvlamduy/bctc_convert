@@ -154,3 +154,38 @@ and changed-row PDF/consumer gates require their own receipts and owner lease.
 Frozen shared evaluator and generic runner remain unchanged at
 `bb3190765919666c559de8c0f6d79003245da94c7b18708a4bf2676059d9afa2`
 and `d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5`.
+
+## Source-only correction after the first actual focused failure
+
+Root's immutable `f30-focused-20261028-v1` gate at `1723d62d` passed Ruff,
+then stopped at the first actual packet test with zero passes and one failure.
+Receipt SHA-256 is
+`d4795f8ff9891da339d14be9b1739ad729fd79196becbdb54db1b0531352e11e`.
+The exception was the registered page-context original-beforeimage check,
+before printed-net evaluation. This failed attempt is retained; it grants no
+financial acceptance and is not an unchanged retry.
+
+Native byte inspection confirms the approved raw page is6490 bytes with two
+final LFs, SHA `f61d8367c2496943faa655f4d3742f2afb5c1a2e3ad3717c48afb6f716466c3a`.
+Removing exactly the last LF yields6489 bytes, SHA
+`4330f03a88aa4eceefeb7609307bccc132cd808a0deeefe4bb3976d21f3a52ed`.
+The contracts serializer emits one LF. The page-store V1 writer and its
+authenticated selected-page reader both append one more LF to those canonical
+object bytes. The approved page pin therefore correctly names the two-LF
+storage BLOB; the F30 guard incorrectly compared the one-LF object domain.
+The original-table2187-byte and private-table2211-byte pins correctly name
+one-LF canonical objects.
+
+The family-local correction derives exactly
+`canonical_json_bytes_v1(original_page) + b"\n"` for the approved page SHA/size
+comparison, and explicitly records the storage encoding in the fresh context
+receipt. Table/projection checks and all source, target, registry, override,
+unit and financial guards remain exact. No immutable proposal, approval,
+registry, source fixture, shared serializer or page-store code is changed.
+
+Three additional source-authored cases cover the actual raw two-LF page and
+one-LF table/projection domains, plus rejection of one- and three-LF page
+payloads with the independent approval pins unchanged. Original pages and
+private pages remain unchanged on those failures. These new controls and the
+corrected source remain UNRUN pending independent static review, root capture
+and a fresh bounded complete-module gate.

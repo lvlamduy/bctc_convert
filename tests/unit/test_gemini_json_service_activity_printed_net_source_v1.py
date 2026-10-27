@@ -160,6 +160,64 @@ def test_actual_packet_printed_net_replaces_global_sum_with_unsigned_expenses_un
     assert options["page_json_by_version"] == original
 
 
+def test_registered_page_unit_context_binds_two_lf_store_blob_and_one_lf_tables():
+    _, options = _packet_options()
+    page = options["page_json_by_version"][VERSION]
+    original = copy.deepcopy(page)
+    raw = (FIXTURES / "page-033-0c49ade72e727b7f.json").read_bytes()
+    object_bytes = canonical_json_bytes_v1(page)
+    assert len(object_bytes) == 6489 and object_bytes.endswith(b"}\n")
+    assert sha256(object_bytes).hexdigest() == "4330f03a88aa4eceefeb7609307bccc132cd808a0deeefe4bb3976d21f3a52ed"
+    assert object_bytes + b"\n" == raw and raw.endswith(b"}\n\n")
+    context = options["compiled_specs"]["service_activity_page_unit_context_registry"]["contexts"][0]
+    assert context["source"]["original_page_json_sha256"] == sha256(raw).hexdigest()
+    assert context["source"]["original_page_json_size_bytes"] == len(raw) == 6490
+    table = page["sections"][0]["tables"][3]
+    assert canonical_json_sha256_v1(table) == context["target"]["original_table_json_sha256"]
+    assert len(canonical_json_bytes_v1(table)) == context["target"]["original_table_json_size_bytes"] == 2187
+    private = copy.deepcopy(options["page_json_by_version"])
+    receipts = family._apply_registered_page_unit_contexts_v1(
+        original_pages=options["page_json_by_version"], pages=private,
+        regions=options["regions"], compiled_specs=options["compiled_specs"],
+    )
+    assert len(receipts) == 1
+    assert receipts[0]["original_page_json_encoding"] == (
+        "GEMINI_FINANCIAL_PAGE_STORE_V1_CANONICAL_JSON_PLUS_ONE_LF_BLOB"
+    )
+    assert receipts[0]["original_page_json_size_bytes"] == 6490
+    assert page == original
+    projected = private[VERSION]["sections"][0]["tables"][3]
+    assert canonical_json_sha256_v1(projected) == context["target"]["proposed_private_table_json_sha256"]
+    assert len(canonical_json_bytes_v1(projected)) == context["target"]["proposed_private_table_json_size_bytes"] == 2211
+
+
+@pytest.mark.parametrize("blob_lf_count", [1, 3])
+def test_registered_page_unit_context_rejects_other_page_encoding_domains(monkeypatch, blob_lf_count):
+    _, options = _packet_options()
+    page = options["page_json_by_version"][VERSION]
+    original = copy.deepcopy(options["page_json_by_version"])
+    canonical_serializer = family.canonical_json_bytes_v1
+
+    def wrong_page_domain(value):
+        encoded = canonical_serializer(value)
+        if value is page:
+            # The production page-store boundary adds one LF. Inject only
+            # the page serializer domain; all approved registry/table bytes
+            # and their independent pins remain unchanged.
+            return encoded[:-1] if blob_lf_count == 1 else encoded + b"\n"
+        return encoded
+
+    private = copy.deepcopy(options["page_json_by_version"])
+    monkeypatch.setattr(family, "canonical_json_bytes_v1", wrong_page_domain)
+    with pytest.raises(family.GeminiJsonServiceActivityFamilyV1Error,
+                       match="original before-image or explicit override drifted"):
+        family._apply_registered_page_unit_contexts_v1(
+            original_pages=options["page_json_by_version"], pages=private,
+            regions=options["regions"], compiled_specs=options["compiled_specs"],
+        )
+    assert options["page_json_by_version"] == original and private == original
+
+
 def test_actual_unknown_unit_cannot_use_old_numeric_primary_receipt_without_registered_context():
     packet, options = _packet_options()
     before = copy.deepcopy(packet["candidates"][0]["candidate_bytes"])

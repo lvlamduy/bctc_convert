@@ -89,6 +89,7 @@ PRIMARY_SOURCE_RESULT_AUGMENTATION_POLICY = (
 DEFAULT_SOURCE_REPAIR_PATH = "data/registered/gemini_json_service_activity_source_repairs_v1.json"
 DEFAULT_PAGE_UNIT_CONTEXT_PATH = "data/registered/gemini_json_service_activity_page_unit_contexts_v1.json"
 _PAGE_UNIT_CONTEXT_REGISTRY_SHA256 = "cf73596f7438c00bfe04695f964f7e7c203beaae356481ada19df53ec4485046"
+_PAGE_UNIT_CONTEXT_SOURCE_PAGE_ENCODING = "GEMINI_FINANCIAL_PAGE_STORE_V1_CANONICAL_JSON_PLUS_ONE_LF_BLOB"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_SERVICE_ACTIVITY_"
     "MULTITABLE_HIERARCHICAL_EXACT_PDF_DASH_TRANSCRIPTION_GOVERNED_DURATION_"
@@ -2371,8 +2372,12 @@ def _apply_registered_page_unit_contexts_v1(*, original_pages: Mapping[str, dict
         section, table = _region_table(original_pages, region)
         private_section, private_table = _region_table(pages, region)
         local_unit = _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None)
-        if (canonical_json_sha256_v1(original_page) != source["original_page_json_sha256"]
-                or len(canonical_json_bytes_v1(original_page)) != source["original_page_json_size_bytes"]
+        # The approved page pins identify the page-store V1 BLOB: contracts
+        # canonical JSON already has one LF; the store appends one more LF.
+        # Table/projection pins below remain in the one-LF object domain.
+        original_page_blob = canonical_json_bytes_v1(original_page) + b"\n"
+        if (sha256(original_page_blob).hexdigest() != source["original_page_json_sha256"]
+                or len(original_page_blob) != source["original_page_json_size_bytes"]
                 or canonical_json_sha256_v1(table) != target["original_table_json_sha256"]
                 or len(canonical_json_bytes_v1(table)) != target["original_table_json_size_bytes"]
                 or table.get("unit_exact") is not None
@@ -2395,7 +2400,9 @@ def _apply_registered_page_unit_contexts_v1(*, original_pages: Mapping[str, dict
             "registry_sha256": _PAGE_UNIT_CONTEXT_REGISTRY_SHA256,
             "compiled_context_sha256": compiled_specs["service_activity_page_unit_context_compiled_sha256"],
             "target_locator": canonical_clone_v1(region),
+            "original_page_json_encoding": _PAGE_UNIT_CONTEXT_SOURCE_PAGE_ENCODING,
             "original_page_json_sha256": source["original_page_json_sha256"],
+            "original_page_json_size_bytes": len(original_page_blob),
             "original_table_json_sha256": target["original_table_json_sha256"],
             "effective_table_json_sha256": target["proposed_private_table_json_sha256"],
             "unit_before_exact": None, "unit_after_exact": target["assigned_unit_exact"],
