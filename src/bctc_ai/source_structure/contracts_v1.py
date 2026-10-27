@@ -501,8 +501,39 @@ def same_typed_json_v1(left: Any, right: Any) -> bool:
     return bool(left == right)
 
 
+# Python refuses to render ints beyond its default 4300-digit limit; such a value has more than
+# 14,000 bits, so only those few ints need the exact rendering check below.
+_INT_RENDER_CHECK_MIN_BITS = 14_000
+
+
+def _clone_validated_json(value: Any) -> Any:
+    """Rebuild a validated tree exactly as decoding its canonical bytes would, without rendering it."""
+
+    value_type = type(value)
+    if value_type is list:
+        return [_clone_validated_json(item) for item in value]
+    if value_type is dict:
+        result: dict[str, Any] = {}
+        for key in sorted(value):
+            key.encode("utf-8")
+            result[key] = _clone_validated_json(value[key])
+        return result
+    if value_type is int and value.bit_length() > _INT_RENDER_CHECK_MIN_BITS:
+        repr(value)
+    # str/int/float/bool/None are immutable; decoding their canonical spelling yields equal values
+    # (float repr round-trips exactly, including -0.0).
+    return value
+
+
 def canonical_clone_v1(value: Any) -> Any:
-    return decode_canonical_json_bytes_v1(canonical_json_bytes_v1(value))
+    """Equal to decode_canonical_json_bytes_v1(canonical_json_bytes_v1(value)), without rendering large trees."""
+
+    if _validated_json_node_count(value) < _STREAMED_HASH_MIN_NODES:
+        return decode_canonical_json_bytes_v1(_canonical_json_bytes_validated(value))
+    try:
+        return _clone_validated_json(value)
+    except (TypeError, ValueError, UnicodeError) as error:
+        raise SourceStructureContractError("value is not canonical JSON") from error
 
 
 def decode_canonical_json_bytes_v1(payload: bytes) -> Any:
