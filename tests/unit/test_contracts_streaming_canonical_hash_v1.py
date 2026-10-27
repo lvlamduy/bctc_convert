@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import random
+import sys
 import tracemalloc
 from enum import IntEnum
 from hashlib import sha256
@@ -158,6 +159,48 @@ def test_clone_invalid_values_raise_the_same_contract_error(path, value):
         _old_clone(value)
     with pytest.raises(SourceStructureContractError):
         canonical_clone_v1(value)
+
+
+@pytest.mark.parametrize("limit", [640, 4300, 0])
+@pytest.mark.parametrize("digits", [639, 640, 641, 4299, 4300, 4301, 5001])
+@pytest.mark.parametrize("sign", [1, -1])
+def test_clone_preserves_active_integer_digit_policy_on_both_paths(path, limit, digits, sign):
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(limit)
+        # Counts, rather than giant ints, are parametrized so collection never
+        # needs a decimal repr under the policy being tested.
+        value = {"z": [sign * 10 ** (digits - 1)], "a": None}
+        if limit and digits > limit:
+            with pytest.raises(SourceStructureContractError, match="value is not canonical JSON"):
+                _old_clone(value)
+            with pytest.raises(SourceStructureContractError, match="value is not canonical JSON"):
+                canonical_clone_v1(value)
+        else:
+            _assert_same_clone(value)
+        assert sys.get_int_max_str_digits() == limit
+    finally:
+        sys.set_int_max_str_digits(previous)
+
+
+@pytest.mark.parametrize("limit,digits", [(640, 640), (640, 641), (4300, 4300), (4300, 4301), (0, 5001)])
+@pytest.mark.parametrize("sign", [1, -1])
+def test_actual_large_clone_preserves_runtime_integer_policy_without_threshold_override(limit, digits, sign):
+    previous = sys.get_int_max_str_digits()
+    try:
+        sys.set_int_max_str_digits(limit)
+        assert contracts_v1._STREAMED_HASH_MIN_NODES == 200_000
+        value = {"integer": sign * 10 ** (digits - 1), "padding": [None] * 200_000}
+        if limit and digits > limit:
+            with pytest.raises(SourceStructureContractError, match="value is not canonical JSON"):
+                _old_clone(value)
+            with pytest.raises(SourceStructureContractError, match="value is not canonical JSON"):
+                canonical_clone_v1(value)
+        else:
+            _assert_same_clone(value)
+        assert sys.get_int_max_str_digits() == limit
+    finally:
+        sys.set_int_max_str_digits(previous)
 
 
 def test_large_clone_does_not_render():
