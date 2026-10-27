@@ -692,6 +692,15 @@ def _run_with_authenticated_database(
     audit_output = args.output.with_suffix(".audit.json")
     generic._write_once(args.output, sweep)
     generic._write_once(audit_output, audit)
+    audit_return = {key: audit[key] for key in ("audit_id", "axis_counts", "axis_sha256")}
+    # The sweep owns cloned trials/query evidence. Retire completed warm
+    # owners before the independent cold pass; never clear an aliased graph.
+    cluster = regions = None
+    del (
+        audit, indexed, page_json_by_document, candidates_by_ordinal, trials,
+        replayed_candidates_by_ordinal, replayed_trials, query_recovery_receipts,
+        source_observation_contract,
+    )
     implementation_paths = (
         ROOT
         / "scripts/experiments/run_gemini_json_issued_valuable_papers_accounting_family_v1.py",
@@ -734,24 +743,26 @@ def _run_with_authenticated_database(
     if not same_typed_json_v1(stored_sweep, sweep):
         raise _error("stored issued-paper sweep differs from authenticated evaluation")
     validate_source_observation_mapping_contract_v1(stored_sweep)
+    sweep_return = {key: sweep[key] for key in ("metrics", "sweep_id")}
+    del stored_sweep, sweep
     output_ref = record_gemini_accounting_family_export_v1(
         args.results_database, family_run_id=stored["family_run_id"], output_path=args.output
     )
     database_guard.validate()
     return {
-        "audit_id": audit["audit_id"],
+        "audit_id": audit_return["audit_id"],
         "audit_output": str(audit_output),
-        "axis_counts": audit["axis_counts"],
-        "axis_sha256": audit["axis_sha256"],
+        "axis_counts": audit_return["axis_counts"],
+        "axis_sha256": audit_return["axis_sha256"],
         "disposition": "SUCCEEDED",
         "family_run_id": stored["family_run_id"],
         "historical_comparator_policy": args.historical_comparator_policy,
-        "metrics": sweep["metrics"],
+        "metrics": sweep_return["metrics"],
         "output": str(args.output),
         "output_ref": output_ref,
         "results_database": str(args.results_database),
         "run_kind": args.run_kind,
-        "sweep_id": sweep["sweep_id"],
+        "sweep_id": sweep_return["sweep_id"],
     }
 
 
