@@ -28,6 +28,9 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     UNRESOLVED,
     coalesce_gemini_json_multitable_hierarchical_document_v1,
 )
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    audit_source_observation_mapping_contract_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 
@@ -96,6 +99,9 @@ def _assert_printed_primary_root_ownership_hold(candidate, original_records, *, 
     assert evidence["lane_axis"]["money_column_ordinals"] == [3, 4]
     assert evidence["source_values_changed"] is False and evidence["amounts_used_as_role_authority"] is False
     assert "bound_root_mapping" not in evidence
+    audit = audit_source_observation_mapping_contract_v1(candidate)
+    assert audit["status"] == "PASS", audit["violations"]
+    assert audit["mapping_count"] == 0
     if failure == "PRINTED_TOTAL_SOURCE_MONEY_LANE_NOT_DIRECTLY_OBSERVED":
         assert evidence["source_values_exact"] == [root["values_exact"][2], root["values_exact"][3]]
     else:

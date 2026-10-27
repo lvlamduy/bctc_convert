@@ -5725,6 +5725,17 @@ def _reseal_candidate(
     return output
 
 
+def _printed_primary_root_mapping_evidence_v1(value: Any) -> dict[str, Any]:
+    """Retain exact mapping images without granting active mapping grammar."""
+    payload = canonical_json_bytes_v1(value)
+    return {
+        "format_version": "INCOME_TAX_PRINTED_PRIMARY_ROOT_MAPPING_EVIDENCE_V1",
+        "canonical_json": payload.decode("utf-8"),
+        "sha256": sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
 def _bind_printed_primary_root_v1(
     candidate: Mapping[str, Any], *, source_page: Mapping[str, Any],
     descriptor: Mapping[str, Any], compiled_specs: Mapping[str, Any],
@@ -5767,7 +5778,7 @@ def _bind_printed_primary_root_v1(
         "unit_axis": canonical_clone_v1(unit),
         "primary_unit_corroboration_receipt": canonical_clone_v1(
             descriptor.get("primary_unit_corroboration_receipt")),
-        "prior_root_mappings": canonical_clone_v1([
+        "prior_root_mappings": _printed_primary_root_mapping_evidence_v1([
             item for item in candidate["mappings"] if item.get("role") == "FAMILY_ROOT_TOTAL"]),
         "authority": "SAME_AUTHENTICATED_STATEMENT_TABLE_PRINTED_TOTAL_LABEL_AND_SOURCE_CELLS",
         "amounts_used_as_role_authority": False,
@@ -5873,7 +5884,7 @@ def _bind_printed_primary_root_v1(
     output = canonical_clone_v1(candidate)
     output["mappings"] = [item for item in output["mappings"] if item.get("role") != "FAMILY_ROOT_TOTAL"]
     output["mappings"].append(mapping)
-    material["bound_root_mapping"] = canonical_clone_v1(mapping)
+    material["bound_root_mapping"] = _printed_primary_root_mapping_evidence_v1(mapping)
     output["closure_receipt"]["income_tax_printed_primary_root_receipt"] = {
         **material, "receipt_id": "gjitfav1:printed-primary-root:" + canonical_json_sha256_v1(material),
     }

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
+from hashlib import sha256
 
 import pytest
 from test_gemini_json_income_tax_family_v1 import (
@@ -17,13 +19,30 @@ from bctc_ai.evaluation import gemini_json_income_tax_family_v1 as family
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
     UNRESOLVED,
+    build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
     coalesce_gemini_json_multitable_hierarchical_document_v1,
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
 )
-from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    audit_source_observation_mapping_contract_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
 
 REASON = "ALGORITHM_PRINTED_PRIMARY_ROOT_SOURCE_OWNERSHIP_UNPROVEN"
+
+
+def _decode_mapping_evidence(evidence):
+    assert evidence["format_version"] == "INCOME_TAX_PRINTED_PRIMARY_ROOT_MAPPING_EVIDENCE_V1"
+    payload = evidence["canonical_json"].encode("utf-8")
+    assert evidence["size_bytes"] == len(payload)
+    assert evidence["sha256"] == sha256(payload).hexdigest()
+    value = json.loads(payload)
+    assert canonical_json_bytes_v1(value) == payload
+    return value
 
 
 def _before_binding(page):
@@ -149,16 +168,20 @@ def test_binding_preserves_actual_total_raw_sign_dash_zero_and_integer_precision
 @pytest.mark.parametrize("raw", [None, "", "   "])
 def test_present_blank_total_is_hold_never_replaced_with_current_tax(raw):
     rows = _primary_tax_rows(current=("10", "20"), deferred=("-", "-"), root=(raw, raw))
-    _, result = _bind(_primary_page(rows))
+    before, result = _bind(_primary_page(rows))
     assert result["status"] == UNRESOLVED
     assert result["reasons"] == [REASON]
     assert result["mappings"] == []
     evidence = result["closure_receipt"]["income_tax_unresolved_evidence_receipt"]["evidence"]
     assert evidence["source_values_exact"] == [raw, raw]
+    assert _decode_mapping_evidence(evidence["prior_root_mappings"]) == [
+        item for item in before["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL"
+    ]
+    assert "bound_root_mapping" not in evidence
 
 
 def test_binding_receipt_and_candidate_ids_authenticate_changed_mapping():
-    _, result = _bind(_primary_page(_primary_tax_rows()))
+    before, result = _bind(_primary_page(_primary_tax_rows()))
     receipt = result["closure_receipt"]["income_tax_printed_primary_root_receipt"]
     material = {key: value for key, value in receipt.items() if key != "receipt_id"}
     assert receipt["receipt_id"] == "gjitfav1:printed-primary-root:" + canonical_json_sha256_v1(material)
@@ -170,6 +193,10 @@ def test_binding_receipt_and_candidate_ids_authenticate_changed_mapping():
     assert receipt["amounts_used_as_role_authority"] is False
     assert receipt["source_values_changed"] is False
     assert receipt["final_document_period_source_control_still_required"] is True
+    assert _decode_mapping_evidence(receipt["prior_root_mappings"]) == [
+        item for item in before["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL"
+    ]
+    assert _decode_mapping_evidence(receipt["bound_root_mapping"]) == mapping
 
 
 @pytest.mark.parametrize("field,bad", [
@@ -362,3 +389,76 @@ def test_valid_signed_note_cannot_rescue_an_unknown_printed_primary_total():
     assert after["status"] == UNRESOLVED and after["mappings"] == []
     assert after["reasons"] == [REASON]
     assert records == original
+
+
+@pytest.mark.parametrize("held", [False, True])
+def test_whole_public_candidate_audit_counts_only_active_mappings(held):
+    page = _primary_page(_primary_tax_rows(root=(None, None) if held else ("40", "60")))
+    original = deepcopy(page)
+    result = _public(page)
+    assert result["status"] == (UNRESOLVED if held else READY)
+    audit = audit_source_observation_mapping_contract_v1(result)
+    assert audit["status"] == "PASS", audit["violations"]
+    assert audit["mapping_count"] == len(result["mappings"])
+    if held:
+        assert audit["mapping_count"] == 0
+        evidence = result["closure_receipt"]["income_tax_unresolved_evidence_receipt"]["evidence"]
+        assert evidence["source_values_exact"] == [None, None]
+        assert "bound_root_mapping" not in evidence
+        assert type(_decode_mapping_evidence(evidence["prior_root_mappings"])) is list
+    assert page == original
+
+
+def _indexed_replay_case(*, held):
+    compiled = _adapter_compiled()
+    page = _primary_page(_primary_tax_rows(root=(None, None) if held else ("40", "60")))
+    record = _primary_record(page)
+    base = coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=[record], compiled_specs=compiled,
+    )
+    indexed = build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        selected_document_axis=[{key: record[key] for key in (
+            "document_id", "document_ordinal", "source_logical_name", "source_sha256",
+        )}],
+        selected_page_axis=[{key: value for key, value in record.items() if key != "page_json"}],
+        document_clusters=[base], query_policy_sha256=canonical_json_sha256_v1(compiled["query_policy"]),
+    )
+    pages = {record["document_ordinal"]: {record["page_json_version_id"]: page}}
+    adapted = family.adapt_gemini_json_income_tax_indexed_query_evidence_v1(
+        indexed_query_evidence=indexed, page_json_by_document=pages, compiled_specs=compiled,
+    )
+    trials = family.build_gemini_json_income_tax_trials_v1(
+        indexed_query_evidence=adapted, page_json_by_document=pages, compiled_specs=compiled,
+    )
+    return {
+        "base_indexed_query_evidence": indexed, "indexed_query_evidence": adapted,
+        "trials": trials, "page_json_by_document": pages, "compiled_specs": compiled,
+    }
+
+
+@pytest.mark.parametrize("held,field", [
+    (False, "prior_root_mappings"), (False, "bound_root_mapping"), (True, "prior_root_mappings"),
+])
+def test_resealed_mapping_evidence_tamper_is_rejected_by_actual_fresh_trial_replay(held, field):
+    options = _indexed_replay_case(held=held)
+    assert family.validate_gemini_json_income_tax_replay_v1(**options) == options["trials"]
+    changed = deepcopy(options["trials"])
+    candidate = changed[0]["candidates"][0]
+    assert candidate["status"] == (UNRESOLVED if held else READY)
+    receipt_key = "income_tax_unresolved_evidence_receipt" if held else "income_tax_printed_primary_root_receipt"
+    receipt = candidate["closure_receipt"][receipt_key]
+    material = receipt["evidence"] if held else receipt
+    # Give the forged envelope valid canonical bytes, SHA, size and surrounding
+    # IDs. Fresh source replay, rather than a stale hash, must reject it.
+    payload = canonical_json_bytes_v1(None)
+    material[field].update(canonical_json=payload.decode("utf-8"),
+                           sha256=sha256(payload).hexdigest(), size_bytes=len(payload))
+    prefix = "gjitfav1:unresolved:" if held else "gjitfav1:printed-primary-root:"
+    receipt["receipt_id"] = prefix + canonical_json_sha256_v1(
+        {key: value for key, value in receipt.items() if key != "receipt_id"})
+    candidate["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in candidate.items() if key != "candidate_id"})
+    if not held:
+        changed[0]["selected_candidate_id"] = candidate["candidate_id"]
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error, match="trial replay drifted"):
+        family.validate_gemini_json_income_tax_replay_v1(**{**options, "trials": changed})
