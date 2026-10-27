@@ -5792,7 +5792,7 @@ def _bind_printed_primary_root_v1(
                 and corroboration.get("canonical_unit") == descriptor["canonical_unit"])):
         return hold("PRINTED_TOTAL_UNIT_NOT_OWNED")
     root_ordinal, row = roots[0]
-    if row.get("row_kind") not in {"ITEM", "TOTAL"}:
+    if row.get("row_kind") not in {"ITEM", "TOTAL", "GROUP"}:
         return hold("PRINTED_TOTAL_IS_NOT_AN_OBSERVED_ITEM_OR_TOTAL_ROW")
     source_ordinals = [root_ordinal]
     for mapping in candidate["mappings"]:
@@ -5825,6 +5825,23 @@ def _bind_printed_primary_root_v1(
     material["same_printed_population_receipt"] = canonical_clone_v1(ancestry)
     if ancestry is None:
         return hold("PRINTED_TOTAL_AND_COMPONENT_POPULATION_NOT_PROVEN")
+    if row.get("row_kind") == "GROUP":
+        # A GROUP label alone is not an observed total. Retain the existing
+        # finite legacy permission only when this actual preceding tax GROUP
+        # owns the cited components in the source ancestry proof. Quoted TNDN
+        # spellings do not expand that structural GROUP vocabulary.
+        component_ordinals = set(source_ordinals) - {root_ordinal}
+        if (not component_ordinals or any(ordinal <= root_ordinal for ordinal in component_ordinals)
+                or _legacy_primary_role_for_label(row.get("label_exact")) != "FAMILY_ROOT_TOTAL"
+                or any(not same_typed_json_v1(
+                    table["rows"][ordinal - 1]["hierarchy_path_exact"][:len(row["hierarchy_path_exact"])],
+                    row["hierarchy_path_exact"],
+                ) or len(table["rows"][ordinal - 1]["hierarchy_path_exact"]) <= len(row["hierarchy_path_exact"])
+                       for ordinal in component_ordinals)
+                or not any(item["row_ordinal"] == root_ordinal
+                           and same_typed_json_v1(item["source_row"], row)
+                           for item in ancestry["structural_tax_group_sources"])):
+            return hold("PRINTED_TOTAL_GROUP_IS_NOT_A_PROVEN_PRECEDING_TAX_OWNER")
     raw_values = row.get("values_exact")
     if type(raw_values) is not list or any(type(column) is not int or not 1 <= column <= len(raw_values)
                                           for column in columns):

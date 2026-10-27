@@ -70,6 +70,41 @@ def _candidate(records):
     return _evaluate_query(records, compiled, cluster, receipt)
 
 
+def _assert_printed_primary_root_ownership_hold(candidate, original_records, *, failure, root_ordinal=4):
+    """Source authority fails before sign reconciliation; retain its exact row."""
+    reason = "ALGORITHM_PRINTED_PRIMARY_ROOT_SOURCE_OWNERSHIP_UNPROVEN"
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    assert candidate["reasons"] == [reason]
+    receipt = candidate["closure_receipt"]["income_tax_unresolved_evidence_receipt"]
+    assert receipt["reason"] == reason
+    evidence = receipt["evidence"]
+    assert evidence["ownership_failure"] == failure
+    record = original_records[-1]
+    page = record["page_json"]
+    table = page["sections"][0]["tables"][0]
+    root = table["rows"][root_ordinal - 1]
+    assert evidence["locator"] == {
+        **{key: record[key] for key in (
+            "document_id", "document_ordinal", "source_logical_name", "source_sha256",
+            "page_json_version_id", "physical_page", "selected_page_ordinal",
+        )},
+        "section_id": "s1", "table_id": "t1",
+    }
+    assert evidence["original_page_json_sha256"] == canonical_json_sha256_v1(page)
+    assert evidence["original_table_json_sha256"] == canonical_json_sha256_v1(table)
+    assert evidence["printed_total_rows"] == [{"row_ordinal": root_ordinal, "source_row": root}]
+    assert evidence["lane_axis"]["money_column_ordinals"] == [3, 4]
+    assert evidence["source_values_changed"] is False and evidence["amounts_used_as_role_authority"] is False
+    assert "bound_root_mapping" not in evidence
+    if failure == "PRINTED_TOTAL_SOURCE_MONEY_LANE_NOT_DIRECTLY_OBSERVED":
+        assert evidence["source_values_exact"] == [root["values_exact"][2], root["values_exact"][3]]
+    else:
+        assert "source_values_exact" not in evidence
+    assert receipt["receipt_id"] == "gjitfav1:unresolved:" + canonical_json_sha256_v1(
+        {key: value for key, value in receipt.items() if key != "receipt_id"}
+    )
+
+
 @pytest.mark.parametrize("note_root,note_deferred", [(True, True), (False, True), (False, False), (True, False)])
 def test_signed_display_preserves_all_printed_values_and_checks_comparison_only(note_root, note_deferred):
     records = _records(note_root=note_root, note_deferred=note_deferred)
@@ -289,7 +324,12 @@ def test_signed_profit_bridge_cannot_mix_a_qualified_population_with_unqualified
     candidate = _candidate(records)
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
-    assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    if qualified_row in {1, 2, 3}:
+        _assert_printed_primary_root_ownership_hold(
+            candidate, original, failure="PRINTED_TOTAL_AND_COMPONENT_POPULATION_NOT_PROVEN",
+        )
+    else:
+        assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
     assert records == original
 
 
@@ -889,7 +929,9 @@ def test_primary_quoted_tndn_root_does_not_erase_numeric_or_unknown_population_a
     assert descriptor["expense_display_receipt"] is None
     candidate = _quoted_primary_public_candidate(records)
     assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
-    assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    _assert_printed_primary_root_ownership_hold(
+        candidate, original, failure="PRINTED_TOTAL_AND_COMPONENT_POPULATION_NOT_PROVEN",
+    )
     assert records == original
 
 
@@ -913,7 +955,9 @@ def test_primary_quoted_tndn_root_cannot_complete_blank_or_invalid_observed_cell
     if raw_values[-1] == "không rõ":
         assert "INVALID_PRIMARY_INCOME_TAX_SOURCE_MONEY_CELL" in candidate["reasons"]
     else:
-        assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+        _assert_printed_primary_root_ownership_hold(
+            candidate, original, failure="PRINTED_TOTAL_SOURCE_MONEY_LANE_NOT_DIRECTLY_OBSERVED",
+        )
     assert records == original
 
 
@@ -1063,7 +1107,13 @@ def test_primary_quoted_tndn_group_does_not_grant_unreviewed_structural_ancestry
     assert descriptor["expense_display_receipt"] is None
     candidate = _quoted_primary_public_candidate(records)
     assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
-    assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    if mutation == "missing":
+        assert candidate["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+    else:
+        _assert_printed_primary_root_ownership_hold(
+            candidate, original, failure="PRINTED_TOTAL_AND_COMPONENT_POPULATION_NOT_PROVEN",
+            root_ordinal=5 if mutation == "later" else 2,
+        )
     assert records == original
 
 

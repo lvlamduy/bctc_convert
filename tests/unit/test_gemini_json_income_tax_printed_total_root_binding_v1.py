@@ -293,3 +293,72 @@ def test_typed_printed_total_hold_cannot_be_resurrected_by_note_or_supplement_me
         {"status": READY}, candidate, descriptor={}, repair_receipts=[], compiled_specs={},
         strategy="SYNTHETIC_UNUSED_AFTER_TYPED_HOLD", page_records=[],
     ) == candidate
+
+
+def _preceding_legacy_root_group_page():
+    rows = _primary_tax_rows()
+    root = rows.pop()
+    root["row_kind"] = "GROUP"
+    for row in rows:
+        row["hierarchy_path_exact"] = [root["label_exact"], row["label_exact"]]
+    return _primary_page([root, *rows])
+
+
+def test_actual_preceding_legacy_tax_group_can_own_its_observed_printed_total():
+    page = _preceding_legacy_root_group_page()
+    original = deepcopy(page)
+    before, after = _bind(page)
+    assert after["status"] == READY
+    root = _by_role(after, "FAMILY_ROOT_TOTAL")
+    assert root["source_refs"][0]["row_ordinal"] == 1
+    assert root["source_refs"][0]["row_kind"] == "GROUP"
+    assert [cell["source_text"] for cell in root["values"]] == ["40", "60"]
+    proof = after["closure_receipt"]["income_tax_printed_primary_root_receipt"]["same_printed_population_receipt"]
+    assert proof["common_population_ancestry_exact"] == []
+    assert proof["structural_tax_group_sources"] == [{
+        "row_ordinal": 1, "source_row": original["sections"][0]["tables"][0]["rows"][0],
+    }]
+    assert _by_role(after, "CURRENT_TAX_PARENT") == _by_role(before, "CURRENT_TAX_PARENT")
+    assert _by_role(after, "DEFERRED_TAX_NET") == _by_role(before, "DEFERRED_TAX_NET")
+    assert page == original
+
+
+@pytest.mark.parametrize("mutation", [
+    "later_group", "quoted_group", "different_population", "unqualified_component", "unknown_total",
+])
+def test_root_group_label_cannot_bypass_actual_owner_order_population_or_observed_cells(mutation):
+    page = _preceding_legacy_root_group_page()
+    rows = page["sections"][0]["tables"][0]["rows"]
+    if mutation == "later_group":
+        rows.append(rows.pop(0))
+    elif mutation == "quoted_group":
+        old = rows[0]["label_exact"]
+        quoted = 'Chi phí thuế thu nhập doanh nghiệp ("TNDN")'
+        rows[0].update(label_exact=quoted, hierarchy_path_exact=[quoted])
+        for row in rows[1:]:
+            assert row["hierarchy_path_exact"][0] == old
+            row["hierarchy_path_exact"][0] = quoted
+    elif mutation == "different_population":
+        rows[1]["hierarchy_path_exact"].insert(0, "Công ty con")
+    elif mutation == "unqualified_component":
+        rows[1]["hierarchy_path_exact"] = [rows[1]["label_exact"]]
+    else:
+        rows[0]["values_exact"][-1] = None
+    original = deepcopy(page)
+    _, after = _bind(page)
+    assert after["status"] == UNRESOLVED and after["mappings"] == []
+    assert after["reasons"] == [REASON]
+    assert page == original
+
+
+def test_valid_signed_note_cannot_rescue_an_unknown_printed_primary_total():
+    from test_gemini_json_income_tax_signed_display_v1 import _candidate, _records
+
+    records = _records()
+    root = records[-1]["page_json"]["sections"][0]["tables"][0]["rows"][3]
+    root["values_exact"][-1] = None
+    original = deepcopy(records)
+    after = _candidate(records)
+    assert after["status"] == UNRESOLVED and after["mappings"] == []
+    assert after["reasons"] == [REASON]
+    assert records == original
