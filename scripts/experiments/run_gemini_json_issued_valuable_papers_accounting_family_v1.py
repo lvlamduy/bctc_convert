@@ -711,6 +711,7 @@ def _run_with_authenticated_database(
         / "src/bctc_ai/evaluation/gemini_json_issued_valuable_papers_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_multitable_hierarchical_family_v1.py",
         ROOT / "src/bctc_ai/evaluation/gemini_json_flat_accounting_family_v1.py",
+        ROOT / "src/bctc_ai/source_structure/contracts_v1.py",
         ROOT / "src/bctc_ai/evaluation/historical_comparator_policy_v1.py",
         ROOT / "src/bctc_ai/evaluation/source_observation_mapping_contract_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
