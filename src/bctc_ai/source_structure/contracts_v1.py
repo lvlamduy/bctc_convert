@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import struct
+import sys
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -405,6 +406,12 @@ _VALUE_FIELDS = {
 
 
 def _validate_json_tree(value: Any, *, label: str = "value") -> None:
+    _validated_json_node_count(value, label=label)
+
+
+def _validated_json_node_count(value: Any, *, label: str = "value") -> int:
+    """Validate exact JSON types (the one implementation) and count the tree's values."""
+
     value_type = type(value)
     if value is None or value_type in {bool, int, str}:
         if value_type is str:
@@ -412,43 +419,68 @@ def _validate_json_tree(value: Any, *, label: str = "value") -> None:
                 value.encode("utf-8")
             except UnicodeEncodeError as error:
                 raise SourceStructureContractError(f"{label} contains invalid Unicode") from error
-        return
+        return 1
     if value_type is float:
         if not isfinite(value):
             raise SourceStructureContractError(f"{label} contains a non-finite number")
-        return
+        return 1
     if value_type is list:
+        count = 1
         for index, item in enumerate(value):
-            _validate_json_tree(item, label=f"{label}[{index}]")
-        return
+            count += _validated_json_node_count(item, label=f"{label}[{index}]")
+        return count
     if value_type is dict:
         if any(type(key) is not str for key in value):
             raise SourceStructureContractError(f"{label} has a non-string object key")
+        count = 1
         for key, item in value.items():
-            _validate_json_tree(item, label=f"{label}.{key}")
-        return
+            count += _validated_json_node_count(item, label=f"{label}.{key}")
+        return count
     raise SourceStructureContractError(f"{label} contains unsupported type {value_type.__name__}")
+
+
+_CANONICAL_JSON_OPTIONS = {"ensure_ascii": False, "sort_keys": True, "separators": (",", ":"), "allow_nan": False}
+# Trees with more values than this are hashed from streamed canonical chunks instead of one
+# rendered string; both paths hash exactly canonical_json_bytes_v1(value).
+_STREAMED_HASH_MIN_NODES = 200_000
+_STREAMED_HASH_BATCH_CHARS = 1 << 16
+
+
+def _canonical_json_bytes_validated(value: Any) -> bytes:
+    try:
+        return (json.dumps(value, **_CANONICAL_JSON_OPTIONS) + "\n").encode("utf-8")
+    except (TypeError, ValueError, UnicodeError) as error:
+        raise SourceStructureContractError("value is not canonical JSON") from error
 
 
 def canonical_json_bytes_v1(value: Any) -> bytes:
     """Serialize exact JSON types deterministically, including a final newline."""
 
     _validate_json_tree(value)
-    try:
-        rendered = json.dumps(
-            value,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        )
-        return (rendered + "\n").encode("utf-8")
-    except (TypeError, ValueError, UnicodeError) as error:
-        raise SourceStructureContractError("value is not canonical JSON") from error
+    return _canonical_json_bytes_validated(value)
 
 
 def canonical_json_sha256_v1(value: Any) -> str:
-    return sha256(canonical_json_bytes_v1(value)).hexdigest()
+    """SHA-256 of canonical_json_bytes_v1(value) without materializing large renderings."""
+
+    if _validated_json_node_count(value) < _STREAMED_HASH_MIN_NODES:
+        return sha256(_canonical_json_bytes_validated(value)).hexdigest()
+    digest = sha256()
+    batch: list[str] = []
+    size = 0
+    try:
+        for chunk in json.JSONEncoder(**_CANONICAL_JSON_OPTIONS).iterencode(value):
+            batch.append(chunk)
+            size += len(chunk)
+            if size >= _STREAMED_HASH_BATCH_CHARS:
+                digest.update("".join(batch).encode("utf-8"))
+                batch.clear()
+                size = 0
+        batch.append("\n")
+        digest.update("".join(batch).encode("utf-8"))
+    except (TypeError, ValueError, UnicodeError) as error:
+        raise SourceStructureContractError("value is not canonical JSON") from error
+    return digest.hexdigest()
 
 
 def same_typed_json_v1(left: Any, right: Any) -> bool:
@@ -470,8 +502,41 @@ def same_typed_json_v1(left: Any, right: Any) -> bool:
     return bool(left == right)
 
 
+# Any enabled runtime limit is at least this many decimal digits. Three bits
+# per digit is a conservative bound: 2**(3*n) < 10**n, without float rounding.
+_INT_RENDER_CHECK_MIN_BITS = 3 * sys.int_info.str_digits_check_threshold
+
+
+def _clone_validated_json(value: Any) -> Any:
+    """Rebuild a validated tree exactly as decoding its canonical bytes would, without rendering it."""
+
+    value_type = type(value)
+    if value_type is list:
+        return [_clone_validated_json(item) for item in value]
+    if value_type is dict:
+        result: dict[str, Any] = {}
+        for key in sorted(value):
+            key.encode("utf-8")
+            result[key] = _clone_validated_json(value[key])
+        return result
+    if value_type is int and value.bit_length() > _INT_RENDER_CHECK_MIN_BITS:
+        limit = sys.get_int_max_str_digits()
+        if limit and value.bit_length() > 3 * limit:
+            repr(value)
+    # str/int/float/bool/None are immutable; decoding their canonical spelling yields equal values
+    # (float repr round-trips exactly, including -0.0).
+    return value
+
+
 def canonical_clone_v1(value: Any) -> Any:
-    return decode_canonical_json_bytes_v1(canonical_json_bytes_v1(value))
+    """Equal to decode_canonical_json_bytes_v1(canonical_json_bytes_v1(value)), without rendering large trees."""
+
+    if _validated_json_node_count(value) < _STREAMED_HASH_MIN_NODES:
+        return decode_canonical_json_bytes_v1(_canonical_json_bytes_validated(value))
+    try:
+        return _clone_validated_json(value)
+    except (TypeError, ValueError, UnicodeError) as error:
+        raise SourceStructureContractError("value is not canonical JSON") from error
 
 
 def decode_canonical_json_bytes_v1(payload: bytes) -> Any:
