@@ -5803,7 +5803,9 @@ def _bind_printed_primary_root_v1(
                 and corroboration.get("canonical_unit") == descriptor["canonical_unit"])):
         return hold("PRINTED_TOTAL_UNIT_NOT_OWNED")
     root_ordinal, row = roots[0]
-    if row.get("row_kind") not in {"ITEM", "TOTAL", "GROUP"}:
+    # A printed tax subtotal is an observed money row. Its kind does not
+    # replace any of the source role, lane, unit or population proofs below.
+    if row.get("row_kind") not in {"ITEM", "SUBTOTAL", "TOTAL", "GROUP"}:
         return hold("PRINTED_TOTAL_IS_NOT_AN_OBSERVED_ITEM_OR_TOTAL_ROW")
     source_ordinals = [root_ordinal]
     for mapping in candidate["mappings"]:

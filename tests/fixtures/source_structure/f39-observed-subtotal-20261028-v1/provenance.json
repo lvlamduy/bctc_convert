@@ -1,0 +1,99 @@
+{
+    "format_version":  "F39_OBSERVED_SUBTOTAL_ORIGINAL_SOURCE_FIXTURE_V1",
+    "authority":  "Claude0503 original policy packets, exact raw JSON bytes; root independently viewed existing primary renders",
+    "test_axis":  "Two original pages per case; explicit bounded test ordinal1 and selected ordinals1,2; original global ordinal retained as provenance, not a FULL corpus axis",
+    "source_values_units_kinds_unchanged":  true,
+    "runtime_status":  "UNRUN",
+    "cases":  [
+                  {
+                      "case":  "bab-doc020",
+                      "packet_sha256":  "a312ea853304455fe03672c7cdf406a4e662f035d6b66b32c05e76a5fdac41db",
+                      "packet_size_bytes":  654403,
+                      "document_id":  "gfpstorev1:document:c6ff82926213e5cfed70a9758acd2c781e424c76cdcd7904cd13b05ff1224751",
+                      "original_full_document_ordinal":  20,
+                      "source_logical_name":  "vietstock_bctc/BAB/2025/BCTC Rieng le 2025_Kiem toan.pdf",
+                      "source_sha256":  "3642a6fe658446103cb1903ac0c5b6004f1c281fad8b6d8c7a21ccd2e1a1ef18",
+                      "source_size_bytes":  23885559,
+                      "root_row_ordinal":  19,
+                      "expected_root_coefficients":  [
+                                                         282922,
+                                                         245981
+                                                     ],
+                      "pages":  [
+                                    {
+                                        "file":  "page-010-621d89e465b258a2.json",
+                                        "sha256":  "f6ae761b145561a01933ebf492bdd51747b1b5c409d43fd855252900c5aebc59",
+                                        "size_bytes":  4766,
+                                        "page_json_version_id":  "gfpstorev1:json:621d89e465b258a2c09a61651a8c6c03e14bbf6956d93315a8d516f8bcd68d07",
+                                        "physical_page":  10,
+                                        "render_ref":  {
+                                                           "file":  "render-p010.png",
+                                                           "sha256":  "f0a0cea7ee8192c9321d850147f47f20d8aca43482023958b5ab7bd3c7efd90a",
+                                                           "size_bytes":  498559,
+                                                           "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                           "colour":  "8-bit RGB, no alpha"
+                                                       }
+                                    },
+                                    {
+                                        "file":  "page-037-d6baedeb0651d973.json",
+                                        "sha256":  "554df1ff6c21c4b4750da123d7a00ccbdb69f424870666c9ce2f9e4fc060c961",
+                                        "size_bytes":  5889,
+                                        "page_json_version_id":  "gfpstorev1:json:d6baedeb0651d973a0d4f8ff9c879329600b7959b3eeb8053df338040d70a59c",
+                                        "physical_page":  37,
+                                        "render_ref":  {
+                                                           "file":  "render-p037.png",
+                                                           "sha256":  "ef87b9c34d0462972b6b6de71413f30deda2e36871cb4e788b41a99d9919b415",
+                                                           "size_bytes":  436031,
+                                                           "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                           "colour":  "8-bit RGB, no alpha"
+                                                       }
+                                    }
+                                ]
+                  },
+                  {
+                      "case":  "eib-doc039",
+                      "packet_sha256":  "18aa4423ae947010789c3ef7e0886f3e64a9d8f86cbf230f6a36711dcae61c70",
+                      "packet_size_bytes":  1032381,
+                      "document_id":  "gfpstorev1:document:d1cd3f89e609b86e8b0a65f765f3607d94dac8821501c4cc7aa002909d8a01b7",
+                      "original_full_document_ordinal":  39,
+                      "source_logical_name":  "vietstock_bctc/EIB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                      "source_sha256":  "ca19e5491e9cb188dfb702cec49b22739205e50514f42f1f8345ee98383d110f",
+                      "source_size_bytes":  15033183,
+                      "root_row_ordinal":  20,
+                      "expected_root_coefficients":  [
+                                                         -371856,
+                                                         -853413
+                                                     ],
+                      "pages":  [
+                                    {
+                                        "file":  "page-011-322deeacfc83a14a.json",
+                                        "sha256":  "8e481aefb55e80fee4bc79889775de9903e99afbeb8edd226536ffd7b6b76d3b",
+                                        "size_bytes":  4906,
+                                        "page_json_version_id":  "gfpstorev1:json:322deeacfc83a14acd644caf8337eaf5b2f5b4edcb52c01a8e67c9356a336b84",
+                                        "physical_page":  11,
+                                        "render_ref":  {
+                                                           "file":  "render-p011.png",
+                                                           "sha256":  "66390c2ae9cecde1ccf1c93cc8cf98ba09e605e893791647bc5b533178a6117f",
+                                                           "size_bytes":  406325,
+                                                           "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                           "colour":  "8-bit RGB, no alpha"
+                                                       }
+                                    },
+                                    {
+                                        "file":  "page-044-58f60ac92f7d5acc.json",
+                                        "sha256":  "253ba761ef3de9b5e5d049fd9bae81dcecf306c7c57a55ed974c524fdb6db666",
+                                        "size_bytes":  7728,
+                                        "page_json_version_id":  "gfpstorev1:json:58f60ac92f7d5accf9f5c7ebc1168e89fe250d5cce1ea42146690b8385616864",
+                                        "physical_page":  44,
+                                        "render_ref":  {
+                                                           "file":  "render-p044.png",
+                                                           "sha256":  "c064e2c0a24159e9c98e40a4c636a5a050081289f56f59f8658496815815934a",
+                                                           "size_bytes":  328011,
+                                                           "renderer":  "/usr/bin/pdftoppm -r 100 -png -singlefile",
+                                                           "colour":  "8-bit RGB, no alpha"
+                                                       }
+                                    }
+                                ]
+                  }
+              ]
+}
