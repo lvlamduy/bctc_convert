@@ -33,7 +33,6 @@ from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
-
 FIXTURE = Path(__file__).parents[1] / "fixtures/source_structure/f39-observed-subtotal-20261028-v1"
 
 
