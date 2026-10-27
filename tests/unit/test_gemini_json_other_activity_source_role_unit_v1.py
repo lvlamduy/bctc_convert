@@ -20,6 +20,9 @@ from bctc_ai.evaluation import gemini_json_other_activity_family_v1 as family
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     GeminiJsonMultitableHierarchicalFamilyV1Error,
 )
+from bctc_ai.evaluation.gemini_json_other_long_term_investments_family_v1 import (
+    GeminiJsonOtherLongTermInvestmentsFamilyV1Error,
+)
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
     validate_source_observation_mapping_contract_v1,
 )
@@ -252,6 +255,14 @@ def test_continued_table_unit_scope_rejects_identity_marker_owner_unit_and_perio
     records = [_record(page, ordinal=ordinal) for ordinal, page in enumerate(options["page_json_by_version"].values(), 1)]
     for field in ("source_sha256", "selected_page_ordinal", "physical_page"):
         records[-1][field] = current["region"][field]
+    if changed == "source_sha":
+        original = deepcopy(records)
+        with pytest.raises(GeminiJsonOtherLongTermInvestmentsFamilyV1Error,
+            match="^other-long-term-investment selected pages cross document identity$"):
+            family.coalesce_gemini_json_multitable_hierarchical_document_v1(
+                page_records=records, compiled_specs=compiled)
+        assert records == original
+        return
     _assert_changed_continuation_source_is_held(records, compiled)
 
 

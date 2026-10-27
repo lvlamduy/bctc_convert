@@ -195,3 +195,22 @@ all configs, original fixtures, shared frozen files and financial receipt
 formats remain unchanged. These corrected assertions are UNRUN pending root
 review, source capture and a new complete focused gate. The failed V2 receipt
 is preserved and provides no financial acceptance or unchanged-retry authority.
+
+## Actual V3 source identity rejection and test boundary
+
+At a9e56691c72389db7ff5ef8c704ab528f2a752ec the complete seven-module V3 gate
+ran Ruff clean and 136 passed / 1 failed. Receipt SHA-256:
+0ae279ba60caff2c34d788e772ffd2053180ed3c8538a2a3663c1fc5fb7caef6.
+The sole failure was the synthetic source_sha negative. The frozen query rejects
+cross-document source identity before a family candidate exists, using its
+original GeminiJsonOtherLongTermInvestmentsFamilyV1Error type. The test helper
+caught the two other declared family/query exceptions and did not catch this one.
+
+The correction asserts this exact exception and exact identity-error message
+only for that explicit source_sha case, after the unchanged real public READY
+baseline and replay have passed. It also verifies the rejected raw page records
+are unchanged. Other nine negative cases and the generic test helper remain
+unchanged; replay/audit failures still cannot count as a successful source
+rejection. Production, configs, frozen shared code and raw fixtures are unchanged.
+This test-only correction is UNRUN until a new complete gate executes. No corpus,
+SQLite, PDF/residual, export, financial acceptance or family terminal claim follows.
