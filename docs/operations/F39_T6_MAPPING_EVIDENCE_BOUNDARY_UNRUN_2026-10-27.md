@@ -19,18 +19,31 @@ The existing receipt/candidate identity algorithms reseal the changed evidence
 bytes, and the existing fresh source trial replay rejects forged envelopes.
 The shared walker, frozen evaluator and frozen generic runner are unchanged.
 
-The focused T6 source tests decode both exact mapping images, audit actual
-whole public candidates with count equal to active mappings and HOLD count
+The focused T6 source tests decode both exact mapping images, audit the whole
+actual binder candidate with count equal to active mappings and HOLD count
 zero, preserve null source cells, and use the actual indexed adapter/trial
 replay validator to reject adversarial envelopes even after their own SHA,
 size, receipt and candidate IDs have been resealed. Signed-display ownership
 negatives also require whole-candidate audit PASS with zero active mappings.
 
-The positive public audit control uses the normal minimal PRIMARY source
-route. This correction makes no family-wide source-audit-clean claim:
-pre-existing mapping-shaped evidence in other legacy receipts remains a
-separate corpus-review backlog. Those receipt formats are not changed here.
+Root's actual focused V2 run at producer `5d08be00ea7ec5876e949ab13bb0619386fe3120`
+finished with four failed and 445 passed tests in 312.40 seconds. Three new
+replay tests failed before evaluation because their one-page indexed test
+manifest inherited a helper's selected ordinal two. That new manifest now
+explicitly starts at selected ordinal one, preserving its physical/source axes.
+The fourth new test incorrectly expected the normal public whole audit count
+to equal the three active mappings: its actual count was six. The unchanged
+`income_tax_source_control_receipt.post_merge_root_closure.mappings` retains
+three exact legacy mapping images. The corrected public test audits the
+unmodified candidate, identifies those exact three images, and requires count
+six, with zero additional mappings recognized in the new T6 receipt. Public
+HOLD count remains exactly zero. No receipt is removed or sanitized for audit.
 
-All changes remain **UNRUN**. No Python import, AST, compile, lint, test, WSL,
+This test expectation correction makes no family-wide source-audit-clean
+claim. Pre-existing mapping-shaped evidence in legacy receipts remains a
+separate corpus-review backlog; those formats and the production adapter are
+unchanged by the correction. The failed focused V2 artifacts remain retained.
+
+These corrected tests remain **UNRUN**. No Python import, AST, compile, lint, test, WSL,
 corpus/SQLite/PDF/provider job, commit or acceptance claim was performed by the
 author. Root owns source capture and the subsequent guarded focused/full gates.

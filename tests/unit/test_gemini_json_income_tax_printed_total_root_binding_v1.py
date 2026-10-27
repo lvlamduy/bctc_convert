@@ -391,28 +391,69 @@ def test_valid_signed_note_cannot_rescue_an_unknown_printed_primary_total():
     assert records == original
 
 
+def _assert_real_binder_candidate_audit(page, *, held):
+    before, result = _bind(page)
+    assert result["status"] == (UNRESOLVED if held else READY)
+    audit = audit_source_observation_mapping_contract_v1(result)
+    assert audit["status"] == "PASS", audit["violations"]
+    assert audit["mapping_count"] == len(result["mappings"]) == (0 if held else 3)
+    evidence = (
+        result["closure_receipt"]["income_tax_unresolved_evidence_receipt"]["evidence"]
+        if held else result["closure_receipt"]["income_tax_printed_primary_root_receipt"]
+    )
+    assert audit_source_observation_mapping_contract_v1(evidence)["mapping_count"] == 0
+    assert _decode_mapping_evidence(evidence["prior_root_mappings"]) == [
+        item for item in before["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL"
+    ]
+    if held:
+        assert "bound_root_mapping" not in evidence
+    else:
+        assert _decode_mapping_evidence(evidence["bound_root_mapping"]) == _by_role(
+            result, "FAMILY_ROOT_TOTAL",
+        )
+
+
 @pytest.mark.parametrize("held", [False, True])
-def test_whole_public_candidate_audit_counts_only_active_mappings(held):
+def test_normal_public_audit_identifies_legacy_post_merge_images_and_no_new_t6_mappings(held):
     page = _primary_page(_primary_tax_rows(root=(None, None) if held else ("40", "60")))
     original = deepcopy(page)
+    _assert_real_binder_candidate_audit(page, held=held)
     result = _public(page)
     assert result["status"] == (UNRESOLVED if held else READY)
     audit = audit_source_observation_mapping_contract_v1(result)
     assert audit["status"] == "PASS", audit["violations"]
-    assert audit["mapping_count"] == len(result["mappings"])
     if held:
-        assert audit["mapping_count"] == 0
+        assert audit["mapping_count"] == len(result["mappings"]) == 0
         evidence = result["closure_receipt"]["income_tax_unresolved_evidence_receipt"]["evidence"]
         assert evidence["source_values_exact"] == [None, None]
         assert "bound_root_mapping" not in evidence
         assert type(_decode_mapping_evidence(evidence["prior_root_mappings"])) is list
+    else:
+        evidence = result["closure_receipt"]["income_tax_printed_primary_root_receipt"]
+        legacy = result["closure_receipt"]["income_tax_source_control_receipt"][
+            "post_merge_root_closure"
+        ]["mappings"]
+        assert legacy == [_by_role(result, role) for role in (
+            "CURRENT_TAX_PARENT", "DEFERRED_TAX_NET", "FAMILY_ROOT_TOTAL",
+        )]
+        assert len(legacy) == len(result["mappings"]) == 3
+        # The unchanged public route retains these three legacy evidence
+        # images. Audit the unmodified whole candidate and identify them
+        # explicitly; the new T6 receipt contributes no mapping objects.
+        assert audit["mapping_count"] == len(result["mappings"]) + len(legacy) == 6
+        assert _decode_mapping_evidence(evidence["bound_root_mapping"]) == _by_role(
+            result, "FAMILY_ROOT_TOTAL",
+        )
+    assert audit_source_observation_mapping_contract_v1(evidence)["mapping_count"] == 0
     assert page == original
 
 
 def _indexed_replay_case(*, held):
     compiled = _adapter_compiled()
     page = _primary_page(_primary_tax_rows(root=(None, None) if held else ("40", "60")))
-    record = _primary_record(page)
+    # This is a newly declared one-page test manifest, so its selected axis
+    # starts at one. Physical page and all original source fields stay exact.
+    record = _primary_record(page, selected_page_ordinal=1)
     base = coalesce_gemini_json_multitable_hierarchical_document_v1(
         page_records=[record], compiled_specs=compiled,
     )
