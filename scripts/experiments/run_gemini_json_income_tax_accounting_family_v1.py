@@ -166,6 +166,123 @@ def _safe_path(path: Path) -> Path:
     return path
 
 
+def _income_tax_implementation_paths_v2(scope_path: Path) -> list[Path]:
+    """Declare the source axis before compiling or opening financial sources."""
+    paths = [
+        Path(__file__).resolve(),
+        ROOT / "scripts/experiments/f39_registered_part_period_pdf_auth_v1.py",
+        ROOT / "scripts/experiments/f39_registered_section_caption_pdf_auth_v1.py",
+        ROOT / DEFAULT_SECTION_CAPTION_AUTH_ENVELOPE_PATH,
+        ROOT / DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
+        ROOT / DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
+        ROOT / "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
+        ROOT / "config/families/tm-income-tax-source-label-discrepancies-v1.json",
+        *(ROOT / p for p in SHARED_PINS),
+        *SPEC_PATHS.values(),
+        RENDER_BINDINGS_PATH,
+        ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_income_tax_source_page_loader_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_income_tax_raw_money_census_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_current_corpus_manifest_index_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_current_document_manifest_selection_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_financial_page_json_v1.py",
+        ROOT / "src/bctc_ai/source_structure/contracts_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
+        ROOT / "src/bctc_ai/evaluation/source_observation_mapping_contract_v1.py",
+        ROOT / "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_structural_context_v1.py",
+        ROOT / "src/bctc_ai/storage/gemini_family_effective_page_frontier_v1.py",
+        # Imported by the page store for existing types/validation. Listing
+        # their source is not permission to call extraction providers.
+        ROOT / "src/bctc_ai/evaluation/gemini_json_first_batch_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_first_provider_v1.py",
+        ROOT / "src/bctc_ai/evaluation/gemini_json_region_repair_v1.py",
+        ROOT / "src/bctc_ai/__init__.py",
+        ROOT / "src/bctc_ai/evaluation/__init__.py",
+        ROOT / "src/bctc_ai/storage/__init__.py",
+        ROOT / "src/bctc_ai/source_structure/__init__.py",
+        scope_path,
+        *(ROOT / "src/bctc_ai" / relative for relative in _PERIOD_INVENTORY_DEPENDENCY_PATHS),
+    ]
+    return list(dict.fromkeys(paths))
+
+
+def _loaded_income_tax_project_origins_v2():
+    """Discover actual project imports without executing or importing modules."""
+    script_names = {
+        "run_gemini_json_income_tax_accounting_family_v1",
+        "run_gemini_json_multitable_hierarchical_accounting_family_v1",
+        "f39_registered_part_period_pdf_auth_v1",
+        "f39_registered_section_caption_pdf_auth_v1",
+    }
+    origins = {}
+    for name, module in sorted(tuple(sys.modules.items())):
+        filename = getattr(module, "__file__", None)
+        path = Path(filename) if type(filename) is str else None
+        project_name = name == "bctc_ai" or name.startswith("bctc_ai.") or name in script_names
+        project_filename = path is not None and (
+            path.name in {script + ".py" for script in script_names} or "bctc_ai" in path.parts
+        )
+        project_path = path is not None and path.is_absolute() and any(
+            path.is_relative_to(directory) for directory in (ROOT / "src/bctc_ai", ROOT / "scripts")
+        )
+        if not project_name and not project_path and not project_filename:
+            continue
+        require(path is not None and path.is_absolute() and path.suffix == ".py",
+                "Income-tax loaded project module has no Python source origin: " + name)
+        _safe_path(path)
+        require(path.is_relative_to(ROOT) and path.resolve() == path,
+                "Income-tax loaded project origin is outside checkout: " + name)
+        spec_origin = getattr(getattr(module, "__spec__", None), "origin", None)
+        require(spec_origin is None or spec_origin == str(path),
+                "Income-tax loaded module file/spec origins differ: " + name)
+        origins[name] = path
+    return origins
+
+
+def _seal_income_tax_implementation_axis_v2(scope_path):
+    """Seal initial imports plus declared late dependencies before source work.
+
+    A caller may already have imported another project family. Include its
+    actual local source bytes in this initial seal; never expand it during a
+    source operation. Foreign initial imports still fail closed.
+    """
+    loaded = _loaded_income_tax_project_origins_v2()
+    paths = list(dict.fromkeys([
+        *_income_tax_implementation_paths_v2(scope_path), *sorted(set(loaded.values())),
+    ]))
+    references = [generic._file_ref(path) for path in paths]
+    origins = _check_income_tax_implementation_origins_v2(paths, references)
+    return paths, references, origins
+
+
+def _check_income_tax_implementation_origins_v2(
+    implementation_paths, implementation_refs, *, previous_origins=None,
+):
+    """Reject late unlisted imports, foreign origins and source/path drift.
+
+    This reconciles source bytes and module origins in a fresh trusted Python
+    process. It does not authenticate arbitrary mutations of Python memory.
+    """
+    require(list(implementation_refs) == [generic._file_ref(p) for p in implementation_paths],
+            "Income-tax implementation source bytes changed")
+    allowed = {}
+    for path, reference in zip(implementation_paths, implementation_refs, strict=True):
+        _safe_path(path)
+        if path.suffix == ".py":
+            require(path.is_relative_to(ROOT) and path.resolve() == path,
+                    "Income-tax implementation Python path is outside checkout")
+            allowed[path] = reference
+    origins = {}
+    for name, path in _loaded_income_tax_project_origins_v2().items():
+        require(path in allowed, "Income-tax loaded project source is unlisted: " + name)
+        origins[name] = dict(allowed[path])
+    for name, reference in (previous_origins or {}).items():
+        require(origins.get(name) == reference,
+                "Income-tax loaded project origin changed or disappeared: " + name)
+    return origins
+
+
 def _assert_shared_pins_v1() -> None:
     for path, digest in SHARED_PINS.items():
         require(generic._sha256(ROOT / path) == digest, "Frozen shared pin differs: " + path)
@@ -994,13 +1111,20 @@ def _make_authenticated_source_replay_adapter_v1(
     database_ref_bytes, index_ref_bytes = map(canonical_json_bytes_v1, (database_ref, corpus_index_ref))
     database, artifact_root = Path(database), Path(artifact_root)
     source_pdf_root = None if source_pdf_root is None else Path(source_pdf_root)
+    project_paths, project_refs, initial_project_origins = _seal_income_tax_implementation_axis_v2(PAGE_SCOPE_PATH)
 
     def replay(*, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence):
         require(Path(source_page_database) == database, "Cold raw census source database path differs")
+        project_origins = _check_income_tax_implementation_origins_v2(
+            project_paths, project_refs, previous_origins=initial_project_origins,
+        )
         expected_implementations = json.loads(implementation_bytes)
         expected_authorities = json.loads(authority_bytes)
         require(expected_implementations == [generic._file_ref(Path(ref["path"])) for ref in expected_implementations],
                 "Cold replay implementation bytes changed before source open")
+        project_origins = _check_income_tax_implementation_origins_v2(
+            project_paths, project_refs, previous_origins=project_origins,
+        )
         require(expected_authorities == [generic._file_ref(Path(ref["path"])) for ref in expected_authorities],
                 "Cold replay immutable authority bytes changed before source open")
         cold_documents, refs = json.loads(document_bytes), json.loads(census_ref_bytes)
@@ -1020,6 +1144,9 @@ def _make_authenticated_source_replay_adapter_v1(
         require(same_typed_json_v1(compiled_specs, compile_gemini_json_flat_family_specs_v1(
             specs["topology"], specs["evaluation"], specs["schema"],
         )), "Cold replay declarative specs differ")
+        project_origins = _check_income_tax_implementation_origins_v2(
+            project_paths, project_refs, previous_origins=project_origins,
+        )
         seen, part_pdf_receipts, part_pdf_bundles, caption_admissions, negative_admissions = [], [], [], [], []
 
         def authenticate_original(document, loaded, original_records):
@@ -1071,6 +1198,9 @@ def _make_authenticated_source_replay_adapter_v1(
             require(expected_negative_bytes is None or canonical_json_bytes_v1(negative_admissions) == expected_negative_bytes,
                     "Cold fresh negative-label pixel authentication differs from warm source evidence")
         require(same_typed_json_v1(_raw_census_summary_v1(refs), before), "Warm census files changed at cold source close")
+        project_origins = _check_income_tax_implementation_origins_v2(
+            project_paths, project_refs, previous_origins=project_origins,
+        )
         # The original owned context has exited successfully. Hold a fresh
         # readonly FD across every later callback; no trial reaches the store
         # until this barrier's final actual DB bytes/identity check succeeds.
@@ -1082,6 +1212,9 @@ def _make_authenticated_source_replay_adapter_v1(
                     "Cold caption admission axis changed during final callbacks")
             require(expected_implementations == [generic._file_ref(Path(ref["path"])) for ref in expected_implementations],
                     "Cold replay implementation bytes changed during final PDF callbacks")
+            project_origins = _check_income_tax_implementation_origins_v2(
+                project_paths, project_refs, previous_origins=project_origins,
+            )
             require(expected_authorities == [generic._file_ref(Path(ref["path"])) for ref in expected_authorities],
                     "Cold replay immutable authority bytes changed during final PDF callbacks")
             # Official runs always provide a PDF root. Legacy nonapplicable
@@ -1098,6 +1231,9 @@ def _make_authenticated_source_replay_adapter_v1(
                     "Warm census files changed during final cold PDF callbacks")
             require(expected_negative_bytes is None or canonical_json_bytes_v1(negative_admissions) == expected_negative_bytes,
                     "Cold negative-label admission axis changed during final PDF callbacks")
+        _check_income_tax_implementation_origins_v2(
+            project_paths, project_refs, previous_origins=project_origins,
+        )
         return trials
 
     return replay
@@ -1306,6 +1442,23 @@ def _authenticate_source_label_discrepancies_v1(document, original_records, sour
 def run(args):
     require(args.repo_root.resolve() == ROOT, "Runner checkout differs from explicit repo root")
     _assert_shared_pins_v1()
+    scope_path = _safe_path(getattr(args, "source_page_scope", PAGE_SCOPE_PATH))
+    implementation_paths, implementation_refs, implementation_origins = (
+        _seal_income_tax_implementation_axis_v2(scope_path)
+    )
+    implementation_origin_checks = []
+
+    def check_implementation_origins(stage):
+        nonlocal implementation_origins
+        implementation_origins = _check_income_tax_implementation_origins_v2(
+            implementation_paths, implementation_refs, previous_origins=implementation_origins,
+        )
+        implementation_origin_checks.append({
+            "stage": stage, "loaded_project_module_count": len(implementation_origins),
+            "module_origins_sha256": canonical_json_sha256_v1(implementation_origins),
+        })
+
+    check_implementation_origins("BEFORE_FINANCIAL_SOURCE_AUTHORITY")
     for path in (
         args.repo_root,
         args.corpus_index,
@@ -1347,8 +1500,8 @@ def run(args):
         )
     index = validate_current_corpus_manifest_index_v1(_json(args.corpus_index))
     documents, selected_ids = _documents_v1(index, args.artifact_root)
-    scope_path = getattr(args, "source_page_scope", PAGE_SCOPE_PATH)
     scope_rows = _page_scope_v1(scope_path)
+    check_implementation_origins("BEFORE_FAMILY_COMPILE")
     document_limit = getattr(args, "document_limit", None)
     documents, diagnostic_ordinals = _diagnostic_documents_v1(
         documents, document_limit=document_limit,
@@ -1356,34 +1509,7 @@ def run(args):
     )
     specs, compiled = _compile_specs_v1()
     _repair_render_bindings_v1(compiled)
-    implementation_paths = [
-        Path(__file__).resolve(),
-        ROOT / "scripts/experiments/f39_registered_part_period_pdf_auth_v1.py",
-        ROOT / "scripts/experiments/f39_registered_section_caption_pdf_auth_v1.py",
-        ROOT / DEFAULT_SECTION_CAPTION_AUTH_ENVELOPE_PATH,
-        ROOT / DEFAULT_PART_PERIOD_CONTEXT_REGISTRY_PATH,
-        ROOT / DEFAULT_PART_PERIOD_COMMON204_REGISTRY_PATH,
-        ROOT / "src/bctc_ai/evaluation/gemini_json_income_tax_family_v1.py",
-        ROOT / "config/families/tm-income-tax-source-label-discrepancies-v1.json",
-        *(ROOT / p for p in SHARED_PINS),
-        *SPEC_PATHS.values(),
-        RENDER_BINDINGS_PATH,
-        ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
-        ROOT / "src/bctc_ai/storage/gemini_income_tax_source_page_loader_v1.py",
-        ROOT / "src/bctc_ai/storage/gemini_income_tax_raw_money_census_v1.py",
-        ROOT / "src/bctc_ai/storage/gemini_current_corpus_manifest_index_v1.py",
-        ROOT / "src/bctc_ai/storage/gemini_current_document_manifest_selection_v1.py",
-        ROOT / "src/bctc_ai/evaluation/gemini_financial_page_json_v1.py",
-        ROOT / "src/bctc_ai/source_structure/contracts_v1.py",
-        ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
-        ROOT / "src/bctc_ai/evaluation/source_observation_mapping_contract_v1.py",
-        scope_path,
-    ]
-    implementation_paths = list(dict.fromkeys([
-        *implementation_paths,
-        *(ROOT / "src/bctc_ai" / relative for relative in _PERIOD_INVENTORY_DEPENDENCY_PATHS),
-    ]))
-    implementation_refs = [generic._file_ref(p) for p in implementation_paths]
+    check_implementation_origins("AFTER_FAMILY_COMPILE")
     authority_paths = [args.corpus_index]
     for document in documents:
         authority_paths.extend(
@@ -1426,6 +1552,7 @@ def run(args):
         caption_admissions.append(_authenticate_section_caption_admission_v1(
             document, loaded, original_records, compiled, args.source_pdf_root))
 
+    check_implementation_origins("BEFORE_WARM_SOURCE")
     try:
         with open_income_tax_original_census_source_v1(
             args.source_page_database, database_ref=index["database_ref"],
@@ -1463,16 +1590,19 @@ def run(args):
                 caption_admissions, documents, compiled, indexed_query_evidence=indexed)
     finally:
         cache.close()
+    check_implementation_origins("AFTER_WARM_SOURCE")
     _assert_shared_pins_v1()
     warm_census_bytes = canonical_json_bytes_v1(_raw_census_summary_v1(census_refs))
     # Authentication callbacks after owned-source exit are provisional until
     # both the fresh held DB descriptor and every post-callback input pass.
+    check_implementation_origins("BEFORE_WARM_FINAL_PDF_CALLBACKS")
     with _authenticated_source_v1(args.source_page_database, index["database_ref"]):
         _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, documents, compiled)
         _recheck_section_caption_admission_v1(
             caption_admissions, documents, compiled, indexed_query_evidence=indexed)
         require(implementation_refs == [generic._file_ref(p) for p in implementation_paths],
                 "Implementation bytes changed during warm final PDF callbacks")
+        check_implementation_origins("AFTER_WARM_FINAL_PDF_CALLBACKS")
         require(authority_refs == [generic._file_ref(p) for p in authority_paths],
                 "Immutable authority bytes changed during warm final PDF callbacks")
         for document in documents:
@@ -1487,6 +1617,7 @@ def run(args):
         implementation_refs == [generic._file_ref(p) for p in implementation_paths],
         "Family/spec/storage bytes changed during run",
     )
+    check_implementation_origins("WARM_SOURCE_HANDOFF")
     require(
         authority_refs == [generic._file_ref(p) for p in authority_paths],
         "Index/immutable manifest/selection bytes changed during run",
@@ -1502,6 +1633,7 @@ def run(args):
     raw_census.update(status="PASS_AUTHENTICATED_ORIGINAL_RAW_DENOMINATOR_NOT_ACCEPTANCE",
                       source_context_successfully_exited=True)
     raw_census_store = None
+    check_implementation_origins("BEFORE_COLD_REPLAY_AND_PERSISTENCE")
     if diagnostic_ordinals is None:
         replay_adapter = _make_authenticated_source_replay_adapter_v1(
             database=args.source_page_database, database_ref=index["database_ref"],
@@ -1531,12 +1663,14 @@ def run(args):
     require(implementation_refs == [generic._file_ref(p) for p in implementation_paths]
             and authority_refs == [generic._file_ref(p) for p in authority_paths],
             "Family/source authority bytes changed during cold replay/persistence")
+    check_implementation_origins("AFTER_COLD_REPLAY_AND_PERSISTENCE")
     for source in pdf_checked:
         path = _safe_path(args.source_pdf_root / source["source_logical_name"])
         require(path.stat().st_size == source["source_size_bytes"] and generic._sha256(path) == source["source_sha256"],
                 "Source PDF changed before output handoff")
     require(same_typed_json_v1(raw_census["document_census_refs"], census_refs), "Raw census reference axis changed")
     _raw_census_summary_v1(census_refs)
+    check_implementation_origins("BEFORE_OUTPUT_PDF_CALLBACKS")
     with _authenticated_source_v1(args.source_page_database, index["database_ref"]):
         _recheck_registered_part_catalog_pdf_v1(part_pdf_bundles, documents, compiled)
         _recheck_section_caption_admission_v1(
@@ -1544,6 +1678,7 @@ def run(args):
         require(implementation_refs == [generic._file_ref(p) for p in implementation_paths]
                 and authority_refs == [generic._file_ref(p) for p in authority_paths],
                 "Implementation/immutable authority bytes changed during output PDF callbacks")
+        check_implementation_origins("AFTER_OUTPUT_PDF_CALLBACKS")
         for document in documents:
             source = document["manifest"]["document"]
             path = _safe_path(args.source_pdf_root / source["source_logical_name"])
@@ -1593,6 +1728,8 @@ def run(args):
             "registered_section_caption_admission": caption_admission,
             "registered_source_label_discrepancy_admission_axis": negative_label_admissions,
             "implementation_refs": implementation_refs,
+            "implementation_module_origins": implementation_origins,
+            "implementation_origin_checks": implementation_origin_checks,
             "immutable_input_refs": authority_refs,
         }
         material["diagnostic_id"] = "gjitfarunv1:bounded:" + canonical_json_sha256_v1(material)
@@ -1610,6 +1747,7 @@ def run(args):
     export = record_gemini_accounting_family_export_v1(
         args.results_database, family_run_id=stored["family_run_id"], output_path=output
     )
+    check_implementation_origins("AFTER_EXPORT")
     audit = {
         "family_id": FAMILY_ID,
         "format_version": "INCOME_TAX_OFFLINE_DIAGNOSTIC_AUDIT_V1",
@@ -1629,6 +1767,8 @@ def run(args):
         "registered_part_period_cold_authentication": "FRESH_PER_APPLICABLE_SOURCE_IN_COLD_REPLAY_ADAPTER",
         "selected_page_ids_sha256": canonical_json_sha256_v1(selected_ids),
         "implementation_refs": implementation_refs,
+        "implementation_module_origins": implementation_origins,
+        "implementation_origin_checks": implementation_origin_checks,
         "immutable_input_refs": authority_refs,
         "cold_source_replay": "PASS_EXACT_INDEPENDENT_STORAGE_QUERY_NO_CACHE",
         "results_reload": "PASS_EXACT",
