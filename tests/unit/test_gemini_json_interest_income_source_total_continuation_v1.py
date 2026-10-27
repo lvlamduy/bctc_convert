@@ -28,10 +28,14 @@ from bctc_ai.evaluation import gemini_json_interest_income_family_v1 as family
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
     UNRESOLVED,
-    _row_local_record as _frozen_row_local_record,
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
 )
-from bctc_ai.evaluation.source_observation_mapping_contract_v1 import validate_source_observation_mapping_contract_v1
+from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+    _row_local_record as _frozen_row_local_record,
+)
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    validate_source_observation_mapping_contract_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 

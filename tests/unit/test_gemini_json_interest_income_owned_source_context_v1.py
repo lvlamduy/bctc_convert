@@ -16,7 +16,9 @@ from test_gemini_json_interest_income_family_v1 import _compiled, _indexed_query
 
 from bctc_ai.evaluation import gemini_json_interest_income_family_v1 as family
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import READY, UNRESOLVED
-from bctc_ai.evaluation.source_observation_mapping_contract_v1 import validate_source_observation_mapping_contract_v1
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    validate_source_observation_mapping_contract_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures/source_structure/f28-vbb-source-fragments-20261027-v1"
