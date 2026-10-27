@@ -243,7 +243,22 @@ def test_real_registered_primary_and_note_holds_reach_actual_frozen_binding(case
     assert result["mappings"] == trial["mappings"] == []
     assert result["component_regions"] == cluster["component_regions"]
     assert trial["selected_candidate_id"] is None
-    assert audit_source_observation_mapping_contract_v1(result)["mapping_count"] == 0
+    audit = audit_source_observation_mapping_contract_v1(result)
+    assert audit["status"] == "PASS"
+    if reason == "SOURCE_PRINTED_DASH_VS_JSON_NUMERIC_DISCREPANCY":
+        # The existing T7a negative receipt deliberately retains one rejected
+        # selected_mapping as evidence. The recursive audit counts that image;
+        # the query-context-only change must preserve it, not invent an active
+        # mapping or silently change the older financial receipt format.
+        observations = result["closure_receipt"]["income_tax_unresolved_evidence_receipt"][
+            "evidence"
+        ]["registered_negative_source_label_observations"]
+        assert len(observations) == 1
+        assert observations[0]["classification"] == "PRINTED_DASH_VS_JSON_NUMERIC"
+        assert audit["mapping_count"] == 1
+        assert audit == audit_source_observation_mapping_contract_v1(observations)
+    else:
+        assert audit["mapping_count"] == 0
     assert record == original
 
 
