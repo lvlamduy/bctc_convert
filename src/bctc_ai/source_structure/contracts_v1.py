@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import struct
+import sys
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -501,9 +502,9 @@ def same_typed_json_v1(left: Any, right: Any) -> bool:
     return bool(left == right)
 
 
-# Python refuses to render ints beyond its default 4300-digit limit; such a value has more than
-# 14,000 bits, so only those few ints need the exact rendering check below.
-_INT_RENDER_CHECK_MIN_BITS = 14_000
+# Any enabled runtime limit is at least this many decimal digits. Three bits
+# per digit is a conservative bound: 2**(3*n) < 10**n, without float rounding.
+_INT_RENDER_CHECK_MIN_BITS = 3 * sys.int_info.str_digits_check_threshold
 
 
 def _clone_validated_json(value: Any) -> Any:
@@ -519,7 +520,9 @@ def _clone_validated_json(value: Any) -> Any:
             result[key] = _clone_validated_json(value[key])
         return result
     if value_type is int and value.bit_length() > _INT_RENDER_CHECK_MIN_BITS:
-        repr(value)
+        limit = sys.get_int_max_str_digits()
+        if limit and value.bit_length() > 3 * limit:
+            repr(value)
     # str/int/float/bool/None are immutable; decoding their canonical spelling yields equal values
     # (float repr round-trips exactly, including -0.0).
     return value
