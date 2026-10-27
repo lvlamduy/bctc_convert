@@ -143,3 +143,55 @@ source-observation regressions and fresh owner pilots/FULL271/COMMON204 as
 appropriate. Remaining role/unit HOLDs, actual failures and changed counts must
 stay visible. No automatic retry, cap raise, denominator reduction or source
 repair registration is authorized by this source-only checkpoint.
+
+## Test-boundary corrections after the complete V2 gate
+
+Root's retained `f38-focused-20261028-v2` gate at
+`fee9d18ec10699dd38cb67a257484bd46d592ebb` passed Ruff and completed all seven
+modules with 122 passes and 14 failures in 14.27 seconds. Its actual receipt
+SHA-256 is
+`003349959b00b0cfdf994964e2dd61c7907092cd8946de5acd3bc03a485cd988`.
+All fourteen failure traces were read before this follow-up. They identify
+three test-boundary causes; no unchecked production permission was demonstrated.
+
+Twelve failures occurred in the common continuation setup, before any adverse
+mutation. The setup assumed that an ordinary root-only receiver would pass
+query recovery. The existing recovery route deliberately requires the two
+authenticated row-kind/column-kind repair receipts for that shape. The passing
+source-owned continuation test already supplies those exact synthetic repairs.
+Its unchanged source pages and compiled repair fixture are now shared with the
+unit-scope controls. Every control first proves the actual public READY route,
+fresh candidate replay and independently inherited source unit, retaining the
+receiver's raw null unit. Authenticated semantic tables are reconstructed from
+the actual repair receipts, rather than equated with the original raw tables.
+
+Identity, marker, owner, unit and header mutations now rebuild the public query
+and evaluate the changed source. A typed source-contract rejection or an actual
+UNRESOLVED result with no active mappings is required. An emitted unresolved
+candidate must pass fresh replay and the whole-candidate observation audit;
+replay/audit errors cannot satisfy the source-rejection branch. The distinct
+derived-period-locator attack deliberately keeps the original source fixed,
+alters the old receipt, and requires both the scope predicate and fresh replay
+to reject it. The amount-independence control continues to exercise only the
+nonnumeric scope predicate; it grants no financial result for changed values.
+
+The old unknown residual-row negative called the frozen shared evaluator
+directly and consequently did not execute F38's final source-role guard. It now
+uses the actual public family evaluator and fresh replay, requiring the same
+strict undeclared-role HOLD for the original bad-parent source. No context-OTHER
+fallback or numeric closure permission is restored.
+
+The old blank-lane control used `Thu bán tài sản gán nợ`, which the reviewed
+policy explicitly withholds for ambiguous role granularity. That exact source
+is retained as an explicit HOLD with zero active mappings. A separate control
+uses the already-declared unambiguous derivative label with identical values
+and the same blank comparative cell. It retains the partial source mapping
+`10|null`, the typed blank and the absence of an income-subtotal projection.
+Both controls require source immutability and fresh public candidate replay.
+
+Only two test modules and this note change. The production adapter remains
+SHA-256 `ac63a9336c131c7273b1c2dab4a110b6ed433d66d00ad94cc06be0955867c568`;
+all configs, original fixtures, shared frozen files and financial receipt
+formats remain unchanged. These corrected assertions are UNRUN pending root
+review, source capture and a new complete focused gate. The failed V2 receipt
+is preserved and provides no financial acceptance or unchanged-retry authority.

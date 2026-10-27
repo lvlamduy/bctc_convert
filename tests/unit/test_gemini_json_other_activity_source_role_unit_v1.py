@@ -12,18 +12,22 @@ from test_gemini_json_other_activity_family_v1 import (
     _gross_rows,
     _page,
     _record,
+    _repaired_continuation_case,
     _row,
 )
 
 from bctc_ai.evaluation import gemini_json_other_activity_family_v1 as family
+from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+    GeminiJsonMultitableHierarchicalFamilyV1Error,
+)
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
     validate_source_observation_mapping_contract_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 
-def _public_candidate(pages):
-    compiled = _compiled()
+def _public_candidate(pages, *, compiled=None):
+    compiled = _compiled() if compiled is None else compiled
     records = [_record(page, ordinal=ordinal) for ordinal, page in enumerate(pages, 1)]
     source = {record["page_json_version_id"]: record["page_json"] for record in records}
     before = deepcopy(source)
@@ -45,30 +49,58 @@ def _primary(unit="Triệu đồng"):
 
 
 def _continued_scope_inputs():
-    sender = _page([_row("Thu từ hoạt động khác", "100", "80", kind="TOTAL"),
-                    _row("Chi từ hoạt động khác", "(30)", "(20)", kind="TOTAL")])
-    sender["sections"][0]["tables"][0]["continuation"] = "CONTINUES_ON_NEXT_PAGE"
-    receiver = _page([_row(None, "70", "60", kind="TOTAL")], columns=[
-        {"header_path_exact": [None], "value_kind": "MONEY"},
-        {"header_path_exact": [None], "value_kind": "MONEY"}], unit=None)
-    receiver["sections"][0]["title_exact"] = None
-    receiver["sections"][0]["tables"][0]["title_exact"] = None
-    receiver["sections"][0]["tables"][0]["continuation"] = "CONTINUES_FROM_PREVIOUS_PAGE"
-    candidate, options = _public_candidate([_primary(), sender, receiver])
+    primary, sender, receiver, compiled = _repaired_continuation_case(None)
+    candidate, options = _public_candidate([primary, sender, receiver], compiled=compiled)
     assert candidate["status"] == family.READY
+    assert family.validate_gemini_json_other_activity_family_candidate_replay_v1(candidate, **options) == candidate
     proof = _control(candidate)["fragments"][-1]["source_owned_continuation_unit_context"]
     assert proof["canonical_unit"] == "MILLION_VND" and proof["period_proof_kind"] == "EXACT_INHERITED_BLANK_HEADERS"
     receipts = {family._source_identity_v1(item["region"]): item for item in candidate["closure_receipt"]["table_receipts"]}
+    semantic_pages = family._apply_source_repair_receipts_to_pages(
+        deepcopy(options["page_json_by_version"]), options["query_receipt"]["adapter_receipt"]["source_repair_receipts"])
     contexts = []
     for region in options["regions"][-2:]:
         page = options["page_json_by_version"][region["page_json_version_id"]]
         section, table = family._source_table(page, section_id=region["section_id"], table_id=region["table_id"])
+        semantic_section, semantic_table = family._source_table(semantic_pages[region["page_json_version_id"]],
+            section_id=region["section_id"], table_id=region["table_id"])
         contexts.append({"region": region, "page": page, "section": section, "table": table,
-            "semantic_section": section, "semantic_table": table,
+            "semantic_section": semantic_section, "semantic_table": semantic_table,
             "scoped_axis": family._unit_axis(table, compiled_specs=options["compiled_specs"], document_unit_context=None),
             "table_receipt": receipts[family._source_identity_v1(region)]})
     assert receiver["sections"][0]["tables"][0]["unit_exact"] is None
-    return contexts, options["compiled_specs"]
+    return contexts, options, candidate
+
+
+def _assert_changed_continuation_source_is_held(records, compiled):
+    original = deepcopy(records)
+    candidate, options = None, None
+    try:
+        base = family.coalesce_gemini_json_multitable_hierarchical_document_v1(
+            page_records=records, compiled_specs=compiled)
+        cluster = family.recover_gemini_json_other_activity_query_cluster_v1(
+            page_records=records, base_cluster=base, compiled_specs=compiled)
+        if cluster["status"] == family.READY:
+            options = {"regions": cluster["component_regions"],
+                "page_json_by_version": {record["page_json_version_id"]: record["page_json"] for record in records},
+                "compiled_specs": compiled,
+                "query_receipt": family.build_gemini_json_other_activity_region_query_receipt_v1(
+                    cluster["component_regions"], cluster=cluster)}
+            candidate = family.evaluate_gemini_json_other_activity_family_cluster_v1(**options)
+    except (family.GeminiJsonOtherActivityFamilyV1Error, GeminiJsonMultitableHierarchicalFamilyV1Error) as error:
+        # A changed source/axis can be rejected by authentication before a
+        # query or financial candidate exists. No stale READY receipt is used.
+        assert str(error)
+        assert records == original
+        return
+    if candidate is None:
+        assert cluster["status"] == family.UNRESOLVED and not cluster.get("mappings")
+    else:
+        assert candidate["status"] == family.UNRESOLVED and candidate["mappings"] == []
+        # Replay/audit failures are not accepted as source-axis rejections.
+        assert family.validate_gemini_json_other_activity_family_candidate_replay_v1(candidate, **options) == candidate
+        assert validate_source_observation_mapping_contract_v1(candidate)["mapping_count"] == 0
+    assert records == original
 
 
 def _control(candidate):
@@ -188,10 +220,11 @@ def test_equal_primary_cannot_donate_a_missing_note_unit_and_beforeimages_stay_t
 
 
 @pytest.mark.parametrize("changed", ["source_sha", "selected_gap", "physical_gap", "sender_marker", "receiver_marker",
-    "qualified_title", "receiver_statement_reset", "unknown_sender_unit", "conflicting_receiver_unit", "period_locator", "nonblank_header"])
+    "qualified_title", "receiver_statement_reset", "unknown_sender_unit", "conflicting_receiver_unit", "nonblank_header"])
 def test_continued_table_unit_scope_rejects_identity_marker_owner_unit_and_period_counterexamples(changed):
-    contexts, compiled = _continued_scope_inputs()
-    prior, current = deepcopy(contexts)
+    contexts, options, _candidate = _continued_scope_inputs()
+    compiled = options["compiled_specs"]
+    prior, current = contexts
     if changed == "source_sha":
         current["region"]["source_sha256"] = "f" * 64
     elif changed == "selected_gap":
@@ -214,15 +247,27 @@ def test_continued_table_unit_scope_rejects_identity_marker_owner_unit_and_perio
     elif changed == "conflicting_receiver_unit":
         current["table"]["unit_exact"] = "USD"
         current["scoped_axis"] = family._unit_axis(current["table"], compiled_specs=compiled, document_unit_context=None)
-    elif changed == "period_locator":
-        current["table_receipt"]["lane_axis"]["source_period_axis"]["inherited_from_locator"]["page_json_version_id"] = "gfpstorev1:json:" + "f" * 64
     else:
         current["table"]["columns"][0]["header_path_exact"] = ["Năm 2024"]
-    assert family._source_owned_continuation_unit_context_v1(prior, current, compiled_specs=compiled) is None
+    records = [_record(page, ordinal=ordinal) for ordinal, page in enumerate(options["page_json_by_version"].values(), 1)]
+    for field in ("source_sha256", "selected_page_ordinal", "physical_page"):
+        records[-1][field] = current["region"][field]
+    _assert_changed_continuation_source_is_held(records, compiled)
+
+
+def test_continued_unit_scope_rejects_a_stale_inherited_period_locator_and_fresh_replay_detects_it():
+    contexts, options, candidate = _continued_scope_inputs()
+    prior, current = contexts
+    locator = current["table_receipt"]["lane_axis"]["source_period_axis"]["inherited_from_locator"]
+    locator["page_json_version_id"] = "gfpstorev1:json:" + "f" * 64
+    assert family._source_owned_continuation_unit_context_v1(prior, current, compiled_specs=options["compiled_specs"]) is None
+    with pytest.raises(family.GeminiJsonOtherActivityFamilyV1Error, match="candidate replay"):
+        family.validate_gemini_json_other_activity_family_candidate_replay_v1(candidate, **options)
 
 
 def test_unit_scope_proof_does_not_read_amounts_or_claim_financial_closure():
-    contexts, compiled = _continued_scope_inputs()
+    contexts, options, _candidate = _continued_scope_inputs()
+    compiled = options["compiled_specs"]
     prior, current = deepcopy(contexts)
     # This tests only the nonnumeric scope predicate. The changed monetary
     # source is never claimed READY or used as a substituted financial result.

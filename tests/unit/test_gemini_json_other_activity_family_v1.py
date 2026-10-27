@@ -23,6 +23,7 @@ from bctc_ai.evaluation.gemini_json_other_activity_family_v1 import (
     compile_gemini_json_other_activity_family_specs_v1,
     evaluate_gemini_json_other_activity_family_cluster_v1,
     recover_gemini_json_other_activity_query_cluster_v1,
+    validate_gemini_json_other_activity_family_candidate_replay_v1,
 )
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
     validate_source_observation_mapping_contract_v1,
@@ -358,9 +359,20 @@ def test_context_residual_projection_requires_exact_parent_equation() -> None:
         ),
     )
     # The visible income parent remains 100/80 although its children sum to 101/81.
-    candidate, _cluster, _receipt = _evaluate(_page(rows))
+    page = _page(rows)
+    original = copy.deepcopy(page)
+    cluster, candidate = _adapted_candidate([page])
     assert candidate["status"] == UNRESOLVED
     assert candidate["mappings"] == []
+    assert "F38_NONDECLARED_SOURCE_MONEY_ROLE_NOT_PROVEN" in candidate["reasons"]
+    record = _record(page)
+    assert validate_gemini_json_other_activity_family_candidate_replay_v1(
+        candidate, regions=cluster["component_regions"],
+        page_json_by_version={record["page_json_version_id"]: page}, compiled_specs=_compiled(),
+        query_receipt=build_gemini_json_other_activity_region_query_receipt_v1(
+            cluster["component_regions"], cluster=cluster),
+    ) == candidate
+    assert page == original
 
 
 def test_root_only_aggregate_is_not_a_usable_detail_graph() -> None:
@@ -908,8 +920,7 @@ def test_partial_blank_note_lane_never_becomes_numeric() -> None:
     )
 
 
-@pytest.mark.parametrize("receiver_unit", [None, "Triệu đồng"])
-def test_pdf_visible_repaired_continuation_preserves_source_owned_unit_scope_without_donation(receiver_unit) -> None:
+def _repaired_continuation_case(receiver_unit):
     prior = _page(
         [
             _row("Thu từ hoạt động khác", "100", "80", kind="TOTAL"),
@@ -979,6 +990,12 @@ def test_pdf_visible_repaired_continuation_preserves_source_owned_unit_scope_wit
         source_repairs,
     )
     primary = _page([_row(OWNER, "70", "60", kind="TOTAL")], primary=True)
+    return primary, prior, receiver, compiled
+
+
+@pytest.mark.parametrize("receiver_unit", [None, "Triệu đồng"])
+def test_pdf_visible_repaired_continuation_preserves_source_owned_unit_scope_without_donation(receiver_unit) -> None:
+    primary, prior, receiver, compiled = _repaired_continuation_case(receiver_unit)
     cluster, candidate = _adapted_candidate([primary, prior, receiver], compiled=compiled)
     assert candidate["status"] == READY
     if receiver_unit is None:
@@ -1080,9 +1097,13 @@ def test_lpb_explicit_income_expense_groups_map_every_declared_visible_row() -> 
     }.issubset(roles)
 
 
-def test_unlabeled_subtotal_with_blank_component_lane_cannot_prove_projection() -> None:
+@pytest.mark.parametrize("first_label,role,expected_status", [
+    ("Thu bán tài sản gán nợ", "INCOME_ASSET_DISPOSAL", UNRESOLVED),
+    ("Lãi từ các công cụ tài chính phái sinh khác", "INCOME_DERIVATIVE", READY),
+])
+def test_unlabeled_subtotal_with_blank_component_lane_cannot_prove_projection(first_label, role, expected_status) -> None:
     rows = [
-        _row("Thu bán tài sản gán nợ", "10", None),
+        _row(first_label, "10", None),
         _row("Thu hồi các khoản nợ đã xóa", "20", "12"),
         _row(None, "30", "20", kind="SUBTOTAL"),
         _row("Chi phí khác", None, None, kind="GROUP"),
@@ -1092,15 +1113,29 @@ def test_unlabeled_subtotal_with_blank_component_lane_cannot_prove_projection() 
         _row("Cộng", "23", "15", kind="TOTAL"),
     ]
     note = _page(rows)
+    original = copy.deepcopy(note)
     primary = _page([_row(OWNER, "23", "15", kind="TOTAL")], primary=True)
     _cluster, candidate = _adapted_candidate([primary, note])
-    assert candidate["status"] == READY
+    assert candidate["status"] == expected_status
     receipts = candidate["closure_receipt"]["other_activity_adapter_receipt"][
         "structural_projection_receipts"
     ]
     assert [receipt["subtotal_row_ordinal"] for receipt in receipts] == [7]
+    assert note == original
+    records = [_record(page, ordinal=ordinal) for ordinal, page in enumerate([primary, note], 1)]
+    assert validate_gemini_json_other_activity_family_candidate_replay_v1(
+        candidate, regions=_cluster["component_regions"],
+        page_json_by_version={record["page_json_version_id"]: record["page_json"] for record in records},
+        compiled_specs=_compiled(), query_receipt=build_gemini_json_other_activity_region_query_receipt_v1(
+            _cluster["component_regions"], cluster=_cluster),
+    ) == candidate
+    if expected_status == UNRESOLVED:
+        assert candidate["mappings"] == []
+        assert "F38_SOURCE_TEMPLATE_ROLE_GRANULARITY_NOT_PROVEN" in candidate["reasons"]
+        assert validate_source_observation_mapping_contract_v1(candidate)["mapping_count"] == 0
+        return
     income = next(
-        mapping for mapping in candidate["mappings"] if mapping["role"] == "INCOME_ASSET_DISPOSAL"
+        mapping for mapping in candidate["mappings"] if mapping["role"] == role
     )
     assert [cell["coefficient"] for cell in income["values"]] == [10, None]
     assert income["values"][1]["state"] == "BLANK_SOURCE_CELL"
