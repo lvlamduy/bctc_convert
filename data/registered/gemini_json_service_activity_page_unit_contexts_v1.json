@@ -1,0 +1,126 @@
+{
+  "family_id": "SERVICE_ACTIVITY",
+  "format_version": "SERVICE_ACTIVITY_PDF_TABLE_UNIT_CONTEXT_REGISTRY_V1",
+  "policy": "ROOT_AND_SOURCE_OWNER_APPROVED_EXACT_ONE_TABLE_CLONE_METADATA_NO_PRIMARY_DONATION",
+  "contexts": [
+    {
+      "format_version": "SERVICE_ACTIVITY_PDF_PAGE_HEADER_TABLE_UNIT_CONTEXT_V1",
+      "family_id": "SERVICE_ACTIVITY",
+      "authority_rule": "APPROVED_PDF_PAGE_HEADER_UNIT_SCOPED_TO_ONE_EXACT_SELECTED_SOURCE_TABLE_ONLY",
+      "source": {
+        "document_id": "gfpstorev1:document:2309f8438060d7d7ea7dbd5feb84f3eac79a81253e12f77b999218fc363ea067",
+        "source_logical_name": "vietstock_bctc/SGB/2025/BAO-CAO-TAI-CHINH-HOP-NHAT-QUY-3---20205.pdf",
+        "source_sha256": "c2cd8985045a97c75bc6637c207dc2cff9dbdb8cccd68c1542eb8050869adbd3",
+        "source_size_bytes": 16001947,
+        "page_json_version_id": "gfpstorev1:json:0c49ade72e727b7fc02b44a3f95b519e48c8d4d90dc87ed0b9ca1de5357b12f5",
+        "physical_page": 33,
+        "original_page_json_sha256": "f61d8367c2496943faa655f4d3742f2afb5c1a2e3ad3717c48afb6f716466c3a",
+        "original_page_json_size_bytes": 6490
+      },
+      "selected_axis": {
+        "original_document_ordinal": 147,
+        "original_selected_page_ordinal": 33,
+        "corpus_index_sha256": "969ff5f80732c39e4b7543ca1f5c1e5b5b827260f19981ed02945fe0c7379219",
+        "document_manifest_id": "gfdmv1:manifest:26da1288e2a2544da009aa0b9508edb6ebbe75a006fbb088c4006e425fa63bbb",
+        "document_manifest_sha256": "321e869bd8a5cb6ef689c4fa6070fbbdff34a54751cc9c51447d504080ffe4ff",
+        "document_manifest_size_bytes": 68299,
+        "source_manifest_page_position_zero_based": 32,
+        "selection_id": "gjfcdmsv1:selection:ecde4cdba4b5cdd714a9ca907205e49a6ba5e4ff0ac1a724f1cf7c172eadf97b",
+        "excerpt_path": "restore-receipts/F30_SOURCE_PACKET_SGB147_20261028_V1/selected-axis-p33.json",
+        "excerpt_sha256": "a9f60c23587484ca21c8d8f89b48774ef6a31e8f1af2474ca9badca47b922b81",
+        "excerpt_size_bytes": 3452,
+        "ordinal_routing_permitted": false
+      },
+      "target": {
+        "section_id": "s1",
+        "table_id": "t4",
+        "section_title_exact": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT CHỌN LỌC",
+        "table_title_exact": "22. Lãi/lỗ thuần từ hoạt động dịch vụ",
+        "original_unit_exact": null,
+        "original_columns": [
+          {
+            "header_path_exact": [
+              "Từ ngày 01/01/2025\nđến ngày 30/09/2025"
+            ],
+            "value_kind": "MONEY"
+          },
+          {
+            "header_path_exact": [
+              "Từ ngày 01/01/2024\nđến ngày 30/09/2024"
+            ],
+            "value_kind": "MONEY"
+          }
+        ],
+        "original_table_json_sha256": "e4a78b5e649d39634be1fc87a53ee1da951e102c82dbcd0c92d609ed6913c7bb",
+        "original_table_json_size_bytes": 2187,
+        "assignment_field": "unit_exact",
+        "assigned_unit_exact": "Triệu Đồng Việt Nam",
+        "proposed_private_table_json_sha256": "5783a0390ad54128a49d865c14428e3c98a967b60d1353b9b3b510ce6392099c",
+        "proposed_private_table_json_size_bytes": 2211
+      },
+      "printed_unit": {
+        "page_header_exact": "Đơn vị tính: Triệu Đồng Việt Nam",
+        "canonical_unit": "MILLION_VND",
+        "magnitude_power10": 6,
+        "source_kind": "PDF_VISIBLE_PAGE_HEADER",
+        "scope_exactly_one_source_table": [
+          "s1",
+          "t4"
+        ],
+        "excluded_scope": "All other source tables, including s1/t1 with its independent Triệu cổ phiếu unit; no page/document-wide assignment",
+        "root_reviewer_observation": "Root and source owner0490 explicitly confirm this unit and exact one-table scope; V2 metadata pins are proposed for final review before registration."
+      },
+      "approved_image": {
+        "packet_path": "restore-receipts/F30_SOURCE_PACKET_SGB147_20261028_V1/render-p033.png",
+        "review_path": "restore-receipts/FOCUS_FAMILY_PDF_REVIEW_FULL271_20261027_V1/f30/147_p33.png",
+        "sha256": "113fd50d014546e298454339fb5e2fbb83539d1d56cb87c0e05e337ab3c3aabc",
+        "size_bytes": 464598,
+        "pixel_width": 825,
+        "pixel_height": 1166,
+        "renderer": "/usr/bin/pdftoppm -r 100 -png -singlefile",
+        "render_dpi": 100,
+        "format": "PNG",
+        "bit_depth": 8,
+        "colourspace": "RGB",
+        "alpha": false
+      },
+      "strict_preconditions": [
+        "Exact source document identity, PDF SHA/size, physical page and selected VID",
+        "Exact original canonical page SHA/size and entire target table SHA/size",
+        "Exact original columns and table/section titles",
+        "Target original unit_exact is JSON null; explicit source table/column units are never overwritten",
+        "Approved full-page PNG identity and deterministic fixed render contract",
+        "Root and source-owner review of this exact proposed receipt",
+        "Only one exact target table may receive private clone unit metadata",
+        "Fresh source replay, compiled registry digest and runner implementation-ref binding"
+      ],
+      "claim_boundary": {
+        "original_json_mutation": false,
+        "source_values_changed": false,
+        "sign_changes": false,
+        "amounts_as_unit_authority": false,
+        "primary_numeric_unit_donation": false,
+        "unobserved_notes_authorized": false,
+        "financial_acceptance": false
+      },
+      "source_owner_message": {
+        "path": "claude-codex-exchange/messages/0488-claude-to-codex-f30-packet-and-klb-p22-confirmed.md",
+        "sha256": "5e385990b1876f61dbb50be9814b9ecd7360301c295811e8c79ee9ef868b00a7",
+        "size_bytes": 1648,
+        "meaning": "Original packet and approved render publication; exact one-table unit-context approval is in0490."
+      },
+      "source_packet": {
+        "path": "restore-receipts/F30_SOURCE_PACKET_SGB147_20261028_V1/packet.json",
+        "sha256": "85771acdfdd2dbea87f97e170dec3d01caf8a7ef24e4891a371eb97e44581a47",
+        "size_bytes": 287773
+      },
+      "source_owner_approval_message": {
+        "path": "claude-codex-exchange/messages/0490-claude-to-codex-f30-scope-confirmed-f16-basis-decision.md",
+        "sha256": "95ca1196404c0dd8af87e7b198fe5788e03e5dfca323d62edf6f182bc22be2c8",
+        "size_bytes": 2156,
+        "meaning": "Explicit approval of one-table s1/t4 MILLION_VND clone-only pinned unit context, with shares-table override excluded."
+      },
+      "unit_context_receipt_id": "gjsafav1:page-unit-context:204f8a7b216098aaeaffa0e110d7bfed303c6582359f9b3d20783d7885039d2b"
+    }
+  ]
+}

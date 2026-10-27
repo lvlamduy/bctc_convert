@@ -1,13 +1,13 @@
 """Family-30 adapter for service-activity disclosures.
 
-The shared multi-table engine remains the accounting authority.  This module
-adds only three independently replayable source-normalisation steps before the
-shared evaluator runs:
+The shared multi-table engine remains the accounting authority. This module
+adds independently replayable family-local source controls:
 
 * exact, content-addressed PDF transcription repairs for visible cells/labels;
-* governed cumulative-duration header normalisation; and
-* an exact source-unit corroboration against the same document's primary
-  service-activity row.
+* governed cumulative-duration header normalisation;
+* independently approved, exact one-table PDF-header unit contexts;
+* PRIMARY corroboration of an already source-owned note unit; and
+* direct printed-net ownership over a superseded global component sum.
 
 None of the steps derives a numeric value or turns an unobserved cell into
 zero.  All transformations are applied to private page clones.
@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping, Sequence
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +45,7 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
@@ -85,6 +87,8 @@ PRIMARY_SOURCE_RESULT_AUGMENTATION_POLICY = (
     "WITH_EXACT_SEMANTIC_PERIOD_UNIT_AND_SOURCE_AXIS_OR_ROOT_VECTOR_BINDING"
 )
 DEFAULT_SOURCE_REPAIR_PATH = "data/registered/gemini_json_service_activity_source_repairs_v1.json"
+DEFAULT_PAGE_UNIT_CONTEXT_PATH = "data/registered/gemini_json_service_activity_page_unit_contexts_v1.json"
+_PAGE_UNIT_CONTEXT_REGISTRY_SHA256 = "cf73596f7438c00bfe04695f964f7e7c203beaae356481ada19df53ec4485046"
 CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_DECLARATIVE_SERVICE_ACTIVITY_"
     "MULTITABLE_HIERARCHICAL_EXACT_PDF_DASH_TRANSCRIPTION_GOVERNED_DURATION_"
@@ -117,6 +121,36 @@ class GeminiJsonServiceActivityFamilyV1Error(ValueError):
 
 def _error(message: str) -> GeminiJsonServiceActivityFamilyV1Error:
     return GeminiJsonServiceActivityFamilyV1Error(message)
+
+
+def _load_registered_page_unit_contexts_v1() -> dict[str, Any]:
+    path = Path(__file__).resolve().parents[3] / DEFAULT_PAGE_UNIT_CONTEXT_PATH
+    try:
+        raw = path.read_bytes()
+        if sha256(raw).hexdigest() != _PAGE_UNIT_CONTEXT_REGISTRY_SHA256:
+            raise _error("service-activity page-unit context registry bytes drifted")
+        registry = json.loads(raw)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise _error("service-activity page-unit context registry is absent or invalid") from exc
+    if (registry.get("family_id") != FAMILY_ID
+            or registry.get("format_version") != "SERVICE_ACTIVITY_PDF_TABLE_UNIT_CONTEXT_REGISTRY_V1"
+            or type(registry.get("contexts")) is not list):
+        raise _error("service-activity page-unit context registry format drifted")
+    targets = []
+    for context in registry["contexts"]:
+        material = {key: value for key, value in context.items() if key != "unit_context_receipt_id"}
+        if context.get("unit_context_receipt_id") != "gjsafav1:page-unit-context:" + canonical_json_sha256_v1(material):
+            raise _error("service-activity page-unit context identity drifted")
+        target = context["target"]
+        if (target["original_unit_exact"] is not None
+                or context["printed_unit"]["scope_exactly_one_source_table"] != [target["section_id"], target["table_id"]]
+                or context["claim_boundary"]["source_values_changed"] is not False
+                or context["claim_boundary"]["primary_numeric_unit_donation"] is not False):
+            raise _error("service-activity page-unit context exceeds approved scope")
+        targets.append((context["source"]["page_json_version_id"], target["section_id"], target["table_id"]))
+    if len(targets) != len(set(targets)):
+        raise _error("service-activity duplicate page-unit context target")
+    return registry
 
 
 def _load_default_source_repair_artifact_v1() -> dict[str, Any]:
@@ -527,6 +561,13 @@ def bind_gemini_json_service_activity_source_repair_artifact_v1(
         _compile_authenticated_source_repair_artifact_v1(raw_overlay)
     )
     compiled["service_activity_source_repair_spec_sha256"] = canonical_json_sha256_v1(raw_overlay)
+    compiled["service_activity_page_unit_context_registry"] = _load_registered_page_unit_contexts_v1()
+    compiled["service_activity_page_unit_context_registry_sha256"] = _PAGE_UNIT_CONTEXT_REGISTRY_SHA256
+    compiled["service_activity_page_unit_context_compiled_sha256"] = canonical_json_sha256_v1({
+        "family_id": FAMILY_ID,
+        "registry_sha256": _PAGE_UNIT_CONTEXT_REGISTRY_SHA256,
+        "registry": compiled["service_activity_page_unit_context_registry"],
+    })
     return compiled
 
 
@@ -2207,7 +2248,10 @@ def _bind_exact_primary_statement_units_v1(
             compiled_specs=compiled_specs,
             document_unit_context=None,
         )
-        if local_axis.get("complete") or local_axis.get("evidence"):
+        # A PRIMARY amount can corroborate an independently owned unit, but
+        # cannot supply one to an unknown note or overwrite an explicit unit.
+        note_lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+        if local_axis.get("complete") is not True or note_lane.get("complete") is not True:
             continue
         targets = _target_family_control_vectors(
             page=pages[region["page_json_version_id"]],
@@ -2223,7 +2267,17 @@ def _bind_exact_primary_statement_units_v1(
             target_matches = []
             target_vector = target["coefficients"]
             for primary in primary_controls:
-                if primary["semantic_role"] != target["semantic_role"]:
+                if (primary["semantic_role"] != target["semantic_role"]
+                        or primary["canonical_unit"] != local_axis["canonical_unit"]
+                        or primary["local_unit_axis"].get("complete") is not True):
+                    continue
+                primary_section, primary_table = _region_table(pages, primary)
+                primary_lane = _multitable_lane_axis(
+                    primary_section, primary_table, compiled_specs=compiled_specs,
+                )
+                if (primary_lane.get("complete") is not True
+                        or not same_typed_json_v1(primary_lane.get("source_lane_keys"), note_lane.get("source_lane_keys"))
+                        or not same_typed_json_v1(primary_lane.get("lane_keys"), note_lane.get("lane_keys"))):
                     continue
                 coefficients = primary["coefficients"]
                 matching_starts = [
@@ -2255,16 +2309,13 @@ def _bind_exact_primary_statement_units_v1(
         unit_exact_by_canonical = {"MILLION_VND": "Triệu đồng", "VND": "VND"}
         if canonical_unit not in unit_exact_by_canonical:
             continue
-        table["unit_exact"] = unit_exact_by_canonical[canonical_unit]
         material = {
             "canonical_unit": canonical_unit,
             "matched_primary_controls": canonical_clone_v1(matches),
             "matched_target_controls": matched_targets,
             "rule": (
-                "UNITLESS_SERVICE_ACTIVITY_NOTE_ONE_OR_MORE_VISIBLE_NONZERO_SEMANTIC_"
-                "ROOT_OR_PARENT_CONTROLS_EQUAL_ONE_CANONICAL_UNIT_PRIMARY_STATEMENT_"
-                "SAME_ROLE_ONE_OR_MORE_CONTIGUOUS_PERIOD_VECTOR_OCCURRENCES_"
-                "NO_MAGNITUDE_INFERENCE"
+                "INDEPENDENT_NOTE_UNIT_CORROBORATED_BY_EXACT_LOCAL_PRIMARY_ROLE_"
+                "PERIOD_UNIT_AND_VALUES_NO_UNIT_DONATION_NO_MAGNITUDE_INFERENCE"
             ),
             "target_locator": {
                 key: region[key]
@@ -2275,8 +2326,10 @@ def _bind_exact_primary_statement_units_v1(
                     "table_id",
                 )
             },
-            "target_unit_before_exact": None,
+            "target_unit_before_exact": table.get("unit_exact"),
             "target_unit_exact": table["unit_exact"],
+            "unit_permission_granted": False,
+            "source_values_changed": False,
         }
         receipts.append(
             {
@@ -2287,6 +2340,353 @@ def _bind_exact_primary_statement_units_v1(
     return receipts
 
 
+def _apply_registered_page_unit_contexts_v1(*, original_pages: Mapping[str, dict[str, Any]],
+                                          pages: dict[str, dict[str, Any]],
+                                          regions: Sequence[Mapping[str, Any]],
+                                          compiled_specs: Mapping[str, Any]) -> list[dict[str, Any]]:
+    registry = _load_registered_page_unit_contexts_v1()
+    if (compiled_specs.get("service_activity_page_unit_context_registry_sha256") != _PAGE_UNIT_CONTEXT_REGISTRY_SHA256
+            or not same_typed_json_v1(compiled_specs.get("service_activity_page_unit_context_registry"), registry)
+            or compiled_specs.get("service_activity_page_unit_context_compiled_sha256") != canonical_json_sha256_v1({
+                "family_id": FAMILY_ID, "registry_sha256": _PAGE_UNIT_CONTEXT_REGISTRY_SHA256, "registry": registry,
+            })):
+        raise _error("service-activity compiled page-unit context registry drifted")
+    receipts = []
+    for context in registry["contexts"]:
+        source, target = context["source"], context["target"]
+        matches = [region for region in regions
+                   if region.get("page_json_version_id") == source["page_json_version_id"]
+                   and region.get("section_id") == target["section_id"]
+                   and region.get("table_id") == target["table_id"]]
+        if len(matches) > 1:
+            raise _error("service-activity page-unit context source target is not unique")
+        if not matches:
+            continue
+        region = matches[0]
+        if any(region.get(key) != source[key] for key in (
+            "document_id", "source_logical_name", "source_sha256", "page_json_version_id", "physical_page",
+        )):
+            raise _error("service-activity page-unit context selected source identity drifted")
+        original_page = original_pages[source["page_json_version_id"]]
+        section, table = _region_table(original_pages, region)
+        private_section, private_table = _region_table(pages, region)
+        local_unit = _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None)
+        if (canonical_json_sha256_v1(original_page) != source["original_page_json_sha256"]
+                or len(canonical_json_bytes_v1(original_page)) != source["original_page_json_size_bytes"]
+                or canonical_json_sha256_v1(table) != target["original_table_json_sha256"]
+                or len(canonical_json_bytes_v1(table)) != target["original_table_json_size_bytes"]
+                or table.get("unit_exact") is not None
+                or not same_typed_json_v1(table.get("columns"), target["original_columns"])
+                or table.get("title_exact") != target["table_title_exact"]
+                or section.get("title_exact") != target["section_title_exact"]
+                or not same_typed_json_v1(private_table, table)
+                or private_section.get("title_exact") != section.get("title_exact")
+                or local_unit.get("evidence") or local_unit.get("undeclared_evidence")):
+            raise _error("service-activity page-unit context original before-image or explicit override drifted")
+        private_table["unit_exact"] = target["assigned_unit_exact"]
+        if (canonical_json_sha256_v1(private_table) != target["proposed_private_table_json_sha256"]
+                or len(canonical_json_bytes_v1(private_table)) != target["proposed_private_table_json_size_bytes"]):
+            raise _error("service-activity page-unit context private clone drifted")
+        unit = _unit_axis(private_table, compiled_specs=compiled_specs, document_unit_context=None)
+        if (unit.get("complete") is not True
+                or unit.get("canonical_unit") != context["printed_unit"]["canonical_unit"]):
+            raise _error("service-activity page-unit context explicit unit does not resolve")
+        material = {"registered_context_id": context["unit_context_receipt_id"],
+            "registry_sha256": _PAGE_UNIT_CONTEXT_REGISTRY_SHA256,
+            "compiled_context_sha256": compiled_specs["service_activity_page_unit_context_compiled_sha256"],
+            "target_locator": canonical_clone_v1(region),
+            "original_page_json_sha256": source["original_page_json_sha256"],
+            "original_table_json_sha256": target["original_table_json_sha256"],
+            "effective_table_json_sha256": target["proposed_private_table_json_sha256"],
+            "unit_before_exact": None, "unit_after_exact": target["assigned_unit_exact"],
+            "canonical_unit": unit["canonical_unit"], "approved_image": context["approved_image"],
+            "source_owner_approval_message": context["source_owner_approval_message"],
+            "rule": "EXACT_APPROVED_PDF_PAGE_HEADER_CONTEXT_ONE_TABLE_ONLY_PRIVATE_METADATA_NO_VALUE_OR_SIGN_CHANGE",
+            "source_values_changed": False, "ordinal_routing_permitted": False}
+        receipts.append({**material, "receipt_id": "gjsafav1:page-unit-replay:" + canonical_json_sha256_v1(material)})
+    return receipts
+
+
+def _mapping_evidence_v1(value: Any) -> dict[str, Any]:
+    payload = canonical_json_bytes_v1(value)
+    return {"canonical_json": payload.decode("utf-8"), "size_bytes": len(payload),
+            "sha256": canonical_json_sha256_v1(value),
+            "format_version": "SERVICE_ACTIVITY_RETIRED_MAPPING_EVIDENCE_V1"}
+
+
+def _source_key_v1(value: Mapping[str, Any]) -> tuple[Any, ...]:
+    return tuple(value.get(key) for key in (
+        "document_id", "source_logical_name", "source_sha256", "page_json_version_id",
+        "physical_page", "selected_page_ordinal", "section_id", "table_id",
+    ))
+
+
+def _raw_source_ref_v1(region: Mapping[str, Any], ordinal: int, row: Mapping[str, Any],
+                       columns: Sequence[int]) -> dict[str, Any]:
+    return {"locator": canonical_clone_v1(region), "row_ordinal": ordinal,
+            "row_id": f"r{ordinal}", "row_kind": row.get("row_kind"),
+            "label_exact": row.get("label_exact"),
+            "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
+            "money_column_ordinals": list(columns)}
+
+
+def _owned_source_units_v1(candidate: Mapping[str, Any], *,
+                           pages: Mapping[str, dict[str, Any]],
+                           regions: Sequence[Mapping[str, Any]],
+                           compiled_specs: Mapping[str, Any],
+                           context_receipts: Sequence[Mapping[str, Any]]) -> tuple[dict, list[str]]:
+    """Own each mapped source unit locally or by an existing exact source edge."""
+    by_key = {_source_key_v1(region): region for region in regions}
+    table_receipts = {_source_key_v1(item["region"]): item
+                      for item in candidate["closure_receipt"]["table_receipts"]}
+    owned: dict[tuple, dict[str, Any]] = {}
+
+    def resolve(key, visiting):
+        if key in owned:
+            return owned[key]
+        if key in visiting or key not in by_key:
+            return None
+        region = by_key[key]
+        _section, table = _region_table(pages, region)
+        unit = _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None)
+        proof = None
+        if unit.get("complete") is True:
+            proof = {"canonical_unit": unit["canonical_unit"],
+                     "source_kind": "EXACT_LOCAL_TABLE_OR_COLUMN_UNIT", "unit_axis": unit}
+        else:
+            contexts = [item for item in context_receipts
+                        if _source_key_v1(item["target_locator"]) == key]
+            if len(contexts) == 1:
+                proof = {"canonical_unit": contexts[0]["canonical_unit"],
+                         "source_kind": "AUTHENTICATED_PDF_TABLE_UNIT_CONTEXT",
+                         "context_receipt": canonical_clone_v1(contexts[0])}
+            elif (not unit.get("evidence") and not unit.get("undeclared_evidence")
+                  and table.get("unit_exact") is None):
+                receipt = table_receipts.get(key, {})
+                axis = receipt.get("unit_axis", {})
+                prior = axis.get("document_unit_context_evidence", {}).get("inherited_from_locator") if isinstance(axis.get("document_unit_context_evidence"), dict) else None
+                if (axis.get("source") == "ADJACENT_EXPLICIT_CONTINUATION_UNIT"
+                        and type(prior) is dict and _source_key_v1(prior) in by_key):
+                    previous = resolve(_source_key_v1(prior), visiting | {key})
+                    _prior_section, prior_table = _region_table(pages, prior)
+                    if (previous is not None and prior_table.get("continuation") == "CONTINUES_ON_NEXT_PAGE"
+                            and table.get("continuation") == "CONTINUES_FROM_PREVIOUS_PAGE"
+                            and all(region.get(field) == prior.get(field) for field in (
+                                "document_id", "source_logical_name", "source_sha256"))
+                            and region["physical_page"] == prior["physical_page"] + 1
+                            and region["selected_page_ordinal"] == prior["selected_page_ordinal"] + 1
+                            and previous["canonical_unit"] == axis.get("canonical_unit")):
+                        proof = {"canonical_unit": previous["canonical_unit"],
+                                 "source_kind": "EXISTING_EXACT_CONTINUATION_OF_OWNED_UNIT",
+                                 "prior_locator": canonical_clone_v1(prior), "prior_proof": previous,
+                                 "shared_unit_axis": canonical_clone_v1(axis)}
+        if proof is not None:
+            owned[key] = {**proof, "locator": canonical_clone_v1(region)}
+        return proof
+
+    reasons = []
+    for mapping in candidate["mappings"]:
+        for ref in mapping["source_refs"]:
+            proof = resolve(_source_key_v1(ref["locator"]), set())
+            if proof is None:
+                reasons.append("SOURCE_LOCAL_UNIT_NOT_OWNED")
+            elif proof["canonical_unit"] != mapping["unit"]:
+                reasons.append("MAPPING_UNIT_DIFFERS_FROM_OWNED_SOURCE")
+    return owned, sorted(set(reasons))
+
+
+def _closed_raw_parent_equation_v1(equation: Mapping[str, Any], *, ref: Mapping[str, Any],
+                                   table: Mapping[str, Any], region: Mapping[str, Any],
+                                   cells: Sequence[Mapping[str, Any]]) -> bool:
+    """Replay the complete direct-child source frontier, not a stale equation."""
+    material = {key: value for key, value in equation.items() if key != "equation_id"}
+    if equation.get("equation_id") != "gjfoltiev1:equation:" + canonical_json_sha256_v1(material):
+        return False
+    path = ref.get("hierarchy_path_exact")
+    if type(path) is not list or not path:
+        return False
+    direct = [(ordinal, row) for ordinal, row in enumerate(table["rows"], 1)
+              if type(row.get("hierarchy_path_exact")) is list
+              and len(row["hierarchy_path_exact"]) == len(path) + 1
+              and row["hierarchy_path_exact"][:len(path)] == path]
+    components = equation.get("component_source_refs", [])
+    if (not direct or any(ordinal <= ref["row_ordinal"] for ordinal, _row in direct)
+            or len(components) != len(direct) or any(len(refs) != 1 for refs in components)
+            or equation.get("multipliers") != [1] * len(direct)):
+        return False
+    vectors = []
+    for refs, (ordinal, row) in zip(components, direct, strict=True):
+        if not same_typed_json_v1(refs[0], _raw_source_ref_v1(region, ordinal, row, ref["money_column_ordinals"])):
+            return False
+        try:
+            values = [_source_money(row["values_exact"][column - 1]) for column in ref["money_column_ordinals"]]
+        except (KeyError, IndexError, TypeError, ValueError):
+            return False
+        if any(value["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for value in values):
+            return False
+        vectors.append([value["coefficient"] for value in values])
+    observed = [value["coefficient"] for value in cells]
+    sums = [sum(vector[lane] for vector in vectors) for lane in range(len(cells))]
+    return (sums == observed == equation.get("component_sums")
+            and observed == equation.get("result_coefficients"))
+
+
+def _apply_printed_net_source_controls_v1(
+    candidate: dict[str, Any], *, original_pages: Mapping[str, dict[str, Any]],
+    regions: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+    root_fallback_receipt: Mapping[str, Any] | None,
+    context_receipts: Sequence[Mapping[str, Any]] = (),
+) -> tuple[dict[str, Any], dict[str, Any] | None, Mapping[str, Any] | None]:
+    """A printed semantic net owns its value; equations only corroborate/veto."""
+    if candidate.get("status") != "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY":
+        return candidate, None, root_fallback_receipt
+    before = canonical_clone_v1(candidate)
+    units, failures = _owned_source_units_v1(candidate, pages=original_pages,
+        regions=regions, compiled_specs=compiled_specs, context_receipts=context_receipts)
+    roots = [item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL"]
+    attempt = len(roots) == 1 and roots[0]["state"] == "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
+    printed = []
+    qualified_net_rows = []
+    aliases = compiled_specs["topology"]["parent"]["aliases"]
+    if attempt:
+        for region in regions:
+            section, table = _region_table(original_pages, region)
+            for ordinal, row in enumerate(table["rows"], 1):
+                if _exact_alias_v1(row.get("label_exact"), aliases) is not None:
+                    printed.append((region, section, table, ordinal, row))
+                else:
+                    body = _without_leading_ordinal(_normalized(row.get("label_exact")))
+                    if (any(value is not None for value in row.get("values_exact", []))
+                            and any(f" {_normalized(alias)} " in f" {body} " for alias in aliases)):
+                        qualified_net_rows.append({
+                            "locator": canonical_clone_v1(region), "row_ordinal": ordinal,
+                            "source_row_exact": canonical_clone_v1(row),
+                        })
+    if qualified_net_rows:
+        failures.append("PRINTED_NET_LABEL_HAS_UNPROVEN_SOURCE_QUALIFIER")
+    binding = None
+    source_proofs = []
+    if printed:
+        if len(printed) != 1:
+            failures.append("PRINTED_NET_SOURCE_NOT_UNIQUE")
+        else:
+            region, section, table, ordinal, row = printed[0]
+            lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+            classification = classify_gemini_json_multitable_hierarchical_table_v1(
+                original_pages[region["page_json_version_id"]], section, table, compiled_specs=compiled_specs)
+            source_proofs.append({"locator": canonical_clone_v1(region),
+                "original_page_sha256": canonical_json_sha256_v1(original_pages[region["page_json_version_id"]]),
+                "original_table_sha256": canonical_json_sha256_v1(table), "classification": classification,
+                "lane_axis": lane, "printed_row_ordinal": ordinal, "printed_row_exact": canonical_clone_v1(row)})
+            local_receipts = [item for item in candidate["closure_receipt"]["table_receipts"]
+                              if _source_key_v1(item["region"]) == _source_key_v1(region)]
+            if (len(local_receipts) != 1
+                    or not same_typed_json_v1(local_receipts[0]["lane_axis"], lane)
+                    or not same_typed_json_v1(local_receipts[0]["classification"], classification)):
+                failures.append("PRINTED_NET_FRESH_CLASSIFICATION_OR_PERIOD_RECEIPT_DIFFERS")
+            own = (_exact_alias_v1(table.get("title_exact"), aliases) is not None
+                   or _section_money_table_count_v1(section) == 1
+                   and _exact_alias_v1(section.get("title_exact"), aliases) is not None)
+            if (not own or row.get("row_kind") != "TOTAL" or ordinal != len(table["rows"])
+                    or row.get("hierarchy_path_exact") != [row.get("label_exact")]
+                    or classification.get("family_root_row_ordinals") != [ordinal]
+                    or classification.get("ambiguous_rows") or classification.get("typed_control_disposition")
+                    or set(classification.get("unbound_money_row_ordinals", [])) - {ordinal}):
+                failures.append("PRINTED_NET_OWNER_POPULATION_OR_TERMINAL_ROW_NOT_EXACT")
+            columns = lane.get("money_column_ordinals", [])
+            if lane.get("complete") is not True or len(columns) != 2:
+                failures.append("PRINTED_NET_LOCAL_PERIOD_AXIS_NOT_COMPLETE")
+            parents = [item for item in candidate["mappings"] if item["role"] in {"INCOME_PARENT", "EXPENSE_PARENT"}]
+            parent_cells = {}
+            if len(parents) != 2 or {item["role"] for item in parents} != {"INCOME_PARENT", "EXPENSE_PARENT"}:
+                failures.append("PRINTED_NET_COMPLETE_PARENT_FRONTIER_NOT_PROVEN")
+            elif not failures:
+                for parent in parents:
+                    refs = {canonical_json_sha256_v1(ref): ref for ref in parent["source_refs"]}
+                    if len(refs) != 1:
+                        failures.append("PARENT_SOURCE_ROW_NOT_UNIQUE")
+                        continue
+                    ref = next(iter(refs.values()))
+                    if (_source_key_v1(ref["locator"]) != _source_key_v1(region)
+                            or ref["money_column_ordinals"] != columns
+                            or not 1 <= ref["row_ordinal"] < ordinal):
+                        failures.append("PARENT_SOURCE_POPULATION_OR_COLUMNS_DIFFER")
+                        continue
+                    raw = table["rows"][ref["row_ordinal"] - 1]
+                    expected_ref = _raw_source_ref_v1(region, ref["row_ordinal"], raw, columns)
+                    if not same_typed_json_v1(ref, expected_ref):
+                        failures.append("PARENT_SOURCE_BEFOREIMAGE_DIFFERS")
+                        continue
+                    cells = [_source_money(raw["values_exact"][column - 1]) for column in columns]
+                    equations = [item for item in candidate["closure_receipt"]["equations"]
+                        if item.get("equation_kind") == "EXACT_VISIBLE_HIERARCHY_DIRECT_CHILDREN_EQUAL_CARRIER"
+                        and item.get("status") == "EXACT" and item.get("result_source_refs") == [ref]]
+                    if (not same_typed_json_v1(cells, parent["values"])
+                            or any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in cells)
+                            or len(equations) != 1
+                            or not _closed_raw_parent_equation_v1(equations[0], ref=ref, table=table, region=region, cells=cells)):
+                        failures.append("PARENT_OBSERVED_VALUES_OR_CLOSED_CHILD_FRONTIER_NOT_PROVEN")
+                    else:
+                        parent_cells[parent["role"]] = cells
+                if not failures:
+                    cells = [_source_money(row["values_exact"][column - 1]) for column in columns]
+                    if any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in cells):
+                        failures.append("PRINTED_NET_LANES_NOT_OBSERVED")
+                    else:
+                        orientations = [sign for sign in (1, -1) if all(
+                            parent_cells["INCOME_PARENT"][i]["coefficient"]
+                            + sign * parent_cells["EXPENSE_PARENT"][i]["coefficient"] == cells[i]["coefficient"]
+                            for i in range(2))]
+                        if not orientations:
+                            failures.append("PRINTED_NET_DECLARED_PARENT_EQUATION_CONFLICT")
+                        else:
+                            root = roots[0]
+                            material = {"report_norm_id": root["report_norm_id"], "role": "FAMILY_ROOT_TOTAL",
+                                "row_id": f"r{ordinal}", "source_refs": [_raw_source_ref_v1(region, ordinal, row, columns)],
+                                "state": "SOURCE_VISIBLE_PRINTED_SERVICE_ACTIVITY_NET_TOTAL",
+                                "unit": root["unit"], "values": cells}
+                            mapping = {**material, "item_mapping_id": "gjmthfmv1:item:" + canonical_json_sha256_v1(material)}
+                            candidate["mappings"] = [mapping if item["role"] == "FAMILY_ROOT_TOTAL" else item for item in candidate["mappings"]]
+                            binding = {"mapping_id": mapping["item_mapping_id"], "source_ref": mapping["source_refs"][0],
+                                "comparison_only_parent_orientations": orientations, "source_signs_changed": False}
+    if not printed and not failures:
+        return candidate, None, root_fallback_receipt
+    closure = candidate["closure_receipt"]
+    retired = {"root_mappings": roots, "global_root_equations": [item for item in closure["equations"]
+        if item.get("equation_kind") == "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT"],
+        "root_permissions": closure.get("root_component_sum_receipts", []),
+        "fallback_permission": root_fallback_receipt,
+        "structural_root_receipt": canonical_clone_v1(closure["structural_root_receipt"])}
+    closure["equations"] = [item for item in closure["equations"] if item.get("equation_kind") != "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT"]
+    closure["root_component_sum_receipts"] = []
+    if failures:
+        candidate["mappings"] = []
+        candidate["status"] = "UNRESOLVED_GEMINI_JSON_FAMILY"
+        candidate["reasons"] = sorted(set(candidate["reasons"]) | {
+            "F30_SOURCE_OWNED_NET_OR_UNIT_NOT_PROVEN:" + reason for reason in failures})
+        closure["structural_root_receipt"]["emitted_mapping"] = False
+        binding = None
+    material = {"format_version": "SERVICE_ACTIVITY_PRINTED_NET_AND_SOURCE_UNIT_CONTROL_V1",
+        "shared_candidate_before_sha256": canonical_json_sha256_v1(before),
+        "source_proofs": source_proofs, "owned_unit_proofs": list(units.values()),
+        "qualified_net_rows": qualified_net_rows,
+        "direct_printed_net_binding": binding, "retired_root_authority": _mapping_evidence_v1(retired),
+        "withheld_mappings": _mapping_evidence_v1(before["mappings"]) if failures else None,
+        "failures": sorted(set(failures)), "source_values_changed": False,
+        "rule": "EXACT_SOURCE_NET_LABEL_AND_RAW_CELLS_OWN_ROOT_DECLARED_PARENT_ARITHMETIC_ONLY_CORROBORATES_OR_VETOES"}
+    receipt = {**material, "receipt_id": "gjsafav1:printed-net:" + canonical_json_sha256_v1(material)}
+    closure["structural_root_receipt"] = {
+        "emitted_mapping": not failures and binding is not None,
+        "mapping_policy": "EXACT_SOURCE_OWNED_PRINTED_NET_TOTAL_ONLY",
+        "report_norm_id": retired["structural_root_receipt"]["report_norm_id"],
+        "role": retired["structural_root_receipt"]["role"],
+        "source_control_receipt_id": receipt["receipt_id"],
+        "source_total_mapping_id": binding["mapping_id"] if binding is not None else None,
+        "active_permission": "NONE_SOURCE_CONTROL_HOLD" if failures else "SOURCE_OWNED_PRINTED_NET_ROW",
+    }
+    return candidate, receipt, None
+
+
 def _reseal_candidate(
     candidate: dict[str, Any],
     *,
@@ -2294,6 +2694,8 @@ def _reseal_candidate(
     period_receipts: Sequence[Mapping[str, Any]],
     unit_receipts: Sequence[Mapping[str, Any]],
     root_fallback_receipt: Mapping[str, Any] | None,
+    printed_net_receipt: Mapping[str, Any] | None = None,
+    page_unit_context_receipts: Sequence[Mapping[str, Any]] = (),
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
     if (
@@ -2301,6 +2703,8 @@ def _reseal_candidate(
         and not period_receipts
         and not unit_receipts
         and root_fallback_receipt is None
+        and printed_net_receipt is None
+        and not page_unit_context_receipts
     ):
         return candidate
     material = {
@@ -2313,11 +2717,16 @@ def _reseal_candidate(
         "source_repair_receipts": canonical_clone_v1(list(source_repair_receipts)),
         "source_repair_spec_sha256": compiled_specs["service_activity_source_repair_spec_sha256"],
         "unit_corroboration_receipts": canonical_clone_v1(list(unit_receipts)),
+        "page_unit_context_receipts": canonical_clone_v1(list(page_unit_context_receipts)),
+        "page_unit_context_registry_sha256": compiled_specs["service_activity_page_unit_context_registry_sha256"],
+        "page_unit_context_compiled_sha256": compiled_specs["service_activity_page_unit_context_compiled_sha256"],
     }
     if root_fallback_receipt is not None:
         material["root_alternative_legacy_fallback_receipt"] = canonical_clone_v1(
             root_fallback_receipt
         )
+    if printed_net_receipt is not None:
+        material["printed_net_source_control_receipt"] = canonical_clone_v1(printed_net_receipt)
     candidate["claim_boundary"] = CLAIM_BOUNDARY
     candidate["closure_receipt"]["service_activity_adapter_receipt"] = {
         **material,
@@ -2788,6 +3197,10 @@ def evaluate_gemini_json_service_activity_family_cluster_v1(
         page_json_by_version=page_json_by_version,
         compiled_specs=compiled_specs,
     )
+    page_unit_context_receipts = _apply_registered_page_unit_contexts_v1(
+        original_pages=page_json_by_version, pages=pages, regions=region_axis,
+        compiled_specs=compiled_specs,
+    )
     period_receipts = _normalize_governed_duration_headers_v1(
         pages=pages,
         regions=region_axis,
@@ -2810,12 +3223,19 @@ def evaluate_gemini_json_service_activity_family_cluster_v1(
         compiled_specs=compiled_specs,
         query_receipt=query_receipt,
     )
+    candidate, printed_net_receipt, root_fallback_receipt = _apply_printed_net_source_controls_v1(
+        candidate, original_pages=page_json_by_version, regions=region_axis,
+        compiled_specs=compiled_specs, root_fallback_receipt=root_fallback_receipt,
+        context_receipts=page_unit_context_receipts,
+    )
     return _reseal_candidate(
         candidate,
         source_repair_receipts=source_repairs,
         period_receipts=period_receipts,
         unit_receipts=unit_receipts,
         root_fallback_receipt=root_fallback_receipt,
+        printed_net_receipt=printed_net_receipt,
+        page_unit_context_receipts=page_unit_context_receipts,
         compiled_specs=compiled_specs,
     )
 

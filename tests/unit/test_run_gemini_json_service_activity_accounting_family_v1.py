@@ -293,6 +293,7 @@ def test_implementation_receipt_and_family_shape_are_exact():
     assert len(paths) == len(set(paths))
     assert set(paths) >= {
         "data/registered/gemini_json_service_activity_source_repairs_v1.json",
+        "data/registered/gemini_json_service_activity_page_unit_contexts_v1.json",
         "src/bctc_ai/evaluation/gemini_json_service_activity_family_v1.py",
         "src/bctc_ai/evaluation/source_observation_mapping_contract_v1.py",
     }

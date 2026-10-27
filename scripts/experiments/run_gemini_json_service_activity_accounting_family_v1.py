@@ -1304,6 +1304,7 @@ def _implementation_refs() -> list[dict[str, Any]]:
         EVALUATION_SPEC_PATH,
         SCHEMA_BINDING_SPEC_PATH,
         SOURCE_REPAIR_PATH,
+        ROOT / "data/registered/gemini_json_service_activity_page_unit_contexts_v1.json",
     )
     return [generic_runner._file_ref(path, root=ROOT) for path in paths]
 

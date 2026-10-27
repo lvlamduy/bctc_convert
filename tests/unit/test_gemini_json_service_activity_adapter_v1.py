@@ -422,7 +422,7 @@ def _unit_region(version_id: str) -> dict[str, Any]:
     }
 
 
-def test_service_activity_unitless_note_binds_exact_same_role_parent_control() -> None:
+def test_service_activity_numeric_parent_match_cannot_donate_an_unknown_note_unit() -> None:
     primary_id = "gfpstorev1:json:" + "a" * 64
     note_id = "gfpstorev1:json:" + "b" * 64
     primary = _unit_control_page(
@@ -444,20 +444,8 @@ def test_service_activity_unitless_note_binds_exact_same_role_parent_control() -
         regions=[_unit_region(note_id)],
         compiled_specs=_compiled(),
     )
-    assert note["sections"][0]["tables"][0]["unit_exact"] == "Triệu đồng"
-    assert len(receipts) == 1
-    assert receipts[0]["canonical_unit"] == "MILLION_VND"
-    assert [item["semantic_role"] for item in receipts[0]["matched_target_controls"]] == [
-        "EXPENSE_PARENT"
-    ]
-    assert [item["semantic_role"] for item in receipts[0]["matched_primary_controls"]] == [
-        "EXPENSE_PARENT"
-    ]
-    assert receipts[0]["matched_primary_controls"][0]["matched_primary_money_column_ordinals"] == [
-        3,
-        4,
-    ]
-    assert "NO_MAGNITUDE_INFERENCE" in receipts[0]["rule"]
+    assert note["sections"][0]["tables"][0]["unit_exact"] is None
+    assert receipts == []
 
 
 @pytest.mark.parametrize(
@@ -520,7 +508,7 @@ def test_service_activity_primary_control_unit_corroboration_fails_closed(
     assert note["sections"][0]["tables"][0]["unit_exact"] is None
 
 
-def test_service_activity_unit_corroboration_accepts_repeated_exact_q1_period_vector() -> None:
+def test_service_activity_repeated_equal_primary_vectors_do_not_authorize_unknown_unit() -> None:
     primary_id = "gfpstorev1:json:" + "1" * 64
     note_id = "gfpstorev1:json:" + "2" * 64
     primary = _unit_control_page(
@@ -542,17 +530,31 @@ def test_service_activity_unit_corroboration_accepts_repeated_exact_q1_period_ve
         regions=[_unit_region(note_id)],
         compiled_specs=_compiled(),
     )
-    assert note["sections"][0]["tables"][0]["unit_exact"] == "Triệu đồng"
-    assert len(receipts) == 1
-    matches = receipts[0]["matched_primary_controls"]
-    assert len(matches) == 1
-    assert matches[0]["semantic_role"] == "EXPENSE_PARENT"
-    assert matches[0]["matched_primary_money_column_ordinal_axes"] == [
-        [1, 2],
-        [3, 4],
+    assert note["sections"][0]["tables"][0]["unit_exact"] is None
+    assert receipts == []
+
+
+def test_service_activity_already_owned_unit_can_be_corroborated_without_metadata_change() -> None:
+    primary_id = "gfpstorev1:json:" + "1" * 64
+    note_id = "gfpstorev1:json:" + "2" * 64
+    note = _unit_control_page(primary=False, unit_exact="Triệu đồng",
+        income=["101", "80"], expense=["(30)", "(20)"], root=["71", "60"])
+    primary = _unit_control_page(primary=True, unit_exact="Triệu đồng",
+        income=["101", "80"], expense=["(30)", "(20)"], root=["71", "60"])
+    note["sections"][0]["tables"][0]["columns"] = [
+        {"header_path_exact": ["Từ ngày 01/01/2025 đến ngày 31/12/2025"], "value_kind": "MONEY"},
+        {"header_path_exact": ["Từ ngày 01/01/2024 đến ngày 31/12/2024"], "value_kind": "MONEY"},
     ]
-    assert "matched_primary_money_column_ordinals" not in matches[0]
-    assert "NO_MAGNITUDE_INFERENCE" in receipts[0]["rule"]
+    primary["sections"][0]["tables"][0]["columns"] = copy.deepcopy(note["sections"][0]["tables"][0]["columns"])
+    original = copy.deepcopy(note)
+    receipts = _bind_exact_primary_statement_units_v1(pages={primary_id: primary, note_id: note},
+        regions=[_unit_region(note_id)], compiled_specs=_compiled())
+    assert len(receipts) == 1
+    assert receipts[0]["canonical_unit"] == "MILLION_VND"
+    assert receipts[0]["target_unit_before_exact"] == receipts[0]["target_unit_exact"] == "Triệu đồng"
+    assert receipts[0]["unit_permission_granted"] is False
+    assert receipts[0]["source_values_changed"] is False
+    assert note == original
 
 
 def _owner_only_page(title: str = "26. Lãi thuần từ hoạt động dịch vụ") -> dict[str, Any]:
