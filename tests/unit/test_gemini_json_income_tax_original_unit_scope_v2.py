@@ -18,6 +18,7 @@ from test_gemini_json_income_tax_observed_subtotal_root_v1 import _original_reco
 from test_gemini_json_income_tax_signed_display_v1 import _records
 
 from bctc_ai.evaluation import gemini_json_income_tax_family_v1 as family
+from bctc_ai.evaluation import gemini_json_multitable_hierarchical_family_v1 as shared
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
     audit_source_observation_mapping_contract_v1,
 )
@@ -50,11 +51,50 @@ def _control(candidate):
     return candidate["closure_receipt"]["income_tax_original_unit_scope_receipt"]
 
 
+def _replay_options(options):
+    identity_keys = ("document_id", "document_ordinal", "source_sha256")
+    identities = {tuple(region[key] for key in identity_keys) for region in options["regions"]}
+    assert len(identities) == 1
+    identity = next(iter(identities))
+    # Match the public evaluator's selected-document boundary. A foreign axis
+    # entry from the global-axis negative must not become a second document.
+    records = [{**axis, "page_json": options["page_json_by_version"][axis["page_json_version_id"]]}
+        for axis in options["selected_page_axis"] if tuple(axis.get(key) for key in identity_keys) == identity]
+    assert records
+    first, compiled = records[0], options["compiled_specs"]
+    base = shared.coalesce_gemini_json_multitable_hierarchical_document_v1(
+        page_records=records, compiled_specs=compiled)
+    indexed = shared.build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1(
+        selected_document_axis=[{key: first[key] for key in (
+            "document_id", "document_ordinal", "source_logical_name", "source_sha256")}],
+        selected_page_axis=[{key: value for key, value in record.items() if key != "page_json"}
+            for record in records], document_clusters=[base],
+        query_policy_sha256=canonical_json_sha256_v1(compiled["query_policy"]))
+    pages = {first["document_ordinal"]: {
+        record["page_json_version_id"]: record["page_json"] for record in records}}
+    adapted = family.adapt_gemini_json_income_tax_indexed_query_evidence_v1(
+        indexed_query_evidence=indexed, page_json_by_document=pages, compiled_specs=compiled)
+    trials = family.build_gemini_json_income_tax_trials_v1(
+        indexed_query_evidence=adapted, page_json_by_document=pages, compiled_specs=compiled)
+    return {"base_indexed_query_evidence": indexed, "indexed_query_evidence": adapted,
+        "trials": trials, "page_json_by_document": pages, "compiled_specs": compiled}
+
+
 def _audit_replay(candidate, options):
     audit = audit_source_observation_mapping_contract_v1(candidate)
-    assert audit["status"] == "PASS", audit["violations"]
-    assert audit["mapping_count"] == len(candidate["mappings"])
-    assert family.validate_gemini_json_income_tax_family_candidate_replay_v1(candidate, **options) == candidate
+    financial = audit_source_observation_mapping_contract_v1(candidate["mappings"])
+    retained = audit_source_observation_mapping_contract_v1({
+        key: value for key, value in candidate.items() if key != "mappings"})
+    for checked in (audit, financial, retained):
+        assert checked["status"] == "PASS", checked["violations"]
+    # The whole-candidate audit also walks retained source-control mappings.
+    # Financial exports are a separate vector, and neither audit is waived.
+    assert financial["mapping_count"] == len(candidate["mappings"])
+    assert audit["mapping_count"] == financial["mapping_count"] + retained["mapping_count"]
+    replay = _replay_options(options)
+    assert replay["trials"][0]["candidates"] == [candidate]
+    assert family.validate_gemini_json_income_tax_replay_v1(**replay) == replay["trials"]
+    return replay
 
 
 def _primary_records(unit="Triệu đồng"):
@@ -72,13 +112,28 @@ def test_original_raw_local_units_survive_public_source_replay_without_fixture_u
     _metadata, records = _original_records(case)
     original = deepcopy(records)
     candidate, options = _public(records)
-    assert options is not None and candidate["status"] == family.READY, candidate.get("reasons")
-    receipt = _control(candidate)
-    assert receipt["failures"] == []
-    assert receipt["document_consensus_equal_amount_or_private_unit_projection_permission"] is False
-    assert all(check["status"] == "SOURCE_OWNED" for check in receipt["checks"])
-    assert records == original
+    assert options is not None
+    before = family._evaluate_income_tax_before_original_unit_control_v2(**options)
+    if case == "eib-doc039":
+        # The unchanged pre-unit evaluator already refuses this sign conflict.
+        # The original raw fixture is not edited to manufacture a READY case.
+        assert before["status"] == family.UNRESOLVED
+        assert before["reasons"] == ["SIGN_INVERTED_DIRECT_NOTE_AND_PRIMARY_INCOME_TAX_PRESENTATIONS"]
+        assert before["mappings"] == []
+        assert canonical_json_bytes_v1(candidate) == canonical_json_bytes_v1(before)
+        assert "income_tax_original_unit_scope_receipt" not in candidate["closure_receipt"]
+        assert family._enforce_original_source_units_v2(
+            before, original_records=records, compiled_specs=options["compiled_specs"],
+            query_receipt=options["query_receipt"]) is before
+    else:
+        assert before["status"] == candidate["status"] == family.READY, candidate.get("reasons")
+        assert candidate["mappings"] == before["mappings"]
+        receipt = _control(candidate)
+        assert receipt["failures"] == []
+        assert receipt["document_consensus_equal_amount_or_private_unit_projection_permission"] is False
+        assert all(check["status"] == "SOURCE_OWNED" for check in receipt["checks"])
     _audit_replay(candidate, options)
+    assert records == original
 
 
 def test_two_primary_unit_votes_cannot_fill_an_original_unitless_primary_tax_table():
@@ -308,8 +363,11 @@ def test_resealed_original_unit_evidence_cannot_substitute_for_fresh_raw_source_
         key: value for key, value in receipt.items() if key != "receipt_id"})
     forged["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1({
         key: value for key, value in forged.items() if key != "candidate_id"})
-    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error, match="candidate replay drifted"):
-        family.validate_gemini_json_income_tax_family_candidate_replay_v1(forged, **options)
+    replay = _audit_replay(candidate, options)
+    changed = deepcopy(replay["trials"])
+    changed[0]["candidates"] = [forged]
+    with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error, match="trial replay drifted"):
+        family.validate_gemini_json_income_tax_replay_v1(**{**replay, "trials": changed})
 
 
 def test_an_existing_financial_hold_is_byte_exact_and_not_promoted_by_unit_control():
