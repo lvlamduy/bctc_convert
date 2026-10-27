@@ -346,9 +346,12 @@ def test_anonymous_subtotal_under_provision_is_bound_by_net_equation_not_hierarc
     )
     assert any(
         equation["equation_kind"].startswith("EXACT_VISIBLE_NET_TOTAL")
-        and equation["result_role"] == "HTM_TOTAL"
+        and equation["result_role"] == "HTM_NET_TOTAL_CONTROL"
         for equation in candidate["closure_receipt"]["equations"]
     )
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["HTM_TOTAL"]["values"]] == [10, 9]
+    assert by_role["HTM_TOTAL"]["valuation_basis"] == "GROSS_BEFORE_PROVISIONS"
 
 
 def test_combined_afs_htm_vamc_controls_close_only_against_complete_frontiers() -> None:

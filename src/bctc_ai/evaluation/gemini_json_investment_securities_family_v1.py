@@ -9,6 +9,7 @@ routing.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -32,6 +33,7 @@ from bctc_ai.evaluation.gemini_json_hierarchical_accounting_family_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
@@ -98,6 +100,14 @@ _ACTIVITY_TOKENS = (
     "hoan nhap du phong",
     "trich lap du phong",
 )
+
+_SCHEMA_BASIS_POLICY = {
+    "AFS_TOTAL": "GROSS_BEFORE_PROVISIONS",
+    "HTM_TOTAL": "GROSS_BEFORE_PROVISIONS_EXCLUDING_VAMC",
+    "VAMC": "SEPARATE_859_860_861_NO_HTM_PROVISION_ALIAS",
+    "nested_subsets": "NONADDITIVE",
+    "unproven_basis": "HOLD_NO_PROVISION_ADDBACK_OR_SUBTRACTION",
+}
 
 
 class GeminiJsonInvestmentSecuritiesFamilyV1Error(ValueError):
@@ -209,6 +219,7 @@ def compile_gemini_json_investment_securities_family_specs_v1(
     }
 
     schema_fields = {
+        "basis_policy",
         "family_id",
         "family_root_report_norm_id",
         "format_version",
@@ -224,6 +235,7 @@ def compile_gemini_json_investment_securities_family_specs_v1(
         or schema_binding_spec.get("family_root_report_norm_id") != 804
         or schema_binding_spec.get("root_mapping_policy") != "STRUCTURAL_CONTEXT_ONLY"
         or schema_binding_spec.get("schema_period_type") != "SNAPSHOT"
+        or not same_typed_json_v1(schema_binding_spec.get("basis_policy"), _SCHEMA_BASIS_POLICY)
         or type(schema_binding_spec.get("role_bindings")) is not list
     ):
         raise _error("investment-securities schema binding spec is invalid")
@@ -271,6 +283,13 @@ def compile_gemini_json_investment_securities_family_specs_v1(
         "unit_binding_by_alias": unit_binding_by_alias,
         "unit_bindings": unit_bindings,
     }
+
+
+def _has_explicit_vamc_exclusion_v1(value: Any) -> bool:
+    return re.search(
+        r"\bkhong bao gom (?:(?:cac )?trai phieu (?:dac biet )?(?:do )?)?vamc\b",
+        _normalized(value),
+    ) is not None
 
 
 def _contains_alias(value: Any, alias: str) -> bool:
@@ -515,12 +534,11 @@ def _investment_document_unit_context_axis(
     *,
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Authenticate one exact document-wide unit for this two-unit family.
+    """Inventory units without donating another table's denomination.
 
-    Unlike the shared single-output-unit helper, this family accepts both VND
-    and million VND and must propagate whichever source unit is explicitly
-    printed.  Only exact table-unit carriers count; at least two distinct pages
-    must agree, and any accepted/unaccepted conflict fails closed.
+    A PRIMARY amount match or repeated document-wide denomination does not
+    prove that a selected note owns that unit. Local table/column evidence is
+    resolved by _unit_axis; unsupported note/PDF context remains a HOLD.
     """
 
     aliases = list(compiled_specs["unit_binding_by_alias"])
@@ -574,64 +592,17 @@ def _investment_document_unit_context_axis(
                         "source_kind": "TABLE_UNIT",
                     }
                 )
-    primary_evidence = [
-        item for item in evidence if item["source_page_status"] == "PRIMARY_FINANCIAL_STATEMENT"
-    ]
-    primary_conflicts = [
-        item for item in conflicts if item["source_page_status"] == "PRIMARY_FINANCIAL_STATEMENT"
-    ]
-    primary_root_evidence = _investment_primary_root_evidence(
-        page_json_by_version, regions, compiled_specs=compiled_specs
-    )
-
-    def consensus(axis: list[dict[str, Any]], conflict_axis: list[dict[str, Any]]) -> bool:
-        identities = {
-            (item["canonical_unit"], item["magnitude_power10"], item["accepted"]) for item in axis
-        }
-        return (
-            not conflict_axis
-            and len(identities) == 1
-            and len({item["page_json_version_id"] for item in axis}) >= 2
-            and next(iter(identities))[2]
-        )
-
-    root_identities = {item["canonical_unit"] for item in primary_root_evidence}
-    if len(root_identities) == 1:
-        selected_evidence = primary_root_evidence
-        consensus_scope = "PRIMARY_STATEMENT_FAMILY_ROOT_EXACT_VALUE_PAIR"
-    elif consensus(primary_evidence, primary_conflicts):
-        selected_evidence = primary_evidence
-        consensus_scope = "PRIMARY_FINANCIAL_STATEMENT_TABLE_UNITS"
-    elif consensus(evidence, conflicts):
-        selected_evidence = evidence
-        consensus_scope = "ALL_SELECTED_DOCUMENT_TABLE_UNITS"
-    else:
-        selected_evidence = []
-        consensus_scope = None
-    identities = {
-        (
-            item["canonical_unit"],
-            item.get("magnitude_power10", 6 if item["canonical_unit"] == "MILLION_VND" else 0),
-            item.get("accepted", True),
-        )
-        for item in selected_evidence
-    }
-    distinct_pages = {item["page_json_version_id"] for item in selected_evidence}
-    unique = bool(selected_evidence)
     return {
-        "canonical_unit": next(iter(identities))[0] if unique else None,
-        "consensus_scope": consensus_scope,
+        "canonical_unit": None,
+        "consensus_scope": None,
         "conflicts": conflicts,
-        "distinct_page_version_count": len(distinct_pages),
+        "distinct_page_version_count": 0,
         "evidence": evidence,
         "evidence_axis_sha256": canonical_json_sha256_v1(evidence),
-        "primary_root_evidence": primary_root_evidence,
-        "primary_root_evidence_axis_sha256": canonical_json_sha256_v1(primary_root_evidence),
-        "rule": (
-            "PRIMARY_FAMILY_ROOT_EXACT_VALUE_PAIR_ELSE_PRIMARY_STATEMENT_CONSENSUS_"
-            "ELSE_ALL_DOCUMENT_CONSENSUS_AT_LEAST_TWO_PAGES"
-        ),
-        "status": "UNIQUE" if unique else "NOT_UNIQUE",
+        "primary_root_evidence": [],
+        "primary_root_evidence_axis_sha256": canonical_json_sha256_v1([]),
+        "rule": "LOCAL_OWNED_UNIT_REQUIRED_NO_PRIMARY_OR_SIBLING_DONATION",
+        "status": "NOT_UNIQUE",
     }
 
 
@@ -1254,6 +1225,19 @@ def classify_gemini_json_investment_securities_table_v1(
             1 <= ordinal <= len(current_values) and current_values[ordinal - 1] is not None
             for ordinal in money_ordinals
         )
+        current_label = _normalized(row.get("label_exact"))
+        ancestor_label = _normalized(ancestor_row.get("label_exact"))
+        if (
+            hit["role"] in {"HTM_TOTAL", "HTM_PROVISION"}
+            and _has_explicit_vamc_exclusion_v1(current_label)
+            and not _has_explicit_vamc_exclusion_v1(ancestor_label)
+            and current_has_value
+        ):
+            # A source-owned exclusion changes the population, even when the
+            # amount is zero/equal. Preserve the core row separately from its
+            # combined HTM/VAMC parent; it is not redundant leaf detail.
+            retained_hits.append(hit)
+            continue
         if (
             hit["role"].endswith("_PROVISION")
             and ancestor_has_value
@@ -2790,6 +2774,18 @@ def _equation(
     canonical_unit: str | None = None,
 ) -> dict[str, Any]:
     weights = list(multipliers) if multipliers is not None else [1] * len(components)
+    source_axes = [
+        {_source_occurrence_v1(ref) for ref in component["source_refs"]}
+        for component in components
+    ]
+    repeated_occurrences = sorted(
+        {
+            identity
+            for index, axis in enumerate(source_axes)
+            for later in source_axes[index + 1 :]
+            for identity in axis & later
+        }
+    )
     result_values = _coefficients(result)
     sums: list[int | None] = []
     deltas: list[int | None] = []
@@ -2847,6 +2843,8 @@ def _equation(
         )
     else:
         status = "EXACT_WITHIN_ONE_MILLION_VND_ROUNDING"
+    if repeated_occurrences:
+        status = "DUPLICATE_COMPONENT_SOURCE_OCCURRENCE"
     if rounded_lanes:
         precision_receipt = {
             "canonical_unit": canonical_unit,
@@ -2870,6 +2868,8 @@ def _equation(
     }
     if precision_receipt is not None:
         material["precision_receipt"] = precision_receipt
+    if repeated_occurrences:
+        material["repeated_component_source_occurrences"] = [list(item) for item in repeated_occurrences]
     return {**material, "equation_id": "gjfisev1:equation:" + canonical_json_sha256_v1(material)}
 
 
@@ -3055,40 +3055,9 @@ def _child_records(
     *,
     compiled_specs: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
-    children = [records[role] for role in _parent_children(parent) if role in records]
-    if parent == "AFS_DEBT" and "AFS_DEBT_GOVERNMENT_GUARANTEED" in records:
-        guaranteed = records["AFS_DEBT_GOVERNMENT_GUARANTEED"]
-        subset_visible = any(
-            "trong do" in _normalized(value)
-            for ref in guaranteed["source_refs"]
-            for value in [ref.get("label_exact"), *(ref.get("hierarchy_path_exact") or [])]
-            if type(value) is str
-        )
-        additive_siblings = [
-            role for role in _parent_children(parent) if role != "AFS_DEBT_GOVERNMENT_GUARANTEED"
-        ]
-        subset_visible = subset_visible or any(
-            _matches_alias(value, alias)
-            for ref in guaranteed["source_refs"]
-            for value in ref.get("hierarchy_path_exact") or []
-            if type(value) is str and _normalized(value) != _normalized(ref.get("label_exact"))
-            for sibling in additive_siblings
-            for alias in compiled_specs["aliases_by_role"][sibling]
-        )
-        if not subset_visible:
-            children.append(guaranteed)
-    for cross_role in (
-        ["VAMC_FACE_VALUE"]
-        if parent == "HTM_DEBT"
-        else ["VAMC_PROVISION"]
-        if parent == "HTM_PROVISION"
-        else []
-    ):
-        if cross_role in records and _record_is_within_role(
-            records[cross_role], parent, compiled_specs=compiled_specs
-        ):
-            children.append(records[cross_role])
-    return children
+    # NONADDITIVE subsets do not become peers because an ancestor was omitted.
+    # VAMC is its own schema population even inside a printed HTM block.
+    return [records[role] for role in _parent_children(parent) if role in records]
 
 
 def _top_component_records(
@@ -3104,6 +3073,467 @@ def _top_component_records(
         else:
             selected.extend(_child_records(parent, records, compiled_specs=compiled_specs))
     return selected
+
+
+def _source_occurrence_v1(ref: Mapping[str, Any]) -> tuple[str, str, str, int]:
+    locator = ref["locator"]
+    return (
+        locator["page_json_version_id"],
+        locator["section_id"],
+        locator["table_id"],
+        ref["row_ordinal"],
+    )
+
+
+def _inactive_source_evidence_v1(value: Any) -> dict[str, Any]:
+    """Keep exact beforeimages outside the active mapping dictionary grammar."""
+
+    data = canonical_json_bytes_v1(value)
+    text = data.decode("utf-8")
+    return {
+        "canonical_json_utf8": text,
+        "disposition": "INACTIVE_SOURCE_BEFOREIMAGE_NOT_SCHEMA_PERMISSION",
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "size_bytes": len(data),
+    }
+
+
+def _separate_source_owned_vamc_provision_controls_v1(
+    raw_records: dict[str, list[dict[str, Any]]],
+    *,
+    table_receipts: Sequence[Mapping[str, Any]],
+    page_json_by_version: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Bind each combined provision control to its exact local raw frontier.
+
+    Global same-role aggregates are never inputs to this proof. A repeated
+    parent label, reset, unowned/missing child or incomplete local axis holds;
+    equal amounts cannot resolve an occurrence or population ambiguity.
+    """
+
+    retained = []
+    controls = []
+    receipts = []
+    for record in raw_records.get("HTM_PROVISION", []):
+        if len(record["source_refs"]) != 1:
+            retained.append(record)
+            continue
+        parent = record["source_refs"][0]
+        label = _normalized(parent.get("label_exact"))
+        if not label or _has_explicit_vamc_exclusion_v1(label):
+            retained.append(record)
+            continue
+        identity = _source_occurrence_v1(parent)
+        matching = [
+            receipt for receipt in table_receipts
+            if tuple(receipt["region"][key] for key in (
+                "page_json_version_id", "section_id", "table_id"
+            )) == identity[:3]
+        ]
+        if len(matching) != 1:
+            raise _error("investment-securities raw provision parent table is not unique")
+        table_receipt = matching[0]
+        classification = table_receipt["classification"]
+        if not any(hit["role"] == "VAMC_PROVISION" for hit in classification["role_hits"]):
+            retained.append(record)
+            continue
+        page = page_json_by_version[identity[0]]
+        _section, table = _source_table(page, section_id=identity[1], table_id=identity[2])
+        rows = table["rows"]
+        money = classification["money_column_ordinals"]
+        failures = []
+        if (
+            not table_receipt["period_axis"].get("complete")
+            or not table_receipt["unit_axis"].get("complete")
+            or table_receipt["unit_axis"].get("source")
+            not in {"LOCAL_TABLE_UNIT", "LOCAL_UNIFORM_ALL_MONEY_COLUMN_UNITS"}
+            or table_receipt["unit_axis"].get("canonical_unit") not in {"VND", "MILLION_VND"}
+            or len(money) != 2
+            or "single_lane_blank_projection_receipt" in table_receipt
+            or not same_typed_json_v1(
+                parent, _source_ref(table_receipt["region"], identity[3], rows[identity[3] - 1])
+            )
+        ):
+            failures.append("LOCAL_PARENT_AXES_OR_SOURCE_NOT_PROVEN")
+        if any(
+            cell.get("source_text") is None or type(cell.get("coefficient")) is not int
+            or cell.get("state", "").endswith("ZERO_IF_EQUATION_EXACT")
+            for cell in record["cells"]
+        ):
+            failures.append("LOCAL_PARENT_LANES_NOT_DIRECTLY_OBSERVED")
+        parent_occurrences = [
+            ordinal for ordinal, row in enumerate(rows, start=1)
+            if _normalized(row.get("label_exact")) == label
+        ]
+        if parent_occurrences != [identity[3]]:
+            failures.append("PRINTED_PARENT_OCCURRENCE_NOT_UNIQUE")
+        end = len(rows) + 1
+        end_rule = "END_OF_OWNED_TABLE"
+        fence_aliases = [
+            *compiled_specs["query_policy"]["reset_aliases"],
+            *compiled_specs["query_policy"]["hard_negative_aliases"],
+        ]
+        for ordinal in range(identity[3] + 1, len(rows) + 1):
+            row = rows[ordinal - 1]
+            surfaces = [row.get("label_exact"), *(row.get("hierarchy_path_exact") or [])]
+            descendant = label in [_normalized(value) for value in surfaces[1:-1]]
+            reset = any(_marker_matches(value, fence_aliases) is not None for value in surfaces)
+            if reset or (not descendant and (
+                _normalized(row.get("label_exact"))
+                or any(value is not None for value in row.get("values_exact", []))
+            )):
+                end = ordinal
+                end_rule = "PRINTED_RESET_FENCE" if reset else "NEXT_UNOWNED_SOURCE_ROW"
+                break
+        local_hits = [
+            hit for hit in classification["role_hits"]
+            if identity[3] < hit["row_ordinal"] < end
+        ]
+        vamc_hits = [hit for hit in local_hits if hit["role"] == "VAMC_PROVISION"]
+        core_hits = [
+            hit for hit in local_hits
+            if hit["role"] == "HTM_PROVISION"
+            and _has_explicit_vamc_exclusion_v1(rows[hit["row_ordinal"] - 1].get("label_exact"))
+        ]
+        if len(vamc_hits) != 1:
+            failures.append("OWNED_VAMC_PROVISION_OCCURRENCE_NOT_UNIQUE")
+        if len(core_hits) > 1:
+            failures.append("OWNED_EX_VAMC_PROVISION_OCCURRENCE_NOT_UNIQUE")
+        frontier_hits = [*core_hits, *vamc_hits]
+        frontier_ordinals = [hit["row_ordinal"] for hit in frontier_hits]
+        if len(set(frontier_ordinals)) != len(frontier_ordinals):
+            failures.append("DUPLICATE_LOCAL_FRONTIER_SOURCE_OCCURRENCE")
+        core_label = _normalized(rows[core_hits[0]["row_ordinal"] - 1].get("label_exact")) if len(core_hits) == 1 else None
+        for hit in local_hits:
+            if hit["row_ordinal"] in frontier_ordinals:
+                continue
+            row = rows[hit["row_ordinal"] - 1]
+            ancestors = [_normalized(value) for value in (row.get("hierarchy_path_exact") or [])[:-1]]
+            if (hit["role"] not in _parent_children("HTM_PROVISION")
+                    or core_label is None or core_label not in ancestors):
+                failures.append("LOCAL_PROVISION_CHILD_POPULATION_NOT_PROVEN")
+        covered_ordinals = {hit["row_ordinal"] for hit in local_hits}
+        for ordinal in range(identity[3] + 1, end):
+            row = rows[ordinal - 1]
+            if ordinal not in covered_ordinals and (
+                _normalized(row.get("label_exact"))
+                or any(value is not None for value in row.get("values_exact", []))
+            ):
+                failures.append("UNBOUND_VALUE_OR_SCOPE_ROW_INSIDE_LOCAL_PROVISION_PARENT")
+        frontier = []
+        for hit in frontier_hits:
+            ordinal = hit["row_ordinal"]
+            row = rows[ordinal - 1]
+            ancestors = [_normalized(value) for value in (row.get("hierarchy_path_exact") or [])[:-1]]
+            nearest = max((prior for prior in parent_occurrences if prior < ordinal), default=None)
+            if label not in ancestors or nearest != identity[3]:
+                failures.append("CHILD_NEAREST_PRINTED_PARENT_NOT_PROVEN")
+            try:
+                cells = [
+                    {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"}
+                    if row["values_exact"][column - 1] is None
+                    else _source_money(row["values_exact"][column - 1])
+                    for column in money
+                ]
+            except (IndexError, KeyError, ValueError):
+                failures.append("LOCAL_CHILD_MONEY_AXIS_INVALID")
+                continue
+            if any(
+                cell.get("source_text") is None or type(cell.get("coefficient")) is not int
+                or cell.get("state", "").endswith("ZERO_IF_EQUATION_EXACT")
+                for cell in cells
+            ):
+                failures.append("LOCAL_CHILD_LANES_NOT_DIRECTLY_OBSERVED")
+            frontier.append(_record(
+                hit["role"], cells,
+                [_source_ref(table_receipt["region"], ordinal, row)], "SOURCE_OBSERVED_ROW",
+            ))
+        proof = {
+            "disposition": (
+                "HOLD_AMBIGUOUS_CORE_OR_COMBINED_HTM_PROVISION" if failures
+                else "COMBINED_SOURCE_PARENT_NOT_CORE_HTM_PROVISION"
+            ),
+            "excluded_report_norm_id": 849,
+            "failures": sorted(set(failures)),
+            "parent_beforeimage": _inactive_source_evidence_v1(record),
+            "parent_source_occurrence": list(identity),
+            "printed_parent_occurrences": parent_occurrences,
+            "source_block_end": end,
+            "source_block_end_rule": end_rule,
+            "source_money_column_ordinals": canonical_clone_v1(money),
+            "period_axis": canonical_clone_v1(table_receipt["period_axis"]),
+            "unit_axis": canonical_clone_v1(table_receipt["unit_axis"]),
+            "raw_table_sha256": canonical_json_sha256_v1(table),
+            "raw_page_sha256": canonical_json_sha256_v1(page),
+            "frontier_beforeimage": _inactive_source_evidence_v1(frontier),
+            "frontier_source_occurrences": [
+                list(_source_occurrence_v1(item["source_refs"][0])) for item in frontier
+            ],
+            "vamc_child_source_refs": [
+                canonical_clone_v1(item["source_refs"][0]) for item in frontier
+                if item["role"] == "VAMC_PROVISION"
+            ],
+            "rule": "UNIQUE_RAW_PARENT_AND_COMPLETE_SAME_TABLE_SOURCE_OWNED_PROVISION_FRONTIER",
+        }
+        proof["population_receipt_id"] = "gjfispopv1:local:" + canonical_json_sha256_v1(proof)
+        receipts.append(proof)
+        if failures:
+            retained.append(record)
+            continue
+        controls.append({
+            **_record(
+                "HTM_VAMC_PROVISION_CONTROL",
+                record["cells"],
+                record["source_refs"],
+                "SOURCE_ONLY_PRINTED_HTM_SUMMARY_INCLUDES_VAMC_PROVISION",
+            ),
+            "owned_provision_frontier": frontier,
+            "population_receipt_id": proof["population_receipt_id"],
+        })
+    raw_records["HTM_PROVISION"] = retained
+    return controls, receipts
+
+
+def _gross_frontier_source_proof_v1(
+    prefix: str,
+    components: Sequence[Mapping[str, Any]],
+    *,
+    table_receipts: Sequence[Mapping[str, Any]],
+    page_json_by_version: Mapping[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Prove a complete observed core frontier, without a net/provision input.
+
+    This intentionally supports one owned table only. A cross-table/page
+    component sum needs a separate population/continuation proof; amount
+    agreement or shared dates cannot supply it.
+    """
+
+    if not components or any(
+        not component["role"].startswith(prefix + "_")
+        or component["role"] in _NONADDITIVE_SUBSET_ROLES
+        or "PROVISION" in component["role"]
+        or component["role"].endswith("_TOTAL")
+        or any(
+            type(cell.get("coefficient")) is not int
+            or cell.get("state", "").endswith("ZERO_IF_EQUATION_EXACT")
+            for cell in component["cells"]
+        )
+        for component in components
+    ):
+        return None
+    identities = [
+        {_source_occurrence_v1(ref) for ref in component["source_refs"]}
+        for component in components
+    ]
+    if any(
+        not axis or len(axis) != len(component["source_refs"])
+        for axis, component in zip(identities, components, strict=True)
+    ) or any(
+        left & right for index, left in enumerate(identities) for right in identities[index + 1 :]
+    ):
+        return None
+    tables = {identity[:3] for axis in identities for identity in axis}
+    if len(tables) != 1:
+        return None
+    table_identity = next(iter(tables))
+    matching_receipts = [
+        receipt
+        for receipt in table_receipts
+        if tuple(
+            receipt["region"][key]
+            for key in ("page_json_version_id", "section_id", "table_id")
+        )
+        == table_identity
+    ]
+    if len(matching_receipts) != 1:
+        return None
+    receipt = matching_receipts[0]
+    if (
+        not receipt["period_axis"]["complete"]
+        or not receipt["unit_axis"]["complete"]
+        or receipt["unit_axis"].get("source")
+        not in {"LOCAL_TABLE_UNIT", "LOCAL_UNIFORM_ALL_MONEY_COLUMN_UNITS"}
+        or receipt["unit_axis"].get("canonical_unit") not in {"MILLION_VND", "VND"}
+        or "single_lane_blank_projection_receipt" in receipt
+        or receipt["classification"]["unbound_money_row_ordinals"]
+        or receipt["classification"]["ambiguous_row_ordinals"]
+    ):
+        return None
+    _section, table = _source_table(
+        page_json_by_version[table_identity[0]],
+        section_id=table_identity[1],
+        table_id=table_identity[2],
+    )
+    money_ordinals = receipt["classification"]["money_column_ordinals"]
+    for component in components:
+        observed_pairs = []
+        for ref in component["source_refs"]:
+            ordinal = ref["row_ordinal"]
+            if type(ordinal) is not int or not 1 <= ordinal <= len(table["rows"]):
+                return None
+            row = table["rows"][ordinal - 1]
+            if not same_typed_json_v1(ref, _source_ref(receipt["region"], ordinal, row)):
+                return None
+            body = " ".join(
+                _normalized(value)
+                for value in [row.get("label_exact"), *(row.get("hierarchy_path_exact") or [])]
+            )
+            if "vamc" in body and not _has_explicit_vamc_exclusion_v1(body):
+                return None
+            try:
+                observed_pairs.append(
+                    [
+                        None if row["values_exact"][column - 1] is None
+                        else _source_money(row["values_exact"][column - 1])["coefficient"]
+                        for column in money_ordinals
+                    ]
+                )
+            except (IndexError, KeyError, ValueError):
+                return None
+        expected = _coefficients(component)
+        if component["state"] == "DERIVED_EXACT_SUM_OF_SOURCE_ROWS":
+            if any(value is None for pair in observed_pairs for value in pair) or [
+                sum(pair[lane] for pair in observed_pairs) for lane in range(2)
+            ] != expected:
+                return None
+        elif not any(pair == expected for pair in observed_pairs) or any(
+            value is not None and value != expected[lane]
+            for pair in observed_pairs
+            for lane, value in enumerate(pair)
+        ):
+            return None
+    hits = [
+        hit
+        for hit in receipt["classification"]["role_hits"]
+        if hit["role"].startswith(prefix + "_")
+        and hit["role"] not in _NONADDITIVE_SUBSET_ROLES
+        and "PROVISION" not in hit["role"]
+        and not hit["role"].endswith("_TOTAL")
+    ]
+    covered = []
+    for hit in hits:
+        row = table["rows"][hit["row_ordinal"] - 1]
+        if (
+            hit["role"] in _GROUP_ROLES
+            and row.get("row_kind") == "GROUP"
+            and all(value is None for value in row["values_exact"])
+        ):
+            continue
+        row_identity = (*table_identity, hit["row_ordinal"])
+        direct = any(row_identity in axis for axis in identities)
+        parent_owned = any(
+            component["role"] in _GROUP_ROLES
+            and hit["role"] in _parent_children(component["role"])
+            and any(
+                ref["row_ordinal"] < hit["row_ordinal"]
+                and _normalized(ref.get("label_exact"))
+                and _normalized(ref.get("label_exact"))
+                in [_normalized(value) for value in (row.get("hierarchy_path_exact") or [])[:-1]]
+                for ref in component["source_refs"]
+            )
+            for component in components
+        )
+        if not direct and not parent_owned:
+            return None
+        covered.append({"role": hit["role"], "source_occurrence": list(row_identity)})
+    if not covered:
+        return None
+    return {
+        "basis": "GROSS_BEFORE_PROVISIONS",
+        "component_roles": [component["role"] for component in components],
+        "component_source_refs": [canonical_clone_v1(item["source_refs"]) for item in components],
+        "covered_source_roles": covered,
+        "population": prefix + "_CORE_EXCLUDING_VAMC",
+        "rule": "COMPLETE_SAME_TABLE_OBSERVED_CORE_FRONTIER_NO_PROVISION_ARITHMETIC",
+        "table_receipt_sha256": canonical_json_sha256_v1(receipt),
+    }
+
+
+def _printed_gross_source_proof_v1(
+    prefix: str,
+    total: Mapping[str, Any],
+    *,
+    table_receipts: Sequence[Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    evidence = []
+    for ref in total["source_refs"]:
+        body = " ".join(
+            _normalized(value)
+            for value in [ref.get("label_exact"), *(ref.get("hierarchy_path_exact") or [])]
+        )
+        if any(
+            token in body
+            for token in (
+                "gia tri thuan", "gia tri con lai", "gia tri ghi so",
+                "sau du phong", "sau khi tru du phong", "carrying amount",
+            )
+        ) or re.search(r"\bnet\b", body):
+            return None
+        identity = _source_occurrence_v1(ref)
+        receipts = [
+            receipt
+            for receipt in table_receipts
+            if tuple(
+                receipt["region"][key]
+                for key in ("page_json_version_id", "section_id", "table_id")
+            )
+            == identity[:3]
+        ]
+        if len(receipts) != 1:
+            return None
+        receipt = receipts[0]
+        if (
+            not receipt["period_axis"]["complete"]
+            or not receipt["unit_axis"]["complete"]
+            or receipt["unit_axis"].get("source")
+            not in {"LOCAL_TABLE_UNIT", "LOCAL_UNIFORM_ALL_MONEY_COLUMN_UNITS"}
+            or receipt["unit_axis"].get("canonical_unit") not in {"MILLION_VND", "VND"}
+        ):
+            return None
+        if (
+            prefix == "HTM"
+            and "VAMC" in receipt["classification"]["component_roles"]
+            and not _has_explicit_vamc_exclusion_v1(body)
+        ):
+            return None
+        preceding_provisions = [
+            hit["row_ordinal"]
+            for hit in receipt["classification"]["role_hits"]
+            if hit["role"].startswith(prefix + "_PROVISION")
+            and hit["row_ordinal"] < identity[3]
+        ]
+        explicit_gross = (
+            "truoc du phong" in body or "gia tri gop" in body
+            or re.search(r"\bgross\b", body) is not None
+        )
+        explicit_ex_vamc = prefix == "HTM" and _has_explicit_vamc_exclusion_v1(body)
+        if preceding_provisions and not explicit_gross:
+            return None
+        core_positions = [
+            hit["row_ordinal"]
+            for hit in receipt["classification"]["role_hits"]
+            if hit["role"].startswith(prefix + "_")
+            and hit["role"] not in _NONADDITIVE_SUBSET_ROLES
+            and "PROVISION" not in hit["role"]
+            and not hit["role"].endswith("_TOTAL")
+        ]
+        if not explicit_gross and not explicit_ex_vamc and (
+            not core_positions or identity[3] <= max(core_positions)
+        ):
+            return None
+        evidence.append(
+            {
+                "source_ref": canonical_clone_v1(ref),
+                "rule": (
+                    "EXPLICIT_GROSS" if explicit_gross
+                    else "EXPLICIT_EX_VAMC_CORE_TOTAL_BEFORE_OWN_PROVISION" if explicit_ex_vamc
+                    else "TERMINAL_CORE_SUBTOTAL_BEFORE_OWN_PROVISION"
+                ),
+                "table_receipt_sha256": canonical_json_sha256_v1(receipt),
+            }
+        )
+    return {"basis": "GROSS_BEFORE_PROVISIONS", "source_evidence": evidence} if evidence else None
 
 
 def evaluate_gemini_json_investment_securities_family_cluster_v1(
@@ -3463,10 +3893,24 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
             if id(record) not in resolved_promoted_summary_record_ids
         ]
 
+    vamc_provision_controls, provision_population_receipts = (
+        _separate_source_owned_vamc_provision_controls_v1(
+            raw_records,
+            table_receipts=table_receipts,
+            page_json_by_version=page_json_by_version,
+            compiled_specs=compiled_specs,
+        )
+    )
+    reasons.extend(
+        receipt["disposition"]
+        for receipt in provision_population_receipts
+        if receipt["disposition"].startswith("HOLD_")
+    )
     raw_total_records = {role: raw_records.pop(role, []) for role in ("AFS_TOTAL", "HTM_TOTAL")}
     raw_control_records = {
         role: raw_records.pop(role, []) for role in sorted(_SOURCE_CONTROL_ROLES)
     }
+    raw_control_records["UNSCOPED_TOTAL_CONTROL"].extend(vamc_provision_controls)
     source_row_reclassifications = []
     for prefix in ("AFS", "HTM"):
         provision_role = f"{prefix}_PROVISION"
@@ -3703,7 +4147,10 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
         else:
             equations.append(variants[0])
             reasons.append(f"PARENT_CHILD_EQUATION_MISMATCH:{parent}")
+    schema_basis_receipts = []
     for prefix in ("AFS", "HTM"):
+        source_proof = None
+        frontier_proof = None
         total_role = f"{prefix}_TOTAL"
         component_records = _top_component_records(prefix, records, compiled_specs=compiled_specs)
         total_candidates = raw_total_records[total_role]
@@ -3716,7 +4163,21 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
             if total_candidates and direct_total is None:
                 reasons.append(f"{prefix}_MULTIPLE_DISTINCT_VISIBLE_TOTALS_WITHOUT_COMPONENTS")
             elif direct_total is not None:
-                records[total_role] = direct_total
+                source_proof = _printed_gross_source_proof_v1(
+                    prefix, direct_total, table_receipts=table_receipts
+                )
+                if source_proof is not None:
+                    records[total_role] = direct_total
+                else:
+                    reasons.append(f"{prefix}_GROSS_TOTAL_BASIS_NOT_PROVEN")
+            schema_basis_receipts.append(
+                {
+                    "role": total_role,
+                    "status": "BOUND_PRINTED_GROSS" if total_role in records else "HOLD",
+                    "source_proof": source_proof if direct_total is not None else None,
+                    "raw_total_beforeimages": _inactive_source_evidence_v1(total_candidates),
+                }
+            )
             continue
         provision_role = f"{prefix}_PROVISION"
         effective_total_candidates = []
@@ -3731,7 +4192,7 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
                 candidate_equation(
                     equation_kind="EXACT_ANONYMOUS_PROVISION_SUBTOTAL_CORROBORATES_PARENT",
                     components=[provision],
-                    result=total,
+                    result={**total, "role": prefix + "_PROVISION_SUBTOTAL_CONTROL"},
                     multipliers=[weight],
                 )
                 for weight in (1, -1)
@@ -3758,11 +4219,29 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
                 gross = candidate_equation(
                     equation_kind=gross_kind,
                     components=frontier_records,
-                    result=total,
+                    result=(
+                        total
+                        if frontier_kind == "CORE"
+                        else {**total, "role": prefix + "_INCLUDING_VAMC_GROSS_CONTROL"}
+                    ),
                 )
                 all_candidate_equations.append(gross)
                 if _equation_closes(gross):
-                    gross_matches.append((total, gross))
+                    source_proof = _printed_gross_source_proof_v1(
+                        prefix, total, table_receipts=table_receipts
+                    )
+                    if frontier_kind == "CORE" and source_proof is not None:
+                        gross_matches.append((total, gross))
+                    else:
+                        equations.append(
+                            candidate_equation(
+                                equation_kind=gross_kind,
+                                components=frontier_records,
+                                result={**total, "role": prefix + "_UNBOUND_GROSS_CONTROL"},
+                            )
+                            if frontier_kind == "CORE"
+                            else gross
+                        )
                 if provision_role not in records:
                     continue
                 provision = records[provision_role]
@@ -3776,7 +4255,7 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
                     net = candidate_equation(
                         equation_kind=equation_kind,
                         components=[*frontier_records, provision],
-                        result=total,
+                        result={**total, "role": prefix + "_NET_TOTAL_CONTROL"},
                         multipliers=[*([1] * len(frontier_records)), weight],
                     )
                     all_candidate_equations.append(net)
@@ -3838,38 +4317,84 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
                     result=records[group_role],
                 )
                 equations.append(group_equation)
-        elif len(component_records) == 1:
-            singleton = component_records[0]
-            records[total_role] = _record(
-                total_role,
-                singleton["cells"],
-                singleton["source_refs"],
-                "DERIVED_EXACT_SINGLETON_COMPONENT_TOTAL",
+        else:
+            frontier_proof = _gross_frontier_source_proof_v1(
+                prefix,
+                component_records,
+                table_receipts=table_receipts,
+                page_json_by_version=page_json_by_version,
             )
-            singleton_equation = candidate_equation(
-                equation_kind="DERIVED_EXACT_SINGLETON_COMPONENT_TOTAL",
-                components=[singleton],
-                result=records[total_role],
-            )
-            equations.append(singleton_equation)
+            if frontier_proof is not None:
+                state = (
+                    "DERIVED_EXACT_SINGLETON_COMPONENT_TOTAL"
+                    if len(component_records) == 1
+                    else "DERIVED_COMPLETE_SOURCE_OWNED_GROSS_COMPONENT_TOTAL"
+                )
+                records[total_role] = (
+                    _record(
+                        total_role,
+                        component_records[0]["cells"],
+                        component_records[0]["source_refs"],
+                        state,
+                    )
+                    if len(component_records) == 1
+                    else {**_aggregate(total_role, component_records), "state": state}
+                )
+                equations.append(
+                    candidate_equation(
+                        equation_kind=state,
+                        components=component_records,
+                        result=records[total_role],
+                    )
+                )
+            elif total_candidates:
+                reasons.append(f"{prefix}_GROSS_TOTAL_BASIS_NOT_PROVEN")
 
         if net_matches:
-            net_records = [record for record, _equation_receipt in net_matches]
-            net_record = _corroborate_identical(total_role, net_records)
-            if net_record is None:
-                reasons.append(f"{prefix}_MULTIPLE_DISTINCT_VISIBLE_NET_TOTALS")
-            else:
-                matching_equations = [
-                    equation_receipt
-                    for record, equation_receipt in net_matches
-                    if _coefficients(record) == _coefficients(net_record)
+            for population in ("CORE", "CORE_PLUS_VAMC_FACE"):
+                population_matches = [
+                    pair
+                    for pair in net_matches
+                    if (
+                        "CORE_PLUS_VAMC_FACE" in pair[1]["equation_kind"]
+                    )
+                    == (population == "CORE_PLUS_VAMC_FACE")
                 ]
-                equations.extend(matching_equations)
-                if total_role not in records:
-                    records[total_role] = net_record
-        if total_candidates and not gross_matches and not net_matches:
+                if not population_matches:
+                    continue
+                net_record = _corroborate_identical(
+                    total_role, [record for record, _receipt in population_matches]
+                )
+                if net_record is None:
+                    reasons.append(f"{prefix}_MULTIPLE_DISTINCT_VISIBLE_NET_TOTALS:{population}")
+                else:
+                    equations.extend(equation for _record, equation in population_matches)
+        any_visible_closure = any(_equation_closes(item) for item in all_candidate_equations)
+        if total_candidates and not any_visible_closure:
             reasons.append(f"{prefix}_VISIBLE_TOTAL_DOES_NOT_CLOSE_GROSS_OR_NET_FRONTIER")
             equations.append(all_candidate_equations[0])
+        schema_basis_receipts.append(
+            {
+                "role": total_role,
+                "status": (
+                    "BOUND_PRINTED_GROSS"
+                    if gross_record is not None
+                    else "BOUND_COMPLETE_COMPONENT_GROSS"
+                    if total_role in records
+                    else "HOLD"
+                ),
+                "source_proof": (
+                    _printed_gross_source_proof_v1(
+                        prefix, records[total_role], table_receipts=table_receipts
+                    )
+                    if gross_record is not None
+                    else frontier_proof
+                    if total_role in records
+                    else None
+                ),
+                "raw_total_beforeimages": _inactive_source_evidence_v1(raw_total_records[total_role]),
+            }
+        )
 
     def total_frontiers(prefix: str) -> list[tuple[str, list[dict[str, Any]], list[int]]]:
         components = _top_component_records(prefix, records, compiled_specs=compiled_specs)
@@ -3939,6 +4464,28 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
         for prefix in ("AFS", "HTM")
         if f"{prefix}_PROVISION" in records
     ]
+    if "VAMC_PROVISION" in records:
+        provision_frontiers.extend(
+            (
+                "VAMC_PROVISION_" + presentation,
+                [records["VAMC_PROVISION"]],
+                [weight],
+            )
+            for presentation, weight in (("SOURCE_SIGNED", 1), ("ABSOLUTE_PRESENTATION", -1))
+        )
+        for prefix in ("AFS", "HTM"):
+            if f"{prefix}_PROVISION" in records:
+                provision_frontiers.extend(
+                    (
+                        f"COMBINED_{prefix}_VAMC_PROVISIONS_" + presentation,
+                        [records[f"{prefix}_PROVISION"], records["VAMC_PROVISION"]],
+                        [weight, weight],
+                    )
+                    for presentation, weight in (
+                        ("SOURCE_SIGNED", 1),
+                        ("ABSOLUTE_PRESENTATION", -1),
+                    )
+                )
     provision_frontiers.extend(
         (
             f"{prefix}_PROVISION_ABSOLUTE_PRESENTATION",
@@ -4116,15 +4663,40 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
             equations.append(selected)
             consumed_source_rows.add(identity)
     unscoped_control_resolution_receipts = []
+    for source_role in ("AFS_TOTAL", "HTM_TOTAL"):
+        for source_total in raw_total_records[source_role]:
+            if any(
+                source_ref_identity(ref) not in consumed_source_rows
+                for ref in source_total["source_refs"]
+            ):
+                reasons.append("SOURCE_VISIBLE_BRANCH_TOTAL_WITHOUT_OWN_POPULATION_CONTROL")
     for control in raw_control_records["UNSCOPED_TOTAL_CONTROL"]:
+        control_frontiers = unscoped_frontiers
+        if control["role"] == "HTM_VAMC_PROVISION_CONTROL":
+            # The new population receipt names HTM+VAMC provisions. Do not
+            # ask an all-family amount search to choose a different owner.
+            owned_components = control["owned_provision_frontier"]
+            control_frontiers = [
+                (
+                    "SOURCE_OWNED_HTM_VAMC_PROVISION_" + presentation,
+                    owned_components,
+                    [weight] * len(owned_components),
+                )
+                for presentation, weight in (
+                    ("SOURCE_SIGNED", 1), ("ABSOLUTE_PRESENTATION", -1)
+                )
+            ]
+        equation_builder = (
+            _equation if control["role"] == "HTM_VAMC_PROVISION_CONTROL" else candidate_equation
+        )
         variants = [
-            candidate_equation(
+            equation_builder(
                 equation_kind="EXACT_UNSCOPED_SOURCE_TOTAL_" + kind,
                 components=components,
                 result=control,
                 multipliers=weights,
             )
-            for kind, components, weights in unscoped_frontiers
+            for kind, components, weights in control_frontiers
         ]
         control_position = _source_record_position(control)
         terminal_control = bool(
@@ -4139,6 +4711,12 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
         resolution_receipt["control_source_refs"] = canonical_clone_v1(
             control["source_refs"]
         )
+        if control["role"] == "HTM_VAMC_PROVISION_CONTROL":
+            resolution_receipt["population_receipt_id"] = control["population_receipt_id"]
+            resolution_receipt["fixed_frontier_source_occurrences"] = [
+                list(_source_occurrence_v1(item["source_refs"][0]))
+                for item in control["owned_provision_frontier"]
+            ]
         unscoped_control_resolution_receipts.append(resolution_receipt)
         if selected is not None:
             equations.append(selected)
@@ -4186,8 +4764,38 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
             del records[role]
             continue
         reasons.append(f"UNPROVEN_BLANK_ZERO_IN_MAPPING_ROLE:{role}")
+    vamc_occurrences = {
+        _source_occurrence_v1(ref)
+        for role, record in records.items()
+        if role.startswith("VAMC_")
+        for ref in record["source_refs"]
+    }
+    for role, record in records.items():
+        if not role.startswith(("AFS_", "HTM_")):
+            continue
+        for ref in record["source_refs"]:
+            body = " ".join(
+                _normalized(value)
+                for value in [ref.get("label_exact"), *(ref.get("hierarchy_path_exact") or [])]
+            )
+            if (
+                _source_occurrence_v1(ref) in vamc_occurrences
+                or ("vamc" in body and not _has_explicit_vamc_exclusion_v1(body))
+            ):
+                reasons.append("CORE_MAPPING_SOURCE_OCCURRENCE_HAS_VAMC_POPULATION")
     reasons = sorted(set(reasons))
     exact = not reasons and all(_equation_closes(equation) for equation in equations)
+    for receipt in schema_basis_receipts:
+        receipt.update(
+            {
+                "emitted_mapping": exact and receipt["role"] in records,
+                "format_version": "INVESTMENT_SECURITIES_SCHEMA_GROSS_BASIS_RECEIPT_V1",
+                "report_norm_id": compiled_specs["bindings"][receipt["role"]],
+                "schema_binding_sha256": canonical_json_sha256_v1(compiled_specs["schema"]),
+                "unit": candidate_unit,
+            }
+        )
+        receipt["basis_receipt_id"] = "gjfisgbv1:basis:" + canonical_json_sha256_v1(receipt)
     mappings = []
     if exact:
         for role in compiled_specs["output_role_order"]:
@@ -4207,6 +4815,14 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
                 "unit": candidate_unit,
                 "values": canonical_clone_v1(record["cells"]),
             }
+            if role in {"AFS_TOTAL", "HTM_TOTAL"}:
+                material["valuation_basis"] = "GROSS_BEFORE_PROVISIONS"
+                material["population"] = role.split("_", 1)[0] + "_CORE_EXCLUDING_VAMC"
+                material["schema_basis_receipt_id"] = next(
+                    item["basis_receipt_id"] for item in schema_basis_receipts if item["role"] == role
+                )
+            elif role.startswith("VAMC_"):
+                material["population"] = "VAMC_ONLY"
             mappings.append(
                 {
                     **material,
@@ -4217,6 +4833,13 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
         "closure_receipt": {
+            "schema_basis_contract": canonical_clone_v1(_SCHEMA_BASIS_POLICY),
+            "schema_basis_contract_sha256": canonical_json_sha256_v1(compiled_specs["schema"]),
+            "schema_basis_receipts": schema_basis_receipts,
+            "provision_population_receipts": provision_population_receipts,
+            "withheld_record_beforeimages": (
+                None if exact else _inactive_source_evidence_v1(records)
+            ),
             "document_unit_context": document_unit_context,
             "document_period_context": document_period_context,
             "equations": equations,

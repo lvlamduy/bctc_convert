@@ -1,4 +1,11 @@
 {
+  "basis_policy": {
+    "AFS_TOTAL": "GROSS_BEFORE_PROVISIONS",
+    "HTM_TOTAL": "GROSS_BEFORE_PROVISIONS_EXCLUDING_VAMC",
+    "VAMC": "SEPARATE_859_860_861_NO_HTM_PROVISION_ALIAS",
+    "nested_subsets": "NONADDITIVE",
+    "unproven_basis": "HOLD_NO_PROVISION_ADDBACK_OR_SUBTRACTION"
+  },
   "family_id": "INVESTMENT_SECURITIES",
   "family_root_report_norm_id": 804,
   "format_version": "ACCOUNTING_INVESTMENT_SECURITIES_SCHEMA_BINDING_SPEC_V1",
