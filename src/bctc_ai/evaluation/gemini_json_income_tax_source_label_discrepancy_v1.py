@@ -22,7 +22,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 REGISTRY_RELATIVE_PATH = "config/families/tm-income-tax-source-label-discrepancies-v1.json"
 REGISTRY_PATH = Path(__file__).resolve().parents[3] / REGISTRY_RELATIVE_PATH
-REGISTRY_SHA256 = "c8788461c2e3aed5068c9ba3c329f39bfd13d2cf8dea7aede724bbff6b017bcf"
+REGISTRY_SHA256 = "612e04c5f666febd06026d2a7be81e35440cd24c661b812f6513008789030ab3"
 _LOCATOR_KEYS = (
     "document_id", "document_ordinal", "source_logical_name", "source_sha256",
     "page_json_version_id", "physical_page", "selected_page_ordinal",
