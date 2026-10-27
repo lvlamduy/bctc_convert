@@ -10260,8 +10260,7 @@ def _retain_authenticated_note_query_axis_v1(
     return output
 
 
-@_document_period_operation
-def evaluate_gemini_json_income_tax_family_cluster_v1(
+def _evaluate_income_tax_before_original_unit_control_v2(
     *,
     regions: Any,
     page_json_by_version: Mapping[str, dict[str, Any]],
@@ -10540,6 +10539,274 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
     return _retain_authenticated_note_query_axis_v1(
         candidate, query_receipt=checked, selected_primary=selected,
     )
+
+
+def _original_unit_source_key_v2(locator: Mapping[str, Any]) -> tuple[Any, ...]:
+    return tuple(locator.get(key) for key in (
+        "document_id", "document_ordinal", "source_logical_name", "source_sha256",
+        "page_json_version_id", "physical_page", "selected_page_ordinal", "section_id", "table_id",
+    ))
+
+
+def _original_local_unit_axis_v2(table, *, compiled_specs):
+    """Read printed currency surfaces, without interpreting values or donors."""
+    view = canonical_clone_v1(table)
+    semantic_headers = []
+    pattern = r"duoc ghi nhan trong bao cao ket qua hoat dong (?:rieng|hop nhat)(?: (?P<unit>trieu vnd|trieu dong|vnd|dong))?"
+    selected = []
+    for ordinal, column in enumerate(view.get("columns") or [], 1):
+        if column.get("value_kind") not in {"MONEY", "UNKNOWN"}:
+            continue
+        selected.append(ordinal)
+        # UNKNOWN does not supply a financial role. This private view only
+        # inspects the original literal currency surfaces of value columns.
+        column["value_kind"] = "MONEY"
+        for header_ordinal, header in enumerate(column.get("header_path_exact") or []):
+            semantic = re.fullmatch(pattern, _normalized(header))
+            if semantic is not None:
+                # The source word "hoạt động" is not currency "đồng".
+                # Preserve any independently printed explicit currency suffix.
+                column["header_path_exact"][header_ordinal] = semantic.group("unit") or ""
+                semantic_headers.append({"column_ordinal": ordinal, "header_ordinal": header_ordinal + 1,
+                    "source_exact": header, "explicit_unit_suffix": semantic.group("unit"),
+                    "financial_role_or_period_permission_granted": False})
+    value_axis = _unit_axis(view, compiled_specs=compiled_specs, document_unit_context=None)
+    declared = canonical_clone_v1(view)
+    for column, original in zip(declared.get("columns") or [], table.get("columns") or [], strict=True):
+        column["value_kind"] = original["value_kind"]
+    declared_axis = _unit_axis(declared, compiled_specs=compiled_specs, document_unit_context=None)
+    contrary = set(value_axis.get("reasons") or []) - {"MONEY_UNIT_NOT_EXACTLY_RESOLVED"}
+    axis = value_axis if contrary or not declared_axis.get("complete") else declared_axis
+    return {"axis": axis, "original_declared_money_column_axis": declared_axis,
+        "all_value_column_literal_veto_axis": value_axis, "value_column_ordinals": selected,
+        "noncurrency_semantic_headers": semantic_headers,
+        "original_unit_surface_changed": False, "source_values_read": False}
+
+
+def _original_continuation_unit_v2(prior, current, *, compiled_specs):
+    """Prove the scope of one physical continued table before any amounts."""
+    if prior is None or prior["proof"] is None:
+        return None
+    before, after = prior["locator"], current["locator"]
+    old_page, page = prior["page"], current["page"]
+    old_section, section = prior["section"], current["section"]
+    old_table, table = prior["table"], current["table"]
+    local = current["local"]["axis"]
+    identity = ("document_id", "document_ordinal", "source_logical_name", "source_sha256")
+    if (any(before[field] != after[field] for field in identity)
+            or after["physical_page"] != before["physical_page"] + 1
+            or after["selected_page_ordinal"] != before["selected_page_ordinal"] + 1
+            or before["section_id"] != f"s{len(old_page['sections'])}"
+            or before["table_id"] != f"t{len(old_section['tables'])}"
+            or after["section_id"] != "s1" or after["table_id"] != "t1"
+            or old_table.get("continuation") != "CONTINUES_ON_NEXT_PAGE"
+            or table.get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE"
+            or local.get("complete") or local.get("evidence") or local.get("undeclared_evidence")
+            or _normalized(table.get("unit_exact"))
+            or prior["local"]["value_column_ordinals"] != current["local"]["value_column_ordinals"]):
+        return None
+    aliases = {_without_leading_ordinal(_normalized(alias)) for alias in [
+        *compiled_specs["topology"]["parent"]["aliases"],
+        *compiled_specs["query_policy"]["owner_aliases"], *_ROOT_LABELS,
+    ]}
+
+    def owner_surface(value):
+        normalized = _without_leading_ordinal(_normalized(value))
+        return normalized in aliases
+
+    primary = (old_page.get("status") == page.get("status") == "PRIMARY_FINANCIAL_STATEMENT"
+        and old_section.get("content_kind") == section.get("content_kind") == "PRIMARY_STATEMENT"
+        and old_section.get("statement_type") == section.get("statement_type") == "INCOME_STATEMENT"
+        and any(_role_for_primary_label(row.get("label_exact")) is not None for row in old_table.get("rows") or []))
+    note = (old_page.get("status") == page.get("status") == "FINANCIAL_NOTE_CONTENT"
+        and old_section.get("content_kind") == section.get("content_kind") == "FINANCIAL_NOTE"
+        and old_section.get("statement_type") == section.get("statement_type") == "NOT_APPLICABLE"
+        and (owner_surface(old_table.get("title_exact"))
+             or len(old_section["tables"]) == 1 and owner_surface(old_section.get("title_exact")))
+        and (_normalized(section.get("title_exact")) in {"", "thuyet minh"}
+             or owner_surface(section.get("title_exact"))))
+    if not (primary or note) or _normalized(table.get("title_exact")):
+        return None
+    old_axis = _multitable_lane_axis(old_section, old_table, compiled_specs=compiled_specs)
+    axis = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+    if not old_axis.get("complete"):
+        return None
+    columns = current["local"]["value_column_ordinals"]
+    headers = [table["columns"][ordinal - 1].get("header_path_exact") for ordinal in columns]
+    blank = bool(headers) and all(header in ([], [None]) for header in headers)
+    repeated = (axis.get("complete") and axis.get("lane_keys") == old_axis.get("lane_keys")
+        and axis.get("source_lane_keys") == old_axis.get("source_lane_keys")
+        and axis.get("money_column_ordinals") == old_axis.get("money_column_ordinals"))
+    if not (blank or repeated):
+        return None
+    material = {"rule": "EXACT_RAW_TWO_MARKER_SOURCE_OWNED_CONTINUATION_UNIT_SCOPE_NO_AMOUNT_PERMISSION",
+        "source_owner_kind": "PRIMARY_INCOME_STATEMENT" if primary else "EXACT_TAX_NOTE_OWNER",
+        "prior_locator": before, "receiver_locator": after,
+        "prior_original_table_sha256": canonical_json_sha256_v1(old_table),
+        "receiver_original_table_sha256": canonical_json_sha256_v1(table),
+        "prior_unit_proof": prior["proof"], "source_period_axis": old_axis,
+        "receiver_period_shape": "ALL_RAW_HEADERS_BLANK" if blank else "EXACT_REPEATED_LOCAL_PERIOD_AXIS",
+        "canonical_unit": prior["proof"]["canonical_unit"],
+        "period_scope_or_source_value_permission_granted": False}
+    return {**material, "unit_scope_proof_id": "gjitunitv2:continuation:" + canonical_json_sha256_v1(material)}
+
+
+def _original_source_unit_inventory_v2(original_records, *, compiled_specs):
+    entries, prior = [], None
+    for record in sorted(original_records, key=lambda item: (item["physical_page"], item["selected_page_ordinal"])):
+        page = record["page_json"]
+        page_sha = canonical_json_sha256_v1(page)
+        for section_ordinal, section in enumerate(page.get("sections") or [], 1):
+            for table_ordinal, table in enumerate(section.get("tables") or [], 1):
+                local = _original_local_unit_axis_v2(table, compiled_specs=compiled_specs)
+                if not local["value_column_ordinals"]:
+                    continue
+                locator = _record_locator(record, section_id=f"s{section_ordinal}", table_id=f"t{table_ordinal}")
+                current = {"locator": locator, "page": page, "section": section, "table": table,
+                    "local": local, "proof": None}
+                axis = local["axis"]
+                if axis.get("complete") and axis.get("canonical_unit") in {"VND", "MILLION_VND"}:
+                    material = {"rule": "ORIGINAL_LOCAL_TABLE_OR_ALL_VALUE_COLUMN_LITERAL_MONEY_UNITS",
+                        "canonical_unit": axis["canonical_unit"], "local_unit_surface_axis": local,
+                        "locator": locator, "original_table_sha256": canonical_json_sha256_v1(table),
+                        "source_values_read": False, "document_consensus_or_equal_amount_permission": False}
+                    current["proof"] = {**material, "unit_scope_proof_id": "gjitunitv2:local:" + canonical_json_sha256_v1(material)}
+                else:
+                    current["proof"] = _original_continuation_unit_v2(prior, current, compiled_specs=compiled_specs)
+                entries.append({"locator": locator, "original_page_sha256": page_sha,
+                    "original_table_sha256": canonical_json_sha256_v1(table), "original_local_unit_axis": local,
+                    "source_owned_unit_proof": current["proof"]})
+                prior = current
+    material = {"format_version": "INCOME_TAX_ORIGINAL_UNIT_SCOPE_INVENTORY_V2", "tables": entries,
+        "original_records_object_canonical_sha256": canonical_json_sha256_v1(sorted(
+            canonical_clone_v1(list(original_records)), key=lambda item: (item["physical_page"], item["selected_page_ordinal"]))),
+        "rule": "ORIGINAL_LOCAL_LITERAL_OR_EXACT_RAW_CONTINUED_TABLE_NO_PRIMARY_CONSENSUS_OR_AMOUNT_DONATION"}
+    return {**material, "original_unit_inventory_id": "gjitunitv2:inventory:" + canonical_json_sha256_v1(material)}
+
+
+def _enforce_original_source_units_v2(candidate, *, original_records, compiled_specs, query_receipt=None):
+    if candidate.get("status") != READY:
+        return candidate
+    closure = candidate["closure_receipt"]
+    context = closure.get("income_tax_source_control_receipt", {}).get("source_context_receipt")
+    if type(context) is not dict:
+        raise _error("income-tax original unit source context is absent")
+    if type(query_receipt) is not dict or not same_typed_json_v1(context, query_receipt.get("source_context_receipt")):
+        raise _error("income-tax original unit context differs from authenticated public query")
+    _working, _repairs, fresh_projection = _prepare_income_tax_evaluation_records_v1(original_records, compiled_specs=compiled_specs)
+    if not same_typed_json_v1(context.get("section_caption_projection_receipt"), fresh_projection):
+        raise _error("income-tax original unit raw/projection provenance differs")
+    inventory = _original_source_unit_inventory_v2(original_records, compiled_specs=compiled_specs)
+    if inventory["original_records_object_canonical_sha256"] != fresh_projection["original_records_object_canonical_sha256"]:
+        raise _error("income-tax original unit provider/raw record axis differs")
+    tables = {_original_unit_source_key_v2(item["locator"]): item for item in inventory["tables"]}
+    uses, failures = {}, set()
+
+    def consume(locator, use, expected_unit=None):
+        if type(locator) is not dict:
+            failures.add("FINANCIAL_SOURCE_LOCATOR_ABSENT")
+            return
+        key = _original_unit_source_key_v2(locator)
+        item = uses.setdefault(key, {"locator": canonical_clone_v1(locator), "uses": set(), "expected_units": set()})
+        item["uses"].add(use)
+        if expected_unit is not None:
+            item["expected_units"].add(expected_unit)
+
+    for mapping in candidate["mappings"]:
+        if mapping.get("unit") not in {"VND", "MILLION_VND"}:
+            failures.add("FINANCIAL_MAPPING_UNIT_NOT_DECLARED")
+        if not mapping.get("source_refs"):
+            failures.add("MAPPING_FINANCIAL_SOURCE_INPUT_ABSENT")
+        for ref in mapping.get("source_refs") or []:
+            consume(ref.get("locator"), "EXPORTED_MAPPING_SOURCE", mapping.get("unit"))
+    for equation in closure.get("equations", []):
+        for refs in [*equation.get("component_source_refs", []), equation.get("result_source_refs", [])]:
+            for ref in refs:
+                consume(ref.get("locator"), "ACTIVE_EQUATION_SOURCE")
+    for control in context.get("supplemental_root_controls", []):
+        consume(control.get("locator"), "RETAINED_SUPPLEMENTAL_ROOT_CONTROL", control.get("canonical_unit"))
+    for population in context.get("tax_population_inventory", []):
+        if population.get("lane_axis", {}).get("money_column_ordinals"):
+            consume(population.get("locator"), "RETAINED_TAX_POPULATION_CONTROL")
+    for source in context.get("document_statement_period_inventory", {}).get("sources", []):
+        if source.get("statement_type") == "INCOME_STATEMENT" and source.get("tax_expense_source_rows"):
+            consume(source.get("locator"), "RETAINED_TYPED_PRIMARY_TAX_SOURCE_CONTROL")
+    adapter = closure.get("income_tax_adapter_receipt")
+    seen = set()
+    while type(adapter) is dict:
+        receipt_id = adapter.get("receipt_id")
+        if receipt_id in seen:
+            raise _error("income-tax original unit projection chain is cyclic")
+        seen.add(receipt_id)
+        descriptor = adapter.get("primary_projection_receipt")
+        if type(descriptor) is dict:
+            consume(descriptor.get("locator"), "PRIMARY_PROJECTION_SOURCE", descriptor.get("canonical_unit"))
+            for retained in descriptor.get("corroborating_presentations", []):
+                consume(retained.get("locator"), "RETAINED_CORROBORATING_PRIMARY_SOURCE", retained.get("canonical_unit"))
+        proof = adapter.get("primary_candidate_proof", {})
+        for supplemental in proof.get("supplemental_projection_receipts", []):
+            consume(supplemental.get("locator"), "RETAINED_SUPPLEMENTAL_PROJECTION_SOURCE", supplemental.get("canonical_unit"))
+        adapter = proof.get("primary_closure_receipt", {}).get("income_tax_adapter_receipt")
+    checks = []
+    for key in sorted(uses, key=lambda item: tuple(str(value) for value in item)):
+        use = uses[key]
+        table = tables.get(key)
+        proof = table.get("source_owned_unit_proof") if table is not None else None
+        if proof is None:
+            failures.add("ORIGINAL_FINANCIAL_SOURCE_MONEY_UNIT_NOT_OWNED")
+        elif any(unit != proof["canonical_unit"] for unit in use["expected_units"]):
+            failures.add("FINANCIAL_UNIT_DIFFERS_FROM_ORIGINAL_SOURCE_SCOPE")
+        checks.append({"locator": use["locator"], "uses": sorted(use["uses"]), "expected_units": sorted(use["expected_units"]),
+            "original_source_unit": canonical_clone_v1(table), "status": "SOURCE_OWNED" if proof is not None else "HOLD"})
+    material = {"format_version": "INCOME_TAX_ORIGINAL_UNIT_SCOPE_CONTROL_V2",
+        "original_unit_inventory_id": inventory["original_unit_inventory_id"],
+        "original_records_object_canonical_sha256": inventory["original_records_object_canonical_sha256"],
+        "authenticated_query_receipt_id": query_receipt["query_receipt_id"],
+        "caption_and_legacy_projection_receipt_id": fresh_projection["receipt_id"],
+        "checks": checks, "failures": sorted(failures),
+        "source_values_units_roles_and_periods_changed": False,
+        "document_consensus_equal_amount_or_private_unit_projection_permission": False,
+        "withheld_candidate_beforeimage": _printed_primary_root_mapping_evidence_v1(candidate) if failures else None,
+        "rule": "EVERY_EXPORTED_AND_RETAINED_FINANCIAL_SOURCE_OWNS_ITS_ORIGINAL_MONEY_UNIT"}
+    receipt = {**material, "receipt_id": "gjitunitv2:control:" + canonical_json_sha256_v1(material)}
+    output = canonical_clone_v1(candidate)
+    if failures:
+        prior_root = closure.get("structural_root_receipt", {})
+        output["status"], output["mappings"] = UNRESOLVED, []
+        output["reasons"] = ["ALGORITHM_ORIGINAL_INCOME_TAX_UNIT_SCOPE_UNPROVEN"]
+        # The entire original candidate/receipt tree is retained as sealed text.
+        # No rejected mapping, equation, root or adapter grant remains active.
+        output["closure_receipt"] = {"query_receipt": canonical_clone_v1(query_receipt["shared_query_receipt"]),
+            "table_receipts": [], "equations": [], "root_component_sum_receipts": [],
+            "source_only_unmapped_rows": [],
+            "structural_root_receipt": {"emitted_mapping": False,
+                "mapping_policy": "ORIGINAL_SOURCE_UNIT_SCOPE_HOLD",
+                **{key: prior_root[key] for key in ("role", "report_norm_id") if key in prior_root}}}
+    output["closure_receipt"]["income_tax_original_unit_scope_receipt"] = receipt
+    output["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1({
+        key: value for key, value in output.items() if key != "candidate_id"})
+    return output
+
+
+@_document_period_operation
+def evaluate_gemini_json_income_tax_family_cluster_v1(
+    *, regions: Any, page_json_by_version: Mapping[str, dict[str, Any]],
+    selected_page_axis: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+    query_receipt: Mapping[str, Any],
+) -> dict[str, Any]:
+    candidate = _evaluate_income_tax_before_original_unit_control_v2(
+        regions=regions, page_json_by_version=page_json_by_version, selected_page_axis=selected_page_axis,
+        compiled_specs=compiled_specs, query_receipt=query_receipt)
+    if candidate.get("status") != READY:
+        return candidate
+    source_axis = {(item.get("document_id"), item.get("document_ordinal"), item.get("source_sha256")) for item in regions}
+    document_id, document_ordinal, source_sha256 = next(iter(source_axis))
+    records = [{**canonical_clone_v1(axis), "page_json": page_json_by_version[axis["page_json_version_id"]]}
+        for axis in selected_page_axis if axis.get("document_id") == document_id
+        and axis.get("document_ordinal") == document_ordinal and axis.get("source_sha256") == source_sha256
+        and axis.get("page_json_version_id") in page_json_by_version]
+    return _enforce_original_source_units_v2(candidate, original_records=records,
+        compiled_specs=compiled_specs, query_receipt=query_receipt)
 
 
 def build_gemini_json_income_tax_trials_v1(
