@@ -16,7 +16,11 @@ from test_gemini_json_income_tax_source_label_discrepancy_v1 import (
 
 from bctc_ai.evaluation import gemini_json_income_tax_family_v1 as family
 from bctc_ai.evaluation import gemini_json_income_tax_source_label_discrepancy_v1 as negative
-from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import READY, UNRESOLVED, _sum_record_cells
+from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+    READY,
+    UNRESOLVED,
+    _sum_record_cells,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 REASON = "SOURCE_PRINTED_DASH_VS_JSON_NUMERIC_DISCREPANCY"
