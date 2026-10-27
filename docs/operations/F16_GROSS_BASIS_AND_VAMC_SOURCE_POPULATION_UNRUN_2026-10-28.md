@@ -176,3 +176,58 @@ and `d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5`.
 Subsequent fresh corpus/store replay, PDF-visible changed-row review and
 projection/consumer validation require their own source capture and owner
 lease. No ready corpus CLI or validation waiver is supplied here.
+
+## Source-only correction for the original combined-frontier regression
+
+The actual focused gate at captured `ebdaa948ff4d108f7dec53dc883d2c02c395b030`
+failed the unchanged old combined AFS/HTM/VAMC positive at its READY assertion.
+The separate bounded diagnostic preserved that exact assertion failure and
+the full raw source/receipts in
+`f16-combined-frontier-diagnostic-20261028-v1/diagnostic.json`,661028 bytes,
+SHA256 `afd2479302e359afb487e3c154df04f141c9cfcf31fe51d2d8b2326a42ab201d`.
+Its exit0 means the diagnostic was recorded, not that the regression passed.
+
+The new nested-provision guard incorrectly activated whenever any VAMC provision
+appeared in the same table. In this source, s4/t1/r7 is an observed flat ITEM
+HTM provision(2)/(2); r8 is a separate flat ITEM VAMC provision(1)/(1).
+They have distinct single-label paths. They sit in a complete source view:
+an anonymous gross TOTAL43/37 and explicit AFS/HTM/VAMC gross peers30/25,
+10/9,3/3; an anonymous provision TOTAL(5)/(4) and explicit AFS/HTM/VAMC
+provision peers(2)/(1),(2)/(2),(1)/(1); then the terminal net TOTAL38/33.
+The guard treated r7 as a combined HTM parent, stopped at the non-descendant
+r8 and issued OWNED_VAMC_PROVISION_OCCURRENCE_NOT_UNIQUE on an empty frontier.
+
+The narrow correction recognizes only this complete generic source presentation:
+one explicit exact family-owner table/section, no other narrative scope,
+three anonymous TOTAL controls and all six exact-declared AFS/HTM/VAMC gross/
+provision ITEM peers with their own flat paths. It requires the original local
+two-period headers and owned local unit, rechecks classification/period/unit
+against the raw same table, and directly observed typed money cells throughout.
+No reset, foreign/qualified owner or role, additional row, duplicate population,
+blank lane, nested provision parent or partial table enters this permission.
+
+Only after that semantic population is fixed do three exact raw same-table
+equations corroborate the gross, provision and signed-net controls. There is
+no global amount search, amount-selected population, VAMC subtraction/backsolve,
+new sign, unit donation or value rewrite. The core HTM record is retained with
+a fresh source-bound disjoint-peer receipt. Nested HTM+VAMC parents continue
+through the existing strict local-frontier control/HOLD path unchanged.
+An arbitrary flat HTM item plus flat VAMC item has no new exclusion permission.
+
+The original regression test body, source fixture and READY expectation remain
+byte-identical after newline normalization. Sixteen new authored cases in the
+existing family test module cover the exact public positive with849/861 values,
+full candidate source audit and fresh replay; nested/GROUP/partial/qualified/
+incomplete-block public negatives; reset, wrong role/owner, raw unit/period,
+missing control and amount drift; locally consistent changed amounts conflicting
+with another presentation; and coherently resealed locator/equation tampering.
+The changed-amount case retains the declared local separation but must fail
+normal global financial reconciliation, proving that an old equal-valued donor
+cannot replace the raw source. These additional cases and corrected code are
+UNRUN. Existing real-source fixture tests and earlier negatives are unchanged.
+
+Only the F16 adapter, existing family test module and this additive operations
+note change. Schema, five-case manifest, all exact copied source/selected-axis
+fixtures, shared frozen files and generic runner remain unchanged. Independent
+static review and a fresh root-owned complete-module focused gate must precede
+any new runtime or corpus acceptance claim.

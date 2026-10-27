@@ -10,6 +10,7 @@ from bctc_ai.evaluation.gemini_json_investment_securities_family_v1 import (
     READY,
     UNRESOLVED,
     GeminiJsonInvestmentSecuritiesFamilyV1Error,
+    _complete_flat_combined_provision_peer_proof_v1,
     _corroborate_identical,
     _equation,
     _neutral_investment_leaf_fingerprint,
@@ -24,6 +25,10 @@ from bctc_ai.evaluation.gemini_json_investment_securities_family_v1 import (
 from bctc_ai.evaluation.gemini_json_investment_securities_family_v1 import (
     _record as _value_record,
 )
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    validate_source_observation_mapping_contract_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT_ID = "gfpstorev1:document:" + "b" * 64
@@ -400,6 +405,164 @@ def test_combined_afs_htm_vamc_controls_close_only_against_complete_frontiers() 
     assert any("COMBINED_AFS_GROSS_HTM_GROSS_VAMC_GROSS" in kind for kind in kinds)
     assert any("COMBINED_AFS_HTM_VAMC_PROVISIONS_SOURCE_SIGNED" in kind for kind in kinds)
     assert any("VAMC_NET_WITH_SOURCE_SIGNED_PROVISION" in kind for kind in kinds)
+
+
+def _complete_combined_peer_scope_page() -> dict:
+    """The original regression's unchanged source shape, reused by controls."""
+
+    page = _base_page()
+    page["sections"].extend([
+        _section("Trái phiếu đặc biệt do VAMC phát hành", _table(None, [
+            _row("Mệnh giá trái phiếu đặc biệt", ["3", "3"]),
+            _row("Dự phòng trái phiếu đặc biệt", ["(1)", "(1)"]),
+            _row(None, ["2", "2"], kind="TOTAL", hierarchy=[None]),
+        ])),
+        _section("Chứng khoán đầu tư", _table(None, [
+            _row(None, ["43", "37"], kind="TOTAL", hierarchy=[None]),
+            _row("Chứng khoán đầu tư sẵn sàng để bán", ["30", "25"]),
+            _row("Chứng khoán đầu tư giữ đến ngày đáo hạn", ["10", "9"]),
+            _row("Trái phiếu đặc biệt do VAMC phát hành", ["3", "3"]),
+            _row(None, ["(5)", "(4)"], kind="TOTAL", hierarchy=[None]),
+            _row("Dự phòng rủi ro chứng khoán sẵn sàng để bán", ["(2)", "(1)"]),
+            _row("Dự phòng chứng khoán đầu tư giữ đến ngày đáo hạn", ["(2)", "(2)"]),
+            _row("Dự phòng trái phiếu đặc biệt", ["(1)", "(1)"]),
+            _row(None, ["38", "33"], kind="TOTAL", hierarchy=[None]),
+        ])),
+    ])
+    return page
+
+
+def _assert_combined_peer_candidate_replay(page: dict, compiled: dict, cluster: dict, candidate: dict) -> None:
+    record = _record(page)
+    assert validate_gemini_json_investment_securities_family_candidate_replay_v1(
+        candidate, regions=cluster["component_regions"],
+        page_json_by_version={record["page_json_version_id"]: page}, compiled_specs=compiled,
+        query_receipt=build_gemini_json_investment_securities_region_query_receipt_v1(cluster["component_regions"]),
+    ) == candidate
+    audit = validate_source_observation_mapping_contract_v1(candidate)
+    assert audit["mapping_count"] == len(candidate["mappings"])
+
+
+def test_complete_declared_combined_peer_scope_preserves_core_and_vamc_provisions() -> None:
+    page = _complete_combined_peer_scope_page()
+    original = copy.deepcopy(page)
+    compiled, cluster, candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    mappings = {item["role"]: item for item in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in mappings["HTM_PROVISION"]["values"]] == [-2, -2]
+    assert [cell["coefficient"] for cell in mappings["VAMC_PROVISION"]["values"]] == [-1, -1]
+    proofs = candidate["closure_receipt"]["provision_population_receipts"]
+    assert len(proofs) == 1
+    proof = proofs[0]
+    assert proof["disposition"] == "CORE_HTM_PROVISION_IN_COMPLETE_DECLARED_DISJOINT_PEER_POPULATION"
+    assert proof["failures"] == [] and proof["retained_report_norm_id"] == 849
+    assert [ref["row_ordinal"] for ref in proof["provision_peer_source_refs"]] == [6, 7, 8]
+    assert all(ref["locator"]["section_id"] == "s4" for ref in proof["provision_peer_source_refs"])
+    assert all(equation["status"] == "EXACT" for equation in proof["local_control_equations"])
+    assert proof["raw_table_sha256"] == canonical_json_sha256_v1(page["sections"][3]["tables"][0])
+    assert proof["raw_page_sha256"] == canonical_json_sha256_v1(page)
+    assert page == original
+    _assert_combined_peer_candidate_replay(page, compiled, cluster, candidate)
+
+
+@pytest.mark.parametrize("mutation", ["nested", "group", "partial", "qualified", "outside_block"])
+def test_flat_peers_without_complete_declared_source_population_stay_held(mutation: str) -> None:
+    page = _complete_combined_peer_scope_page()
+    rows = page["sections"][3]["tables"][0]["rows"]
+    if mutation == "nested":
+        rows[7]["hierarchy_path_exact"] = [rows[6]["label_exact"], rows[7]["label_exact"]]
+    elif mutation == "group":
+        rows[6]["row_kind"] = "GROUP"
+    elif mutation == "partial":
+        rows[7]["values_exact"][0] = None
+    elif mutation == "qualified":
+        rows[6]["label_exact"] += " của công ty con"
+        rows[6]["hierarchy_path_exact"] = [rows[6]["label_exact"]]
+    else:
+        del rows[5]
+    compiled, cluster, candidate = _evaluate(page)
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    assert not any(
+        item["disposition"] == "CORE_HTM_PROVISION_IN_COMPLETE_DECLARED_DISJOINT_PEER_POPULATION"
+        for item in candidate["closure_receipt"]["provision_population_receipts"]
+    )
+    _assert_combined_peer_candidate_replay(page, compiled, cluster, candidate)
+
+
+@pytest.mark.parametrize("mutation", ["reset", "foreign_role", "owner", "raw_unit", "raw_period", "missing_control", "amount"])
+def test_combined_peer_proof_rejects_source_boundary_or_local_control_drift(mutation: str) -> None:
+    page = _complete_combined_peer_scope_page()
+    compiled, _cluster, candidate = _evaluate(page)
+    receipt = next(item for item in candidate["closure_receipt"]["table_receipts"] if item["region"]["section_id"] == "s4")
+    parent = candidate["closure_receipt"]["provision_population_receipts"][0]["provision_peer_source_refs"][1]
+    assert _complete_flat_combined_provision_peer_proof_v1(
+        parent, table_receipt=receipt, page=page, compiled_specs=compiled
+    ) is not None
+    table = page["sections"][3]["tables"][0]
+    rows = table["rows"]
+    if mutation == "reset":
+        rows.insert(7, _row("Chứng khoán kinh doanh", [None, None]))
+    elif mutation == "foreign_role":
+        rows[5]["label_exact"] = "Dự phòng cho vay khách hàng"
+        rows[5]["hierarchy_path_exact"] = [rows[5]["label_exact"]]
+    elif mutation == "owner":
+        page["sections"][3]["title_exact"] += " của công ty con"
+    elif mutation == "raw_unit":
+        table["unit_exact"] = "VND"
+    elif mutation == "raw_period":
+        table["columns"][0]["header_path_exact"][0] = "31/12/2023"
+    elif mutation == "missing_control":
+        rows[4]["row_kind"] = "ITEM"
+    else:
+        rows[4]["values_exact"][0] = "(6)"
+    assert _complete_flat_combined_provision_peer_proof_v1(
+        parent, table_receipt=receipt, page=page, compiled_specs=compiled
+    ) is None
+
+
+def test_changed_peer_amounts_cannot_select_a_global_equal_valued_donor() -> None:
+    page = _complete_combined_peer_scope_page()
+    rows = page["sections"][3]["tables"][0]["rows"]
+    rows[6]["values_exact"] = ["(3)", "(3)"]
+    rows[4]["values_exact"] = ["(6)", "(5)"]
+    rows[8]["values_exact"] = ["37", "32"]
+    compiled, cluster, candidate = _evaluate(page)
+    # All local declaration/controls still agree. The other HTM presentation
+    # remains at(2)/(2); its equal-valued old row cannot replace this source.
+    proof = next(item for item in candidate["closure_receipt"]["provision_population_receipts"]
+                 if item["disposition"] == "CORE_HTM_PROVISION_IN_COMPLETE_DECLARED_DISJOINT_PEER_POPULATION")
+    assert proof["local_control_equations"][1]["component_sums"] == [-6, -5]
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    _assert_combined_peer_candidate_replay(page, compiled, cluster, candidate)
+
+
+@pytest.mark.parametrize("mutation", ["peer_locator", "control"])
+def test_fresh_replay_rejects_resealed_combined_peer_scope_receipt(mutation: str) -> None:
+    page = _complete_combined_peer_scope_page()
+    compiled, cluster, candidate = _evaluate(page)
+    forged = copy.deepcopy(candidate)
+    proof = forged["closure_receipt"]["provision_population_receipts"][0]
+    if mutation == "peer_locator":
+        proof["provision_peer_source_refs"][1]["locator"]["section_id"] = "s2"
+    else:
+        proof["local_control_equations"][1]["component_sums"][0] -= 1
+        equation = proof["local_control_equations"][1]
+        equation["equation_id"] = "gjfisev1:equation:" + canonical_json_sha256_v1(
+            {key: value for key, value in equation.items() if key != "equation_id"}
+        )
+    proof["population_receipt_id"] = "gjfispopv1:local:" + canonical_json_sha256_v1(
+        {key: value for key, value in proof.items() if key != "population_receipt_id"}
+    )
+    forged["candidate_id"] = "gjfiscv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in forged.items() if key != "candidate_id"}
+    )
+    record = _record(page)
+    with pytest.raises(GeminiJsonInvestmentSecuritiesFamilyV1Error, match="does not replay"):
+        validate_gemini_json_investment_securities_family_candidate_replay_v1(
+            forged, regions=cluster["component_regions"],
+            page_json_by_version={record["page_json_version_id"]: page}, compiled_specs=compiled,
+            query_receipt=build_gemini_json_investment_securities_region_query_receipt_v1(cluster["component_regions"]),
+        )
 
 
 def test_unbound_money_row_in_declared_table_fails_closed() -> None:

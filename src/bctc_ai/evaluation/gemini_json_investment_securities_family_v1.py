@@ -3098,6 +3098,137 @@ def _inactive_source_evidence_v1(value: Any) -> dict[str, Any]:
     }
 
 
+def _complete_flat_combined_provision_peer_proof_v1(
+    parent: Mapping[str, Any],
+    *,
+    table_receipt: Mapping[str, Any],
+    page: Mapping[str, Any],
+    compiled_specs: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Recognize disjoint peers only inside one complete declared source view.
+
+    A flat HTM/VAMC pair alone proves no exclusion. This narrow presentation
+    independently declares all three gross and provision populations, with
+    their own visible controls. Raw local equations only corroborate that
+    already fixed population; no global records or equal-amount search enter.
+    """
+
+    region = table_receipt["region"]
+    section, table = _source_table(
+        page, section_id=region["section_id"], table_id=region["table_id"]
+    )
+    rows = table["rows"]
+    classification = table_receipt["classification"]
+    money = classification["money_column_ordinals"]
+    if (
+        len(rows) != 9 or len(table["columns"]) != 2 or len(money) != 2
+        or any(column.get("value_kind") != "MONEY" for column in table["columns"])
+        or table.get("continuation") != "NONE"
+        or section.get("content_kind") != "FINANCIAL_NOTE"
+        or section.get("narratives_exact") != []
+        or classification.get("component_roles") != ["AFS", "HTM", "VAMC"]
+        or classification.get("ambiguous_row_ordinals")
+        or classification.get("unbound_money_row_ordinals")
+        or classification.get("source_only_rows")
+        or not table_receipt["period_axis"].get("complete")
+        or table_receipt["period_axis"].get("source") != "LOCAL_MONEY_COLUMN_HEADERS"
+        or not table_receipt["unit_axis"].get("complete")
+        or table_receipt["unit_axis"].get("source") not in {
+            "LOCAL_TABLE_UNIT", "LOCAL_UNIFORM_ALL_MONEY_COLUMN_UNITS"
+        }
+        or table_receipt["unit_axis"].get("canonical_unit") not in {"VND", "MILLION_VND"}
+        or "single_lane_blank_projection_receipt" in table_receipt
+        or parent["row_ordinal"] != 7
+    ):
+        return None
+    owners = {_normalized(value) for value in compiled_specs["query_policy"]["owner_aliases"]}
+    titles = [_normalized(value) for value in (section.get("title_exact"), table.get("title_exact"))]
+    if not any(value in owners for value in titles) or any(value and value not in owners for value in titles):
+        return None
+    if (
+        not same_typed_json_v1(table_receipt["period_axis"], _investment_local_period_axis(table))
+        or not same_typed_json_v1(
+            table_receipt["unit_axis"],
+            _unit_axis(table, compiled_specs=compiled_specs, document_unit_context=None),
+        )
+        or not same_typed_json_v1(
+            classification,
+            classify_gemini_json_investment_securities_table_v1(
+                page, section, table, compiled_specs=compiled_specs,
+                continuation_parent_roles=region["continuation_parent_roles"],
+            ),
+        )
+    ):
+        return None
+    roles = {
+        2: ("AFS_TOTAL", "AFS_BRANCH"),
+        3: ("HTM_TOTAL", "HTM_BRANCH"),
+        4: ("VAMC_FACE_VALUE", "VAMC_BRANCH"),
+        6: ("AFS_PROVISION",),
+        7: ("HTM_PROVISION",),
+        8: ("VAMC_PROVISION",),
+    }
+    records = {}
+    for ordinal, row in enumerate(rows, start=1):
+        hits = [hit["role"] for hit in classification["role_hits"] if hit["row_ordinal"] == ordinal]
+        if ordinal in roles:
+            role = roles[ordinal][0]
+            aliases = {_normalized(alias) for name in roles[ordinal]
+                       for alias in compiled_specs["aliases_by_role"][name]}
+            if (
+                hits != [role] or row.get("row_kind") != "ITEM"
+                or row.get("hierarchy_path_exact") != [row.get("label_exact")]
+                or _normalized(row.get("label_exact")) not in aliases
+            ):
+                return None
+        else:
+            role = {1: "COMBINED_GROSS_SOURCE_CONTROL",
+                    5: "COMBINED_PROVISION_SOURCE_CONTROL",
+                    9: "COMBINED_NET_SOURCE_CONTROL"}[ordinal]
+            if (
+                row.get("row_kind") != "TOTAL" or row.get("label_exact") is not None
+                or row.get("hierarchy_path_exact") != [None]
+                or len(hits) != 1
+                or hits[0] not in {"UNSCOPED_TOTAL_CONTROL", "VAMC_NET_TOTAL_CONTROL"}
+            ):
+                return None
+        try:
+            cells = [_source_money(row["values_exact"][column - 1]) for column in money]
+        except (IndexError, KeyError, TypeError, ValueError):
+            return None
+        if any(cell.get("source_text") is None or type(cell.get("coefficient")) is not int
+               or cell.get("state") not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in cells):
+            return None
+        records[ordinal] = _record(role, cells, [_source_ref(region, ordinal, row)], "SOURCE_OBSERVED_ROW")
+    if not same_typed_json_v1(parent, records[7]["source_refs"][0]):
+        return None
+    equations = [
+        _equation(equation_kind="EXACT_RAW_DECLARED_COMBINED_GROSS_PEERS",
+                  components=[records[index] for index in (2, 3, 4)], result=records[1]),
+        _equation(equation_kind="EXACT_RAW_DECLARED_COMBINED_PROVISION_PEERS",
+                  components=[records[index] for index in (6, 7, 8)], result=records[5]),
+        _equation(equation_kind="EXACT_RAW_DECLARED_COMBINED_SIGNED_NET_CONTROL",
+                  components=[records[1], records[5]], result=records[9]),
+    ]
+    if any(equation["status"] != "EXACT" for equation in equations):
+        return None
+    proof = {
+        "disposition": "CORE_HTM_PROVISION_IN_COMPLETE_DECLARED_DISJOINT_PEER_POPULATION",
+        "failures": [],
+        "retained_report_norm_id": 849,
+        "retained_core_source_cells": canonical_clone_v1(records[7]["cells"]),
+        "parent_source_occurrence": list(_source_occurrence_v1(parent)),
+        "provision_peer_source_refs": [records[index]["source_refs"][0] for index in (6, 7, 8)],
+        "local_control_equations": equations,
+        "period_axis": canonical_clone_v1(table_receipt["period_axis"]),
+        "unit_axis": canonical_clone_v1(table_receipt["unit_axis"]),
+        "raw_table_sha256": canonical_json_sha256_v1(table),
+        "raw_page_sha256": canonical_json_sha256_v1(page),
+        "rule": "COMPLETE_LOCAL_DECLARED_AFS_HTM_VAMC_GROSS_PROVISION_AND_NET_VIEW_WITH_DISJOINT_RAW_PEERS",
+    }
+    return {**proof, "population_receipt_id": "gjfispopv1:local:" + canonical_json_sha256_v1(proof)}
+
+
 def _separate_source_owned_vamc_provision_controls_v1(
     raw_records: dict[str, list[dict[str, Any]]],
     *,
@@ -3168,6 +3299,18 @@ def _separate_source_owned_vamc_provision_controls_v1(
         ]
         if parent_occurrences != [identity[3]]:
             failures.append("PRINTED_PARENT_OCCURRENCE_NOT_UNIQUE")
+        peer_proof = (
+            _complete_flat_combined_provision_peer_proof_v1(
+                parent, table_receipt=table_receipt, page=page, compiled_specs=compiled_specs
+            )
+            if not failures else None
+        )
+        if peer_proof is not None and same_typed_json_v1(
+            record["cells"], peer_proof["retained_core_source_cells"]
+        ):
+            receipts.append(peer_proof)
+            retained.append(record)
+            continue
         end = len(rows) + 1
         end_rule = "END_OF_OWNED_TABLE"
         fence_aliases = [
