@@ -10195,6 +10195,69 @@ def _seal_income_tax_source_controls(
     return output
 
 
+def _retain_authenticated_note_query_axis_v1(
+    candidate: Mapping[str, Any], *, query_receipt: Mapping[str, Any],
+    selected_primary: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Keep supporting PRIMARY evidence distinct from the accepted NOTE axis.
+
+    Call only after the public evaluator has replayed the outer query and
+    freshly selected the PRIMARY presentation. This grants no financial
+    permission: the only replacement is a typed, empty T6 ownership HOLD.
+    """
+    outer = query_receipt["shared_query_receipt"]["region_axis"]
+    before = candidate.get("component_regions")
+    if same_typed_json_v1(before, outer):
+        return canonical_clone_v1(candidate)
+    if selected_primary is None:
+        raise _error("income-tax candidate query axis drifted without PRIMARY support")
+    private_axis = selected_primary["cluster"]["component_regions"]
+    descriptor = selected_primary["descriptor"]
+    closure = candidate.get("closure_receipt", {})
+    adapter = closure.get("income_tax_adapter_receipt", {})
+    held = (
+        candidate.get("status") == UNRESOLVED
+        and same_typed_json_v1(candidate.get("mappings"), [])
+        and candidate.get("reasons") == ["ALGORITHM_PRINTED_PRIMARY_ROOT_SOURCE_OWNERSHIP_UNPROVEN"]
+    )
+    evidence = closure.get("income_tax_unresolved_evidence_receipt", {}).get("evidence", {})
+    if (not held or not same_typed_json_v1(before, private_axis)
+            or evidence.get("authority") != "SAME_AUTHENTICATED_STATEMENT_TABLE_PRINTED_TOTAL_LABEL_AND_SOURCE_CELLS"
+            or type(evidence.get("ownership_failure")) is not str
+            or not all(same_typed_json_v1(evidence.get(key), descriptor.get(key)) for key in (
+                "locator", "original_page_json_sha256", "original_table_json_sha256"))):
+        raise _error("income-tax candidate query axis has no authenticated T6 HOLD handoff")
+    query_bytes = canonical_json_bytes_v1(query_receipt)
+    material = {
+        "format_version": "INCOME_TAX_AUTHENTICATED_NOTE_QUERY_AXIS_HANDOFF_V1",
+        "authority": "AUTHENTICATED_QUERY_CONTEXT_ONLY_NO_FINANCIAL_PERMISSION",
+        "prior_candidate_id": candidate["candidate_id"],
+        "component_regions_before": canonical_clone_v1(before),
+        "accepted_component_regions": canonical_clone_v1(outer),
+        "private_primary_component_regions": canonical_clone_v1(private_axis),
+        "primary_projection_sha256": canonical_json_sha256_v1(descriptor),
+        "primary_source_locator": canonical_clone_v1(descriptor["locator"]),
+        "existing_primary_support_receipt_id": adapter.get("receipt_id"),
+        # Original-note query proofs can contain mapping-shaped evidence.
+        # Retain their exact bytes without adding active mapping grammar.
+        "authenticated_query_receipt": {
+            "canonical_json": query_bytes.decode("utf-8"),
+            "sha256": sha256(query_bytes).hexdigest(), "size_bytes": len(query_bytes),
+        },
+        "query_receipt_id": query_receipt["query_receipt_id"],
+        "axis_replaced": True,
+        "status_reasons_mappings_and_source_evidence_unchanged": True,
+    }
+    output = canonical_clone_v1(candidate)
+    output["component_regions"] = canonical_clone_v1(outer)
+    output["closure_receipt"]["income_tax_query_axis_handoff_receipt"] = {
+        **material, "receipt_id": "gjitfav1:query-axis-handoff:" + canonical_json_sha256_v1(material),
+    }
+    output["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in output.items() if key != "candidate_id"})
+    return output
+
+
 @_document_period_operation
 def evaluate_gemini_json_income_tax_family_cluster_v1(
     *,
@@ -10258,8 +10321,12 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
                 or not same_typed_json_v1(adapter, original_bundle["adapter"])
                 or not same_typed_json_v1(checked["shared_query_receipt"], original_bundle["adapter"]["original_shared_query_receipt"])):
             raise _error("income-tax original-note adapter source query replay drifted")
-        return _evaluate_original_note_adapter(original_bundle, compiled_specs=compiled_specs, repair_receipts=repair_receipts,
-                                               source_context=expected_context, page_records=repaired_records)
+        candidate = _evaluate_original_note_adapter(
+            original_bundle, compiled_specs=compiled_specs, repair_receipts=repair_receipts,
+            source_context=expected_context, page_records=repaired_records)
+        return _retain_authenticated_note_query_axis_v1(
+            candidate, query_receipt=checked, selected_primary=original_bundle["primary"],
+        )
     if type(adapter) is dict and adapter.get("adapter_format_version") == ORIGINAL_NOTE_ADAPTER_FORMAT_VERSION:
         raise _error("income-tax original-note adapter has no original source populations")
     if adapter is None:
@@ -10455,7 +10522,7 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
     note_candidate = _recognition_rate_source_only_projection(note_candidate, source_context=expected_context)
     if note_candidate.get("status") != READY:
         return note_candidate
-    return _seal_income_tax_source_controls(
+    candidate = _seal_income_tax_source_controls(
         _merge_note_and_primary_candidates(
             note_candidate,
             merged_primary,
@@ -10467,6 +10534,9 @@ def evaluate_gemini_json_income_tax_family_cluster_v1(
         ),
         source_context=expected_context,
         repaired_records=repaired_records, compiled_specs=compiled_specs,
+    )
+    return _retain_authenticated_note_query_axis_v1(
+        candidate, query_receipt=checked, selected_primary=selected,
     )
 
 
