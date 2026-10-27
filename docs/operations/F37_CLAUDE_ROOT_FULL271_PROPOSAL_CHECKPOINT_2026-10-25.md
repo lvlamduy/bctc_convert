@@ -71,6 +71,21 @@ store. The mandatory full source replay passed, the reload was exact, and the st
 `family_current_selection` for CREDIT_RISK_PROVISION_EXPENSE (run `fa4d8705…`, store `156a52b4`).
 No shared or Codex store was written, and the integration branch is untouched.
 Receipt: `restore-receipts/F37_CLAUDE_OFFICIAL_SELECTION_9FC73CE4_20261026_V1.json`.
+## Update 2026-10-27: Codex period reviews applied, OFFICIAL re-selected at `7b9756c6`
+
+- `8a2292cd` (workbook) and `7b9756c6` (periods) apply four reviewed Codex proposals:
+  - a sole printed duration end is kept, and different known ends never compare equal;
+  - the Q1 equivalence needs source-owned calendar-Q1 start on both scopes;
+  - the transposed root keeps its period evidence;
+  - the workbook accepts the two remaining producer states and reads back exact cell types.
+- Focused gate: 406 PASS. Codex static GO on the exact diff.
+- Whole-corpus store at `7b9756c6`: 127 READY / 144 UNRESOLVED / 562 mappings. Compared store to store with
+  `9fc73ce4`, 0 of 271 documents changed: the new guards have no occurrence in FULL271.
+- Gated audits were re-assembled on the new coverage and sweep and authenticated by the runner (manual evidence and
+  residual dispositions carried over); 127 workbooks were re-exported (437,134 lane cells, 0 violations).
+- A new OFFICIAL selection was written to a Claude-owned store (`7a38acdb`, run `e06438ec…`). The `9fc73ce4`
+  selection is kept as history. Receipt: `restore-receipts/F37_CLAUDE_OFFICIAL_SELECTION_7B9756C6_20261027_V1.json`.
+
 - Dated opening / closing balance rows were investigated as a coverage lever and rejected
   (`restore-receipts/F37_CLAUDE_DATED_ROW_LEVER_INVESTIGATION_20261025_V1.json`):
   - EIB's dated rows prove "Kỳ này / Kỳ trước" are the current and previous QUARTER, not the
