@@ -222,7 +222,7 @@ def test_already_bound_public_note_ready_ignores_unused_unresolved_primary_metad
 
 
 @pytest.mark.parametrize("case,reason", [
-    ("171:7:s1:t1:r19", HOLD_REASON),
+    ("171:7:s1:t1:r19", "SOURCE_PRINTED_DASH_VS_JSON_NUMERIC_DISCREPANCY"),
     ("232:63:s2:t1:r4", "SOURCE_PRINTED_DASH_VS_JSON_NUMERIC_DISCREPANCY"),
 ])
 def test_real_registered_primary_and_note_holds_reach_actual_frozen_binding(case, reason):
@@ -246,16 +246,20 @@ def test_real_registered_primary_and_note_holds_reach_actual_frozen_binding(case
     audit = audit_source_observation_mapping_contract_v1(result)
     assert audit["status"] == "PASS"
     if reason == "SOURCE_PRINTED_DASH_VS_JSON_NUMERIC_DISCREPANCY":
-        # The existing T7a negative receipt deliberately retains one rejected
-        # selected_mapping as evidence. The recursive audit counts that image;
+        # Each existing T7a negative observation retains its rejected
+        # selected_mapping as evidence. The recursive audit counts those images;
         # the query-context-only change must preserve it, not invent an active
         # mapping or silently change the older financial receipt format.
         observations = result["closure_receipt"]["income_tax_unresolved_evidence_receipt"][
             "evidence"
         ]["registered_negative_source_label_observations"]
-        assert len(observations) == 1
-        assert observations[0]["classification"] == "PRINTED_DASH_VS_JSON_NUMERIC"
-        assert audit["mapping_count"] == 1
+        assert observations
+        assert all(item["classification"] == "PRINTED_DASH_VS_JSON_NUMERIC" for item in observations)
+        assert all(item["selected_source_ref"]["row_ordinal"]
+                   == profile["citing_mappings"][0]["source_ref"]["row_ordinal"] for item in observations)
+        archived = [item["selected_mapping"] for item in observations]
+        assert audit_source_observation_mapping_contract_v1(archived)["mapping_count"] == len(archived)
+        assert audit["mapping_count"] == len(archived)
         assert audit == audit_source_observation_mapping_contract_v1(observations)
     else:
         assert audit["mapping_count"] == 0

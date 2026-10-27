@@ -52,3 +52,42 @@ export/ledger gates remain required for financial acceptance. No family seal,
 READY_FOR_INTEGRATION, F41 permission or integration-branch push is granted.
 The two frozen shared files, provider prohibition and 2025-current scope stay
 in force. This source-only author ran no Python/import/test/WSL/DB/provider job.
+
+## Test-boundary corrections after the complete V2 gate
+
+Root's retained `f39-subtotal-focused-20261028-v2` gate at
+`3753edc3963cd8ed78cceaf5f3838f5825775580` passed Ruff and completed all six
+modules with110 passes and two failures in63.71 seconds. Neither failure
+demonstrated a financially READY arithmetic mismatch.
+
+For the41 versus10+30 source case, the assertion that public status was not
+READY passed. The failure was a KeyError from treating an early query-cluster
+HOLD as a financial candidate with a `mappings` field. Existing
+`_primary_equation_mismatch_axis` computes the visible source conflict, and
+`_select_primary_presentation` rejects it with
+`MISMATCHED_PRIMARY_INCOME_TAX_SOURCE_EQUATION` before selecting a presentation.
+The public recovery route invokes this selector; public evaluation reselects
+and authenticates the same descriptor before `_evaluate_selected_primary`.
+The original-NOTE bundle also selects and preserves critical PRIMARY conflicts.
+No reachable unchecked printed-root route was demonstrated, so no production
+arithmetic or financial permission is changed. The corrected test asserts the
+actual early-cluster HOLD and exact observed-lane conflict, then the actual
+indexed trial's zero candidates, empty mappings and absent selected candidate.
+Its existing helper invokes the frozen query-binding validator and fresh
+public family replay.
+
+The171 registered real PRIMARY case now passes the printed SUBTOTAL kind check
+and correctly reaches the existing registered printed-dash discrepancy HOLD.
+The old test expected the earlier T6 ownership reason. The corrected assertion
+expects `SOURCE_PRINTED_DASH_VS_JSON_NUMERIC_DISCREPANCY`, with zero active
+mappings. Recursive audit counts are checked against the exact rejected
+`selected_mapping` beforeimages retained by the existing negative observations;
+their count is measured from those observations rather than assumed to be one.
+The older financial receipt format and source evidence remain unchanged.
+
+Only these two test modules and this note change in this follow-up. The
+production adapter remains SHA-256
+`70603afd3e0464fceda22bb7899bcb9b6c7d86e67dc87927212210e6fbc910c4`.
+The new assertions remain UNRUN pending independent static review, root capture
+and a fresh complete focused gate. The failed V2 run is preserved, and is not
+financial acceptance or an unchanged retry.

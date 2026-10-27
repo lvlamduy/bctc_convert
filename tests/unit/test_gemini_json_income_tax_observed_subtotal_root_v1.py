@@ -11,6 +11,7 @@ import pytest
 from test_gemini_json_income_tax_family_v1 import (
     _adapter_compiled,
     _primary_page,
+    _primary_record,
     _primary_tax_rows,
 )
 from test_gemini_json_income_tax_printed_total_root_binding_v1 import (
@@ -129,9 +130,29 @@ def test_duplicate_subtotal_cannot_become_a_public_ready_root():
 
 def test_subtotal_public_final_controls_reject_observed_arithmetic_mismatch():
     page = _subtotal_page(raw=["41", "60"])
-    candidate = _public(page)
-    assert candidate["status"] != READY
-    assert candidate["mappings"] == []
+    original = deepcopy(page)
+    reason = "MISMATCHED_PRIMARY_INCOME_TAX_SOURCE_EQUATION"
+    cluster = _public(page)
+    # Selection rejects this source before a financial candidate exists.
+    # A query cluster has no active-mapping field to inspect.
+    assert cluster["status"] == UNRESOLVED and cluster["reasons"] == [reason]
+    assert cluster["component_regions"] == [] and "mappings" not in cluster
+    conflict = cluster["owner_receipt"]["income_tax_primary_selection_conflict_receipt"]
+    assert len(conflict["equation_mismatches"]) == 1
+    assert conflict["equation_mismatches"][0]["lane_mismatches"] == [
+        {"current": 10, "deferred": 30, "lane_ordinal": 0, "root": 41},
+    ]
+    record = _primary_record(page)
+    record["selected_page_ordinal"] = 1  # Fresh complete one-page bounded axis.
+    # This helper explicitly invokes the actual frozen query-binding
+    # validator and fresh public family replay over the original source.
+    options = _indexed_case([record])
+    trial = options["trials"][0]
+    assert trial["status"] == UNRESOLVED and trial["reasons"] == [reason]
+    assert trial["candidate_count"] == 0 and trial["candidates"] == []
+    assert trial["mappings"] == [] and trial["selected_candidate_id"] is None
+    assert audit_source_observation_mapping_contract_v1(trial)["mapping_count"] == 0
+    assert page == original
 
 
 @pytest.mark.parametrize("field", ["unit", "period", "source"])
