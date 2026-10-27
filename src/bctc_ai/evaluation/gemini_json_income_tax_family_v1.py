@@ -9611,6 +9611,28 @@ def _registered_negative_source_label_conflicts_v1(
         raise _error(str(error)) from error
 
 
+def _non_taxable_net_semantic_conflicts_v1(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Withhold a NON_TAXABLE_AGGREGATE whose printed source is not a non-taxable deduction.
+
+    A positive stored coefficient (an add-back) or a cited row printed as a mixed
+    "tăng/(giảm)" adjustment is a net adjustment, not proven non-taxable income.
+    Printed signs are kept; nothing is relabelled, flipped or recomputed.
+    """
+    conflicts = []
+    for mapping in candidate.get("mappings", []):
+        if mapping.get("role") != "NON_TAXABLE_AGGREGATE":
+            continue
+        positive = [index for index, value in enumerate(mapping.get("values") or [])
+                    if type(value.get("coefficient")) is int and value["coefficient"] > 0]
+        mixed = [ref.get("label_exact") for ref in mapping.get("source_refs") or []
+                 if re.search(r"\btang\b.*\bgiam\b", _normalized(ref.get("label_exact") or ""))]
+        if positive or mixed:
+            conflicts.append({"mapping": canonical_clone_v1(mapping), "positive_lane_indexes": positive,
+                              "mixed_increase_decrease_labels": mixed,
+                              "classification": "ALGORITHM_NON_TAXABLE_NET_SEMANTICS_UNPROVEN"})
+    return conflicts
+
+
 def _seal_income_tax_source_controls(
     candidate: Mapping[str, Any], *, source_context: Mapping[str, Any],
     repaired_records: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
@@ -9635,6 +9657,14 @@ def _seal_income_tax_source_controls(
             candidate, reason="ALGORITHM_CURRENT_TAX_PARENT_PAYABLE_SUBTOTAL_ROLE_UNPROVEN",
             evidence={"classification": "ALGORITHM_ROLE_UNPROVEN",
                       "payable_subtotal_role_conflicts": payable_subtotal_conflicts,
+                      "source_context_receipt": canonical_clone_v1(source_context)},
+        )
+    non_taxable_conflicts = _non_taxable_net_semantic_conflicts_v1(candidate)
+    if non_taxable_conflicts:
+        return _unresolved_from_candidate(
+            candidate, reason="ALGORITHM_NON_TAXABLE_AGGREGATE_NET_SEMANTICS_UNPROVEN",
+            evidence={"classification": "ALGORITHM_ROLE_UNPROVEN",
+                      "non_taxable_net_semantic_conflicts": non_taxable_conflicts,
                       "source_context_receipt": canonical_clone_v1(source_context)},
         )
     competing_stages = [item for item in source_context["tax_population_inventory"]
