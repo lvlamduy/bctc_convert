@@ -313,9 +313,10 @@ def test_unique_same_document_primary_unit_cannot_fill_a_missing_note_unit():
     assert actual["status"] == UNRESOLVED and actual["mappings"] == []
     assert "F28_NOTE_UNIT_SOURCE_OWNERSHIP_NOT_PROVEN" in actual["reasons"]
     assert actual["closure_receipt"]["interest_income_adapter_receipt"]["unit_corroboration_receipts"] == []
-    # The independent guard must actually withhold any global-unit result the
-    # shared engine supplied, not merely rely on the old clone mutation going away.
-    assert _retired(_control(actual)["withheld_mapping_evidence"])
+    # Without numeric unit donation the shared candidate already has no
+    # mappings. The guard records the missing ownership without inventing a
+    # withheld before-image that never existed.
+    assert _retired(_control(actual)["withheld_mapping_evidence"]) == []
     assert _control(actual)["fragments"][0]["source_unit_evidence"] is None
 
 
