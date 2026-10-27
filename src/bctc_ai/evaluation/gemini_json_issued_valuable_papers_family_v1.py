@@ -32,6 +32,7 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
     UNRESOLVED,
+    _transposed_period_axis,
     _unit_axis,
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
     build_gemini_json_multitable_hierarchical_region_query_receipt_v1,
@@ -6263,10 +6264,154 @@ def _bind_printed_total_from_closed_net_frontier_v1(
     return {**material, "printed_net_frontier_total_receipt_id": "gjivppnftv1:receipt:" + canonical_json_sha256_v1(material)}
 
 
+def _existing_same_table_transposed_lane_proof_v1(
+    mapping: Mapping[str, Any],
+    *,
+    candidate: Mapping[str, Any],
+    pages: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any] | None,
+    maturity_projection_receipts: Sequence[Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    """Verify the existing closed transposed detail, never join new tables."""
+
+    if compiled_specs is None or len(mapping["values"]) != 2:
+        return None
+    refs = mapping["source_refs"]
+    locator_fields = (
+        "document_id", "source_sha256", "page_json_version_id", "physical_page",
+        "section_id", "table_id",
+    )
+    try:
+        scopes = {tuple(ref["locator"][key] for key in locator_fields) for ref in refs}
+        columns = {tuple(ref["money_column_ordinals"]) for ref in refs}
+        if len(scopes) != 1 or len(columns) != 1 or len(next(iter(columns))) != 1:
+            return None
+        locator = refs[0]["locator"]
+        short_locator = {key: locator[key] for key in locator_fields[2:]}
+        rule = (
+            "EXACT_REPEATED_FACE_VALUE_SUMMARY_PRUNED_BEFORE_ADJACENT_"
+            "COMPLETE_TRANSPOSED_BOND_CD_MATURITY_PRESENTATION"
+        )
+        projections = [receipt for receipt in maturity_projection_receipts if
+                       receipt.get("rule") == rule
+                       and same_typed_json_v1(receipt.get("detail_locator"), short_locator)]
+        if len(projections) != 1:
+            return None
+        projection = projections[0]
+        material = {key: value for key, value in projection.items()
+                    if key != "maturity_validation_projection_receipt_id"}
+        if projection.get("maturity_validation_projection_receipt_id") != (
+            "gjivpmvprv1:receipt:" + canonical_json_sha256_v1(material)
+        ):
+            return None
+        dropped = projection["dropped_region"]
+        if any(dropped[key] != locator[key] for key in locator_fields if key != "table_id"):
+            return None
+        summary = _region_table(pages, dropped)
+        if not same_typed_json_v1(summary["rows"], projection["raw_source_rows"]):
+            return None
+        page = pages[locator["page_json_version_id"]]
+        section = page["sections"][int(locator["section_id"][1:]) - 1]
+        table = _region_table(pages, locator)
+        if _exact_owner_alias(section.get("title_exact"), compiled_specs=compiled_specs) is None:
+            return None
+        classification = classify_gemini_json_multitable_hierarchical_table_v1(
+            page, section, table, compiled_specs=compiled_specs
+        )
+        axis = _transposed_period_axis(
+            page, section, table, classification, document_period_context={}
+        )
+        unit = _unit_axis(table, compiled_specs=compiled_specs)
+        table_receipts = [receipt for receipt in candidate["closure_receipt"]["table_receipts"]
+                          if all(receipt["region"].get(key) == locator[key] for key in locator_fields)]
+        if (
+            len(table_receipts) != 1 or axis.get("complete") is not True
+            or len(axis.get("blocks", [])) != 2
+            or unit.get("complete") is not True or unit["canonical_unit"] != mapping["unit"]
+            or not same_typed_json_v1(table_receipts[0]["lane_axis"], axis)
+            or not same_typed_json_v1(table_receipts[0]["unit_axis"], unit)
+            or not same_typed_json_v1(table_receipts[0]["classification"], classification)
+        ):
+            return None
+        summary_unit = _unit_axis(summary, compiled_specs=compiled_specs)
+        if summary_unit.get("complete") is not True or summary_unit["canonical_unit"] != mapping["unit"]:
+            return None
+        column = next(iter(columns))[0]
+        column_roles = {hit["role"] for hit in classification["transposed_column_role_hits"]
+                        if hit["column_ordinal"] == column and hit["status"].startswith("EXACT_")}
+        if mapping["role"] == "FAMILY_ROOT_TOTAL":
+            if column != axis["total_column_ordinal"]:
+                return None
+            column_role = "FAMILY_ROOT_TOTAL"
+        elif len(column_roles) == 1:
+            column_role = next(iter(column_roles))
+        else:
+            return None
+        lanes: dict[int, dict[str, Any]] = {}
+        for ref in refs:
+            row_ordinal = ref["row_ordinal"]
+            blocks = [(lane, block) for lane, block in enumerate(axis["blocks"])
+                      if block["start_row_ordinal"] <= row_ordinal <= block["end_row_ordinal"]]
+            if len(blocks) != 1:
+                return None
+            lane, block = blocks[0]
+            marker_ordinal = block["marker_row_ordinal"]
+            if type(marker_ordinal) is not int:
+                return None
+            marker = table["rows"][marker_ordinal - 1]
+            role = ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")[lane]
+            row = table["rows"][row_ordinal - 1]
+            if (
+                marker["row_kind"] != "GROUP" or _semantic_period_roles(marker["label_exact"]) != [role]
+                or any(value is not None for value in marker["values_exact"])
+                or marker["hierarchy_path_exact"] != [marker["label_exact"]]
+                or not row["hierarchy_path_exact"]
+                or row["hierarchy_path_exact"][0] != marker["label_exact"]
+                or ref["row_id"] != f"r{row_ordinal}"
+                or any(not same_typed_json_v1(ref.get(key), row.get(key)) for key in (
+                    "label_exact", "hierarchy_path_exact", "row_kind",
+                ))
+            ):
+                return None
+            if mapping["role"] == column_role:
+                if row_ordinal != block["total_row_ordinal"] or row["row_kind"] != "TOTAL":
+                    return None
+            elif not any(hit["row_ordinal"] == row_ordinal and hit["role"] == mapping["role"]
+                         and hit["parent_role"] == column_role
+                         for hit in classification["transposed_row_role_hits"]):
+                return None
+            cell = _source_money(row["values_exact"][column - 1])
+            if cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} or not same_typed_json_v1(cell, mapping["values"][lane]):
+                return None
+            qualifier = {"label_exact": row["label_exact"], "row_kind": row["row_kind"],
+                         "hierarchy_path_exact": row["hierarchy_path_exact"][1:],
+                         "column_header_exact": table["columns"][column - 1]["header_path_exact"]}
+            binding = {"source_ref": canonical_clone_v1(ref), "row_exact": canonical_clone_v1(row),
+                       "marker_row_ordinal": marker_ordinal, "economic_qualifier": qualifier}
+            if lane in lanes and not same_typed_json_v1(lanes[lane], binding):
+                return None
+            lanes[lane] = binding
+        if set(lanes) != {0, 1} or not same_typed_json_v1(lanes[0]["economic_qualifier"], lanes[1]["economic_qualifier"]):
+            return None
+        roots = [table["rows"][block["total_row_ordinal"] - 1]["values_exact"][axis["total_column_ordinal"] - 1]
+                 for block in axis["blocks"]]
+        if [_source_money(value)["coefficient"] for value in roots] != projection["detail_period_root_axis"]:
+            return None
+        return {"projection_receipt_id": projection["maturity_validation_projection_receipt_id"],
+                "detail_locator": short_locator, "lane_axis": axis, "unit_axis": unit,
+                "classification_id": classification["classification_id"],
+                "source_lane_bindings": [lanes[0], lanes[1]],
+                "rule": "EXISTING_CLOSED_SAME_TABLE_INSTRUMENT_COLUMN_AND_EXPLICIT_ROW_PERIOD_OWNERSHIP"}
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+
+
 def _enforce_source_local_mapping_lanes_v1(
     candidate: dict[str, Any],
     *,
     pages: Mapping[str, dict[str, Any]],
+    compiled_specs: Mapping[str, Any] | None = None,
+    maturity_projection_receipts: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, Any] | None:
     """Veto a global role merge that assigns an unseen lane to a local row.
 
@@ -6274,8 +6419,8 @@ def _enforce_source_local_mapping_lanes_v1(
     current/comparative observations. A one-period detail reference therefore
     cannot independently support both cells of a neighbouring summary. Two
     separately dated tables are not sufficient evidence of the same economic
-    population either. A separate reviewed population/qualifier proof is
-    required before a multi-source lane projection can be supported.
+    population either. Only the existing closed same-table transposed detail
+    can prove both row-owned periods and identical economic qualifiers here.
     """
 
     if candidate.get("status") != READY:
@@ -6323,18 +6468,21 @@ def _enforce_source_local_mapping_lanes_v1(
         if all(arity == width for arity in arities):
             continue
 
-        # Dates, matching amounts and a global role do not prove that two
-        # distinct tables disclose one economic population. Until an explicit
-        # population/qualifier proof route exists, retain a truthful HOLD.
+        transposed = _existing_same_table_transposed_lane_proof_v1(
+            mapping, candidate=candidate, pages=pages, compiled_specs=compiled_specs,
+            maturity_projection_receipts=maturity_projection_receipts,
+        )
         check = {
             "item_mapping_id": mapping["item_mapping_id"],
             "mapping_lane_count": width,
             "role": mapping["role"],
             "source_axis": source_axis,
-            "status": "HOLD",
+            "status": "EXACT_EXISTING_SAME_TABLE_TRANSPOSED_ROW_PERIODS" if transposed else "HOLD",
+            "existing_transposed_source_proof": transposed,
         }
         checks.append(check)
-        violations.append(mapping["role"])
+        if transposed is None:
+            violations.append(mapping["role"])
     if not checks:
         return None
     material = {
@@ -6656,7 +6804,8 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
         validation_row_projection_receipts=validation_receipts,
         visible_dash_transcription_repairs=dash_repairs,
         source_local_lane_binding_receipt=_enforce_source_local_mapping_lanes_v1(
-            candidate, pages=pages
+            candidate, pages=pages, compiled_specs=compiled_specs,
+            maturity_projection_receipts=maturity_receipts,
         ),
         printed_net_frontier_total_receipt=printed_total_receipt,
     )

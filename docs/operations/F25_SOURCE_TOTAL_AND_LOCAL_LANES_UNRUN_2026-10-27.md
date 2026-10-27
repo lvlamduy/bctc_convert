@@ -19,7 +19,9 @@ capture and validation; historical stores are not relabeled.
 
 Owner0475 and the review receipt identify three F25 defects. Receipt
 `restore-receipts/FOCUS_FAMILY_PDF_REVIEW_FULL271_20261027_V1.json` has SHA
-`47fe733e3e957027a2e450257bc30649dd0ae4a72ef0cc8a00f3d3c90e6714a5`;
+`47fe733e3e957027a2e450257bc30649dd0ae4a72ef0cc8a00f3d3c90e6714a5`
+at the original review read (historical observed version, not the mutable
+receipt's current hash after later addenda);
 its F25 mapping manifest has SHA
 `4e2d97a8106209789b91db13fc46d62ae246fd91f469af5d5730fcb3b5abc027`.
 
@@ -115,6 +117,28 @@ borrow the missing lane. Separately dated one-column tables also remain HOLD:
 dates, equal amounts and a common role do not authenticate matching economic
 population, maturity qualifiers, non-date headers or owner/continuation scope.
 No new cross-table join is authorized by this draft.
+
+The root's first focused gate on628df4a8 recorded RuffPASS and132 passing tests
+but failed the existing SHB repeated-summary/transposed-detail positive. Its
+failed receipt/run remains preserved. Both source periods in that case are
+observed row-owned blocks inside one retained table, so a blanket column-width
+veto was too broad; the expected READY result and original fixture are retained.
+
+The guard now recognizes only that existing fresh closed transposed projection
+receipt. It recomputes the exact same-table classification, complete row-period
+axis and local unit receipt; requires explicit blank GROUP markers for CURRENT
+and COMPARATIVE, the same instrument column and non-period economic qualifiers,
+and exact typed raw-cell support for each lane. The existing summary-pruning
+receipt and its raw summary before-image must also match. Its summary amounts
+only corroborate already observed row-period totals. There is no permission
+to borrow a comparative from another table or to pair separately dated sources.
+MSB/VAB mixed summary/detail widths remain HOLD.
+
+The unchanged SHB positive additionally asserts this exact proof, full-candidate
+source-observation counts and fresh replay. Nine adversarial source controls
+remove/tamper the existing receipt or alter period ownership, economic qualifier,
+instrument column, source owner/unit/raw cell, or mix in summary provenance.
+These new changes remain source-only and UNRUN; the old failure is not relabeled.
 
 ## Source tests and outstanding gates
 

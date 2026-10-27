@@ -9,6 +9,7 @@ import pytest
 from bctc_ai.evaluation.gemini_json_issued_valuable_papers_family_v1 import (
     GeminiJsonIssuedValuablePapersFamilyV1Error,
     _apply_primary_root_projection_receipt_v1,
+    _enforce_source_local_mapping_lanes_v1,
     _primary_statement_exact_root_projection_v1,
     _project_adjacent_source_syntax_v1,
     _project_face_value_wrappers,
@@ -28,6 +29,9 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     coalesce_gemini_json_multitable_hierarchical_document_v1,
     compile_gemini_json_multitable_hierarchical_family_specs_v1,
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
+)
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    audit_source_observation_mapping_contract_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
@@ -3107,6 +3111,16 @@ def test_repeated_face_value_summary_is_pruned_before_complete_shb_detail() -> N
         )
         for receipt in adapter["maturity_validation_projection_receipts"]
     )
+    lane_binding = adapter["source_local_lane_binding_receipt"]
+    assert lane_binding["withheld_mappings"] == []
+    assert all(
+        check["status"] == "EXACT_EXISTING_SAME_TABLE_TRANSPOSED_ROW_PERIODS"
+        and check["existing_transposed_source_proof"]["projection_receipt_id"]
+        for check in lane_binding["checks"]
+    )
+    audit = audit_source_observation_mapping_contract_v1(candidate)
+    assert audit["status"] == "PASS", audit["violations"]
+    assert audit["mapping_count"] == len(candidate["mappings"])
     validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
         candidate,
         regions=regions,
@@ -3114,6 +3128,68 @@ def test_repeated_face_value_summary_is_pruned_before_complete_shb_detail() -> N
         compiled_specs=compiled,
         query_receipt=query_receipt,
     )
+
+
+@pytest.mark.parametrize(
+    "drift",
+    [
+        "missing_projection", "tampered_projection", "different_qualifier",
+        "missing_period", "mixed_summary_ref", "wrong_owner", "wrong_unit",
+        "changed_instrument_column", "unbound_row_cell",
+    ],
+)
+def test_same_table_transposed_lanes_require_existing_complete_owned_source_proof(drift: str) -> None:
+    pages, regions = _shb_repeated_summary_fixture()
+    compiled = _family_compiled_without_repairs()
+    candidate = evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
+        regions=regions, page_json_by_version=pages, compiled_specs=compiled,
+        query_receipt=build_gemini_json_issued_valuable_papers_region_query_receipt_v1(regions),
+    )
+    assert candidate["status"] == READY
+    original_mappings = copy.deepcopy(candidate["mappings"])
+    receipts = copy.deepcopy(candidate["closure_receipt"][
+        "issued_valuable_papers_adapter_receipt"
+    ]["maturity_validation_projection_receipts"])
+    page = next(iter(pages.values()))
+    table = page["sections"][0]["tables"][1]
+    if drift == "missing_projection":
+        receipts = []
+    elif drift == "tampered_projection":
+        receipts[0]["detail_period_root_axis"][0] += 1
+    elif drift == "different_qualifier":
+        table["rows"][11]["hierarchy_path_exact"][-1] = "Một dân số khác"
+    elif drift == "missing_period":
+        table["rows"][8]["label_exact"] = "Số dư cuối năm"
+    elif drift == "mixed_summary_ref":
+        extra = copy.deepcopy(candidate["mappings"][0]["source_refs"][0])
+        extra["locator"]["table_id"] = "t1"
+        extra["money_column_ordinals"] = [1, 2]
+        extra.update({key: copy.deepcopy(page["sections"][0]["tables"][0]["rows"][0][key])
+                      for key in ("label_exact", "hierarchy_path_exact", "row_kind")})
+        extra.update({"row_id": "r1", "row_ordinal": 1})
+        candidate["mappings"][0]["source_refs"].append(extra)
+        original_mappings = copy.deepcopy(candidate["mappings"])
+    elif drift == "wrong_owner":
+        page["sections"][0]["title_exact"] = "23. Các khoản nợ khác"
+    elif drift == "wrong_unit":
+        table["unit_exact"] = "Nghìn VND"
+    elif drift == "changed_instrument_column":
+        mapping = next(item for item in candidate["mappings"] if item["role"] == "BOND")
+        mapping["source_refs"][-1]["money_column_ordinals"] = [2]
+        original_mappings = copy.deepcopy(candidate["mappings"])
+    else:
+        table["rows"][3]["values_exact"][0] = "2.000.001"
+    receipt = _enforce_source_local_mapping_lanes_v1(
+        candidate, pages=pages, compiled_specs=compiled,
+        maturity_projection_receipts=receipts,
+    )
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert receipt is not None and any(check["status"] == "HOLD" for check in receipt["checks"])
+    assert json.loads(receipt["withheld_mappings"]["canonical_json"]) == original_mappings
+    audit = audit_source_observation_mapping_contract_v1(candidate)
+    assert audit["status"] == "PASS", audit["violations"]
+    assert audit["mapping_count"] == 0
 
 
 def test_repeated_face_value_summary_is_not_pruned_when_detail_root_differs() -> None:
