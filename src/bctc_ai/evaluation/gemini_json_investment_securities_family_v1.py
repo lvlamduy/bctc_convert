@@ -1253,13 +1253,10 @@ def classify_gemini_json_investment_securities_table_v1(
                 if ordinal <= len(current_values)
             ]
         ):
-            # Two distinct rows carrying the same provision caption can be a
-            # source-reader label shift at a subtotal boundary: the first is
-            # the preceding debt subtotal and the second is the actual signed
-            # provision.  Preserve both for the evaluator; it may reclassify
-            # only after both debt and provision child equations prove the
-            # interpretation.  Otherwise the distinct observations still fail
-            # closed downstream.
+            # Preserve distinct source observations under their printed
+            # provision role. Amount agreement with debt or provision children
+            # cannot relabel a source row; any conflicting population must
+            # remain unresolved downstream.
             retained_hits.append(hit)
             continue
         if not ancestor_has_value and current_has_value:
@@ -4054,87 +4051,9 @@ def evaluate_gemini_json_investment_securities_family_cluster_v1(
         role: raw_records.pop(role, []) for role in sorted(_SOURCE_CONTROL_ROLES)
     }
     raw_control_records["UNSCOPED_TOTAL_CONTROL"].extend(vamc_provision_controls)
+    # Retain the receipt field for consumers. A printed provision caption has
+    # no debt-role permission from equations, even when both frontiers close.
     source_row_reclassifications = []
-    for prefix in ("AFS", "HTM"):
-        provision_role = f"{prefix}_PROVISION"
-        provision_rows = raw_records.get(provision_role, [])
-        if len(provision_rows) < 2:
-            continue
-
-        def collapsed_raw_role(role: str) -> dict[str, Any] | None:
-            values = raw_records.get(role, [])
-            if not values:
-                return None
-            return _corroborate_identical(role, values) or _aggregate(role, values)
-
-        debt_children = [
-            record
-            for role in _parent_children(f"{prefix}_DEBT")
-            if (record := collapsed_raw_role(role)) is not None
-        ]
-        provision_children = [
-            record
-            for role in _parent_children(provision_role)
-            if (record := collapsed_raw_role(role)) is not None
-        ]
-        if len(debt_children) < 2 or not provision_children:
-            continue
-        gross_candidates = [
-            (row, equation)
-            for row in provision_rows
-            if (
-                equation := _equation(
-                    equation_kind=(
-                        "EXACT_SOURCE_LABEL_SHIFTED_PROVISION_ROW_IS_PRECEDING_DEBT_SUBTOTAL"
-                    ),
-                    components=debt_children,
-                    result=row,
-                )
-            )["status"]
-            == "EXACT"
-        ]
-        if len(gross_candidates) != 1:
-            continue
-        gross_row, gross_equation = gross_candidates[0]
-        actual_candidates = []
-        for row in provision_rows:
-            if row is gross_row:
-                continue
-            variants = [
-                _equation(
-                    equation_kind=(
-                        "EXACT_REMAINING_PROVISION_ROW_EQUALS_VISIBLE_PROVISION_CHILDREN"
-                    ),
-                    components=provision_children,
-                    result=row,
-                    multipliers=[weight] * len(provision_children),
-                )
-                for weight in (1, -1)
-            ]
-            exact_variants = [equation for equation in variants if equation["status"] == "EXACT"]
-            if exact_variants:
-                actual_candidates.append((row, exact_variants[0]))
-        if len(actual_candidates) != 1:
-            continue
-        actual_row, provision_equation = actual_candidates[0]
-        raw_records[provision_role] = [actual_row]
-        raw_records[f"{prefix}_DEBT"].append(
-            _record(
-                f"{prefix}_DEBT",
-                gross_row["cells"],
-                gross_row["source_refs"],
-                "SOURCE_ROW_RECLASSIFIED_BY_EXACT_DEBT_AND_PROVISION_FRONTIERS",
-            )
-        )
-        source_row_reclassifications.append(
-            {
-                "from_role": provision_role,
-                "gross_debt_equation": gross_equation,
-                "provision_equation": provision_equation,
-                "rule": "UNIQUE_EXACT_PRECEDING_DEBT_SUBTOTAL_AND_REMAINING_PROVISION_PARENT",
-                "to_role": f"{prefix}_DEBT",
-            }
-        )
     records = {}
     for role, values in raw_records.items():
         if not values:

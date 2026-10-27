@@ -231,3 +231,54 @@ note change. Schema, five-case manifest, all exact copied source/selected-axis
 fixtures, shared frozen files and generic runner remain unchanged. Independent
 static review and a fresh root-owned complete-module focused gate must precede
 any new runtime or corpus acceptance claim.
+
+## Provision captions cannot receive debt roles from equations
+
+The actual complete focused V3 gate at captured
+`b6109110f9a2c92a1ebb1304b55c1a0ff0a37813` reported141 PASS/1 FAIL.
+The remaining assertion expected an unchanged older synthetic disclosure with
+two printed HTM provision captions to become READY after the first caption was
+reclassified as a debt subtotal. The bounded record-only diagnostic retained
+that assertion failure and original raw fixture in
+`f16-shifted-label-diagnostic-20261028-v1/diagnostic.json`,473304 bytes,
+SHA256 `bf2c31f7c16a192b5a9cda47e1dd3709a75ffdc3fb72ee73fa21c55fdc8bca3f`.
+Its exit0 records evidence only and does not constitute a passing regression.
+
+The raw third row is a GROUP explicitly labelled and hierarchically owned by
+`Dự phòng rủi ro chứng khoán đầu tư giữ đến ngày đáo hạn`, with10/9 cells.
+The next separately observed provision row contains(2)/(2). The legacy block
+selected the first row because its cells equal the debt children4+6 and3+6,
+selected the second because it equals the provision children, and assigned the
+first row a debt role. The newer gross-basis guard refused that interpretation
+with HTM_GROSS_TOTAL_BASIS_NOT_PROVEN. Matching equations corroborate values
+only after the source establishes their population and role; they cannot
+repair an incorrectly transcribed caption or create a source debt permission.
+
+This correction removes that legacy provision-to-debt relabelling block.
+Distinct printed provision observations retain their source role and go
+through ordinary conflict/closure checks. The existing
+`source_row_reclassifications` receipt field remains an empty list for consumer
+compatibility; no new source-repair authority or general label-correction
+mechanism is introduced. A real source transcription correction would require
+its own registered authenticated evidence and a separate review.
+
+The original `_label_shift_page` raw helper remains byte-identical after
+newline normalization. Its former positive now explicitly requires U0,
+unaltered source, an empty reclassification receipt, the source-observation
+contract and fresh candidate replay. The nonclosing negative keeps its
+existing unresolved expectation and gains the same checks. A separate
+synthetic positive prints a correctly labelled debt parent before its two
+debt children, with each child's complete printed owner/parent/leaf hierarchy;
+it must map gross10/9 and provision(2)/(2) without any caption
+reclassification. Three additional negative cases preserve the conflicting
+provision caption with GROUP/SUBTOTAL/ITEM row kinds and coherently changed
+debt12/11, signed provision(2)/(2), net10/9 cells. Exact arithmetic still
+cannot grant the provision row a debt role. Every new case re-queries the
+source, audits active mappings and independently replays the candidate.
+
+Only the F16 adapter, existing family test module and this additive note
+change. All original raw/selected-axis files, the gross-basis test module,
+schema/configuration, F16 runner and both frozen shared files are unchanged.
+The authored correction and new cases are UNRUN; independent root review,
+source capture and a fresh complete-module focused gate remain required
+before corpus or financial acceptance.

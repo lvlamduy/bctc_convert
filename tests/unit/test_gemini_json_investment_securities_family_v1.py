@@ -955,20 +955,105 @@ def _label_shift_page(*, debt_subtotal: str = "10") -> dict:
     return page
 
 
-def test_exact_debt_and_provision_frontiers_reclassify_shifted_source_label() -> None:
-    _compiled_specs, _cluster, candidate = _evaluate(_label_shift_page())
-    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
-    assert candidate["status"] == READY
-    assert by_role["HTM_DEBT"]["state"] == (
-        "SOURCE_ROW_RECLASSIFIED_BY_EXACT_DEBT_AND_PROVISION_FRONTIERS"
+def _assert_debt_caption_source_replay(
+    page: dict, compiled: dict, cluster: dict, candidate: dict
+) -> None:
+    record = _record(page)
+    assert validate_gemini_json_investment_securities_family_candidate_replay_v1(
+        candidate,
+        regions=cluster["component_regions"],
+        page_json_by_version={record["page_json_version_id"]: page},
+        compiled_specs=compiled,
+        query_receipt=build_gemini_json_investment_securities_region_query_receipt_v1(
+            cluster["component_regions"]
+        ),
+    ) == candidate
+    assert validate_source_observation_mapping_contract_v1(candidate)["mapping_count"] == len(
+        candidate["mappings"]
     )
-    assert len(candidate["closure_receipt"]["source_row_reclassifications"]) == 1
+
+
+def test_exact_debt_and_provision_equations_do_not_reclassify_shifted_source_label() -> None:
+    page = _label_shift_page()
+    original = copy.deepcopy(page)
+    compiled, cluster, candidate = _evaluate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["closure_receipt"]["source_row_reclassifications"] == []
+    assert (
+        page["sections"][1]["tables"][0]["rows"][2]
+        == original["sections"][1]["tables"][0]["rows"][2]
+    )
+    assert page == original
+    _assert_debt_caption_source_replay(page, compiled, cluster, candidate)
+
+
+def _source_labelled_debt_parent_page() -> dict:
+    """A separate synthetic source with an explicit debt parent before children."""
+
+    page = _label_shift_page()
+    rows = page["sections"][1]["tables"][0]["rows"]
+    debt = "Chứng khoán nợ"
+    parent = _row(
+        debt, ["10", "9"],
+        hierarchy=["Chứng khoán đầu tư giữ đến ngày đáo hạn", debt],
+        kind="SUBTOTAL",
+    )
+    rows[:3] = [parent, rows[0], rows[1]]
+    for child in rows[1:3]:
+        child["hierarchy_path_exact"].append(child["label_exact"])
+    return page
+
+
+def test_explicit_source_debt_parent_maps_without_provision_role_reclassification() -> None:
+    page = _source_labelled_debt_parent_page()
+    original = copy.deepcopy(page)
+    compiled, cluster, candidate = _evaluate(page)
+    assert candidate["status"] == READY
+    by_role = {mapping["role"]: mapping for mapping in candidate["mappings"]}
+    assert [cell["coefficient"] for cell in by_role["HTM_DEBT"]["values"]] == [10, 9]
+    assert [cell["coefficient"] for cell in by_role["HTM_TOTAL"]["values"]] == [10, 9]
+    assert [cell["coefficient"] for cell in by_role["HTM_PROVISION"]["values"]] == [-2, -2]
+    assert by_role["HTM_TOTAL"]["valuation_basis"] == "GROSS_BEFORE_PROVISIONS"
+    assert by_role["HTM_DEBT"]["source_refs"][0]["label_exact"] == "Chứng khoán nợ"
+    assert all(
+        row["hierarchy_path_exact"][-2] == "Chứng khoán nợ"
+        and row["hierarchy_path_exact"][-1] == row["label_exact"]
+        for row in page["sections"][1]["tables"][0]["rows"][1:3]
+    )
+    assert candidate["closure_receipt"]["source_row_reclassifications"] == []
+    assert page == original
+    _assert_debt_caption_source_replay(page, compiled, cluster, candidate)
+
+
+@pytest.mark.parametrize("kind", ["GROUP", "SUBTOTAL", "ITEM"])
+def test_equation_coincidence_never_overrides_conflicting_provision_caption(kind: str) -> None:
+    page = _label_shift_page(debt_subtotal="12")
+    rows = page["sections"][1]["tables"][0]["rows"]
+    rows[1]["values_exact"] = ["8", "8"]
+    rows[2]["values_exact"] = ["12", "11"]
+    rows[2]["row_kind"] = kind
+    rows[-1]["values_exact"] = ["10", "9"]
+    # Both debt totals12/11 and signed-net totals10/9 close exactly. The
+    # provision caption remains the source authority for its own row.
+    original = copy.deepcopy(page)
+    compiled, cluster, candidate = _evaluate(page)
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
+    assert candidate["closure_receipt"]["source_row_reclassifications"] == []
+    assert page == original
+    _assert_debt_caption_source_replay(page, compiled, cluster, candidate)
 
 
 def test_shifted_source_label_without_exact_debt_frontier_remains_unresolved() -> None:
-    _compiled_specs, _cluster, candidate = _evaluate(_label_shift_page(debt_subtotal="11"))
+    page = _label_shift_page(debt_subtotal="11")
+    original = copy.deepcopy(page)
+    compiled, cluster, candidate = _evaluate(page)
     assert candidate["status"] == UNRESOLVED
+    assert candidate["mappings"] == []
     assert candidate["closure_receipt"]["source_row_reclassifications"] == []
+    assert page == original
+    _assert_debt_caption_source_replay(page, compiled, cluster, candidate)
 
 
 def _adjacent_blank_stub_pages(*, source_value: str | None = None) -> list[dict]:
