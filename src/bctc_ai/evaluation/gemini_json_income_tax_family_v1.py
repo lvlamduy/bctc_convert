@@ -5725,6 +5725,146 @@ def _reseal_candidate(
     return output
 
 
+def _bind_printed_primary_root_v1(
+    candidate: Mapping[str, Any], *, source_page: Mapping[str, Any],
+    descriptor: Mapping[str, Any], compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind a printed total by its source role, never by equal coefficients.
+
+    This is deliberately before note/PRIMARY merging and signed-display
+    receipts. The final source-control seal still owns document period proof.
+    A total which is present but unusable cannot fall through to current tax.
+    """
+    if candidate.get("status") != READY:
+        return canonical_clone_v1(candidate)
+    locator = descriptor["locator"]
+    section, table = _source_table(
+        source_page, section_id=locator["section_id"], table_id=locator["table_id"],
+    )
+    if (canonical_json_sha256_v1(source_page) != descriptor["original_page_json_sha256"]
+            or canonical_json_sha256_v1(table) != descriptor["original_table_json_sha256"]
+            or source_page.get("status") != "PRIMARY_FINANCIAL_STATEMENT"
+            or section.get("content_kind") != "PRIMARY_STATEMENT"
+            or section.get("statement_type") != "INCOME_STATEMENT"):
+        raise _error("income-tax printed PRIMARY total source identity drifted")
+    roots = [(ordinal, row) for ordinal, row in enumerate(table.get("rows") or [], 1)
+             if type(row) is dict
+             and _role_for_primary_label(row.get("label_exact")) == "FAMILY_ROOT_TOTAL"]
+    # No new printed-total authority is claimed in the absent case. The
+    # existing private spec/frontier and final source controls remain required.
+    if not roots:
+        return canonical_clone_v1(candidate)
+    lane = _multitable_lane_axis(section, table, compiled_specs=compiled_specs)
+    unit = _unit_axis(table, compiled_specs=compiled_specs)
+    columns = descriptor["money_column_ordinals"]
+    material: dict[str, Any] = {
+        "locator": canonical_clone_v1(locator),
+        "original_page_json_sha256": descriptor["original_page_json_sha256"],
+        "original_table_json_sha256": descriptor["original_table_json_sha256"],
+        "printed_total_rows": [{"row_ordinal": ordinal, "source_row": canonical_clone_v1(row)}
+                               for ordinal, row in roots],
+        "lane_axis": canonical_clone_v1(lane),
+        "unit_axis": canonical_clone_v1(unit),
+        "primary_unit_corroboration_receipt": canonical_clone_v1(
+            descriptor.get("primary_unit_corroboration_receipt")),
+        "prior_root_mappings": canonical_clone_v1([
+            item for item in candidate["mappings"] if item.get("role") == "FAMILY_ROOT_TOTAL"]),
+        "authority": "SAME_AUTHENTICATED_STATEMENT_TABLE_PRINTED_TOTAL_LABEL_AND_SOURCE_CELLS",
+        "amounts_used_as_role_authority": False,
+        "source_values_changed": False,
+        "final_document_period_source_control_still_required": True,
+    }
+
+    def hold(reason: str) -> dict[str, Any]:
+        return _unresolved_from_candidate(
+            candidate, reason="ALGORITHM_PRINTED_PRIMARY_ROOT_SOURCE_OWNERSHIP_UNPROVEN",
+            evidence={**material, "ownership_failure": reason},
+        )
+
+    if len(roots) != 1:
+        return hold("PRINTED_TOTAL_ROLE_NOT_UNIQUE")
+    if (not lane.get("complete") or type(columns) is not list or len(columns) != 2
+            or not same_typed_json_v1(lane.get("money_column_ordinals"), columns)):
+        return hold("PRINTED_TOTAL_MONEY_AXIS_NOT_COMPLETE")
+    corroboration = descriptor.get("primary_unit_corroboration_receipt")
+    if not ((unit.get("complete") and unit.get("canonical_unit") == descriptor["canonical_unit"])
+            or (_local_money_unit_is_truly_absent(unit) and type(corroboration) is dict
+                and corroboration.get("canonical_unit") == descriptor["canonical_unit"])):
+        return hold("PRINTED_TOTAL_UNIT_NOT_OWNED")
+    root_ordinal, row = roots[0]
+    if row.get("row_kind") not in {"ITEM", "TOTAL"}:
+        return hold("PRINTED_TOTAL_IS_NOT_AN_OBSERVED_ITEM_OR_TOTAL_ROW")
+    source_ordinals = [root_ordinal]
+    for mapping in candidate["mappings"]:
+        if mapping.get("role") not in {"CURRENT_TAX_PARENT", "DEFERRED_TAX_NET"}:
+            continue
+        if mapping.get("unit") != descriptor["canonical_unit"]:
+            return hold("PRIMARY_COMPONENT_UNIT_DIFFERS")
+        for ref in mapping.get("source_refs") or []:
+            if (any(not same_typed_json_v1(ref.get("locator", {}).get(key), value)
+                    for key, value in locator.items())
+                    or not same_typed_json_v1(ref.get("money_column_ordinals"), columns)):
+                return hold("PRIMARY_COMPONENT_HAS_DIFFERENT_TABLE_OR_LANE_OWNER")
+            ordinal = ref.get("row_ordinal")
+            if type(ordinal) is not int or not 1 <= ordinal <= len(table["rows"]):
+                raise _error("income-tax printed PRIMARY component row selector drifted")
+            actual = table["rows"][ordinal - 1]
+            if (not same_typed_json_v1(ref.get("label_exact"), actual.get("label_exact"))
+                    or not same_typed_json_v1(ref.get("hierarchy_path_exact"), actual.get("hierarchy_path_exact"))
+                    or not same_typed_json_v1(ref.get("row_kind"), actual.get("row_kind"))
+                    or ref.get("row_id") != f"r{ordinal}"):
+                raise _error("income-tax printed PRIMARY component source citation drifted")
+            source_ordinals.append(ordinal)
+    lower, upper = min(source_ordinals), max(source_ordinals)
+    if any(item.get("row_kind") == "GROUP" for item in table["rows"][lower:upper - 1]
+           if type(item) is dict):
+        return hold("PRINTED_GROUP_BOUNDARY_BETWEEN_TOTAL_AND_COMPONENT")
+    ancestry = _primary_bridge_population_ancestry(
+        table, row_ordinals=sorted(set(source_ordinals)), primary_section=section,
+    )
+    material["same_printed_population_receipt"] = canonical_clone_v1(ancestry)
+    if ancestry is None:
+        return hold("PRINTED_TOTAL_AND_COMPONENT_POPULATION_NOT_PROVEN")
+    raw_values = row.get("values_exact")
+    if type(raw_values) is not list or any(type(column) is not int or not 1 <= column <= len(raw_values)
+                                          for column in columns):
+        return hold("PRINTED_TOTAL_SOURCE_MONEY_CELLS_MISSING")
+    selected_values = [raw_values[column - 1] for column in columns]
+    material["source_values_exact"] = canonical_clone_v1(selected_values)
+    try:
+        cells = [_source_money(value) for value in selected_values]
+    except (TypeError, ValueError):
+        return hold("PRINTED_TOTAL_SOURCE_MONEY_CELL_UNPARSEABLE")
+    # A blank, colon or conditional punctuation placeholder is retained in
+    # evidence; it is not rescued by a current-tax value or an equation.
+    if any(cell.get("state") not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in cells):
+        return hold("PRINTED_TOTAL_SOURCE_MONEY_LANE_NOT_DIRECTLY_OBSERVED")
+    source_ref = {
+        "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
+        "label_exact": row.get("label_exact"), "locator": canonical_clone_v1(locator),
+        "money_column_ordinals": canonical_clone_v1(columns), "row_id": f"r{root_ordinal}",
+        "row_kind": row.get("row_kind"), "row_ordinal": root_ordinal,
+    }
+    mapping_material = {
+        "report_norm_id": compiled_specs["schema"]["family_root_report_norm_id"],
+        "role": "FAMILY_ROOT_TOTAL", "row_id": f"r{root_ordinal}",
+        "source_refs": [source_ref], "state": "SOURCE_VISIBLE_PRINTED_PRIMARY_FAMILY_ROOT_TOTAL",
+        "unit": descriptor["canonical_unit"], "values": canonical_clone_v1(cells),
+    }
+    mapping = {**mapping_material, "item_mapping_id": "gjmthfmv1:item:"
+               + canonical_json_sha256_v1(mapping_material)}
+    output = canonical_clone_v1(candidate)
+    output["mappings"] = [item for item in output["mappings"] if item.get("role") != "FAMILY_ROOT_TOTAL"]
+    output["mappings"].append(mapping)
+    material["bound_root_mapping"] = canonical_clone_v1(mapping)
+    output["closure_receipt"]["income_tax_printed_primary_root_receipt"] = {
+        **material, "receipt_id": "gjitfav1:printed-primary-root:" + canonical_json_sha256_v1(material),
+    }
+    output["candidate_id"] = "gjmthfcv1:candidate:" + canonical_json_sha256_v1(
+        {key: value for key, value in output.items() if key != "candidate_id"})
+    return output
+
+
 def _evaluate_selected_primary(
     selected: Mapping[str, Any],
     *,
@@ -5746,12 +5886,15 @@ def _evaluate_selected_primary(
         compiled_specs=specs,
         query_receipt=build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions),
     )
-    return _reseal_candidate(
+    candidate = _reseal_candidate(
         candidate,
         descriptor=descriptor,
         repair_receipts=repair_receipts,
         strategy="DIRECT_PRIMARY_INCOME_STATEMENT_SOURCE_PRESENTATION",
         compiled_specs=compiled_specs,
+    )
+    return _bind_printed_primary_root_v1(
+        candidate, source_page=source_page, descriptor=descriptor, compiled_specs=compiled_specs,
     )
 
 
@@ -6137,6 +6280,8 @@ def _merge_supplemental_and_primary_candidates(
     repair_receipts: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
+    if primary_candidate.get("reasons") == ["ALGORITHM_PRINTED_PRIMARY_ROOT_SOURCE_OWNERSHIP_UNPROVEN"]:
+        return canonical_clone_v1(primary_candidate)
     supplemental_by_role, suppressed_supplemental, conflict = (
         _select_supplemental_role_mappings(supplemental)
     )
@@ -9220,6 +9365,8 @@ def _merge_note_and_primary_candidates(
     strategy: str,
     page_records: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
+    if primary_candidate.get("reasons") == ["ALGORITHM_PRINTED_PRIMARY_ROOT_SOURCE_OWNERSHIP_UNPROVEN"]:
+        return canonical_clone_v1(primary_candidate)
     if note_candidate.get("status") != READY or primary_candidate.get("status") != READY:
         raise _error("income-tax independent source candidate is not ready")
     note_by_role = {item["role"]: item for item in note_candidate["mappings"]}
