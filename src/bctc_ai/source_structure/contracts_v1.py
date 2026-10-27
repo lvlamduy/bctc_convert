@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import struct
+import sys
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -501,24 +502,20 @@ def same_typed_json_v1(left: Any, right: Any) -> bool:
     return bool(left == right)
 
 
-# Python refuses to render ints beyond its default 4300-digit limit; such a value has more than
-# 14,000 bits, so only those few ints need the exact rendering check below.
-_INT_RENDER_CHECK_MIN_BITS = 14_000
-
-
-def _clone_validated_json(value: Any) -> Any:
+def _clone_validated_json(value: Any, int_render_check_bits: int | None) -> Any:
     """Rebuild a validated tree exactly as decoding its canonical bytes would, without rendering it."""
 
     value_type = type(value)
     if value_type is list:
-        return [_clone_validated_json(item) for item in value]
+        return [_clone_validated_json(item, int_render_check_bits) for item in value]
     if value_type is dict:
         result: dict[str, Any] = {}
         for key in sorted(value):
             key.encode("utf-8")
-            result[key] = _clone_validated_json(value[key])
+            result[key] = _clone_validated_json(value[key], int_render_check_bits)
         return result
-    if value_type is int and value.bit_length() > _INT_RENDER_CHECK_MIN_BITS:
+    if value_type is int and int_render_check_bits is not None and value.bit_length() > int_render_check_bits:
+        # Exactly the rendering's own check under the live sys.set_int_max_str_digits limit.
         repr(value)
     # str/int/float/bool/None are immutable; decoding their canonical spelling yields equal values
     # (float repr round-trips exactly, including -0.0).
@@ -530,8 +527,12 @@ def canonical_clone_v1(value: Any) -> Any:
 
     if _validated_json_node_count(value) < _STREAMED_HASH_MIN_NODES:
         return decode_canonical_json_bytes_v1(_canonical_json_bytes_validated(value))
+    # Rendering an int fails only above the live digit limit (0 = disabled; minimum 640). An int with
+    # at most 3 * limit bits has fewer than 0.91 * limit + 1 digits, so only larger ints need repr().
+    digit_limit = sys.get_int_max_str_digits()
+    int_render_check_bits = 3 * digit_limit if digit_limit else None
     try:
-        return _clone_validated_json(value)
+        return _clone_validated_json(value, int_render_check_bits)
     except (TypeError, ValueError, UnicodeError) as error:
         raise SourceStructureContractError("value is not canonical JSON") from error
 

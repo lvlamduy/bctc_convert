@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import random
+import sys
 import tracemalloc
 from enum import IntEnum
 from hashlib import sha256
@@ -174,3 +175,32 @@ def test_large_clone_does_not_render():
     # The rebuilt containers are the result itself; the old path additionally holds three renderings.
     for rendered, old_peak, new_peak in peaks:
         assert old_peak - new_peak > 2 * rendered
+
+
+@pytest.fixture(params=[640, 1000, 4300, 0], ids=["limit640", "limit1000", "default4300", "disabled"])
+def digit_limit(request):
+    previous = sys.get_int_max_str_digits()
+    sys.set_int_max_str_digits(request.param)
+    try:
+        yield request.param
+    finally:
+        sys.set_int_max_str_digits(previous)
+
+
+@pytest.mark.parametrize("digits", [639, 640, 641, 999, 1000, 1001, 4300, 4301, 5000])
+def test_clone_and_hash_follow_the_live_int_digit_limit(path, digit_limit, digits):
+    for magnitude in (10 ** (digits - 1), -(10 ** (digits - 1)), 10**digits - 1):
+        value = {"rows": [1, 2.5, "x"], "big": [magnitude]}
+        try:
+            expected_clone = _old_clone(value)
+            expected_hash = sha256(canonical_json_bytes_v1(value)).hexdigest()
+        except SourceStructureContractError:
+            with pytest.raises(SourceStructureContractError):
+                canonical_clone_v1(value)
+            with pytest.raises(SourceStructureContractError):
+                canonical_json_sha256_v1(value)
+            assert digit_limit and digits > digit_limit
+            continue
+        assert not digit_limit or digits <= digit_limit
+        assert _ordered(canonical_clone_v1(value)) == _ordered(expected_clone)
+        assert canonical_json_sha256_v1(value) == expected_hash
