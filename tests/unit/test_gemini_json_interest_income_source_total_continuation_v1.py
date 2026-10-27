@@ -28,6 +28,7 @@ from bctc_ai.evaluation import gemini_json_interest_income_family_v1 as family
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
     UNRESOLVED,
+    _row_local_record as _frozen_row_local_record,
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
 )
 from bctc_ai.evaluation.source_observation_mapping_contract_v1 import validate_source_observation_mapping_contract_v1
@@ -59,6 +60,59 @@ def _retired(envelope):
     raw = envelope["canonical_json_one_lf_utf8_text"].encode("utf-8")
     assert len(raw) == envelope["size_bytes"] and sha256(raw).hexdigest() == envelope["sha256"]
     return json.loads(raw)
+
+
+@pytest.mark.parametrize("token,coefficient,cell_state", [
+    ("1.234", 1234, "RAW_SIGNED_INTEGER"),
+    ("(1.234)", -1234, "RAW_SIGNED_INTEGER"),
+    (" - ", 0, "DASH_ZERO"),
+    ("0", 0, "RAW_SIGNED_INTEGER"),
+    (None, None, "BLANK_SOURCE_CELL"),
+    ("  ", None, "BLANK_SOURCE_CELL"),
+    ("1:234", 1234, "COLON_GROUP_SEPARATOR_INTEGER_IF_EQUATION_EXACT"),
+    ("...", 0, "PUNCTUATION_PLACEHOLDER_ZERO_IF_EQUATION_EXACT"),
+])
+@pytest.mark.parametrize("compound", [False, True])
+def test_local_printed_root_observation_preserves_exact_consumed_frozen_cells_and_source_refs(token, coefficient, cell_state, compound):
+    row = _row("Tổng", ["7", "non-MONEY source text", token], kind="TOTAL", hierarchy=[None, "Tổng"])
+    projection = {"source_row_ordinal": 9, "subrow_ordinal": 2}
+    if compound:
+        row["_compound_row_projection"] = projection
+    region = {**{key: value for key, value in _record(_page(_table([]))).items() if key != "page_json"},
+              "section_id": "s1", "table_id": "t1", "fragment_ordinal": 2,
+              "component_roles": ["FAMILY_ROOT_TOTAL"]}
+    axis = {"money_column_ordinals": [3, 1], "lane_keys": [["CURRENT"], ["COMPARATIVE"]]}
+    before = deepcopy((row, region, axis))
+    state = "SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_PROVEN_BY_F28_SOURCE_CONTROL"
+    actual = family._printed_root_source_observation_v1(4, row, region=region, lane_axis=axis, state=state)
+    expected_ref = {"hierarchy_path_exact": [None, "Tổng"], "label_exact": "Tổng",
+                    "locator": deepcopy(region), "money_column_ordinals": [3, 1],
+                    "row_id": "r4", "row_kind": "TOTAL", "row_ordinal": 4}
+    if compound:
+        expected_ref.update({"compound_row_projection": deepcopy(projection), "row_id": "r9#line2"})
+    assert actual == {"cells": [
+        {"coefficient": coefficient, "source_text": None if cell_state == "BLANK_SOURCE_CELL" else token, "state": cell_state},
+        {"coefficient": 7, "source_text": "7", "state": "RAW_SIGNED_INTEGER"}],
+        "source_refs": [expected_ref], "state": state}
+    # The oracle is exposed by the already-frozen engine, never imported from
+    # the other-family module by production F28 code. Only consumed fields agree.
+    frozen = _frozen_row_local_record("FAMILY_ROOT_TOTAL", 4, row, region=region, lane_axis=axis, state=state)
+    assert actual == {key: frozen[key] for key in ("cells", "source_refs", "state")}
+    assert (row, region, axis) == before
+    actual["source_refs"][0]["hierarchy_path_exact"].append("private mutation")
+    actual["source_refs"][0]["locator"]["component_roles"].append("private mutation")
+    if compound:
+        actual["source_refs"][0]["compound_row_projection"]["subrow_ordinal"] = 99
+    assert (row, region, axis) == before
+
+
+@pytest.mark.parametrize("values", [None, {"1": "7"}, ["7"]])
+def test_local_printed_root_observation_does_not_fill_missing_or_nonlist_source_cells(values):
+    row = _row("Tổng", values, kind="TOTAL")
+    before = deepcopy(row)
+    assert family._printed_root_source_observation_v1(1, row, region={},
+        lane_axis={"money_column_ordinals": [1, 2]}, state="SOURCE_ONLY") is None
+    assert row == before
 
 
 def test_old_twenty_vs_twenty_four_positive_fixture_is_now_an_explicit_source_mismatch_negative():

@@ -44,9 +44,6 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
     validate_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
 )
-from bctc_ai.evaluation.gemini_json_other_long_term_investments_family_v1 import (
-    _row_local_record,
-)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_bytes_v1,
@@ -1394,6 +1391,44 @@ def _source_owned_fragment_axis_v1(
     return output, reasons
 
 
+def _printed_root_source_observation_v1(
+    row_ordinal: int,
+    row: Mapping[str, Any],
+    *,
+    region: Mapping[str, Any],
+    lane_axis: Mapping[str, Any],
+    state: str,
+) -> dict[str, Any] | None:
+    """Copy only consumed source cells, their exact locator and caller state.
+
+    Parsing stays with the existing frozen source-money parser. This local
+    observation grants no role, lane, unit, valuation or equation authority.
+    """
+    values = row.get("values_exact")
+    if type(values) is not list:
+        return None
+    ordinals = lane_axis["money_column_ordinals"]
+    if any(ordinal > len(values) for ordinal in ordinals):
+        return None
+    cells = [_source_money(values[ordinal - 1]) for ordinal in ordinals]
+    source_ref = {
+        "hierarchy_path_exact": canonical_clone_v1(row.get("hierarchy_path_exact")),
+        "label_exact": row.get("label_exact"),
+        "locator": canonical_clone_v1(region),
+        "money_column_ordinals": list(ordinals),
+        "row_id": f"r{row_ordinal}",
+        "row_kind": row.get("row_kind"),
+        "row_ordinal": row_ordinal,
+    }
+    projection = row.get("_compound_row_projection")
+    if type(projection) is dict:
+        source_ref["compound_row_projection"] = canonical_clone_v1(projection)
+        source_ref["row_id"] = (
+            f"r{projection['source_row_ordinal']}#line{projection['subrow_ordinal']}"
+        )
+    return canonical_clone_v1({"cells": cells, "source_refs": [source_ref], "state": state})
+
+
 def _terminal_source_root_rows_v1(fragment: Mapping[str, Any], compiled_specs: Mapping[str, Any]) -> list[tuple[int, dict[str, Any]]]:
     """Printed row ownership selects a root; value agreement never selects it."""
     rows = fragment["table"].get("rows")
@@ -1501,7 +1536,7 @@ def _apply_source_root_controls_v1(
                 reasons.append("F28_PRINTED_FAMILY_ROOT_OWNER_PERIOD_UNIT_OR_ROW_FRONTIER_NOT_PROVEN")
             else:
                 try:
-                    record = _row_local_record("FAMILY_ROOT_TOTAL", ordinal, row, region=fragment["region"],
+                    record = _printed_root_source_observation_v1(ordinal, row, region=fragment["region"],
                         lane_axis=table_receipt["lane_axis"], state="SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_PROVEN_BY_F28_SOURCE_CONTROL")
                 except (TypeError, ValueError):
                     record = None

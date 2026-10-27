@@ -145,6 +145,14 @@ def test_public_adapter_on_labelled_projection_binds_actual_printed_total_and_so
     assert [cell["source_text"] for cell in root["values"]] == ["2.739.236", "2.236.509"]
     assert len(root["source_refs"]) == 1 and root["source_refs"][0]["row_id"] == "r8"
     assert root["source_refs"][0]["locator"]["page_json_version_id"].endswith("a9c7d560bab43ee4")
+    receiver_region = next(region for region in cluster["component_regions"] if region["physical_page"] == 21)
+    assert root["source_refs"] == [{"hierarchy_path_exact": ["Tổng"], "label_exact": "Tổng",
+        "locator": receiver_region, "money_column_ordinals": [1, 2],
+        "row_id": "r8", "row_kind": "TOTAL", "row_ordinal": 8}]
+    assert root["values"] == [
+        {"coefficient": 2739236, "source_text": "2.739.236", "state": "RAW_SIGNED_INTEGER"},
+        {"coefficient": 2236509, "source_text": "2.236.509", "state": "RAW_SIGNED_INTEGER"}]
+    assert root["state"] == "SOURCE_VISIBLE_FAMILY_ROOT_TOTAL_PROVEN_BY_F28_SOURCE_CONTROL"
     deposit = next(item for item in actual["mappings"] if item["role"] == "DEPOSIT_INTEREST")
     assert [cell["source_text"] for cell in deposit["values"]] == ["461.350", "180.819"]
     proof = actual["closure_receipt"]["interest_income_adapter_receipt"]["source_root_control_receipts"][0]

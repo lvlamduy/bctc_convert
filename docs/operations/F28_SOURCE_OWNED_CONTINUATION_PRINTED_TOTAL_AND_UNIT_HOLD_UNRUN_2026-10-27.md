@@ -102,6 +102,31 @@ and retired-permission before-images use lossless canonical JSON UTF-8 text,
 SHA256 and byte-count envelopes. They are not nested mapping-shaped dictionaries
 that the recursive shared source-observation auditor could miscount as active.
 
+### Narrow producer-axis correction after source capture 2abf3ab6
+
+Root's static launch review found that the new direct-total path imported the
+other-long-term-investments `_row_local_record` outside the F28 runner's existing
+14-item implementation-ref axis. The captured 2abf3ab6 V1 focused runtime
+scripts remain preserved **UNRUN**; they must not authorize this delta.
+
+The direct-total path now uses the family-local
+`_printed_root_source_observation_v1`, returning only its consumed `cells`,
+`source_refs` and `state`. It uses the already imported frozen `_source_money`
+parser and constructs the exact source-reference shape locally, including the
+existing compound-row locator convention. No new module, valuation logic,
+producer-ref entry, frozen-file edit or mapping permission is introduced.
+Raw-token parsing, selected money-column order, blank/dash distinctions and
+copied locator/hierarchy fields are preserved. The helper is only called after
+the existing independent ownership, lane, unit and terminal-row checks.
+
+UNRUN controls compare the consumed result with the existing frozen-engine
+record oracle and an explicit exact expected reference/cell dictionary, exercise
+signed/grouped/dash/blank/conditional parser states and compound-row locators,
+check private cloning, and reject missing/nonlist/short source values. The
+public original-source projection additionally asserts the complete actual
+printed-root reference, both raw values/states and the direct-source state.
+Root must review/capture new source and pin a new focused driver before launch.
+
 ## Unit authority correction
 
 Root explicitly rejected the historical PRIMARY numeric-equality unit donation.
