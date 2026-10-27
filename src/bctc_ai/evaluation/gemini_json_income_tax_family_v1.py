@@ -9751,6 +9751,17 @@ def _registered_negative_source_label_conflicts_v1(
     repaired_records: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     try:
+        observed = source_label_discrepancy.registered_negative_source_label_observation_axis_v1(repaired_records)
+        if any(item["classification"] == source_label_discrepancy.PRINTED_DASH_CLASSIFICATION
+               and item["source_section_kind"] == "FINANCIAL_NOTE" for item in observed):
+            # The note source uses the actual tax population, never PRIMARY
+            # statement ownership. Recompute its complete source row inventory;
+            # resealing caller-provided population hashes cannot replace it.
+            if not same_typed_json_v1(
+                source_context.get("tax_population_inventory"),
+                _tax_population_inventory(repaired_records, compiled_specs=compiled_specs),
+            ):
+                raise _error("income-tax printed-dash NOTE population replay drifted")
         return source_label_discrepancy.registered_negative_source_label_conflicts_v1(
             candidate, source_context=source_context, repaired_records=repaired_records, compiled_specs=compiled_specs,
         )
@@ -9790,9 +9801,12 @@ def _seal_income_tax_source_controls(
         candidate, source_context=source_context, repaired_records=repaired_records, compiled_specs=compiled_specs,
     )
     if negative_source_labels:
+        printed_dash = any(item["classification"] == source_label_discrepancy.PRINTED_DASH_CLASSIFICATION
+                           for item in negative_source_labels)
+        reason = "SOURCE_PRINTED_DASH_VS_JSON_NUMERIC_DISCREPANCY" if printed_dash else "SOURCE_TRANSCRIPTION_DISCREPANCY"
         return _unresolved_from_candidate(
-            candidate, reason="SOURCE_TRANSCRIPTION_DISCREPANCY",
-            evidence={"classification": "SOURCE_TRANSCRIPTION_DISCREPANCY",
+            candidate, reason=reason,
+            evidence={"classification": source_label_discrepancy.PRINTED_DASH_CLASSIFICATION if printed_dash else "SOURCE_TRANSCRIPTION_DISCREPANCY",
                       "registered_negative_source_label_observations": negative_source_labels,
                       "source_context_receipt": canonical_clone_v1(source_context)},
         )

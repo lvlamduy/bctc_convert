@@ -27,6 +27,41 @@ _LOCATOR_KEYS = (
     "document_id", "document_ordinal", "source_logical_name", "source_sha256",
     "page_json_version_id", "physical_page", "selected_page_ordinal",
 )
+PRINTED_DASH_CLASSIFICATION = "PRINTED_DASH_VS_JSON_NUMERIC"
+
+
+def _validate_printed_dash_observation(observation):
+    """A negative pixel review binds exact raw cells, never their replacement."""
+    target, review = observation["locator"], observation["review"]
+    source = observation["source"]
+    _need(type(source) is dict and set(source) == {
+        "document_id", "source_logical_name", "source_sha256", "source_size_bytes",
+    } and type(source["source_size_bytes"]) is int and source["source_size_bytes"] > 0
+          and source["document_id"] == "gfpstorev1:document:" + canonical_json_sha256_v1(
+              {key: source[key] for key in ("source_logical_name", "source_sha256", "source_size_bytes")}),
+          "printed-dash PDF document identity differs")
+    _need(observation["expected_role"] in {"DEFERRED_TAX_NET", "NON_TAXABLE_AGGREGATE"}
+          and observation["source_section_kind"] in {"PRIMARY_STATEMENT", "FINANCIAL_NOTE"}
+          and observation["source_statement_type"] == (
+              "INCOME_STATEMENT" if observation["source_section_kind"] == "PRIMARY_STATEMENT" else "NOT_APPLICABLE")
+          and observation["source_page_status"] in {
+              "PRIMARY_FINANCIAL_STATEMENT", "FINANCIAL_NOTE_CONTENT", "MIXED_FINANCIAL_CONTENT"},
+          "unreviewed printed-dash source kind or role")
+    before = observation["before_reference"]
+    _need(type(before) is dict and set(before) == {
+        "row_kind", "label_exact", "hierarchy_path_exact", "values_exact",
+    } and type(before["values_exact"]) is list, "printed-dash full raw row before-image required")
+    columns = observation["printed_dash_money_column_ordinals"]
+    _need(type(columns) is list and columns and len(columns) == len(set(columns))
+          and all(type(n) is int and n in target["money_column_ordinals"]
+                  and 1 <= n <= len(before["values_exact"])
+                  and type(before["values_exact"][n - 1]) is str
+                  and before["values_exact"][n - 1] == "0" for n in columns),
+          "printed-dash discrepancy must identify exact reviewed raw zero cells")
+    _need(review["decision"] == "PRINTED_DASH_DIFFERS_FROM_JSON_NUMERIC_HOLD_NO_REPAIR"
+          and review["source_values_changed"] is False and review["text_layer_claimed"] is False
+          and review["printed_glyph_by_money_column"] == {str(n): "-" for n in columns},
+          "printed-dash negative manual-review boundary differs")
 
 
 class IncomeTaxSourceLabelDiscrepancyV1Error(ValueError):
@@ -59,13 +94,16 @@ def _validate_registry(registry: Any) -> dict[str, Any]:
         _sealed(observation, "observation_id", "gjitflabelv1:observation:")
         _need(observation["observation_id"] not in seen, "duplicate observation")
         seen.add(observation["observation_id"])
-        _need(observation["classification"] == "SOURCE_LABEL_SUBSTITUTION_NOT_EXTRA_ROW"
-              and observation["expected_role"] == "DEFERRED_TAX_NET", "unreviewed observation semantics")
         review = observation["review"]
-        _need(review["decision"] == "ROLE_LABEL_HAS_NO_PRINTED_COUNTERPART_HOLD_NO_REPAIR"
-              and review["printed_counterpart_for_claimed_role"] is False
-              and review["source_values_changed"] is False and review["text_layer_claimed"] is False,
-              "negative manual-review boundary differs")
+        if observation["classification"] == PRINTED_DASH_CLASSIFICATION:
+            _validate_printed_dash_observation(observation)
+        else:
+            _need(observation["classification"] == "SOURCE_LABEL_SUBSTITUTION_NOT_EXTRA_ROW"
+                  and observation["expected_role"] == "DEFERRED_TAX_NET", "unreviewed observation semantics")
+            _need(review["decision"] == "ROLE_LABEL_HAS_NO_PRINTED_COUNTERPART_HOLD_NO_REPAIR"
+                  and review["printed_counterpart_for_claimed_role"] is False
+                  and review["source_values_changed"] is False and review["text_layer_claimed"] is False,
+                  "negative manual-review boundary differs")
         render = review["page_render"]
         _need(render["renderer"] == "pdftoppm" and render["resolution_dpi"] == 100
               and render["format"] == "PNG" and render["alpha"] is False
@@ -104,16 +142,26 @@ def registered_negative_source_label_observation_axis_v1(page_records) -> list[d
             continue
         _need(len(records) == 1, "selected source page is not unique")
         record = records[0]
-        _need(all(record[key] == source[key] for key in source), "source PDF identity differs")
+        # Page records carry the document content ID rather than a separate PDF
+        # byte count. The new registry replays that ID from name/SHA/size, and
+        # the independent warm/cold PDF authenticator checks the runtime size.
+        source_keys = set(source) - {"source_size_bytes"} if observation["classification"] == PRINTED_DASH_CLASSIFICATION else source
+        _need(all(record[key] == source[key] for key in source_keys), "source PDF identity differs")
         _need(record["page_json_version_id"] == target["page_json_version_id"],
               "unregistered selected JSON version; old review cannot authorize a new source profile")
         _need(type(record["document_ordinal"]) is int and record["document_ordinal"] > 0,
               "invalid runtime document ordinal")
         page = record["page_json"]
         section, table = _source_table(page, section_id=target["section_id"], table_id=target["table_id"])
-        _need(page.get("status") == "PRIMARY_FINANCIAL_STATEMENT"
-              and section.get("content_kind") == "PRIMARY_STATEMENT"
-              and section.get("statement_type") == "INCOME_STATEMENT", "registered PRIMARY source kind differs")
+        if observation["classification"] == PRINTED_DASH_CLASSIFICATION:
+            _need(page.get("status") == observation["source_page_status"]
+                  and section.get("content_kind") == observation["source_section_kind"]
+                  and section.get("statement_type") == observation["source_statement_type"],
+                  "registered printed-dash source kind differs")
+        else:
+            _need(page.get("status") == "PRIMARY_FINANCIAL_STATEMENT"
+                  and section.get("content_kind") == "PRIMARY_STATEMENT"
+                  and section.get("statement_type") == "INCOME_STATEMENT", "registered PRIMARY source kind differs")
         _need(1 <= target["row_ordinal"] <= len(table["rows"]), "registered row absent")
         row = table["rows"][target["row_ordinal"] - 1]
         _need(all(same_typed_json_v1(row.get(key), value)
@@ -137,7 +185,8 @@ def registered_negative_source_label_observation_axis_v1(page_records) -> list[d
             "money_column_ordinals": canonical_clone_v1(columns),
             "original_source_row_exact": canonical_clone_v1(row),
             "registered_negative_observation": canonical_clone_v1(observation),
-            "classification": "SOURCE_TRANSCRIPTION_DISCREPANCY",
+            "classification": (PRINTED_DASH_CLASSIFICATION if observation["classification"] == PRINTED_DASH_CLASSIFICATION
+                               else "SOURCE_TRANSCRIPTION_DISCREPANCY"),
             "source_values_changed": False, "fresh_pdf_authentication_claimed": False,
         }
         output.append({**material, "receipt_id": "gjitflabelv1:source:" + canonical_json_sha256_v1(material)})
@@ -160,6 +209,20 @@ def registered_negative_source_label_conflicts_v1(candidate, *, source_context, 
     periods = source_context["document_statement_period_inventory"]
     _sealed(periods, "receipt_id", "gjitfav1:document-statement-periods:")
     for observed in axis:
+        if observed["classification"] == PRINTED_DASH_CLASSIFICATION and observed["source_section_kind"] == "FINANCIAL_NOTE":
+            populations = [item for item in source_context["tax_population_inventory"]
+                           if same_typed_json_v1(item["locator"], observed["source_locator"])]
+            _need(len(populations) == 1, "printed-dash NOTE population source join is not unique")
+            population = populations[0]
+            _sealed(population, "receipt_id", "gjitfav1:tax-population:")
+            _need(population["original_page_json_sha256"] == observed["original_page_json_sha256"]
+                  and population["original_table_json_sha256"] == observed["original_table_json_sha256"]
+                  and same_typed_json_v1(population["lane_axis"].get("money_column_ordinals"),
+                                         observed["money_column_ordinals"])
+                  and same_typed_json_v1(population["source_table_rows_exact"][observed["row_ordinal"] - 1],
+                                         observed["original_source_row_exact"]),
+                  "printed-dash NOTE population/row/hash binding differs")
+            continue
         sources = [item for item in periods["sources"]
                    if same_typed_json_v1(item["locator"], observed["source_locator"])]
         _need(len(sources) == 1 and sources[0]["statement_type"] == "INCOME_STATEMENT"
@@ -172,7 +235,8 @@ def registered_negative_source_label_conflicts_v1(candidate, *, source_context, 
         for ref in mapping.get("source_refs", []):
             for observed in axis:
                 profile = observed["registered_negative_observation"]
-                if mapping.get("role") != profile["expected_role"]:
+                printed_dash = profile["classification"] == PRINTED_DASH_CLASSIFICATION
+                if not printed_dash and mapping.get("role") != profile["expected_role"]:
                     continue
                 target, locator = profile["locator"], observed["source_locator"]
                 supplied = ref["locator"]
@@ -181,19 +245,33 @@ def registered_negative_source_label_conflicts_v1(candidate, *, source_context, 
                     and supplied.get("physical_page") == locator["physical_page"]))
                 if not related:
                     continue
+                if printed_dash and all(type(supplied.get(key)) is str for key in ("section_id", "table_id")) and any(
+                    supplied[key] != locator[key] for key in ("section_id", "table_id")
+                ):
+                    # Row IDs are local to a source table. Another actual
+                    # table on this page cannot borrow or collide with them.
+                    continue
+                if printed_dash and ref.get("row_ordinal") != target["row_ordinal"] and ref.get("row_id") != target["row_id"]:
+                    continue
                 _need(all(same_typed_json_v1(supplied.get(key), value) for key, value in locator.items()),
                       "selected mapping has a partial registered-source locator mismatch")
+                reference_before = {key: value for key, value in profile["before_reference"].items()
+                                    if key != "values_exact"}
                 _need(ref.get("row_ordinal") == target["row_ordinal"] and ref.get("row_id") == target["row_id"]
                       and same_typed_json_v1(ref.get("money_column_ordinals"), target["money_column_ordinals"])
                       and all(same_typed_json_v1(ref.get(key), value)
-                              for key, value in profile["before_reference"].items()),
+                              for key, value in reference_before.items()),
                       "selected mapping reference differs from registered original row")
-                material = {"classification": "SOURCE_TRANSCRIPTION_DISCREPANCY",
+                # Applicability belongs to the original cited raw row. A
+                # derived/aggregated output can have source_text=None and a
+                # nonzero total while still citing this untrusted source cell.
+                material = {"classification": PRINTED_DASH_CLASSIFICATION if printed_dash else "SOURCE_TRANSCRIPTION_DISCREPANCY",
                             "source_observation": canonical_clone_v1(observed),
                             "source_context_receipt_id": source_context["receipt_id"],
                             "selected_mapping": canonical_clone_v1(mapping), "selected_source_ref": canonical_clone_v1(ref),
                             "candidate_id_before_hold": candidate["candidate_id"],
-                            "rule": "REGISTERED_PDF_LABEL_SUBSTITUTION_CANNOT_BIND_A_FINANCIAL_ROLE",
+                            "rule": ("REGISTERED_PRINTED_DASH_CANNOT_AUTHORIZE_JSON_NUMERIC_OUTPUT" if printed_dash
+                                     else "REGISTERED_PDF_LABEL_SUBSTITUTION_CANNOT_BIND_A_FINANCIAL_ROLE"),
                             "source_values_changed": False, "fresh_pdf_authentication_claimed": False}
                 conflicts.append({**material, "receipt_id": "gjitflabelv1:hold:" + canonical_json_sha256_v1(material)})
     return conflicts
