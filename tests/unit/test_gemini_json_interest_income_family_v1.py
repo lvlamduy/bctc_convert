@@ -668,9 +668,12 @@ def test_source_repair_rejects_runtime_page_or_cell_drift() -> None:
 
 
 def test_exact_governed_duration_header_is_narrowly_normalized() -> None:
+    # Synthetic positive must close independently of the header normalization.
+    rows = _interest_rows()
+    rows[-1]["values_exact"] = ["35", "24"]
     page = _page(
         _table(
-            _interest_rows(),
+            rows,
             columns=_columns(
                 ["Luỹ kế từ đầu năm đến cuối kỳ này", "Năm nay"],
                 ["Luỹ kế từ đầu năm đến cuối kỳ này", "Năm trước"],
@@ -721,17 +724,20 @@ def _primary_page(*, million_values: list[str], vnd_values: list[str]) -> dict:
     return _page(raw, million, status="PRIMARY_FINANCIAL_STATEMENT")
 
 
-def test_unitless_note_binds_only_to_exact_primary_statement_unit() -> None:
+def test_primary_numeric_match_cannot_supply_an_absent_note_unit() -> None:
+    # Isolate unit ownership from the separately retained 20-versus-24 negative.
+    rows = _interest_rows()
+    rows[-1]["values_exact"] = ["35", "24"]
     note = _page(
         _table(
-            _interest_rows(),
+            rows,
             columns=_columns(["Kỳ này"], ["Kỳ trước"]),
             unit=None,
         )
     )
     primary = _primary_page(
-        million_values=["35", "20"],
-        vnd_values=["35.000.000", "20.000.000"],
+        million_values=["35", "24"],
+        vnd_values=["35.000.000", "24.000.000"],
     )
     compiled = _compiled()
     cluster, candidate = _cluster_and_candidate(
@@ -747,13 +753,11 @@ def test_unitless_note_binds_only_to_exact_primary_statement_unit() -> None:
             _record(note),
         ],
     )
-    assert candidate["status"] == READY
-    assert {item["unit"] for item in candidate["mappings"]} == {"MILLION_VND"}
+    assert candidate["status"] == "UNRESOLVED_GEMINI_JSON_FAMILY"
+    assert candidate["mappings"] == []
+    assert "F28_NOTE_UNIT_SOURCE_OWNERSHIP_NOT_PROVEN" in candidate["reasons"]
     adapter = candidate["closure_receipt"]["interest_income_adapter_receipt"]
-    assert len(adapter["unit_corroboration_receipts"]) == 1
-    unit = adapter["unit_corroboration_receipts"][0]
-    assert unit["canonical_unit"] == "MILLION_VND"
-    assert unit["target_vector"] == [35, 20]
+    assert adapter["unit_corroboration_receipts"] == []
     assert note["sections"][0]["tables"][0]["unit_exact"] is None
     validate_gemini_json_interest_income_family_candidate_replay_v1(
         candidate,
@@ -764,6 +768,38 @@ def test_unitless_note_binds_only_to_exact_primary_statement_unit() -> None:
             cluster["component_regions"]
         ),
     )
+
+
+def _assert_note_unit_was_not_donated(candidate: dict, note: dict) -> None:
+    assert candidate["status"] == "UNRESOLVED_GEMINI_JSON_FAMILY" and candidate["mappings"] == []
+    assert "F28_NOTE_UNIT_SOURCE_OWNERSHIP_NOT_PROVEN" in candidate["reasons"]
+    assert candidate["closure_receipt"]["interest_income_adapter_receipt"]["unit_corroboration_receipts"] == []
+    assert note["sections"][0]["tables"][0]["unit_exact"] is None
+
+
+def test_explicit_note_owned_unit_can_only_be_corroborated_without_source_mutation() -> None:
+    rows = _interest_rows()
+    rows[-1]["values_exact"] = ["35", "24"]
+    note = _page(_table(rows, unit="Triệu đồng"))
+    primary = _primary_page(million_values=["35", "24"], vnd_values=["35.000.000", "24.000.000"])
+    original = copy.deepcopy(note)
+    compiled = _compiled()
+    _cluster, candidate = _cluster_and_candidate(
+        compiled=compiled, pages={PRIMARY_VERSION: primary, NOTE_VERSION: note},
+        records=[_record(primary, version=PRIMARY_VERSION, physical_page=1, selected_page_ordinal=1), _record(note)],
+    )
+    assert candidate["status"] == READY
+    assert {item["unit"] for item in candidate["mappings"]} == {"MILLION_VND"}
+    receipts = candidate["closure_receipt"]["interest_income_adapter_receipt"]["unit_corroboration_receipts"]
+    assert len(receipts) == 1
+    assert receipts[0]["canonical_unit"] == "MILLION_VND"
+    assert receipts[0]["target_vector"] == [35, 24]
+    assert receipts[0]["target_unit_before_exact"] == receipts[0]["target_unit_exact"] == "Triệu đồng"
+    assert receipts[0]["unit_permission_granted"] is False
+    assert receipts[0]["scope_permission_granted"] is False
+    assert receipts[0]["period_permission_granted"] is False
+    assert receipts[0]["source_values_changed"] is False
+    assert note == original
 
 
 def test_unitless_note_does_not_bind_when_two_primary_units_match() -> None:
@@ -794,7 +830,7 @@ def test_unitless_note_does_not_bind_when_two_primary_units_match() -> None:
     )
     assert candidate["status"] != READY
     assert candidate["mappings"] == []
-    assert "interest_income_adapter_receipt" not in candidate["closure_receipt"]
+    _assert_note_unit_was_not_donated(candidate, note)
 
 
 def test_unitless_note_does_not_ignore_a_partially_observed_component() -> None:
@@ -830,7 +866,7 @@ def test_unitless_note_does_not_ignore_a_partially_observed_component() -> None:
 
     assert candidate["status"] != READY
     assert candidate["mappings"] == []
-    assert "interest_income_adapter_receipt" not in candidate["closure_receipt"]
+    _assert_note_unit_was_not_donated(candidate, note)
 
 
 def test_unitless_note_does_not_bypass_a_partially_observed_printed_total() -> None:
@@ -864,7 +900,7 @@ def test_unitless_note_does_not_bypass_a_partially_observed_printed_total() -> N
 
     assert candidate["status"] != READY
     assert candidate["mappings"] == []
-    assert "interest_income_adapter_receipt" not in candidate["closure_receipt"]
+    _assert_note_unit_was_not_donated(candidate, note)
 
 
 def test_unitless_note_does_not_choose_one_of_multiple_printed_totals() -> None:
@@ -898,4 +934,4 @@ def test_unitless_note_does_not_choose_one_of_multiple_printed_totals() -> None:
 
     assert candidate["status"] != READY
     assert candidate["mappings"] == []
-    assert "interest_income_adapter_receipt" not in candidate["closure_receipt"]
+    _assert_note_unit_was_not_donated(candidate, note)

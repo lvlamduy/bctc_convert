@@ -1,0 +1,78 @@
+{
+  "format_version": "F28_OWNER_SUPPLIED_SOURCE_CONTEXT_FIXTURE_V1",
+  "authority": "Claude owner messages 0477 and 0480 in reply to root 0476/0479; root independently checked selection-order code against the supplied manifest excerpt",
+  "packet_ref": {
+    "path": "restore-receipts/F5_SOURCE_PACKETS_20261027_V1/f28-vbb-doc256/packet.json",
+    "sha256": "96e545ed21e0ab2f68da2c1e18b56b2fae6dc3155150ce101a7f50cb6296c1b8"
+  },
+  "pdf": {
+    "source_logical_name": "vietstock_bctc/VBB/2025/000000014895152_VI_BaoCaoTaiChinh_HopNhat_Q1_2025.pdf",
+    "sha256": "b7ed875bfe1863d514222f81f2064fad1b7e08d9c8756767141ae264ea022eee",
+    "size_bytes": 10174390
+  },
+  "original_document_id": "gfpstorev1:document:0930f3c33c536b806d918e4dc02d5d0c2e9f861fcba670640ff167272d024f70",
+  "original_document_ordinal": 256,
+  "corpus_index_sha256": "969ff5f80732c39e4b7543ca1f5c1e5b5b827260f19981ed02945fe0c7379219",
+  "document_manifest_ref": {
+    "document_manifest_id": "gfdmv1:manifest:4e03d319d5e1b671c8eeb68bc814dc5c9a754f49871d8ce4e637164a4f24b9f0",
+    "sha256": "dbb6c07b596b67714ca5c4e0c737207663946fd4227ea7694d318c83a1727eb9",
+    "size_bytes": 39593
+  },
+  "stored_family_run_id": "gjfafstorev1:run:51a48387cfa5eb7e68ec4a2b3c3a88a59f880624b491ca3644b8930b999d0635",
+  "stored_candidate_id": "gjmthfcv1:candidate:5494eb1195b9185fcc3c0daa0e0fbf602f13e1bcccd985b579d2d3ce0ff45a7b",
+  "stored_candidate_region": {
+    "document_id": "gfpstorev1:document:0930f3c33c536b806d918e4dc02d5d0c2e9f861fcba670640ff167272d024f70",
+    "document_ordinal": 256,
+    "source_logical_name": "vietstock_bctc/VBB/2025/000000014895152_VI_BaoCaoTaiChinh_HopNhat_Q1_2025.pdf",
+    "source_sha256": "b7ed875bfe1863d514222f81f2064fad1b7e08d9c8756767141ae264ea022eee",
+    "page_json_version_id": "gfpstorev1:json:efb0487f77df642751ea9d9b3d18ea73aefcc958c6aa4887a9c7d560bab43ee4",
+    "physical_page": 21,
+    "selected_page_ordinal": 21,
+    "section_id": "s1",
+    "table_id": "t1"
+  },
+  "original_sender_selected_page_ordinal": 20,
+  "original_sender_selected_axis_status": "AUTHENTICATED_MANIFEST_PAGES_ARRAY_POSITION_19_PLUS_ONE_UNDER_BOUND_FULL_26_PAGE_SELECTION_NOT_PHYSICAL_PAGE_INFERENCE",
+  "selected_axis_excerpt": {
+    "file": "selected-axis-p20-p21.json",
+    "sha256": "87e18721157e327f1a134ffb8b65378171bce43d5a396cc4ce5aa71142dcdf68",
+    "runner_path": "scripts/experiments/run_gemini_json_multitable_hierarchical_accounting_family_v1.py",
+    "runner_sha256": "d9b1fa9f4c05a737bd999a98e58c16936a5431d662171c20b096a6e389a856c5",
+    "runner_rule": "_selected_page_axis verifies document_manifest_id, page_count and pages length, then extends VIDs in manifest pages-array order",
+    "page_store_path": "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
+    "page_store_sha256": "dbcf3381f526b3abf7cf234148cd7be17b758cc5cb43268feece74a5ba53e27c",
+    "page_store_rule": "query_selected_multitable_hierarchical_family_regions_v1 enumerates selected IDs from1 and sets per-document selected_page_ordinal=len(current_pages)+1"
+  },
+  "pages": [
+    {
+      "file": "page-020-e5fb0a05a8335229.json",
+      "sha256": "746d3248b9f65857251865ce2bcee57f3106d7ca2eb3a10788d980184ce649a1",
+      "size_bytes": 12497,
+      "page_json_version_id": "gfpstorev1:json:e5fb0a05a8335229ba9033bd92fd3097ca7a69aadb613dd6d76c916b85733fd7",
+      "physical_page": 20,
+      "section_id": "s8",
+      "table_id": "t1",
+      "render_sha256": "785a8382c4559518c89b24139a5d79ba3a6b454cf4d4b108a67c00334876f4da",
+      "render_size_bytes": 493323
+    },
+    {
+      "file": "page-021-efb0487f77df6427.json",
+      "sha256": "6a99127575640e74735e8f0301dda598ca378978c5b5d564799fc3758ae74fc4",
+      "size_bytes": 13743,
+      "page_json_version_id": "gfpstorev1:json:efb0487f77df642751ea9d9b3d18ea73aefcc958c6aa4887a9c7d560bab43ee4",
+      "physical_page": 21,
+      "section_id": "s1",
+      "table_id": "t1",
+      "render_sha256": "4b0b142a90b3b473cfb556703c141d7d838227c7f18e344c2bc3750d15b80dc4",
+      "render_size_bytes": 419134
+    }
+  ],
+  "render_contract": "Owner-authenticated PDF, pdftoppm 100 dpi PNG, 8-bit RGB no alpha; renders inspected externally, not executed by these tests",
+  "public_test_projection": {
+    "claim_boundary": "NEW_DECLARED_BOUNDED_STRUCTURAL_TEST_MANIFEST_NOT_ORIGINAL_FULL271_SELECTED_FRONTIER_NOT_FRESH_DATABASE_REPLAY",
+    "run_document_ordinal": 1,
+    "run_selected_page_ordinals": [1, 2],
+    "preserved_fields": ["document_id", "source_logical_name", "source_sha256", "page_json_version_id", "physical_page", "raw_page_bytes"]
+  },
+  "financial_acceptance": false
+}
