@@ -147,9 +147,8 @@ def _nonadditive_group_options(*, split=False):
         "compiled_specs": compiled, "query_receipt": family.build_gemini_json_interest_income_region_query_receipt_v1(regions)}
 
 
-@pytest.mark.parametrize("split", [False, True])
-def test_raw_semantic_group_owns_securities_and_narrower_continued_detail_is_nonadditive(split):
-    options = _nonadditive_group_options(split=split)
+def test_raw_semantic_group_owns_securities_and_narrower_continued_detail_is_nonadditive():
+    options = _nonadditive_group_options()
     original = deepcopy(options["page_json_by_version"])
     before = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(**options)
     assert before["status"] == READY
@@ -185,9 +184,62 @@ def test_raw_semantic_group_owns_securities_and_narrower_continued_detail_is_non
     assert actual["closure_receipt"]["equations"][:-1] == retained_local
     assert actual["closure_receipt"]["equations"][-1]["equation_id"] == proof["corroborating_equation_id"]
     source_only = actual["closure_receipt"]["source_only_unmapped_rows"]
-    assert len(source_only) == (2 if split else 1)
+    assert len(source_only) == 1
     assert all(item["declared_validation_role"] == "F28_NONADDITIVE_CONTINUED_SECURITIES_SUBSET_SOURCE_ONLY" for item in source_only)
-    assert {ref["row_ordinal"] for item in source_only for ref in item["source_refs"]} == set(range(1, 3 if split else 2))
+    assert {ref["row_ordinal"] for item in source_only for ref in item["source_refs"]} == {1}
+    assert audit_source_observation_mapping_contract_v1(actual)["mapping_count"] == len(actual["mappings"]) == 7
+    assert family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options) == actual
+    assert options["page_json_by_version"] == original
+
+
+def test_unsealed_two_detail_group_shape_remains_an_explicit_algorithm_hold():
+    options = _nonadditive_group_options(split=True)
+    original = deepcopy(options["page_json_by_version"])
+    before = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(**options)
+    reasons = [
+        "CONFLICTING_SOURCE_VALUES_FOR_ROLE_LANE:SECURITIES_INTEREST:COMPARATIVE_PERIOD",
+        "CONFLICTING_SOURCE_VALUES_FOR_ROLE_LANE:SECURITIES_INTEREST:CURRENT_PERIOD",
+        "DUPLICATE_ROLE_SOURCE_ROWS_NOT_ALL_EQUATION_CONSUMED",
+    ]
+    assert before["status"] == UNRESOLVED and before["reasons"] == reasons and before["mappings"] == []
+    actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    assert actual["status"] == UNRESOLVED and actual["reasons"] == reasons and actual["mappings"] == []
+    assert audit_source_observation_mapping_contract_v1(actual)["mapping_count"] == 0
+    assert family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options) == actual
+    assert options["page_json_by_version"] == original
+
+
+def test_complete_raw_parent_owns_both_lanes_while_narrower_child_blank_stays_source_only_null():
+    options = _nonadditive_group_options()
+    child = options["page_json_by_version"][PRIMARY_VERSION]["sections"][0]["tables"][0]["rows"][0]
+    child["values_exact"][1] = None
+    original = deepcopy(options["page_json_by_version"])
+    before = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(**options)
+    assert before["status"] == READY
+    old_role = next(item for item in before["mappings"] if item["role"] == "SECURITIES_INTEREST")
+    assert old_role["state"] == "PARTIAL_SOURCE_OBSERVATION"
+    assert [cell["coefficient"] for cell in old_role["values"]] == [10, None]
+    assert not any(item["role"] == "FAMILY_ROOT_TOTAL" for item in before["mappings"])
+    actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    assert actual["status"] == READY, actual["reasons"]
+    role = next(item for item in actual["mappings"] if item["role"] == "SECURITIES_INTEREST")
+    assert [cell["coefficient"] for cell in role["values"]] == [5, 4]
+    assert [cell["source_text"] for cell in role["values"]] == ["5", "4"]
+    assert [(ref["locator"]["page_json_version_id"], ref["row_ordinal"]) for ref in role["source_refs"]] == [(NOTE_VERSION, 3)]
+    assert [cell["coefficient"] for cell in _root(actual)["values"]] == [38, 27]
+    proof = _control(actual)["nonadditive_group_continuation_receipt"]
+    assert proof["narrower_prefix_corroboration"]["observed_prefix_sum"] == [5, None]
+    missing = {"coefficient": None, "source_text": None, "state": "BLANK_SOURCE_CELL"}
+    assert proof["narrower_prefix_corroboration"]["observed_children"][0]["cells"][1] == missing
+    assert actual["closure_receipt"]["source_only_unmapped_rows"][0]["cells"][1] == missing
+    assert proof["missing_components_inferred"] is False
+    assert proof["narrower_prefix_corroboration"]["child_prefix_exhaustiveness_claimed"] is False
+    retired = _retired(proof["retired_role_authority"])
+    assert retired["role_mappings"] == [old_role] and retired["root_mappings"] == []
+    assert retired["cluster_aggregation_receipts"] == before["closure_receipt"]["cluster_aggregation_receipts"]
+    assert _retired(_control(actual)["direct_printed_root_binding"]["prior_root_mapping"]) is None
+    assert actual["closure_receipt"]["cluster_aggregation_receipts"] == []
+    assert actual["closure_receipt"]["structural_root_receipt"]["emitted_mapping"] is True
     assert audit_source_observation_mapping_contract_v1(actual)["mapping_count"] == len(actual["mappings"]) == 7
     assert family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options) == actual
     assert options["page_json_by_version"] == original
@@ -195,7 +247,7 @@ def test_raw_semantic_group_owns_securities_and_narrower_continued_detail_is_non
 
 @pytest.mark.parametrize("mutation", [
     "missing_sender_marker", "missing_receiver_marker", "parent_not_group", "wrong_parent", "qualified_parent",
-    "qualified_child", "partial_scope", "competing_group", "later_same_role", "child_blank",
+    "qualified_child", "partial_scope", "competing_group", "later_same_role",
     "child_conflict", "parent_blank", "sender_unit_missing", "receiver_wrong_unit",
     "receiver_owner_reset", "receiver_qualified_header", "extra_unmapped_row",
     "sender_qualified_section", "sender_unrelated_section", "sender_qualified_table",
@@ -229,8 +281,6 @@ def test_nonadditive_group_requires_independent_semantic_scope_even_when_old_sum
         sender["rows"][0]["row_kind"] = "GROUP"
     elif mutation == "later_same_role":
         receiver["rows"].insert(2, _row("Thu lãi từ chứng khoán kinh doanh", ["-", "-"]))
-    elif mutation == "child_blank":
-        receiver["rows"][0]["values_exact"][1] = None
     elif mutation == "child_conflict":
         receiver["rows"][0]["values_exact"] = ["4", "3"]
     elif mutation == "parent_blank":
@@ -254,25 +304,52 @@ def test_nonadditive_group_requires_independent_semantic_scope_even_when_old_sum
     else:
         receiver["rows"].insert(1, _row("Khoản khác chưa được phân loại", ["-", "-"]))
     original = deepcopy(options["page_json_by_version"])
+    if mutation in {"qualified_parent", "qualified_child"}:
+        with pytest.raises(ValueError, match="fragment classification drifted"):
+            family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+        # The source mutation must also pass through a freshly rebuilt public
+        # query; the stale classification exception alone is not this control.
+        records = [_record(options["page_json_by_version"][NOTE_VERSION]),
+            _record(options["page_json_by_version"][PRIMARY_VERSION], version=PRIMARY_VERSION,
+                physical_page=3, selected_page_ordinal=3)]
+        cluster = family.coalesce_gemini_json_interest_income_document_v1(
+            page_records=records, compiled_specs=options["compiled_specs"])
+        if cluster["status"] != READY:
+            assert cluster["status"] == UNRESOLVED and cluster["reasons"] and "mappings" not in cluster
+            assert audit_source_observation_mapping_contract_v1(cluster)["mapping_count"] == 0
+            assert options["page_json_by_version"] == original
+            return
+        options["regions"] = cluster["component_regions"]
+        options["query_receipt"] = family.build_gemini_json_interest_income_region_query_receipt_v1(options["regions"])
     actual = family.evaluate_gemini_json_interest_income_family_cluster_v1(**options)
     assert actual["status"] == UNRESOLVED and actual["mappings"] == [], actual["reasons"]
     assert actual["closure_receipt"]["cluster_aggregation_receipts"] == []
     assert actual["closure_receipt"]["structural_root_receipt"]["emitted_mapping"] is False
     assert audit_source_observation_mapping_contract_v1(actual)["mapping_count"] == 0
     assert family.validate_gemini_json_interest_income_family_candidate_replay_v1(actual, **options) == actual
+    if mutation == "parent_blank":
+        proof = _control(actual)["nonadditive_group_continuation_receipt"]
+        beforeimages = _retired(proof["retired_role_authority"])
+        assert beforeimages["root_mappings"] == []
+        assert [cell["coefficient"] for cell in beforeimages["role_mappings"][0]["values"]] == [None, 8]
+        assert beforeimages["cluster_aggregation_receipts"]
+        assert _retired(_control(actual)["retired_global_root_authority"])["structural_root_receipt_before"]["emitted_mapping"] is False
+        assert actual["closure_receipt"]["root_component_sum_receipts"] == []
+        assert not any(item["equation_kind"] == "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM_DERIVES_FAMILY_ROOT" for item in actual["closure_receipt"]["equations"])
     assert options["page_json_by_version"] == original
 
 
 def test_repeated_narrower_alias_with_different_ordinals_is_not_distinct_semantic_scope():
-    options = _nonadditive_group_options(split=True)
+    options = _nonadditive_group_options()
     # Genuine frozen beforeimage, not a fabricated READY candidate. The source
     # finalizer must independently reject drift to repeated semantic ownership.
     before = evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(**options)
     assert before["status"] == READY
     receiver = options["page_json_by_version"][PRIMARY_VERSION]["sections"][0]["tables"][0]
-    for ordinal, row in enumerate(receiver["rows"][:2], 1):
-        row["label_exact"] = f"{ordinal}. Thu lãi từ chứng khoán đầu tư"
-        row["hierarchy_path_exact"] = [row["label_exact"]]
+    receiver["rows"][:1] = [
+        _row("1. Thu lãi từ chứng khoán đầu tư", ["2", "1"]),
+        _row("2. Thu lãi từ chứng khoán đầu tư", ["3", "3"]),
+    ]
     original = deepcopy(options["page_json_by_version"])
     controlled, receipts = family._apply_source_root_controls_v1(before,
         pages=options["page_json_by_version"], original_pages=options["page_json_by_version"],

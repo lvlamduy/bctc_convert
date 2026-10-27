@@ -1504,7 +1504,9 @@ def _source_owned_nonadditive_group_v1(
             or (prior_rows[-1].get("row_kind") != "GROUP"
                 and _without_leading_ordinal(_normalized(prior_rows[-1].get("label_exact"))) not in parent_aliases)
             or len(role_mappings) != 1
-            or role_mappings[0]["state"] != "SOURCE_DISTINCT_LABEL_TABLES_AGGREGATED_AFTER_CLUSTER_CLOSURE"
+            or role_mappings[0]["state"] not in {
+                "SOURCE_DISTINCT_LABEL_TABLES_AGGREGATED_AFTER_CLUSTER_CLOSURE", "PARTIAL_SOURCE_OBSERVATION",
+            }
             or not any(item["role"] == role for item in prior["classification"].get("role_hits", []))
             or not any(item["role"] == role for item in receiver["classification"].get("role_hits", []))):
         return None, []
@@ -1572,11 +1574,19 @@ def _source_owned_nonadditive_group_v1(
                 region=prior["region"], lane_axis=axis, state="SOURCE_OBSERVED_GROUP_SUBTOTAL")
             child_observations = [_printed_root_source_observation_v1(ordinal, row,
                 region=receiver["region"], lane_axis=other_axis, state="NONADDITIVE_SOURCE_ONLY_NARROWER_DETAIL") for ordinal, row in prefix]
-            observations = [parent_observation, *child_observations]
-            if any(item is None or any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in item["cells"]) for item in observations):
+            if (parent_observation is None
+                    or any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO"} for cell in parent_observation["cells"])
+                    or any(item is None or any(cell["state"] not in {"RAW_SIGNED_INTEGER", "DASH_ZERO", "BLANK_SOURCE_CELL"} for cell in item["cells"]) for item in child_observations)):
                 failures.append("F28_NONADDITIVE_GROUP_CELLS_NOT_OBSERVED")
-            elif [sum(item["cells"][lane]["coefficient"] for item in child_observations) for lane in range(2)] != [cell["coefficient"] for cell in parent_observation["cells"]]:
-                failures.append("F28_NONADDITIVE_GROUP_OBSERVED_PREFIX_CONFLICT")
+            else:
+                # A fully printed parent owns both mapped lanes. A missing
+                # narrower child lane remains source-only null, never zero or
+                # a claim that the observed prefix exhausts every subpopulation.
+                prefix_sums = [None if any(item["cells"][lane]["coefficient"] is None for item in child_observations)
+                    else sum(item["cells"][lane]["coefficient"] for item in child_observations) for lane in range(2)]
+                if any(value is not None and value != parent_observation["cells"][lane]["coefficient"]
+                       for lane, value in enumerate(prefix_sums)):
+                    failures.append("F28_NONADDITIVE_GROUP_OBSERVED_PREFIX_CONFLICT")
     replacement = None
     frontier = []
     root_observation = None
@@ -1586,13 +1596,15 @@ def _source_owned_nonadditive_group_v1(
         def unique_refs(refs):
             return {canonical_json_sha256_v1(ref): ref for ref in refs}
 
-        aggregate_coefficients = [sum(item["cells"][lane]["coefficient"] for item in [parent_observation, *child_observations]) for lane in range(2)]
+        aggregate_coefficients = [None if any(item["cells"][lane]["coefficient"] is None for item in [parent_observation, *child_observations])
+            else sum(item["cells"][lane]["coefficient"] for item in [parent_observation, *child_observations]) for lane in range(2)]
         if (len(before_aggregation) != 1 or before_aggregation[0].get("rule") != "CONFIGURED_ROLE_DISTINCT_VISIBLE_LABELS_DISTINCT_TABLES_DIRECT_SUM"
                 or unique_refs(before_aggregation[0].get("source_refs", [])) != unique_refs(expected_refs)
                 or before_aggregation[0].get("coefficients") != aggregate_coefficients
                 or unique_refs(role_mappings[0]["source_refs"]) != unique_refs(expected_refs)
                 or [cell["coefficient"] for cell in role_mappings[0]["values"]] != aggregate_coefficients
-                or len(roots) != 1 or roots[0]["state"] != "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"):
+                or not (len(roots) == 1 and roots[0]["state"] == "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM"
+                        or not roots and role_mappings[0]["state"] == "PARTIAL_SOURCE_OBSERVATION")):
             failures.append("F28_NONADDITIVE_GROUP_SHARED_BEFOREIMAGE_DIFFERS")
         else:
             record = parent_observation
@@ -1653,12 +1665,20 @@ def _source_owned_nonadditive_group_v1(
     # Retire the old duplicate-role grant even when a recognized scope holds.
     candidate["closure_receipt"]["cluster_aggregation_receipts"] = [item for item in candidate["closure_receipt"]["cluster_aggregation_receipts"] if item.get("role") != role]
     if not failures:
-        root_material = {key: canonical_clone_v1(value) for key, value in roots[0].items() if key != "item_mapping_id"}
+        prior_root = roots[0] if roots else {
+            "report_norm_id": compiled_specs["schema"]["family_root_report_norm_id"],
+            "role": "FAMILY_ROOT_TOTAL", "row_id": "f28-source-owned-frontier",
+            "state": "DECLARED_FAMILY_ROOT_DERIVED_FROM_COMPLETE_TOP_LEVEL_COMPONENT_SUM",
+            "unit": prior["source_unit"],
+        }
+        root_material = {key: canonical_clone_v1(value) for key, value in prior_root.items() if key != "item_mapping_id"}
         root_material["source_refs"] = [ref for item in frontier for ref in item["source_refs"]]
         root_material["values"] = [{"coefficient": sum(item["cells"][lane]["coefficient"] for item in frontier),
             "source_text": None, "state": "EXACT_COMPLETE_TOP_LEVEL_COMPONENT_SUM"} for lane in range(2)]
         corrected_root = {**root_material, "item_mapping_id": "gjmthfmv1:item:" + canonical_json_sha256_v1(root_material)}
         candidate["mappings"] = [replacement if item["role"] == role else corrected_root if item["role"] == "FAMILY_ROOT_TOTAL" else item for item in candidate["mappings"]]
+        if not roots:
+            candidate["mappings"].append(corrected_root)
         equation_material = {"equation_kind": "F28_EXACT_SOURCE_OWNED_NONADDITIVE_GROUP_FRONTIER_EQUALS_PRINTED_ROOT",
             "component_roles": [item["role"] for item in frontier], "component_source_refs": [item["source_refs"] for item in frontier],
             "component_sums": [cell["coefficient"] for cell in root_observation["cells"]], "multipliers": [1] * len(frontier),
@@ -1677,8 +1697,9 @@ def _source_owned_nonadditive_group_v1(
             "source_edge": canonical_clone_v1(receiver["edge_from_prior"]),
             "narrower_prefix_corroboration": {"parent_cells": canonical_clone_v1(parent_observation["cells"]),
                 "observed_children": canonical_clone_v1(child_observations),
-                "observed_prefix_sum": [sum(item["cells"][lane]["coefficient"] for item in child_observations) for lane in range(2)],
-                "scope_permission_granted_by_amounts": False, "unprinted_components_inferred": False},
+                "observed_prefix_sum": prefix_sums,
+                "scope_permission_granted_by_amounts": False, "unprinted_components_inferred": False,
+                "child_prefix_exhaustiveness_claimed": False},
             "child_amounts_only_corroborate_or_veto": True})
     material["reasons"] = sorted(set(failures))
     material["status"] = "HELD_UNPROVEN_GROUP_SCOPE" if failures else "SOURCE_OWNED_GROUP_SUBTOTAL_DETAIL_NONADDITIVE"
@@ -1795,7 +1816,7 @@ def _apply_source_root_controls_v1(
                     replacement = {**material, "item_mapping_id": "gjmthfmv1:item:" + canonical_json_sha256_v1(material)}
                     candidate["mappings"] = [replacement if item["role"] == "FAMILY_ROOT_TOTAL" else item for item in candidate["mappings"]]
                     binding = {"printed_root_source_ref": record["source_refs"][0],
-                               "prior_root_mapping": _retired_mapping_evidence_v1(next(item for item in original_mappings if item["role"] == "FAMILY_ROOT_TOTAL")),
+                               "prior_root_mapping": _retired_mapping_evidence_v1(next((item for item in original_mappings if item["role"] == "FAMILY_ROOT_TOTAL"), None)),
                                "bound_mapping_id": replacement["item_mapping_id"]}
     withheld = []
     retired_root_authority = None
@@ -1827,6 +1848,7 @@ def _apply_source_root_controls_v1(
     if binding is not None or reasons:
         structural_root["mapping_policy"] = "F28_SOURCE_OWNED_PRINTED_TOTAL_ROW_ONLY"
     if binding is not None:
+        structural_root["emitted_mapping"] = True
         structural_root["source_root_mapping_id"] = binding["bound_mapping_id"]
         structural_root["active_permission"] = "F28_SOURCE_OWNED_PRINTED_TOTAL_ROW"
     elif reasons:

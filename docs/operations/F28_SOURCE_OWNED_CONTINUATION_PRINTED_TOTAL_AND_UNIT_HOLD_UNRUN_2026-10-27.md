@@ -227,8 +227,11 @@ The directly observed GROUP subtotal owns securities5 /4. Its exact raw source
 ref and typed cells replace the erroneous aggregate. The narrower rows remain
 explicit source-only validation observations, with no additive schema mapping.
 Observed prefix/parent agreement only corroborates or vetoes an already proved
-scope; it never establishes the relation, invents another component or assigns
-zero to an unprinted trading/investment row. Every other active component is
+scope; it never establishes the relation, proves prefix exhaustiveness, invents
+another component or assigns zero to an unprinted trading/investment row.
+A complete raw GROUP parent owns its two lanes even when a narrower child lane
+is blank: the child stays source-only null and that missing lane provides no
+arithmetic permission. Every other active component is
 replayed from its exact raw row refs. The frozen mapping repeats an identical
 whole-row ref per lane; only those identical reference identities are collapsed
 for this source inventory, never distinct rows with equal labels or amounts.
@@ -252,11 +255,88 @@ scope, cells, source-only observations and all envelopes.
 The original old positive retains its raw rows, READY expectation and original
 role/cluster assertions, with stronger exact securities5 /4 and printed root
 38 /27 citations plus raw-page immutability assertions. New synthetic controls
-cover one or two declared narrower rows, changed amounts with the same scope,
-twenty marker/semantic/qualifier/group/frontier/unit/header negatives,
+cover a declared narrower row, changed amounts with the same scope,
+nineteen marker/semantic/qualifier/group/frontier/unit/header negatives,
 an equal-sum repeated-alias/different-ordinal direct and public rejection,
 five changed source-axis cases, and compiled-policy/self-resealed retirement,
 parent-ref and source-only-cell tampering. Several semantic negatives deliberately print the old43 /31 sum,
 so numerical agreement cannot grant missing source scope. All tests/lint for
-this delta remain UNRUN; root must capture, independently review and execute
+the follow-up delta remain UNRUN; root must capture, independently review and execute
 the complete focused modules before any actual-source/corpus acceptance.
+
+## 2026-10-28 V8 seven-failure source diagnosis and correction
+
+Root captured the previous source as `001161b66ab16586165bd4d735ba940099bdbf3c`.
+Its complete focused V8 passed Ruff and finished with136 passes and7 failures
+in9.27 seconds. The original two-marker positive now passed with direct
+securities5 /4 and printed root38 /27. These actual results and the failed run
+remain immutable; they do not become a PASS for this follow-up.
+
+The first attempt at a seven-case record-only diagnostic was refused by the
+external flock before Python, imports or output creation. Attempt2 ran after
+the owner released the lease, on the unchanged V8 clone. Its2346886-byte
+`f28-v8-fixture-diagnostic-20261028-v1/diagnostic.json` has SHA-256
+`c3ce420100b3f681f6fbe329da6390d5e3fab63ee27afc45ef99786ee5d544ba`.
+All21 source pins, Git/origins and driver bytes stayed exact. It called the
+seven unchanged failing test functions and captured actual frozen/family/guard
+returns through read-only profiling, with no financial/helper substitution.
+
+The two blank cases were real partial double counts, not source-owned correct
+parent mappings. With complete parent5 /4 and child5 /null, the frozen and old
+family outputs were READY securities10 /null. With parentnull /4 and child5 /4,
+they were READY securitiesnull /8. Both had `PARTIAL_SOURCE_OBSERVATION`, no
+root mapping and an active distinct-table aggregation grant. The aggregate-only
+state filter skipped the source control, then the root-absent path returned
+early. The follow-up recognizes that exact partial aggregation and its raw
+source refs. It does not treat an absent root as proof that other active RNIDs
+are safe.
+
+The complete broader raw GROUP can directly own5 /4 despite the narrower
+child's partial observation. Unknown child cells remain typed
+`BLANK_SOURCE_CELL` with coefficient/source_text=null in source-only evidence.
+Only fully observed child lanes may corroborate or veto an independently proved
+semantic scope; an incomplete prefix sum remains null. No unprinted trading
+amount or missing-component zero is inferred, and no prefix-exhaustiveness
+claim is made. The full corrected component frontier must still consist of
+direct observed source values, account for every row under the nonadditive
+scope, and corroborate the directly printed38 /27 before a root is emitted.
+An originally absent root has a truthful null beforeimage. A partial parent
+cannot borrow a child lane or use that printed root to backsolve: the whole
+candidate holds with zero active mappings. Wrong role/global-root grants are
+retired in opaque evidence even when the prior root was absent; the structural
+permission is emitted=false on HOLD.
+
+The two qualified-label negatives had stale region role axes after their raw
+source mutations; the frozen engine correctly raised fragment-classification
+drift before financial evaluation. The tests keep that exact stale-axis
+rejection and separately rebuild the public query over the changed raw source.
+A query-level HOLD is asserted as a query cluster without an invented mappings
+field; if a financial candidate is reached it must HOLD with zero mappings and
+fresh replay. No qualifier can gain permission from the stale exception alone.
+
+The invented split-GROUP positive was never READY: its actual frozen result
+had conflicting securities lane observations and unconsumed duplicate-role
+rows before the family control. It is now an explicit conservative algorithm
+HOLD, with exact recorded reasons and zero mappings. No issuer conflict is
+claimed. The independently valid existing colon/ITEM two-detail positive is
+unchanged. The numbered-alias control now starts from the actual known
+single-child READY beforeimage, then introduces two differently numbered rows
+with the same declared alias. Their equal sums cannot prove distinct scope;
+both the independent source guard and fresh public route must reject them.
+
+The old one-sided test's raw flat ITEM parent and receiver rows remain exact,
+as do all query-recovery assertions (one original fragment, one recovery
+receipt, two recovered fragments). Its original financial READY expectation
+was wrong: actual securities10 /8 and root43 /31 contradicted printed38 /27,
+with no raw GROUP or original sender continuation marker to grant the new
+nonadditive permission. It now requires the exact financial HOLD and retains
+all original visible roles and wrong values in authenticated inactive
+beforeimages. A separate coherent one-sided positive keeps the same owned
+sender/unit/period proof and terminal38 /27 but contains no overlapping
+securities child. It must preserve raw pages, bind securities5 /4 and the
+printed root directly, and pass fresh replay. This does not invent source GROUP
+kinds, sender markers or child hierarchy in the original failing fixture.
+
+This source-only author executed no Python, imports, AST, lint/tests, WSL,
+DB/corpus/PDF/provider jobs or commits. The four changed source/test/doc files
+require independent review, capture and a fresh complete actual focused gate.

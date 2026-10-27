@@ -22,6 +22,7 @@ from bctc_ai.evaluation.gemini_json_interest_income_family_v1 import (
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
+    UNRESOLVED,
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
@@ -539,7 +540,7 @@ def test_cross_fragment_same_role_parent_fails_closed_without_exact_contract(
     assert candidate["status"] != READY
 
 
-def test_one_sided_explicit_receiver_is_recovered_without_value_selection() -> None:
+def test_one_sided_query_recovery_preserves_flat_parent_source_but_holds_wrong_financial_sum() -> None:
     first_table = _table(
         [
             _row("Thu nhập lãi tiền gửi", ["10", "8"]),
@@ -563,6 +564,7 @@ def test_one_sided_explicit_receiver_is_recovered_without_value_selection() -> N
     first = _page(first_table)
     second = _page(second_table)
     second["sections"][0]["title_exact"] = None
+    original_pages = copy.deepcopy({NOTE_VERSION: first, PRIMARY_VERSION: second})
     records = [
         _record(first, selected_page_ordinal=1),
         _record(
@@ -600,8 +602,17 @@ def test_one_sided_explicit_receiver_is_recovered_without_value_selection() -> N
         compiled_specs=compiled,
         query_receipt=receipt,
     )
-    assert candidate["status"] == READY
-    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+    assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    assert candidate["reasons"] == [
+        "F28_NONADDITIVE_GROUP_SOURCE_SCOPE_NOT_PROVEN",
+        "F28_PRINTED_FAMILY_ROOT_DIFFERS_FROM_EMITTED_ROOT",
+    ]
+    control = candidate["closure_receipt"]["interest_income_adapter_receipt"]["source_root_control_receipts"][0]
+    envelope = control["withheld_mapping_evidence"]
+    before = json.loads(envelope["canonical_json_one_lf_utf8_text"])
+    assert envelope["sha256"] == canonical_json_sha256_v1(before)
+    assert envelope["size_bytes"] == len(envelope["canonical_json_one_lf_utf8_text"].encode("utf-8"))
+    assert {mapping["role"] for mapping in before} == {
         "CUSTOMER_LOAN_INTEREST",
         "DEPOSIT_INTEREST",
         "FAMILY_ROOT_TOTAL",
@@ -610,6 +621,60 @@ def test_one_sided_explicit_receiver_is_recovered_without_value_selection() -> N
         "OTHER_CREDIT_INCOME",
         "SECURITIES_INTEREST",
     }
+    assert [cell["coefficient"] for cell in next(item for item in before if item["role"] == "SECURITIES_INTEREST")["values"]] == [10, 8]
+    assert [cell["coefficient"] for cell in next(item for item in before if item["role"] == "FAMILY_ROOT_TOTAL")["values"]] == [43, 31]
+    assert first_table["rows"][-1]["row_kind"] == "ITEM" and first_table["continuation"] == "NONE"
+    assert {NOTE_VERSION: first, PRIMARY_VERSION: second} == original_pages
+    assert validate_gemini_json_interest_income_family_candidate_replay_v1(candidate,
+        regions=cluster["component_regions"], page_json_by_version={NOTE_VERSION: first, PRIMARY_VERSION: second},
+        compiled_specs=compiled, query_receipt=receipt) == candidate
+
+
+def test_source_coherent_one_sided_receiver_without_parent_child_overlap_is_ready():
+    first_table = _table([
+        _row("Thu nhập lãi tiền gửi", ["10", "8"]),
+        _row("Thu nhập lãi cho vay khách hàng", ["20", "12"]),
+        _row("Thu lãi từ kinh doanh, đầu tư chứng khoán nợ", ["5", "4"]),
+    ])
+    receiver = _table([
+        _row("Thu phí từ nghiệp vụ bảo lãnh", ["1", "1"]),
+        _row("Thu nhập lãi cho thuê tài chính", ["-", "-"]),
+        _row("Thu khác từ hoạt động tín dụng", ["2", "2"]),
+        _row(None, ["38", "27"], kind="TOTAL"),
+    ], columns=_columns([None], [None]), title=None, unit=None)
+    receiver["continuation"] = "CONTINUES_FROM_PREVIOUS_PAGE"
+    first, second = _page(first_table), _page(receiver)
+    second["sections"][0]["title_exact"] = None
+    pages = {NOTE_VERSION: first, PRIMARY_VERSION: second}
+    original = copy.deepcopy(pages)
+    records = [_record(first, selected_page_ordinal=1), _record(second, version=PRIMARY_VERSION,
+        physical_page=3, selected_page_ordinal=2)]
+    compiled = _compiled()
+    raw = coalesce_gemini_json_interest_income_document_v1(page_records=records, compiled_specs=compiled)
+    assert raw["status"] == READY and len(raw["component_regions"]) == 1
+    adapted, receipts = adapt_gemini_json_interest_income_indexed_query_evidence_v1(
+        _indexed_query_evidence(cluster=raw, records=records, compiled=compiled),
+        page_json_by_document={1: pages}, compiled_specs=compiled)
+    cluster = adapted["accepted_clusters"][0]
+    assert len(receipts) == 1 and len(cluster["component_regions"]) == 2
+    options = {"regions": cluster["component_regions"], "page_json_by_version": pages,
+        "compiled_specs": compiled, "query_receipt": build_gemini_json_interest_income_region_query_receipt_v1(cluster["component_regions"])}
+    candidate = evaluate_gemini_json_interest_income_family_cluster_v1(**options)
+    assert candidate["status"] == READY, candidate["reasons"]
+    assert {item["role"] for item in candidate["mappings"]} == {
+        "CUSTOMER_LOAN_INTEREST", "DEPOSIT_INTEREST", "FAMILY_ROOT_TOTAL",
+        "FINANCE_LEASE_INTEREST", "GUARANTEE_FEE_INTEREST", "OTHER_CREDIT_INCOME", "SECURITIES_INTEREST",
+    }
+    role = next(item for item in candidate["mappings"] if item["role"] == "SECURITIES_INTEREST")
+    assert [cell["coefficient"] for cell in role["values"]] == [5, 4]
+    assert all(ref["locator"]["page_json_version_id"] == NOTE_VERSION for ref in role["source_refs"])
+    root = next(item for item in candidate["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL")
+    assert [cell["coefficient"] for cell in root["values"]] == [38, 27]
+    assert root["source_refs"][0]["locator"]["page_json_version_id"] == PRIMARY_VERSION
+    assert root["source_refs"][0]["row_ordinal"] == 4
+    assert receiver["unit_exact"] is None and first_table["continuation"] == "NONE"
+    assert pages == original
+    assert validate_gemini_json_interest_income_family_candidate_replay_v1(candidate, **options) == candidate
 
 
 def test_one_sided_receiver_with_visible_header_is_not_recovered() -> None:
