@@ -1006,26 +1006,20 @@ def _family37_rootless_lane_role_printed_v1(
 ) -> bool:
     """Codex 0584 (N2): without a PRIMARY root, a note lane's role must be printed by the note.
 
-    Its own column header (for separate general/specific tables: every role table's header) or
-    its own table title must carry the CURRENT/COMPARATIVE marker ("Kỳ này", "Năm nay", "Kỳ
-    trước", "Năm trước"), or an owned narrative layout binding must assign exactly this lane.
-    Later-date order of two dated columns is not a role; the dates stay raw window evidence.
+    Transposed observations take a SEMANTIC_ROLE only from a printed row marker
+    (_transposed_row_period_key), their table title or an owned narrative layout binding, so
+    their role is printed by construction. The separate general/specific builder instead takes
+    the role from the shared lane order, which for two dated columns is the later-date order:
+    there every role table's own column header must print the marker ("Kỳ này", "Năm nay",
+    "Kỳ trước", "Năm trước") for exactly this lane. Dates stay raw window evidence.
     """
 
-    if type(observation.get("layout_period_binding_receipt_id")) is str:
-        layout = observation.get("layout_period_scope")
-        return type(layout) is dict and layout.get("semantic_role") == semantic_role
-    if _transposed_period_marker(observation.get("table_title_exact")) == semantic_role:
-        return True
     role_axes = observation.get("role_duration_surface_axes")
-    axes = (
-        list(role_axes.values())
-        if type(role_axes) is dict and role_axes
-        else [observation.get("duration_surface_axis")]
-    )
-    return all(
+    if type(role_axes) is not dict:
+        return True
+    return bool(role_axes) and all(
         type(axis) is list and _transposed_period_marker(axis) == semantic_role
-        for axis in axes
+        for axis in role_axes.values()
     )
 
 
