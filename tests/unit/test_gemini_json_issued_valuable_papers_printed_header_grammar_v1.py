@@ -160,9 +160,13 @@ def _counterfactual(ordinal, mutation):
     elif mutation == "numeric_part":
         detail["columns"][0]["header_path_exact"].append(7)  # Defensive direct-family-API input; not stored schema admission.
     elif mutation == "duplicate_role":
-        detail["columns"][0]["header_path_exact"].append("Chứng chỉ tiền gửi")
+        # SHB repeats BOND itself: mixing BOND/CD instead exercises the frozen
+        # engine's multi-column aggregation of a legitimately blank child.
+        detail["columns"][0]["header_path_exact"].append("Trái phiếu" if ordinal == 163 else "Chứng chỉ tiền gửi")
     elif mutation == "duplicate_unit":
         detail["columns"][0]["header_path_exact"].append("Triệu VND")
+        if ordinal == 163:  # Its original column has no unit atom; one addition is valid.
+            detail["columns"][0]["header_path_exact"].append("Triệu VND")
     elif mutation == "conflicting_unit":
         detail["columns"][0]["header_path_exact"].append("VND")
     elif mutation == "partial_axis_heading":

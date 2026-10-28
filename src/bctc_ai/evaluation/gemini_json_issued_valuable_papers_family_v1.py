@@ -7144,6 +7144,20 @@ def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observ
                     _raw_transposed_header_scope_v1(ordered[1][1], compiled_specs)["nonperiod_columns"])):
             left["failures"].append("DATED_TABLE_NONPERIOD_ECONOMIC_POPULATIONS_DIFFER")
             right["failures"].append("DATED_TABLE_NONPERIOD_ECONOMIC_POPULATIONS_DIFFER")
+        elif (not left["failures"] and not right["failures"]
+                and all(item.get("original_printed_header_scope", {}).get("source_date") == item["source_date"]
+                        for item, _table, _columns in ordered)):
+            # Only a fully proved two-table, all-column printed date pair may
+            # separate its period atoms from the economic qualifier. Exact raw
+            # paths and date atoms remain in each original header witness.
+            for item, _table, _columns in ordered:
+                scope = item["original_printed_header_scope"]
+                for observation in item["blocks"][0]["observations"]:
+                    column = observation["source_ref"]["money_column_ordinals"][0]
+                    qualifier = observation["economic_qualifier"]
+                    qualifier["nonperiod_header_atoms_normalized"] = canonical_clone_v1(
+                        scope["nonperiod_columns"][column - 1]["header_atoms_normalized"])
+                    del qualifier["header_path_exact"]
     for item in tables:
         item["failures"] = sorted(set(item["failures"]))
         item["status"] = "SOURCE_OWNED" if item["blocks"] and not item["failures"] else "HOLD"
