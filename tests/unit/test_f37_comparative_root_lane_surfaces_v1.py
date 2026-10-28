@@ -11,6 +11,7 @@ import pytest
 
 from bctc_ai.evaluation.gemini_json_credit_risk_provision_expense_family_v1 import (
     PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN,
+    PRIMARY_CURRENT_YEAR_NOT_PROVEN,
     _family37_period_compatibility_v1,
     _family37_period_scope_v1,
     _family37_root_lane_scope_v1,
@@ -145,3 +146,19 @@ def test_title_words_are_kept_only_dates_and_years_are_dropped():
     assert "31/03/2025" not in surfaces[1] and "2025" not in surfaces[1]
     assert "ba tháng kết thúc ngày" in surfaces[1]
     assert _family37_root_lane_surfaces_v1("CURRENT_PERIOD", ["Năm nay"], [TITLE]) == ["Năm nay", TITLE]
+
+
+@pytest.mark.parametrize("detail_text", ["Quý I năm 2023", "Quý I năm 2025", "Kỳ ba tháng kết thúc ngày 31/03/2023"])
+def test_current_lane_without_any_printed_year_grants_nothing(detail_text):
+    # Codex 0575: CURRENT ["Quý I", "Năm nay"] under "Quý I" - the comparative lane's year never fills it.
+    root = _family37_root_lane_scope_v1("CURRENT_PERIOD", ["Quý I", "Năm nay"], ["Quý I"])
+    assert root["calendar_year"] is None and PRIMARY_CURRENT_YEAR_NOT_PROVEN in root["reasons"]
+    detail = _detail(detail_text, "CURRENT_PERIOD")
+    assert _family37_period_compatibility_v1(detail, root)[0] is False
+
+
+def test_current_lane_with_its_own_year_is_unchanged():
+    root = _family37_root_lane_scope_v1("CURRENT_PERIOD", ["Quý I", "Năm 2025"], ["Quý I"])
+    assert root["calendar_year"] == 2025 and root["reasons"] == []
+    assert _family37_period_compatibility_v1(_detail("Quý I năm 2025", "CURRENT_PERIOD"), root) == (
+        True, "EXACT_COMPATIBLE")

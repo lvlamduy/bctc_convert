@@ -124,3 +124,57 @@ def test_comparative_root_without_any_printed_year_withholds_permission():
     section["title_exact"] = "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I"
     trial = _run(pages)
     assert trial["status"] != READY
+
+
+def _with_primary_lane_labels(pages, *, current, comparative):
+    """The KQKD title without its year and every Năm nay / Năm trước column label replaced."""
+    pages = copy.deepcopy(pages)
+    page = next(page for _version_id, physical_page, page in pages if physical_page == 6)
+    section = next(item for item in page["sections"] if item.get("statement_type") == "INCOME_STATEMENT")
+    section["title_exact"] = "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I"
+    replaced = {"Năm nay": current, "Năm trước": comparative}
+    changed = 0
+    for table in section["tables"]:
+        for column in table["columns"]:
+            path = column.get("header_path_exact") or []
+            if path and path[-1] in replaced:
+                path[-1] = replaced[path[-1]]
+                changed += 1
+    assert changed == 4  # Quý I and Lũy kế groups, both lanes
+    return pages
+
+
+def _with_current_detail_header(pages, header):
+    pages = copy.deepcopy(pages)
+    page = next(page for _version_id, physical_page, page in pages if physical_page == 32)
+    changed = 0
+    for section in page["sections"]:
+        for table in section["tables"]:
+            for column in table["columns"]:
+                path = column.get("header_path_exact") or []
+                if path and path[0] == "Kỳ ba tháng kết thúc ngày 31/03/2025":
+                    path[0] = header
+                    changed += 1
+    assert changed == 2
+    return pages
+
+
+def test_explicit_current_2025_and_comparative_2024_primary_labels_are_ready():
+    trial = _run(_with_primary_lane_labels(_pages(), current="Năm 2025", comparative="Năm 2024"))
+    assert trial["status"] == READY, trial["reasons"]
+    values = {m["role"]: [v.get("source_text") for v in m["values"]] for m in trial["mappings"]}
+    assert values["CUSTOMER_GENERAL"] == ["48.928", "3.877"]
+    assert values["FAMILY_ROOT_TOTAL"] == ["(434.831)", "(239.029)"]
+
+
+@pytest.mark.parametrize("current_detail", [
+    "Kỳ ba tháng kết thúc ngày 31/03/2025",   # the printed detail year, still no PRIMARY current year
+    "Kỳ ba tháng kết thúc ngày 31/03/2023",
+])
+def test_unknown_current_primary_year_withholds_although_comparative_is_explicit(current_detail):
+    # Codex 0575: CURRENT "Năm nay" under "Quý I" proves no year; the explicit comparative 2024 must not fill it.
+    pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+    if current_detail != "Kỳ ba tháng kết thúc ngày 31/03/2025":
+        pages = _with_current_detail_header(pages, current_detail)
+    trial = _run(pages)
+    assert trial["status"] != READY

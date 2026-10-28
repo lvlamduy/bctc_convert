@@ -1725,6 +1725,7 @@ def _family37_root_lane_surfaces_v1(
 
 
 PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN = "PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN"
+PRIMARY_CURRENT_YEAR_NOT_PROVEN = "PRIMARY_CURRENT_YEAR_NOT_PROVEN"
 
 
 def _family37_root_lane_scope_v1(
@@ -1735,8 +1736,10 @@ def _family37_root_lane_scope_v1(
     When the title's year/date was dropped from a comparative lane, the comparative year is
     either derived from the lane's own printed label (see the derivation below, recorded as a
     separate structured field next to the exact title and column labels) or the lane carries
-    PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN and grants no period permission. An unknown year is
-    never treated as compatible with a detail's printed year.
+    PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN and grants no period permission. A CURRENT lane whose
+    own header and titles print no year carries PRIMARY_CURRENT_YEAR_NOT_PROVEN (Codex 0575:
+    never filled from the other lane, a filename or amounts). An unknown year is never treated
+    as compatible with a detail's printed year.
     """
 
     scope = _family37_period_scope_v1(
@@ -1744,7 +1747,14 @@ def _family37_root_lane_scope_v1(
         semantic_role=semantic_role,
     )
     if semantic_role != "COMPARATIVE_PERIOD":
-        return scope
+        if scope.get("calendar_year") is not None:
+            return scope
+        material = {key: value for key, value in scope.items() if key != "receipt_id"}
+        material["reasons"] = [*material["reasons"], PRIMARY_CURRENT_YEAR_NOT_PROVEN]
+        return {
+            **material,
+            "receipt_id": "gjcrpefav1:period-scope:" + canonical_json_sha256_v1(material),
+        }
     material = {key: value for key, value in scope.items() if key != "receipt_id"}
     if not any(
         _FAMILY37_YEAR_TOKEN.search(item) for item in local_surfaces
@@ -2396,6 +2406,10 @@ def _family37_period_compatibility_v1(
     detail: Mapping[str, Any], root: Mapping[str, Any]
 ) -> tuple[bool, str]:
     allowed, reason = _family37_period_compatibility_core_v1(detail, root)
+    if allowed and PRIMARY_CURRENT_YEAR_NOT_PROVEN in (root.get("reasons") or []):
+        # Codex 0575: a CURRENT PRIMARY lane printing no year ("Quý I" / "Năm nay" under "Quý I")
+        # proves no period identity; it grants nothing, whatever the comparative lane proves.
+        return False, PRIMARY_CURRENT_YEAR_NOT_PROVEN
     if allowed and any(
         _family37_printed_dates_contradict_stated_window_v1(scope) for scope in (detail, root)
     ):
