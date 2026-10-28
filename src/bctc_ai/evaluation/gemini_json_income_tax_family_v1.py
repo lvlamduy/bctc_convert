@@ -343,6 +343,8 @@ def _period_inventory_callable_fence_v1():
         _load_registered_section_caption_auth_envelope_v1, _section_caption_core_ref_v1,
         _section_caption_pinned_bytes_v1, _section_caption_part_span_disjointness_v1,
         _prepare_income_tax_evaluation_records_v1, _recover_income_tax_query_cluster_v1,
+        _recover_income_tax_query_cluster_from_prepared_v1,
+        _checked_income_tax_caption_preparation_authority_v1, _checked_income_tax_caption_legacy_axis_v1,
         section_caption_core.validate_section_caption_registry_v1,
         section_caption_core.apply_registered_section_caption_repairs_v1,
         section_caption_core.replay_registered_section_caption_repairs_v1,
@@ -847,10 +849,8 @@ def _section_caption_part_span_disjointness_v1(original_records, sources, *, com
     return {**material, "receipt_id": "gjitfav1:caption-part-disjointness:" + canonical_json_sha256_v1(material)}
 
 
-def _prepare_income_tax_evaluation_records_v1(
-    original_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    """Always rebuild caption then legacy13 from ORIGINAL selected records."""
+def _checked_income_tax_caption_preparation_authority_v1(compiled_specs):
+    """Fresh fixed authorities shared by initial preparation and late recovery."""
     envelope, reference = _load_registered_section_caption_auth_envelope_v1()
     core_ref = _section_caption_core_ref_v1()
     if any(not same_typed_json_v1(compiled_specs.get(key), value) for key, value in (
@@ -858,6 +858,27 @@ def _prepare_income_tax_evaluation_records_v1(
             ("income_tax_section_caption_auth_envelope_ref", reference),
             ("income_tax_section_caption_clone_core_ref", core_ref))):
         raise _error("income-tax compiled caption approval/ref/core differs from fresh authority")
+    return envelope, reference, core_ref
+
+
+def _checked_income_tax_caption_legacy_axis_v1(compiled_specs):
+    legacy_raw, _ = _section_caption_pinned_bytes_v1(
+        DEFAULT_SOURCE_REPAIR_SPEC_PATH, _SECTION_CAPTION_LEGACY_SPEC_SHA256)
+    legacy_spec = json.loads(legacy_raw)
+    approved_legacy = _compile_source_repairs(legacy_spec)
+    if (not same_typed_json_v1(approved_legacy, compiled_specs["income_tax_source_repairs"])
+            or compiled_specs.get("income_tax_source_repair_spec_sha256") != canonical_json_sha256_v1(legacy_spec)):
+        raise _error("income-tax caption cannot use a substituted legacy repair axis")
+    return [{"repair_id": item["repair_id"], "pdf_source": item["pdf_source"],
+             "page_json_version_id": item["locator"]["page_json_version_id"],
+             "physical_page": item["locator"]["physical_page"]} for item in approved_legacy]
+
+
+def _prepare_income_tax_evaluation_records_v1(
+    original_records: Sequence[Mapping[str, Any]], *, compiled_specs: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Always rebuild caption then legacy13 from ORIGINAL selected records."""
+    envelope, reference, core_ref = _checked_income_tax_caption_preparation_authority_v1(compiled_specs)
     if type(original_records) not in {list, tuple} or not original_records:
         raise _error("income-tax caption original record axis is absent")
     # Two independent ordering domains. The caller's raw order and old13
@@ -899,15 +920,7 @@ def _prepare_income_tax_evaluation_records_v1(
     if sources:
         if len(sources) != 1:
             raise _error("income-tax caption source registration is not unique")
-        legacy_raw, _ = _section_caption_pinned_bytes_v1(DEFAULT_SOURCE_REPAIR_SPEC_PATH, _SECTION_CAPTION_LEGACY_SPEC_SHA256)
-        legacy_spec = json.loads(legacy_raw)
-        approved_legacy = _compile_source_repairs(legacy_spec)
-        if (not same_typed_json_v1(approved_legacy, compiled_specs["income_tax_source_repairs"])
-                or compiled_specs.get("income_tax_source_repair_spec_sha256") != canonical_json_sha256_v1(legacy_spec)):
-            raise _error("income-tax caption cannot use a substituted legacy repair axis")
-        legacy_axis = [{"repair_id": item["repair_id"], "pdf_source": item["pdf_source"],
-                        "page_json_version_id": item["locator"]["page_json_version_id"],
-                        "physical_page": item["locator"]["physical_page"]} for item in approved_legacy]
+        legacy_axis = _checked_income_tax_caption_legacy_axis_v1(compiled_specs)
         try:
             caption_records, receipt = section_caption_core.apply_registered_section_caption_repairs_v1(
                 original, registry=envelope["clone_registry"], source_pdf_identity=sources[0]["pdf_source"],
@@ -5303,18 +5316,26 @@ def _evaluate_original_note_adapter(
 
 
 def _recover_income_tax_query_cluster_v1(
+    *, page_records: Any, base_cluster: Mapping[str, Any], compiled_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Retain the private raw-source entry and its existing callable fence."""
+    if type(page_records) not in {list, tuple} or not page_records:
+        raise _error("income-tax page-record axis is invalid")
+    prepared = _prepare_income_tax_evaluation_records_v1(page_records, compiled_specs=compiled_specs)
+    return _recover_income_tax_query_cluster_from_prepared_v1(
+        page_records=page_records, base_cluster=base_cluster, compiled_specs=compiled_specs,
+        prepared=prepared)
+
+
+def _recover_income_tax_query_cluster_from_prepared_v1(
     *,
     page_records: Any,
     base_cluster: Mapping[str, Any],
     compiled_specs: Mapping[str, Any],
+    prepared: tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]],
 ) -> dict[str, Any]:
-    """Preserve a valid note; otherwise select one direct primary presentation."""
-
-    if type(page_records) not in {list, tuple} or not page_records:
-        raise _error("income-tax page-record axis is invalid")
-    repaired_records, repair_receipts, caption_projection = _prepare_income_tax_evaluation_records_v1(
-        page_records, compiled_specs=compiled_specs
-    )
+    """Private body; the public entry owns fresh preparation and late checks."""
+    repaired_records, repair_receipts, caption_projection = prepared
     selected_base = canonical_clone_v1(base_cluster)
     if repair_receipts or caption_projection["ordered_caption_repair_ids"]:
         # Source repairs are applied only to private page clones.  A row-level
@@ -5522,9 +5543,37 @@ def _recover_income_tax_query_cluster_v1(
 def recover_gemini_json_income_tax_query_cluster_v1(
     *, page_records: Any, base_cluster: Mapping[str, Any], compiled_specs: Mapping[str, Any],
 ) -> dict[str, Any]:
-    result = _recover_income_tax_query_cluster_v1(
-        page_records=page_records, base_cluster=base_cluster, compiled_specs=compiled_specs)
-    _, _, projection = _prepare_income_tax_evaluation_records_v1(page_records, compiled_specs=compiled_specs)
+    if type(page_records) not in {list, tuple} or not page_records:
+        raise _error("income-tax page-record axis is invalid")
+    prepared = _prepare_income_tax_evaluation_records_v1(page_records, compiled_specs=compiled_specs)
+    projection = prepared[2]
+
+    def handoff_sha256():
+        # Bind current values, not a shallow before-image that could hide list
+        # replacement/reordering. Keep only the digest, never a cross-call graph.
+        return canonical_json_sha256_v1([
+            list(page_records), dict(base_cluster), dict(compiled_specs), *prepared,
+        ])
+
+    before = handoff_sha256()
+    result = _recover_income_tax_query_cluster_from_prepared_v1(
+        page_records=page_records, base_cluster=base_cluster, compiled_specs=compiled_specs,
+        prepared=prepared)
+    # The removed outer rebuild was also a late authority read. Preserve its
+    # fixed caption/core/legacy and both PART-catalog predicates, independently
+    # of the internally prepared receipt and its content ID.
+    envelope, reference, core_ref = _checked_income_tax_caption_preparation_authority_v1(compiled_specs)
+    catalog = _checked_registered_part_period_catalog_v1(compiled_specs)
+    if (not same_typed_json_v1(projection["envelope_ref"], reference)
+            or not same_typed_json_v1(projection["clone_core_ref"], core_ref)
+            or projection["registry_object_canonical_sha256"] != canonical_json_sha256_v1(envelope["clone_registry"])
+            or not same_typed_json_v1(projection["part_period_disjointness_receipt"]["approved_catalog_refs"],
+                                     [item["registry_ref"] for item in catalog])):
+        raise _error("income-tax prepared recovery authority binding drifted")
+    if projection["ordered_caption_repair_ids"]:
+        _checked_income_tax_caption_legacy_axis_v1(compiled_specs)
+    if before != handoff_sha256():
+        raise _error("income-tax prepared recovery inputs changed before handoff")
     # A top-level family-local cluster field is supported by the frozen indexed
     # validator (no exact cluster-key set); no fake owner is invented for N/U.
     return _reseal_cluster(result, income_tax_section_caption_projection_receipt=projection)
