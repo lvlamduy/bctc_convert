@@ -984,6 +984,54 @@ def rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any]
     )
 
 
+class _F36DocumentRetrievalView:
+    """One document's SQL retrieval membership; not a financial/source authority.
+
+    Reuse the existing pinned SQL and outline grammar without copying it. Only
+    these three kernel methods run on this private view. The real NotesSource
+    retains its complete corpus, page_of, ORIGINAL loader and financial bridges.
+    """
+
+    _connect = NotesSource._connect
+    candidate_tables = NotesSource.candidate_tables
+    outline = NotesSource.outline
+
+    def __init__(self, owner: NotesSource, document: dict[str, Any]):
+        ordinal = document["document_ordinal"]
+        _need(type(ordinal) is int, "F36 retrieval requires an original document ordinal")
+        original = owner._documents.get(ordinal)
+        _need(original is not None
+              and _same(original.identity(), document["document_identity"]),
+              "F36 retrieval document differs from complete source identity")
+        actual = [[page.page_json_version_id, page.physical_page] for page in original.pages]
+        declared = [[page["page_json_version_id"], page["physical_page"]]
+                    for page in document["pages"]]
+        _need(bool(actual) and _same(actual, declared), "F36 retrieval selected pages differ")
+        self.corpus = owner.corpus  # The SAME complete authenticated corpus.
+        self.metrics = owner.metrics
+        self.page_of = {version: (ordinal, physical) for version, physical in actual}
+        _need(len(self.page_of) == len(actual)
+              and all(owner.page_of.get(version) == position
+                      for version, position in self.page_of.items()),
+              "F36 retrieval membership is not the original document frontier")
+        self._outline = None
+
+
+class _F36DocumentScopedNotesSource(NotesSource):
+    """Scope only candidate/title SQL; every other source API stays unchanged."""
+
+    def __init__(self, corpus: Any, metrics: SourceMetrics, *, original_loader: Any,
+                 document: dict[str, Any]):
+        super().__init__(corpus, metrics, original_loader=original_loader)
+        self._f36_retrieval = _F36DocumentRetrievalView(self, document)
+
+    def candidate_tables(self, like_patterns):
+        return self._f36_retrieval.candidate_tables(like_patterns)
+
+    def outline(self):
+        return self._f36_retrieval.outline()
+
+
 def iter_rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int, Any], config: Any,
                                      compiled_specs: dict[str, Any]):
     """Yield every original trial using document-bounded working state.
@@ -1004,7 +1052,9 @@ def iter_rebuild_f36_notes_trials_v1(*, source: NotesSource, contexts: dict[int,
         _need(_same(compiled, compiled_specs) and _same(source.corpus.identity(), source_identity),
               "Stream authority changed between original documents")
         ordinal = doc["document_ordinal"]
-        local_source = NotesSource(source.corpus, source.metrics, original_loader=source._original_loader)
+        local_source = _F36DocumentScopedNotesSource(
+            source.corpus, source.metrics, original_loader=source._original_loader, document=doc,
+        )
         local_contexts = {}
         if ordinal in contexts:
             context = contexts[ordinal]
