@@ -25,6 +25,9 @@ _CODE_ROOT = _REPO
 _RESTORE = _REPO.parent / "restore-20260905T014806Z/objects"
 _EVIDENCE = (_REPO.parent / "restore-receipts", Path("/srv/bctc-receipts"))
 _LEGACY_SHA = "9aac4e448b82ee0078c007ca06a36f0e3f11c2b4f694266a1211929f16228ea4"
+_LEGACY_SIZE = 22707
+_LEGACY_RELATIVE_PATH = "config/families/tm-income-tax-source-repair-v1.json"
+_LEGACY_BINDING_RULE = "FIXED_CURRENT_REPOSITORY_PINNED_COPY_DECLARED_PATH_IS_PROVENANCE_ONLY"
 _MIGRATION_SHA = "2376cb2cbebdbe8d55f18679ee0982b7ee77a9bf610a5d214b75d32fe8bb6312"
 _COVERAGE_SHA = "7e1c35cc26873477a53157754991a123ae2fc5fc2405470c7ba23c45980e5a35"
 _PARENT_SHA = "74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b"
@@ -113,7 +116,9 @@ def _validate_envelope(value):
              "Caption envelope format/family differs")
     registry = clone_core.validate_section_caption_registry_v1(value["clone_registry"])
     _shape(value["legacy_source_repair_spec_ref"], "path sha256 size_bytes")
-    _require(value["legacy_source_repair_spec_ref"]["sha256"] == _LEGACY_SHA,
+    _require(value["legacy_source_repair_spec_ref"]["sha256"] == _LEGACY_SHA
+             and type(value["legacy_source_repair_spec_ref"]["size_bytes"]) is int
+             and value["legacy_source_repair_spec_ref"]["size_bytes"] == _LEGACY_SIZE,
              "Legacy thirteen-repair independent pin differs")
     lineages = value["source_version_lineages"]
     _require(type(lineages) is list and len(lineages) == len(registry["sources"]),
@@ -162,7 +167,14 @@ def _registry(loader, compiled=None):
 
 
 def _legacy(envelope, compiled=None):
-    reference, spec = _read(envelope["legacy_source_repair_spec_ref"], (_REPO,),
+    declared = envelope["legacy_source_repair_spec_ref"]
+    _shape(declared, "path sha256 size_bytes")
+    _require(declared["sha256"] == _LEGACY_SHA and type(declared["size_bytes"]) is int
+             and declared["size_bytes"] == _LEGACY_SIZE, "Legacy thirteen-repair declared pin differs")
+    # Lexical validation only. Never open the historical declared checkout path.
+    _path(declared["path"])
+    reference, spec = _read({"path": _LEGACY_RELATIVE_PATH, "sha256": _LEGACY_SHA,
+                             "size_bytes": _LEGACY_SIZE}, (_REPO,),
                             project_relative=True, json_value=True, maximum=_MAX_JSON)
     _require(reference["sha256"] == _LEGACY_SHA, "Legacy thirteen-repair actual bytes differ")
     _shape(spec, "format_version family_id render_contract repairs")
@@ -184,7 +196,9 @@ def _legacy(envelope, compiled=None):
     if compiled is not None:
         _require(_canonical(compiled.get("income_tax_source_repairs")) == _canonical(repairs),
                  "Compiled legacy thirteen-repair axis differs")
-    return axis, reference
+    binding = {"binding_rule": _LEGACY_BINDING_RULE, "declared_ref": _clone(declared),
+               "checked_local_ref": _clone(reference)}
+    return axis, reference, binding
 
 
 def _lineage(lineage):
@@ -413,7 +427,7 @@ def authenticate_registered_section_caption_pdf_v1(document, loaded, compiled, s
     pdf_ref, _ = io_auth._checked_ref({"path": (root / logical).as_posix(), "sha256": pdf["sha256"],
                                       "size_bytes": pdf["size_bytes"]}, (root,))
     implementations = _implementation_refs()
-    legacy, legacy_ref = _legacy(envelope, compiled)
+    legacy, legacy_ref, legacy_binding = _legacy(envelope, compiled)
     evaluation, clone_receipt = clone_core.apply_registered_section_caption_repairs_v1(
         original_records, registry=envelope["clone_registry"], source_pdf_identity=pdf,
         legacy_repair_page_axis=legacy)
@@ -432,6 +446,7 @@ def authenticate_registered_section_caption_pdf_v1(document, loaded, compiled, s
                         "runtime_document_ordinal": original_records[0]["document_ordinal"],
                         "pdf_source": pdf, "source_pdf_root": root.as_posix(), "pdf_ref": pdf_ref,
                         "envelope_ref": envelope_ref, "registered_repair_object_sha256": _digest(repair),
+                        "legacy_source_repair_binding": legacy_binding,
                         "loaded_original_records_object_sha256": _digest(original_records),
                         "pure_clone_replay_receipt": clone_receipt,
                         "renderer_ref": renderer, "pixel_receipt": pixels,
@@ -455,7 +470,7 @@ def recheck_registered_section_caption_pdf_v1(receipts, *, registry_loader):
     _require(type(receipts) is list, "Caption receipts must be a plain list")
     if not receipts:
         return
-    legacy, legacy_ref = _legacy(envelope)
+    legacy, legacy_ref, legacy_binding = _legacy(envelope)
     implementations = _implementation_refs()
     renderer_path, renderer = io_auth._renderer()
     registered = {repair["repair_id"]: (source, repair) for source in envelope["clone_registry"]["sources"]
@@ -473,6 +488,7 @@ def recheck_registered_section_caption_pdf_v1(receipts, *, registry_loader):
                  and receipt.get("pdf_source") == source["pdf_source"]
                  and receipt.get("registered_repair_object_sha256") == _digest(repair)
                  and receipt.get("envelope_ref") == actual_envelope and receipt.get("renderer_ref") == renderer
+                 and _canonical(receipt.get("legacy_source_repair_binding")) == _canonical(legacy_binding)
                  and receipt.get("permission_grants") == _PERMISSIONS
                  and receipt.get("runtime_scope") == _RUNTIME_SCOPE
                  and type(receipt.get("runtime_document_ordinal")) is int
@@ -517,6 +533,7 @@ def recheck_registered_section_caption_pdf_v1(receipts, *, registry_loader):
         expected_keys = {
             "format_version", "status", "complete", "repair_id", "document_id", "runtime_document_ordinal",
             "pdf_source", "source_pdf_root", "pdf_ref", "envelope_ref", "registered_repair_object_sha256",
+            "legacy_source_repair_binding",
             "loaded_original_records_object_sha256", "pure_clone_replay_receipt", "renderer_ref", "pixel_receipt",
             "local_restore_lineage_verified_no_fresh_s3_get", "source_database_authenticated_by_this_helper",
             "permission_grants", "runtime_scope", "input_refs", "receipt_id"}

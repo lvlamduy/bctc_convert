@@ -101,7 +101,12 @@ def auth_fixture(tmp_path, monkeypatch):
     repair["review_evidence"] = {"manual_review_ref": manual_ref, "pixel_candidate_ref": candidate_ref}
     legacy_raw = (actual_repo / "config/families/tm-income-tax-source-repair-v1.json").read_bytes()
     legacy_spec = json.loads(legacy_raw)
-    legacy_ref = _write(repo / "legacy.json", legacy_raw)
+    legacy_path = repo / module._LEGACY_RELATIVE_PATH
+    legacy_ref = _write(legacy_path, legacy_raw)
+    # The immutable production envelope similarly names a historical checkout.
+    # Keep it absent: authentication must read only the fixed current copy.
+    declared_legacy_path = tmp_path / "absent-old-checkout" / module._LEGACY_RELATIVE_PATH
+    declared_legacy_ref = {**legacy_ref, "path": declared_legacy_path.as_posix()}
     object_key = "bctc-ai/objects/sha256/" + pdf["sha256"][:2] + "/" + pdf["sha256"]
     parent_key, coverage_key, migration_key = ("bctc-ai/synthetic/" + name for name in (
         "parent.json", "coverage.json", "migration.json"))
@@ -134,7 +139,7 @@ def auth_fixture(tmp_path, monkeypatch):
                               "sha256": pdf["sha256"], "size_bytes": pdf["size_bytes"]},
                "repair_evidence": [{"repair_id": repair["repair_id"], **repair["review_evidence"]}]}
     envelope = {"format_version": module._ENVELOPE, "family_id": "INCOME_TAX", "clone_registry": registry,
-                "legacy_source_repair_spec_ref": legacy_ref, "source_version_lineages": [lineage]}
+                "legacy_source_repair_spec_ref": declared_legacy_ref, "source_version_lineages": [lineage]}
     envelope_path = repo / "envelope.json"
     envelope_ref = _write(envelope_path, _json(envelope))
     compiled = {"income_tax_section_caption_auth_envelope": deepcopy(envelope),
@@ -182,7 +187,8 @@ def auth_fixture(tmp_path, monkeypatch):
         envelope=envelope, envelope_ref=envelope_ref, envelope_path=envelope_path, pdf_root=pdf_root,
         pdf_path=Path(pdf_ref["path"]), manual=manual, manual_path=Path(manual_ref["path"]), candidate=candidate,
         candidate_path=Path(candidate_ref["path"]), full_path=Path(full_ref["path"]), crop_path=Path(crop_ref["path"]),
-        renderer=renderer, legacy_path=Path(legacy_ref["path"]), migration_path=Path(migration_ref["path"]),
+        renderer=renderer, legacy_path=legacy_path, declared_legacy_path=declared_legacy_path,
+        migration_path=Path(migration_ref["path"]),
         coverage_path=Path(coverage_ref["path"]), parent_path=Path(parent_ref["path"]), state=state,
         loader=loader, repin=repin)
 
@@ -219,6 +225,111 @@ def test_fresh_warm_cold_original_records_runordinal_and_no_permissions(auth_fix
     assert f.records[0]["page_json"]["sections"][0]["tables"][0]["title_exact"] is None
     renders = [command for command in f.state["commands"] if "-f" in command]
     assert len(renders) >= 4 and all(len(command) == 10 and command[-1] == f.pdf_path.as_posix() for command in renders)
+
+
+def test_actual_pinned_current_legacy_copy_authenticates_without_old_checkout(auth_fixture):
+    f = auth_fixture
+    raw = f.legacy_path.read_bytes()
+    assert sha256(raw).hexdigest() == f.module._LEGACY_SHA and len(raw) == 22707
+    assert not f.declared_legacy_path.exists()
+    before = deepcopy((f.envelope, f.compiled))
+    warm, cold = _authenticate(f), _authenticate(f)
+    assert warm == cold
+    binding = warm[0]["legacy_source_repair_binding"]
+    assert binding["binding_rule"] == f.module._LEGACY_BINDING_RULE
+    assert binding["declared_ref"] == f.envelope["legacy_source_repair_spec_ref"]
+    local = binding["checked_local_ref"]
+    assert local["path"] == (f.module._REPO / f.module._LEGACY_RELATIVE_PATH).as_posix()
+    assert local["sha256"] == f.module._LEGACY_SHA and local["size_bytes"] == 22707
+    assert local in warm[0]["input_refs"] and "file_identity" in local
+    f.module.recheck_registered_section_caption_pdf_v1(warm, registry_loader=f.loader)
+    assert (f.envelope, f.compiled) == before and not f.declared_legacy_path.exists()
+
+
+def test_declared_old_file_is_provenance_only_and_not_an_alternate_input(auth_fixture):
+    f = auth_fixture
+    # A deliberately incorrect old file must not be opened instead of the exact local pin.
+    _write(f.declared_legacy_path, b"not approved legacy bytes")
+    receipts = _authenticate(f)
+    assert receipts[0]["legacy_source_repair_binding"]["checked_local_ref"]["path"] == f.legacy_path.as_posix()
+    assert f.declared_legacy_path.read_bytes() == b"not approved legacy bytes"
+
+
+def test_missing_current_copy_never_falls_back_to_exact_old_checkout_bytes(auth_fixture):
+    f = auth_fixture
+    _write(f.declared_legacy_path, f.legacy_path.read_bytes())
+    f.legacy_path.unlink()
+    with pytest.raises(f.module.GeminiIncomeTaxSectionCaptionPdfAuthV1Error):
+        _authenticate(f)
+
+
+@pytest.mark.parametrize("mutation", ["sha", "size", "bool_size"])
+def test_declared_legacy_hash_and_size_must_equal_independent_pins(auth_fixture, mutation):
+    f = auth_fixture
+    ref = f.envelope["legacy_source_repair_spec_ref"]
+    if mutation == "sha":
+        ref["sha256"] = "e" * 64
+    else:
+        ref["size_bytes"] = True if mutation == "bool_size" else 1
+    f.repin()
+    with pytest.raises(f.module.GeminiIncomeTaxSectionCaptionPdfAuthV1Error):
+        _authenticate(f)
+
+
+@pytest.mark.parametrize("mutation", ["sha", "size"])
+def test_current_fixed_legacy_copy_wrong_bytes_or_size_is_not_accepted(auth_fixture, mutation):
+    f = auth_fixture
+    raw = f.legacy_path.read_bytes()
+    changed = raw[:-1] + b"X" if mutation == "sha" else raw + b" "
+    f.legacy_path.write_bytes(changed)
+    with pytest.raises(f.module.GeminiIncomeTaxSectionCaptionPdfAuthV1Error):
+        _authenticate(f)
+
+
+def test_current_fixed_legacy_copy_symlink_to_identical_peer_clone_rejects(auth_fixture, tmp_path):
+    f = auth_fixture
+    peer = tmp_path / "peer-checkout" / f.module._LEGACY_RELATIVE_PATH
+    _write(peer, f.legacy_path.read_bytes())
+    f.legacy_path.unlink()
+    f.legacy_path.symlink_to(peer)
+    with pytest.raises(f.module.GeminiIncomeTaxSectionCaptionPdfAuthV1Error) as rejected:
+        _authenticate(f)
+    assert "symlink/junction" in str(rejected.value.__cause__)
+
+
+@pytest.mark.parametrize("mutation", ["declared_path", "declared_sha", "local_peer_copy"])
+def test_receipt_self_reseal_cannot_change_declared_or_checked_local_legacy_binding(auth_fixture, tmp_path, mutation):
+    f = auth_fixture
+    receipts = _authenticate(f)
+    receipt = receipts[0]
+    binding = receipt["legacy_source_repair_binding"]
+    if mutation == "declared_path":
+        binding["declared_ref"]["path"] += ".caller-relabelled"
+    elif mutation == "declared_sha":
+        binding["declared_ref"]["sha256"] = "e" * 64
+    else:
+        peer = tmp_path / "peer-checkout" / f.module._LEGACY_RELATIVE_PATH
+        peer_ref = _write(peer, f.legacy_path.read_bytes())
+        peer_ref["file_identity"] = f.module.io_auth._identity(peer.stat())
+        previous_path = binding["checked_local_ref"]["path"]
+        binding["checked_local_ref"] = deepcopy(peer_ref)
+        for reference in receipt["input_refs"]:
+            if reference["path"] == previous_path:
+                reference.clear()
+                reference.update(peer_ref)
+    _reseal(f, receipt)
+    with pytest.raises(f.module.GeminiIncomeTaxSectionCaptionPdfAuthV1Error):
+        f.module.recheck_registered_section_caption_pdf_v1(receipts, registry_loader=f.loader)
+
+
+def test_same_bytes_new_local_file_identity_rejects_late_recheck(auth_fixture):
+    f = auth_fixture
+    receipts = _authenticate(f)
+    replacement = f.legacy_path.with_suffix(".replacement")
+    _write(replacement, f.legacy_path.read_bytes())
+    replacement.replace(f.legacy_path)
+    with pytest.raises(f.module.GeminiIncomeTaxSectionCaptionPdfAuthV1Error):
+        f.module.recheck_registered_section_caption_pdf_v1(receipts, registry_loader=f.loader)
 
 
 @pytest.mark.parametrize("target", ["envelope", "pdf", "manual", "candidate", "full", "crop", "legacy", "migration", "coverage", "parent", "renderer"])
