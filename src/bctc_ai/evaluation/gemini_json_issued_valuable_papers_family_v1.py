@@ -6521,31 +6521,77 @@ def _raw_lane_equation_v2(kind, components, result, lane_keys):
     return {**material, "equation_id": "gjfoltiev1:equation:" + canonical_json_sha256_v1(material)}
 
 
-def _raw_transposed_headers_v2(table, compiled_specs, canonical_unit=None):
-    """Exact instrument/total/unit literals; no qualified-header prefix match."""
+def _raw_transposed_header_scope_v1(table, compiled_specs, canonical_unit=None):
+    """Separate only printed instrument, unit, date and shared axis-heading atoms.
+
+    Original paths are retained verbatim. No unknown qualifier, nullable part,
+    duplicate role/unit or nonuniform date can be discarded to obtain a role.
+    """
     columns = table.get("columns")
-    if type(columns) is not list or len(columns) != 3 or any(column.get("value_kind") != "MONEY" for column in columns):
+    if (type(columns) is not list or len(columns) != 3
+            or any(type(column) is not dict or column.get("value_kind") != "MONEY" for column in columns)):
         return None
     units = {_normalized(alias) for binding in compiled_specs["evaluation"]["money_unit_bindings"]
              if binding["accepted"] and (canonical_unit is None or binding["canonical_unit"] == canonical_unit)
              for alias in binding["aliases"]}
-    roles = {}
+    roles, header_dates, nonperiod, witnesses, axis_positions = {}, [], [], [], []
+    expanded = False
     for ordinal, column in enumerate(columns, 1):
-        hits = []
-        for part in column.get("header_path_exact", []):
-            body = _normalized(part)
-            role = _exact_declared_role(part, compiled_specs=compiled_specs,
+        path = column.get("header_path_exact")
+        if type(path) is not list or not path or any(type(part) is not str or not part.strip() for part in path):
+            return None
+        atoms = [line for part in path for line in part.splitlines()]
+        if not atoms or any(not atom.strip() for atom in atoms):
+            return None
+        expanded = expanded or any(len(part.splitlines()) > 1 for part in path)
+        hits, dates, unit_atoms, axis, retained = [], [], [], [], []
+        for position, atom in enumerate(atoms):
+            body = _normalized(atom)
+            role = _exact_declared_role(atom, compiled_specs=compiled_specs,
                 roles={"BOND", "CERTIFICATE_OF_DEPOSIT"}, within_role=None)
             if role is not None:
                 hits.append(role)
             elif body in {"tong", "tong cong", "total"}:
                 hits.append("FAMILY_ROOT_TOTAL")
-            elif body and body not in units:
+            elif body in units:
+                unit_atoms.append(body)
+            elif body == "loai giay to co gia":
+                axis.append(position)
+            elif re.fullmatch(r"(?:tai )?ngay [0-9]{1,2} thang [0-9]{1,2} nam [0-9]{4}", body):
+                parsed = sorted({value.isoformat() for value in _surface_dates(atom)})
+                if len(parsed) != 1:
+                    return None
+                dates.append({"source_exact": atom, "source_date": parsed[0]})
+                continue
+            else:
                 return None
-        if len(hits) != 1 or hits[0] in roles:
+            retained.append(body)
+        if len(hits) != 1 or hits[0] in roles or len(unit_atoms) > 1 or len(dates) > 1 or len(axis) > 1:
             return None
         roles[hits[0]] = ordinal
-    return roles if set(roles) == {"BOND", "CERTIFICATE_OF_DEPOSIT", "FAMILY_ROOT_TOTAL"} else None
+        header_dates.append(dates)
+        axis_positions.append(axis)
+        nonperiod.append({"value_kind": "MONEY", "header_atoms_normalized": retained})
+        witnesses.append({"column_ordinal": ordinal, "header_path_exact": canonical_clone_v1(path),
+                          "source_atoms_exact": atoms, "role": hits[0], "unit_atoms_normalized": unit_atoms,
+                          "explicit_date_atoms": dates})
+    if set(roles) != {"BOND", "CERTIFICATE_OF_DEPOSIT", "FAMILY_ROOT_TOTAL"}:
+        return None
+    if any(axis_positions) and axis_positions != [[0], [0], [0]]:
+        return None
+    if any(header_dates) and (not all(len(dates) == 1 for dates in header_dates)
+            or len({dates[0]["source_date"] for dates in header_dates}) != 1):
+        return None
+    source_date = header_dates[0][0]["source_date"] if header_dates[0] else None
+    return {"columns_by_role": roles, "source_date": source_date, "source_header_witnesses": witnesses,
+            "nonperiod_columns": nonperiod,
+            "uses_printed_header_grammar": expanded or any(axis_positions) or source_date is not None,
+            "source_values_used_as_header_authority": False}
+
+
+def _raw_transposed_headers_v2(table, compiled_specs, canonical_unit=None):
+    scope = _raw_transposed_header_scope_v1(table, compiled_specs, canonical_unit)
+    return scope["columns_by_role"] if scope is not None else None
 
 
 def _raw_transposed_block_v2(table, region, columns, start, end, marker, lane_key, compiled_specs):
@@ -6967,7 +7013,8 @@ def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observ
         unit = units.get(_source_unit_scope_key_v1(region))
         owner = section.get("content_kind") == "FINANCIAL_NOTE" and _exact_owner_alias(section.get("title_exact"), compiled_specs=compiled_specs) is not None
         transposed = classification.get("layout_orientation") == "INSTRUMENT_COLUMNS_TENOR_ROWS"
-        columns = _raw_transposed_headers_v2(table, compiled_specs, unit["canonical_unit"] if unit else None)
+        header_scope = _raw_transposed_header_scope_v1(table, compiled_specs, unit["canonical_unit"] if unit else None)
+        columns = header_scope["columns_by_role"] if header_scope is not None else None
         if not transposed and columns is None:
             axis = _two_period_axis(table)
             if not owner or unit is None or not axis.get("complete"):
@@ -6996,6 +7043,8 @@ def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observ
             "raw_table_sha256": canonical_json_sha256_v1(original_table), "raw_page_sha256": canonical_json_sha256_v1(original_page),
             "authenticated_observation_table_sha256": canonical_json_sha256_v1(table),
             "classification_id": classification["classification_id"], "blocks": [], "failures": []}
+        if header_scope is not None and header_scope["uses_printed_header_grammar"]:
+            item["original_printed_header_scope"] = header_scope
         tables.append(item)
         if not owner or unit is None or columns is None or table.get("continuation") != "NONE":
             item["failures"].append("RAW_OWNER_UNIT_OR_INSTRUMENT_HEADER_NOT_PROVEN")
@@ -7003,6 +7052,9 @@ def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observ
         markers = [(index, row) for index, row in enumerate(table["rows"], 1)
                    if row["row_kind"] == "GROUP" and _semantic_period_roles(row["label_exact"])]
         if markers:
+            if header_scope["source_date"] is not None:
+                item["failures"].append("PRINTED_HEADER_DATE_CANNOT_OWN_BOTH_GROUP_PERIODS")
+                continue
             allowed = ({"so du cuoi nam", "so du cuoi ky", "so du cuoi quy"}, {"so du dau nam", "so du dau ky", "so du dau quy"})
             if (len(markers) != 2 or markers[0][0] != 1 or _normalized(table.get("title_exact")) not in {"", "chi tiet ky han cua cac giay to co gia phat hanh"}
                     or any(_normalized(row["label_exact"]) not in allowed[lane] or row["row_kind"] != "GROUP"
@@ -7024,9 +7076,17 @@ def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observ
             continue
         title = _without_leading_ordinal(_normalized(table.get("title_exact")))
         dates = sorted({value.isoformat() for value in _surface_dates(table.get("title_exact"))})
-        if re.fullmatch(r"tai ngay [0-9]{1,2} thang [0-9]{1,2} nam [0-9]{4}", title) and len(dates) == 1:
+        header_date = header_scope["source_date"]
+        if header_date is not None and dates and dates != [header_date]:
+            item["failures"].append("PRINTED_HEADER_DATE_CONFLICTS_WITH_TABLE_TITLE")
+            continue
+        title_dated = re.fullmatch(r"tai ngay [0-9]{1,2} thang [0-9]{1,2} nam [0-9]{4}", title) and len(dates) == 1
+        if header_date is not None and not title_dated and title not in {"", "menh gia phat hanh giay to co gia theo ky han"}:
+            item["failures"].append("DATED_HEADER_TABLE_TITLE_QUALIFIER_NOT_PROVEN")
+            continue
+        if title_dated or header_date is not None:
             item["period_rule"] = "EXPLICIT_DATED_SAME_POPULATION_TABLE_PAIR"
-            item["source_date"] = dates[0]
+            item["source_date"] = header_date if header_date is not None else dates[0]
             pending.append((item, table, columns))
             continue
         candidates = sum(_raw_transposed_headers_v2(other, compiled_specs) is not None for other in section["tables"])
@@ -7079,7 +7139,9 @@ def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observ
         if (not left["blocks"] or not right["blocks"] or left["original_unit_proof"]["canonical_unit"] != right["original_unit_proof"]["canonical_unit"]
                 or not same_typed_json_v1(left["blocks"][0]["population"], right["blocks"][0]["population"])
                 or not same_typed_json_v1(ordered[0][2], ordered[1][2])
-                or not same_typed_json_v1(ordered[0][1]["columns"], ordered[1][1]["columns"])):
+                or not same_typed_json_v1(
+                    _raw_transposed_header_scope_v1(ordered[0][1], compiled_specs)["nonperiod_columns"],
+                    _raw_transposed_header_scope_v1(ordered[1][1], compiled_specs)["nonperiod_columns"])):
             left["failures"].append("DATED_TABLE_NONPERIOD_ECONOMIC_POPULATIONS_DIFFER")
             right["failures"].append("DATED_TABLE_NONPERIOD_ECONOMIC_POPULATIONS_DIFFER")
     for item in tables:

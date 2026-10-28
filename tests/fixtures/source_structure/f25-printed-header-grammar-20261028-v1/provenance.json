@@ -1,0 +1,410 @@
+{
+    "format_version":  "F25_PRINTED_HEADER_GRAMMAR_ORIGINAL_FIXTURES_V1",
+    "scope":  "THREE_EXACT_SOURCE_PAGES_ONLY_NO_VAB245_UNIT_PERMISSION",
+    "source_receipt":  {
+                           "path":  "D:\\bctc_bank\\restore-receipts\\F25_FOUR_PAIR_ORIGINAL_SOURCE_20261028_V1\\source-receipt.json",
+                           "sha256":  "ffc52c4b6e784ae4e7f80cf4b9fa0218ff4266dd3742f4fe25f6479f72c69118",
+                           "size_bytes":  29223
+                       },
+    "database":  {
+                     "mode":  "ro\u0026immutable=1",
+                     "path":  "/srv/bctc-restore/dev-shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/current-corpus-freeze-inputs/store-ea9dec62fc52705298fc590f64302c031bc298fb204297afb3186b10585e18d7.sqlite3",
+                     "query_only":  true,
+                     "sha256":  "ea9dec62fc52705298fc590f64302c031bc298fb204297afb3186b10585e18d7",
+                     "size_bytes":  573145088
+                 },
+    "source_membership_refs":  {
+                                   "corpus_index":  {
+                                                        "path":  "/srv/bctc-restore/dev-shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/current-corpus-manifest-indexes/8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a.json",
+                                                        "sha256":  "969ff5f80732c39e4b7543ca1f5c1e5b5b827260f19981ed02945fe0c7379219",
+                                                        "size_bytes":  422971
+                                                    },
+                                   "approved_audit_ref":  {
+                                                              "path":  "/srv/bctc-restore/dev-shm/f25-full271-bb319-final-v2/family25.audit.json",
+                                                              "sha256":  "37ccf21cb5d3db8d596a051d2c5cfe8b163a76a38e004e3229adf671b53ddb4d",
+                                                              "size_bytes":  4460903
+                                                          },
+                                   "current_audit_ref":  {
+                                                             "path":  "/home/bctc/claude-runs/f25-full271-3d907507-v4/family25.audit.json",
+                                                             "sha256":  "e865bb9fe9f52df3173af622090073d74fba2f802c60fbe7f88f355dfa4b8ed5",
+                                                             "size_bytes":  2608061
+                                                         },
+                                   "query_evidence_id":  "gjmthfieqv1:evidence:13b37b48f60139c9b3985570cbfb975e385f4ed9a0161329fa65973447820069",
+                                   "selected_query_receipt":  {
+                                                                  "accepted_cluster_axis_sha256":  "3a0867c7f68d23d09ac00f45496ff16ffc3466838b898b7f0ed70ea79b0fbc1f",
+                                                                  "accepted_cluster_count":  271,
+                                                                  "accepted_fragment_count":  332,
+                                                                  "candidate_disposition_axis_sha256":  "3d145e9dc0ed2b2c266362f841d2c8ec89019468517083055f8902af4ad593f7",
+                                                                  "candidate_disposition_count":  271,
+                                                                  "disposition_counts":  {
+                                                                                             "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":  0,
+                                                                                             "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY":  271,
+                                                                                             "UNRESOLVED_GEMINI_JSON_FAMILY":  0
+                                                                                         },
+                                                                  "query_policy_sha256":  "57ea0fc2a4681a95fbc22a99dce0af637886949bf42de62dfd58998ce369f415",
+                                                                  "selected_document_axis_sha256":  "e8a9682c4cfbcf132bf202c2db0ed0576f8f5d381641c1fc5415374d04f21f97",
+                                                                  "selected_document_count":  271,
+                                                                  "selected_page_axis_sha256":  "2ae5e554ba0d7e0ccc0fc317fb3c66797911047454529294bdd8c884b2766127",
+                                                                  "selected_page_count":  14945,
+                                                                  "selected_page_json_frontier_sha256":  "03fc4589f33600fca87738d977c3de5f30a901133fede3640bf36524d5fd8d64"
+                                                              }
+                               },
+    "original_bytes_unchanged":  true,
+    "original_stored_terminal_lf_count":  2,
+    "cases":  [
+                  {
+                      "document_ordinal":  77,
+                      "raw_ref":  {
+                                      "file":  "doc-077-page-048-78c63d9d302fb80b.json",
+                                      "sha256":  "8dd16fde9f743fa0b66c4d14504fd0f94e6ca0b545a1033250527a644fddf291",
+                                      "size_bytes":  5595
+                                  },
+                      "original_sqlite_identity":  {
+                                                       "canonical_json_sha256":  "8dd16fde9f743fa0b66c4d14504fd0f94e6ca0b545a1033250527a644fddf291",
+                                                       "canonical_json_size_bytes":  5595,
+                                                       "document_id":  "gfpstorev1:document:af192ebb04b3c90d7ddc7dc5845c6d09dc4f5eedd649850b3712fc1c80185b89",
+                                                       "extraction_page_id":  "gfpstorev1:page:ef3d42b4c881f15a5b9f987c44c995d04faf512b6b28767649c3957e0513cabc",
+                                                       "extraction_run_id":  "gfpstorev1:run:61dac0ae5d5319152afe2338104bac2a4563764c0a6ac32bd6c3ea0951958272",
+                                                       "image_sha256":  "c04d1109cdcc6eed13a7367fd8d3901547b4b23443bb7c010adea2fbbfcba066",
+                                                       "image_size_bytes":  481293,
+                                                       "media_type":  "image/png",
+                                                       "page_id":  "gfpstorev1:page:ef3d42b4c881f15a5b9f987c44c995d04faf512b6b28767649c3957e0513cabc",
+                                                       "page_json_version_id":  "gfpstorev1:json:78c63d9d302fb80b900b99ef0ca95556ee246ecfeaaf26e9611e4f7798bf7dbc",
+                                                       "page_status":  "FINANCIAL_NOTE_CONTENT",
+                                                       "physical_page":  48,
+                                                       "pixel_height":  3509,
+                                                       "pixel_width":  2481,
+                                                       "render_dpi":  300,
+                                                       "response_id_sha256":  "0d0e65d73ed2704d90132ee0eb4050ad624a12304138cba5e82e3c42c31e1905",
+                                                       "selected_model":  "google/gemini-3.7-flash",
+                                                       "selected_service_tier":  "flex",
+                                                       "source_logical_name":  "vietstock_bctc/MSB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+                                                       "source_sha256":  "eb61c0dd29997ae46476018f323b47ddd7f0d8580f44e12b4055e74023e2d02a",
+                                                       "source_size_bytes":  2884912
+                                                   },
+                      "original_index_document":  {
+                                                      "document_manifest_id":  "gfdmv1:manifest:f8c6b95bb3a205ee34031603ce976f1c78e7c5790352cbd747f7b0696870459a",
+                                                      "document_manifest_ref":  {
+                                                                                    "path":  "documents/92de193b86f035a70a4d3892073a028550ba32dc871bf76b5c1555cc0b8aecf8/current-document-manifests/f8c6b95bb3a205ee34031603ce976f1c78e7c5790352cbd747f7b0696870459a.json",
+                                                                                    "sha256":  "5a2e25c3776ce6d9573d2f832e567fc39028ffb0c393630fd65cbde15793c3ab",
+                                                                                    "size_bytes":  107091
+                                                                                },
+                                                      "document_plan_id":  "gjfpdocv1:92de193b86f035a70a4d3892073a028550ba32dc871bf76b5c1555cc0b8aecf8",
+                                                      "page_count":  73,
+                                                      "page_json_frontier_sha256":  "ddd84ffbf4503076a896ac854a979f99e640dbbf3677efa5a4661a7e74bdabc3",
+                                                      "page_status_counts":  {
+                                                                                 "FINANCIAL_NOTE_CONTENT":  58,
+                                                                                 "MIXED_FINANCIAL_CONTENT":  0,
+                                                                                 "NO_RELEVANT_FINANCIAL_CONTENT":  9,
+                                                                                 "PRIMARY_FINANCIAL_STATEMENT":  6
+                                                                             },
+                                                      "provider_counts":  [
+                                                                              {
+                                                                                  "count":  73,
+                                                                                  "gateway":  "OPENROUTER",
+                                                                                  "selected_provider":  "Google",
+                                                                                  "selected_service_tier":  "flex"
+                                                                              }
+                                                                          ],
+                                                      "relative_path":  "vietstock_bctc/MSB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+                                                      "selection_id":  "gjfcdmsv1:selection:254ec0468ca54ea4d31ce532690e7053fa363bd7b3f61867416a5a1e871ca683",
+                                                      "selection_ref":  {
+                                                                            "path":  "documents/92de193b86f035a70a4d3892073a028550ba32dc871bf76b5c1555cc0b8aecf8/current-document-manifest-selections/254ec0468ca54ea4d31ce532690e7053fa363bd7b3f61867416a5a1e871ca683.json",
+                                                                            "sha256":  "ad0eebcc66debedf29f6515e80296cc378864f8e0e7c023af5f6f386c753ce47",
+                                                                            "size_bytes":  901
+                                                                        },
+                                                      "source_ordinal":  77,
+                                                      "source_sha256":  "eb61c0dd29997ae46476018f323b47ddd7f0d8580f44e12b4055e74023e2d02a",
+                                                      "source_size_bytes":  2884912
+                                                  },
+                      "selected_regions":  [
+                                               {
+                                                   "component_roles":  [
+                                                                           "BOND",
+                                                                           "CERTIFICATE_OF_DEPOSIT"
+                                                                       ],
+                                                   "document_id":  "gfpstorev1:document:af192ebb04b3c90d7ddc7dc5845c6d09dc4f5eedd649850b3712fc1c80185b89",
+                                                   "document_ordinal":  77,
+                                                   "fragment_ordinal":  1,
+                                                   "page_json_version_id":  "gfpstorev1:json:78c63d9d302fb80b900b99ef0ca95556ee246ecfeaaf26e9611e4f7798bf7dbc",
+                                                   "physical_page":  48,
+                                                   "section_id":  "s2",
+                                                   "selected_page_ordinal":  48,
+                                                   "source_logical_name":  "vietstock_bctc/MSB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+                                                   "source_sha256":  "eb61c0dd29997ae46476018f323b47ddd7f0d8580f44e12b4055e74023e2d02a",
+                                                   "table_id":  "t1"
+                                               },
+                                               {
+                                                   "component_roles":  [
+                                                                           "BOND",
+                                                                           "BOND_LONG",
+                                                                           "BOND_MEDIUM",
+                                                                           "BOND_SHORT",
+                                                                           "CD_LONG",
+                                                                           "CD_MEDIUM",
+                                                                           "CD_SHORT",
+                                                                           "CERTIFICATE_OF_DEPOSIT",
+                                                                           "GENERIC_ISSUED_PAPER_SOURCE"
+                                                                       ],
+                                                   "document_id":  "gfpstorev1:document:af192ebb04b3c90d7ddc7dc5845c6d09dc4f5eedd649850b3712fc1c80185b89",
+                                                   "document_ordinal":  77,
+                                                   "fragment_ordinal":  2,
+                                                   "page_json_version_id":  "gfpstorev1:json:78c63d9d302fb80b900b99ef0ca95556ee246ecfeaaf26e9611e4f7798bf7dbc",
+                                                   "physical_page":  48,
+                                                   "section_id":  "s2",
+                                                   "selected_page_ordinal":  48,
+                                                   "source_logical_name":  "vietstock_bctc/MSB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+                                                   "source_sha256":  "eb61c0dd29997ae46476018f323b47ddd7f0d8580f44e12b4055e74023e2d02a",
+                                                   "table_id":  "t2"
+                                               }
+                                           ]
+                  },
+                  {
+                      "document_ordinal":  163,
+                      "raw_ref":  {
+                                      "file":  "doc-163-page-036-c42a3febfc849d9f.json",
+                                      "sha256":  "8efe90a774999c6b6f663171819cd21a07bbb6df02ed5bd4cb1c7a8dd27f6f4c",
+                                      "size_bytes":  8171
+                                  },
+                      "original_sqlite_identity":  {
+                                                       "canonical_json_sha256":  "8efe90a774999c6b6f663171819cd21a07bbb6df02ed5bd4cb1c7a8dd27f6f4c",
+                                                       "canonical_json_size_bytes":  8171,
+                                                       "document_id":  "gfpstorev1:document:97ed945d9effa012fed1d15e9c8c0defb555fabcf04aa1541580ecffd2051eab",
+                                                       "extraction_page_id":  "gfpstorev1:page:2dc4ea2a6fba11f3c6798c1ab349ec007cc77a01eb4f0e9a6eb589d16e40d7cd",
+                                                       "extraction_run_id":  "gfpstorev1:run:6a0d86655bf546a2c19e1eb1744a673bef8f063369e2f74b78e524c39a0d2a0c",
+                                                       "image_sha256":  "5d51f0e9cd043216f1bf99a1a08c816598dfc0806760ae3bf700659ba059ea73",
+                                                       "image_size_bytes":  948252,
+                                                       "media_type":  "image/png",
+                                                       "page_id":  "gfpstorev1:page:2dc4ea2a6fba11f3c6798c1ab349ec007cc77a01eb4f0e9a6eb589d16e40d7cd",
+                                                       "page_json_version_id":  "gfpstorev1:json:c42a3febfc849d9f4d8aff570d32d3cde3b355c9b01ad9473570093c666d5587",
+                                                       "page_status":  "FINANCIAL_NOTE_CONTENT",
+                                                       "physical_page":  36,
+                                                       "pixel_height":  3509,
+                                                       "pixel_width":  2484,
+                                                       "render_dpi":  300,
+                                                       "response_id_sha256":  "d185e7ca60f85d0ed9c5a7188c85704270f9a5db4c087a4ded9e50e645409d46",
+                                                       "selected_model":  "google/gemini-3.7-flash",
+                                                       "selected_service_tier":  "flex",
+                                                       "source_logical_name":  "vietstock_bctc/SHB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+                                                       "source_sha256":  "7bc8c4f33eb0cdb8b0f82bd3ac059dfc590c9c787ea83e836c58120d06de3233",
+                                                       "source_size_bytes":  3397778
+                                                   },
+                      "original_index_document":  {
+                                                      "document_manifest_id":  "gfdmv1:manifest:993ea4dcfdffba8ed973e12dfa14f6a085fb6812d9b90d8bb9c39a66c8c5827b",
+                                                      "document_manifest_ref":  {
+                                                                                    "path":  "documents/b350ddc5497b6769ee2c899042dceb4e3e5e2be5e130962997ff45555d6a8782/current-document-manifests/993ea4dcfdffba8ed973e12dfa14f6a085fb6812d9b90d8bb9c39a66c8c5827b.json",
+                                                                                    "sha256":  "323f404247a12047070f53ca66178918c9cb032b3231e236c80af5dd18a888f4",
+                                                                                    "size_bytes":  75511
+                                                                                },
+                                                      "document_plan_id":  "gjfpdocv1:b350ddc5497b6769ee2c899042dceb4e3e5e2be5e130962997ff45555d6a8782",
+                                                      "page_count":  51,
+                                                      "page_json_frontier_sha256":  "9d691a44d115c3ca0ed9e40ab6555342b631be68ed394d0dba48d10fa072d05a",
+                                                      "page_status_counts":  {
+                                                                                 "FINANCIAL_NOTE_CONTENT":  39,
+                                                                                 "MIXED_FINANCIAL_CONTENT":  0,
+                                                                                 "NO_RELEVANT_FINANCIAL_CONTENT":  6,
+                                                                                 "PRIMARY_FINANCIAL_STATEMENT":  6
+                                                                             },
+                                                      "provider_counts":  [
+                                                                              {
+                                                                                  "count":  1,
+                                                                                  "gateway":  "AGY_CLI",
+                                                                                  "selected_provider":  "Agy",
+                                                                                  "selected_service_tier":  "agy-low"
+                                                                              },
+                                                                              {
+                                                                                  "count":  50,
+                                                                                  "gateway":  "OPENROUTER",
+                                                                                  "selected_provider":  "Google",
+                                                                                  "selected_service_tier":  "flex"
+                                                                              }
+                                                                          ],
+                                                      "relative_path":  "vietstock_bctc/SHB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+                                                      "selection_id":  "gjfcdmsv1:selection:17bf2da5c9ce0984d6858832ca04c9b13e2571126b0c3dec9e889f45f26a9e64",
+                                                      "selection_ref":  {
+                                                                            "path":  "documents/b350ddc5497b6769ee2c899042dceb4e3e5e2be5e130962997ff45555d6a8782/current-document-manifest-selections/17bf2da5c9ce0984d6858832ca04c9b13e2571126b0c3dec9e889f45f26a9e64.json",
+                                                                            "sha256":  "ba6a1785714ba13634058ea1bd964e55d0d51019db4c8f7a770f52ad0f9dbfee",
+                                                                            "size_bytes":  900
+                                                                        },
+                                                      "source_ordinal":  163,
+                                                      "source_sha256":  "7bc8c4f33eb0cdb8b0f82bd3ac059dfc590c9c787ea83e836c58120d06de3233",
+                                                      "source_size_bytes":  3397778
+                                                  },
+                      "selected_regions":  [
+                                               {
+                                                   "component_roles":  [
+                                                                           "GENERIC_ISSUED_PAPER_SOURCE"
+                                                                       ],
+                                                   "document_id":  "gfpstorev1:document:97ed945d9effa012fed1d15e9c8c0defb555fabcf04aa1541580ecffd2051eab",
+                                                   "document_ordinal":  163,
+                                                   "fragment_ordinal":  1,
+                                                   "page_json_version_id":  "gfpstorev1:json:c42a3febfc849d9f4d8aff570d32d3cde3b355c9b01ad9473570093c666d5587",
+                                                   "physical_page":  36,
+                                                   "section_id":  "s3",
+                                                   "selected_page_ordinal":  36,
+                                                   "source_logical_name":  "vietstock_bctc/SHB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+                                                   "source_sha256":  "7bc8c4f33eb0cdb8b0f82bd3ac059dfc590c9c787ea83e836c58120d06de3233",
+                                                   "table_id":  "t1"
+                                               },
+                                               {
+                                                   "component_roles":  [
+                                                                           "BOND",
+                                                                           "BOND_LONG",
+                                                                           "BOND_MEDIUM",
+                                                                           "BOND_SHORT",
+                                                                           "CD_LONG",
+                                                                           "CD_MEDIUM",
+                                                                           "CD_SHORT",
+                                                                           "CERTIFICATE_OF_DEPOSIT",
+                                                                           "GENERIC_ISSUED_PAPER_SOURCE"
+                                                                       ],
+                                                   "document_id":  "gfpstorev1:document:97ed945d9effa012fed1d15e9c8c0defb555fabcf04aa1541580ecffd2051eab",
+                                                   "document_ordinal":  163,
+                                                   "fragment_ordinal":  2,
+                                                   "page_json_version_id":  "gfpstorev1:json:c42a3febfc849d9f4d8aff570d32d3cde3b355c9b01ad9473570093c666d5587",
+                                                   "physical_page":  36,
+                                                   "section_id":  "s3",
+                                                   "selected_page_ordinal":  36,
+                                                   "source_logical_name":  "vietstock_bctc/SHB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf",
+                                                   "source_sha256":  "7bc8c4f33eb0cdb8b0f82bd3ac059dfc590c9c787ea83e836c58120d06de3233",
+                                                   "table_id":  "t2"
+                                               }
+                                           ]
+                  },
+                  {
+                      "document_ordinal":  225,
+                      "raw_ref":  {
+                                      "file":  "doc-225-page-055-154cd160e6690e2b.json",
+                                      "sha256":  "378c908630acf04eadd9a9399828cbddfdb82afc77334864c5136b85cd827ddf",
+                                      "size_bytes":  5459
+                                  },
+                      "original_sqlite_identity":  {
+                                                       "canonical_json_sha256":  "378c908630acf04eadd9a9399828cbddfdb82afc77334864c5136b85cd827ddf",
+                                                       "canonical_json_size_bytes":  5459,
+                                                       "document_id":  "gfpstorev1:document:bdbcfa488a16a9934f326b076fd3bdb6da5b4942811af7b41419af0030b99377",
+                                                       "extraction_page_id":  "gfpstorev1:page:49cd0dd82000fd2beef6741da19e4b2f7944a046668495d7ed66e87272cf8c2e",
+                                                       "extraction_run_id":  "gfpstorev1:run:def120d9969034949668fd89ca4ddb9d4cedc32a1a5bf14bcd0f2d9164c822d5",
+                                                       "image_sha256":  "fbe760c2f562db6b9a373c8d970d29197578dd1ddd5c1e640c49e0853e605f11",
+                                                       "image_size_bytes":  594825,
+                                                       "media_type":  "image/png",
+                                                       "page_id":  "gfpstorev1:page:49cd0dd82000fd2beef6741da19e4b2f7944a046668495d7ed66e87272cf8c2e",
+                                                       "page_json_version_id":  "gfpstorev1:json:154cd160e6690e2b0a40fd81ddd4fe6fa0e08319a9dc031c276268b1a03cae1d",
+                                                       "page_status":  "FINANCIAL_NOTE_CONTENT",
+                                                       "physical_page":  55,
+                                                       "pixel_height":  3510,
+                                                       "pixel_width":  2482,
+                                                       "render_dpi":  300,
+                                                       "response_id_sha256":  "2401ccc9f86adeeac2a5b1502dfd898f796f51a15935d060e593de37321a7c20",
+                                                       "selected_model":  "google/gemini-3.7-flash",
+                                                       "selected_service_tier":  "flex",
+                                                       "source_logical_name":  "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                       "source_sha256":  "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+                                                       "source_size_bytes":  8082455
+                                                   },
+                      "original_index_document":  {
+                                                      "document_manifest_id":  "gfdmv1:manifest:8c10ed82b1957f315b0e9255f1d3e80796e6b44931b027d20ee9f173d525891d",
+                                                      "document_manifest_ref":  {
+                                                                                    "path":  "documents/aebe4a773f6617b0eeca7f7ea69db17ef68cec8a3c1012c7aab88bff2e4c6c18/current-document-manifests/8c10ed82b1957f315b0e9255f1d3e80796e6b44931b027d20ee9f173d525891d.json",
+                                                                                    "sha256":  "399af3b13998331b32b5433bd57a6630a913cc70a57ba56216b652bad7372922",
+                                                                                    "size_bytes":  135927
+                                                                                },
+                                                      "document_plan_id":  "gjfpdocv1:aebe4a773f6617b0eeca7f7ea69db17ef68cec8a3c1012c7aab88bff2e4c6c18",
+                                                      "page_count":  93,
+                                                      "page_json_frontier_sha256":  "c92bac68470ee4b6c771641551eb9456b3abfee0bf91bfbef9b72b5a8d73f055",
+                                                      "page_status_counts":  {
+                                                                                 "FINANCIAL_NOTE_CONTENT":  79,
+                                                                                 "MIXED_FINANCIAL_CONTENT":  1,
+                                                                                 "NO_RELEVANT_FINANCIAL_CONTENT":  7,
+                                                                                 "PRIMARY_FINANCIAL_STATEMENT":  6
+                                                                             },
+                                                      "provider_counts":  [
+                                                                              {
+                                                                                  "count":  2,
+                                                                                  "gateway":  "AGY_CLI",
+                                                                                  "selected_provider":  "Agy",
+                                                                                  "selected_service_tier":  "agy-low"
+                                                                              },
+                                                                              {
+                                                                                  "count":  91,
+                                                                                  "gateway":  "OPENROUTER",
+                                                                                  "selected_provider":  "Google",
+                                                                                  "selected_service_tier":  "flex"
+                                                                              }
+                                                                          ],
+                                                      "relative_path":  "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                      "selection_id":  "gjfcdmsv1:selection:04556e9204bb1593b0e40fe6fc75d231e469a5f67f2a083a70f63e271d7719e7",
+                                                      "selection_ref":  {
+                                                                            "path":  "documents/aebe4a773f6617b0eeca7f7ea69db17ef68cec8a3c1012c7aab88bff2e4c6c18/current-document-manifest-selections/04556e9204bb1593b0e40fe6fc75d231e469a5f67f2a083a70f63e271d7719e7.json",
+                                                                            "sha256":  "4b17775f0e0dc20e00240fa69a49ae79788ffa85a78776f506000e6257184c7f",
+                                                                            "size_bytes":  901
+                                                                        },
+                                                      "source_ordinal":  225,
+                                                      "source_sha256":  "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+                                                      "source_size_bytes":  8082455
+                                                  },
+                      "selected_regions":  [
+                                               {
+                                                   "component_roles":  [
+                                                                           "GENERIC_ISSUED_PAPER_SOURCE"
+                                                                       ],
+                                                   "document_id":  "gfpstorev1:document:bdbcfa488a16a9934f326b076fd3bdb6da5b4942811af7b41419af0030b99377",
+                                                   "document_ordinal":  225,
+                                                   "fragment_ordinal":  1,
+                                                   "page_json_version_id":  "gfpstorev1:json:154cd160e6690e2b0a40fd81ddd4fe6fa0e08319a9dc031c276268b1a03cae1d",
+                                                   "physical_page":  55,
+                                                   "section_id":  "s2",
+                                                   "selected_page_ordinal":  55,
+                                                   "source_logical_name":  "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                   "source_sha256":  "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+                                                   "table_id":  "t1"
+                                               },
+                                               {
+                                                   "component_roles":  [
+                                                                           "BOND",
+                                                                           "BOND_LONG",
+                                                                           "BOND_MEDIUM",
+                                                                           "BOND_SHORT",
+                                                                           "CD_LONG",
+                                                                           "CD_MEDIUM",
+                                                                           "CD_SHORT",
+                                                                           "CERTIFICATE_OF_DEPOSIT",
+                                                                           "GENERIC_ISSUED_PAPER_SOURCE"
+                                                                       ],
+                                                   "document_id":  "gfpstorev1:document:bdbcfa488a16a9934f326b076fd3bdb6da5b4942811af7b41419af0030b99377",
+                                                   "document_ordinal":  225,
+                                                   "fragment_ordinal":  2,
+                                                   "page_json_version_id":  "gfpstorev1:json:154cd160e6690e2b0a40fd81ddd4fe6fa0e08319a9dc031c276268b1a03cae1d",
+                                                   "physical_page":  55,
+                                                   "section_id":  "s2",
+                                                   "selected_page_ordinal":  55,
+                                                   "source_logical_name":  "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                   "source_sha256":  "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+                                                   "table_id":  "t2"
+                                               },
+                                               {
+                                                   "component_roles":  [
+                                                                           "BOND",
+                                                                           "BOND_LONG",
+                                                                           "BOND_MEDIUM",
+                                                                           "BOND_SHORT",
+                                                                           "CD_LONG",
+                                                                           "CD_MEDIUM",
+                                                                           "CD_SHORT",
+                                                                           "CERTIFICATE_OF_DEPOSIT",
+                                                                           "GENERIC_ISSUED_PAPER_SOURCE"
+                                                                       ],
+                                                   "document_id":  "gfpstorev1:document:bdbcfa488a16a9934f326b076fd3bdb6da5b4942811af7b41419af0030b99377",
+                                                   "document_ordinal":  225,
+                                                   "fragment_ordinal":  3,
+                                                   "page_json_version_id":  "gfpstorev1:json:154cd160e6690e2b0a40fd81ddd4fe6fa0e08319a9dc031c276268b1a03cae1d",
+                                                   "physical_page":  55,
+                                                   "section_id":  "s2",
+                                                   "selected_page_ordinal":  55,
+                                                   "source_logical_name":  "vietstock_bctc/TPB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                                   "source_sha256":  "fa388132b4168dc39e9a784216ed42ee8bdffbee2e3d67b42fa9d225fb886d27",
+                                                   "table_id":  "t3"
+                                               }
+                                           ]
+                  }
+              ]
+}
