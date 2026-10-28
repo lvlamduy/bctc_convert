@@ -1578,6 +1578,14 @@ def run(args):
                 sweep["metrics"]["document_count"] == len(documents),
                 "Sweep document denominator differs",
             )
+            # The sealed sweep holds validated canonical copies of both graphs. Keep only those
+            # from here on, so the evaluated originals are not resident through cold replay.
+            require(
+                same_typed_json_v1(sweep["indexed_query_evidence"], indexed)
+                and same_typed_json_v1(sweep["trials"], trials),
+                "Sealed sweep differs from the evaluated trials/indexed evidence",
+            )
+            indexed, trials = sweep["indexed_query_evidence"], sweep["trials"]
             for source in pdf_checked:
                 path = _safe_path(args.source_pdf_root / source["source_logical_name"])
                 require(
@@ -1659,6 +1667,8 @@ def run(args):
         reloaded = load_gemini_accounting_family_sweep_v1(args.results_database, stored["family_run_id"])
         require(same_typed_json_v1(reloaded, sweep), "Persisted sweep does not reload exactly")
         validate_source_observation_mapping_contract_v1(reloaded)
+        # Checked; release the reloaded copy before the export's own whole-sweep validation.
+        del reloaded
     _assert_shared_pins_v1()
     require(implementation_refs == [generic._file_ref(p) for p in implementation_paths]
             and authority_refs == [generic._file_ref(p) for p in authority_paths],
