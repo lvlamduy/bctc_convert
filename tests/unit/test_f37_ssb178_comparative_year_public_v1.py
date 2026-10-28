@@ -22,6 +22,7 @@ from bctc_ai.evaluation.gemini_json_credit_risk_provision_expense_family_v1 impo
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
+    UNRESOLVED,
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
     coalesce_gemini_json_multitable_hierarchical_document_v1,
 )
@@ -314,3 +315,40 @@ def test_tampered_carrier_axis_fails_the_fresh_replay():
         validate_gemini_json_credit_risk_provision_expense_replay_v1(
             base_indexed_query_evidence=run["base"], indexed_query_evidence=tampered, trials=run["trials"],
             page_json_by_document=run["page_json_by_document"], compiled_specs=run["compiled"])
+
+
+def _assert_carrier_unresolved(run):
+    assert run["trial"]["status"] == UNRESOLVED
+    assert "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED" in run["trial"]["reasons"]
+    assert run["trial"]["mappings"] == []
+    (carrier,) = _carrier_axis(run["indexed"])
+    assert carrier["locator"]["physical_page"] == 6
+    assert carrier["lane_axis_reasons"] == ["DURATION_PERIOD_PRECISION_DIFFERS_ACROSS_MONEY_COLUMNS"]
+
+
+def test_unresolved_carrier_without_any_note_page_is_unresolved_not_absent():
+    # Codex 0597: the printed family root row is direct family evidence even when no note observation exists.
+    pages = [item for item in _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+             if item[1] == 6]
+    _assert_carrier_unresolved(_run_full(pages))
+
+
+def test_unresolved_carrier_with_contradictory_note_lanes_keeps_the_carrier():
+    # The note prints "Kỳ này" on its 31/03/2023 column: the shared lane axis drops the note table, the carrier stays.
+    pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+    pages = _with_note_headers(pages, {
+        CURRENT_HEADER: ["Kỳ này", "Kỳ ba tháng kết thúc ngày 31/03/2023"],
+        COMPARATIVE_HEADER: ["Kỳ trước", COMPARATIVE_HEADER],
+    })
+    _assert_carrier_unresolved(_run_full(pages))
+
+
+def test_unresolved_carrier_with_consistent_note_roles_of_other_years_is_unresolved():
+    # Printed roles agree with the note's own dates (2024 current, 2023 comparative) but the PRIMARY lanes are
+    # unresolved: no report-period authority, N1 reason, no mapping.
+    pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+    pages = _with_note_headers(pages, {
+        CURRENT_HEADER: ["Kỳ này", COMPARATIVE_HEADER],
+        COMPARATIVE_HEADER: ["Kỳ trước", "Kỳ ba tháng kết thúc ngày 31/03/2023"],
+    })
+    _assert_carrier_unresolved(_run_full(pages))

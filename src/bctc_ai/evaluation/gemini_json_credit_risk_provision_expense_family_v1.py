@@ -4963,8 +4963,10 @@ def _family37_document_plan_v1(
     roots = _primary_roots_compatible_with_observations(
         roots, transposed_observations
     )
-    # Codex 0588: when N1 closes every root-less lane the transposed receipt is None, so the
-    # carriers and the reason are kept here, in the source authority, not only in that receipt.
+    # Codex 0588 / 0597: when no root forms, every period-unresolved PRIMARY carrier of the
+    # family root row is kept here, in the source authority - also when a note parser emitted no
+    # valid observation at all (a note table with contradictory dated lanes is skipped by the
+    # separate-role builder), because the printed root row is itself direct family evidence.
     unresolved_primary_carriers = (
         _family37_period_unresolved_primary_carriers_v1(
             pages=pages,
@@ -4972,7 +4974,7 @@ def _family37_document_plan_v1(
             document_ordinal=document["document_ordinal"],
             compiled_specs=compiled_specs,
         )
-        if transposed_observations and not roots
+        if not roots
         else []
     )
     transposed_receipt = _transposed_detail_receipt(
@@ -5091,6 +5093,13 @@ def _family37_document_plan_v1(
             blocking_reasons.append(
                 "F37_POSITIVE_OWNER_WITHOUT_SAFE_SEMANTIC_LANES"
             )
+        if (
+            unresolved_primary_carriers
+            and "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED" not in blocking_reasons
+        ):
+            # Codex 0597: a printed family root row whose PRIMARY lanes did not resolve is family
+            # evidence; with no READY route it is UNRESOLVED with that reason, never NOT_OBSERVED.
+            blocking_reasons.append("F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED")
         if blocking_reasons:
             decision = UNRESOLVED
             query_kind = "POSITIVE_F37_OWNER_REJECTED_BY_SOURCE_AUTHORITY"
