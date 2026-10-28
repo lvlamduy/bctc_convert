@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from bctc_ai.evaluation.gemini_json_credit_risk_provision_expense_family_v1 import (
+    _family37_document_plan_v1,
     build_gemini_json_credit_risk_provision_expense_indexed_query_evidence_v1,
     build_gemini_json_credit_risk_provision_expense_trials_v1,
     compile_gemini_json_credit_risk_provision_expense_family_specs_v1,
@@ -263,8 +264,6 @@ def test_present_but_period_unresolved_primary_carrier_closes_the_note_only_rout
 
 def test_unresolved_primary_carrier_is_retained_in_the_source_authority():
     # Codex 0588: the carrier and its exact lane-axis reason survive in the final source authority receipt.
-    from bctc_ai.evaluation.gemini_json_credit_risk_provision_expense_family_v1 import _family37_document_plan_v1
-
     pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
     document = {"document_id": "gfpstorev1:document:" + "5" * 64, "document_ordinal": 1,
                 "source_logical_name": PROVENANCE["source_logical_name"], "source_sha256": PROVENANCE["source_sha256"]}
