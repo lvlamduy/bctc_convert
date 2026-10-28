@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,13 @@ from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     evaluate_gemini_json_multitable_hierarchical_family_cluster_v1,
     validate_gemini_json_multitable_hierarchical_family_candidate_replay_v1,
 )
-from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+from bctc_ai.evaluation.source_observation_mapping_contract_v1 import (
+    audit_source_observation_mapping_contract_v1,
+)
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT_ID = "gfpstorev1:document:" + "a" * 64
@@ -990,6 +997,36 @@ def test_primary_projection_preserves_explicit_dash_and_true_blank_as_partial_so
     assert equation["lane_statuses"] == ["EXACT", "INCOMPLETE_DUE_TO_BLANK_SOURCE_CELL"]
 
 
+def _assert_original_unit_hold_beforeimage(candidate, *, records, cluster):
+    assert candidate["status"] == UNRESOLVED
+    assert candidate["reasons"] == ["ALGORITHM_ORIGINAL_INCOME_TAX_UNIT_SCOPE_UNPROVEN"]
+    assert candidate["mappings"] == []
+    closure = candidate["closure_receipt"]
+    assert closure["equations"] == [] and closure["root_component_sum_receipts"] == []
+    assert closure["structural_root_receipt"]["emitted_mapping"] is False
+    receipt = closure["income_tax_original_unit_scope_receipt"]
+    assert receipt["format_version"] == "INCOME_TAX_ORIGINAL_UNIT_SCOPE_CONTROL_V2"
+    assert receipt["failures"] == ["ORIGINAL_FINANCIAL_SOURCE_MONEY_UNIT_NOT_OWNED"]
+    assert receipt["source_values_units_roles_and_periods_changed"] is False
+    assert receipt["document_consensus_equal_amount_or_private_unit_projection_permission"] is False
+    assert receipt["original_records_object_canonical_sha256"] == canonical_json_sha256_v1(records)
+    query = build_gemini_json_income_tax_region_query_receipt_v1(cluster["component_regions"], cluster=cluster)
+    assert receipt["authenticated_query_receipt_id"] == query["query_receipt_id"]
+    assert receipt["receipt_id"] == "gjitunitv2:control:" + canonical_json_sha256_v1({
+        key: value for key, value in receipt.items() if key != "receipt_id"})
+    envelope = receipt["withheld_candidate_beforeimage"]
+    raw = envelope["canonical_json"].encode("utf-8")
+    assert len(raw) == envelope["size_bytes"] and sha256(raw).hexdigest() == envelope["sha256"]
+    before = json.loads(raw)
+    assert canonical_json_bytes_v1(before) == raw
+    assert before["status"] == READY and before["mappings"]
+    for checked in (candidate, before):
+        assert checked["candidate_id"] == "gjmthfcv1:candidate:" + canonical_json_sha256_v1({
+            key: value for key, value in checked.items() if key != "candidate_id"})
+    audit = audit_source_observation_mapping_contract_v1(candidate)
+    assert audit["status"] == "PASS" and audit["mapping_count"] == 0, audit["violations"]
+    return receipt, before
+
 def test_unitless_primary_tax_rows_use_two_exact_primary_statement_unit_controls() -> None:
     compiled = _adapter_compiled()
     target = _primary_record(_primary_page(_primary_tax_rows(), unit=None))
@@ -1006,6 +1043,7 @@ def test_unitless_primary_tax_rows_use_two_exact_primary_statement_unit_controls
         selected_page_ordinal=3,
     )
     records = [balance, target, cash_flow]
+    original = deepcopy(records)
     base = coalesce_gemini_json_multitable_hierarchical_document_v1(
         page_records=records, compiled_specs=compiled
     )
@@ -1033,8 +1071,18 @@ def test_unitless_primary_tax_rows_use_two_exact_primary_statement_unit_controls
             cluster["component_regions"], cluster=cluster
         ),
     )
-    assert candidate["status"] == READY
-    assert {mapping["unit"] for mapping in candidate["mappings"]} == {"VND"}
+    receipt, before = _assert_original_unit_hold_beforeimage(candidate, records=records, cluster=cluster)
+    held = next(check for check in receipt["checks"]
+        if check["locator"]["page_json_version_id"] == target["page_json_version_id"])
+    assert held["status"] == "HOLD" and held["expected_units"] == ["VND"]
+    assert {"EXPORTED_MAPPING_SOURCE", "PRIMARY_PROJECTION_SOURCE"} <= set(held["uses"])
+    assert held["original_source_unit"]["original_local_unit_axis"]["axis"]["complete"] is False
+    assert {mapping["unit"] for mapping in before["mappings"]} == {"VND"}
+    donated = before["closure_receipt"]["income_tax_adapter_receipt"]["primary_projection_receipt"][
+        "primary_unit_corroboration_receipt"]
+    assert donated == unit_receipt
+    assert target["page_json"]["sections"][0]["tables"][0]["unit_exact"] is None
+    assert records == original
 
 
 def test_primary_unit_corroboration_rejects_one_source_or_mixed_canonical_units() -> None:
@@ -2832,16 +2880,31 @@ def test_supplemental_unit_corroboration_never_overrides_explicit_unsupported_un
         selected_page_ordinal=3,
     )
     records.append(controls)
+    original = deepcopy(records)
     cluster, candidate = _evaluate_supplemental_records(records, compiled=compiled)
     assert cluster["status"] == READY
-    assert candidate["status"] == READY
+    receipt, before = _assert_original_unit_hold_beforeimage(candidate, records=records, cluster=cluster)
     adapter = cluster["owner_receipt"]["income_tax_query_adapter_receipt"]
     assert adapter["supplemental_projection_receipts"] == []
-    assert {mapping["role"] for mapping in candidate["mappings"]} == {
+    assert {mapping["role"] for mapping in before["mappings"]} == {
         "CURRENT_TAX_PARENT",
         "DEFERRED_TAX_NET",
         "FAMILY_ROOT_TOTAL",
     }
+    held = next(check for check in receipt["checks"]
+        if check["locator"]["page_json_version_id"] == records[0]["page_json_version_id"])
+    assert held["status"] == "HOLD"
+    assert "RETAINED_TAX_POPULATION_CONTROL" in held["uses"]
+    assert "EXPORTED_MAPPING_SOURCE" not in held["uses"]
+    assert held["original_source_unit"]["original_local_unit_axis"]["axis"]["complete"] is False
+    context = before["closure_receipt"]["income_tax_source_control_receipt"]["source_context_receipt"]
+    population = next(item for item in context["tax_population_inventory"] if item["locator"] == held["locator"])
+    assert population["unit_axis"]["complete"] is False
+    assert population["original_table_json_sha256"] == canonical_json_sha256_v1(note_table)
+    assert population["source_table_rows_exact"] == note_table["rows"]
+    assert {mapping["unit"] for mapping in before["mappings"]} == {"MILLION_VND"}
+    assert note_table["unit_exact"] == "Nghìn đồng"
+    assert records == original
 
 
 @pytest.mark.parametrize(

@@ -185,7 +185,29 @@ def test_ready_external_primary_printed_total_keeps_note_axis_and_existing_finan
     result = options["trials"][0]["candidates"][0]
     assert result["status"] == shared.READY and result["reasons"] == []
     before = _before_public_handoff(records, options["compiled_specs"], query)
-    assert canonical_json_bytes_v1(result) == canonical_json_bytes_v1(before)
+    unit_key = "income_tax_original_unit_scope_receipt"
+    assert unit_key not in before["closure_receipt"]
+    unit = result["closure_receipt"][unit_key]
+    assert unit["format_version"] == "INCOME_TAX_ORIGINAL_UNIT_SCOPE_CONTROL_V2"
+    assert unit["failures"] == [] and unit["withheld_candidate_beforeimage"] is None
+    assert unit["checks"] and all(check["status"] == "SOURCE_OWNED" for check in unit["checks"])
+    assert unit["source_values_units_roles_and_periods_changed"] is False
+    assert unit["document_consensus_equal_amount_or_private_unit_projection_permission"] is False
+    assert unit["original_records_object_canonical_sha256"] == canonical_json_sha256_v1(records)
+    assert unit["authenticated_query_receipt_id"] == query["query_receipt_id"]
+    assert unit["caption_and_legacy_projection_receipt_id"] == query["source_context_receipt"][
+        "section_caption_projection_receipt"]["receipt_id"]
+    assert unit["receipt_id"] == "gjitunitv2:control:" + canonical_json_sha256_v1({
+        key: value for key, value in unit.items() if key != "receipt_id"})
+    assert result["candidate_id"] == "gjmthfcv1:candidate:" + canonical_json_sha256_v1({
+        key: value for key, value in result.items() if key != "candidate_id"})
+    # The unit control adds authenticated metadata and reseals the ID. Every
+    # pre-existing financial/source field must remain byte-identical.
+    financial_after, financial_before = deepcopy(result), deepcopy(before)
+    del financial_after["closure_receipt"][unit_key]
+    del financial_after["candidate_id"]
+    del financial_before["candidate_id"]
+    assert canonical_json_bytes_v1(financial_after) == canonical_json_bytes_v1(financial_before)
     assert HANDOFF not in result["closure_receipt"]
     assert result["component_regions"] == cluster["component_regions"]
     root = next(item for item in result["mappings"] if item["role"] == "FAMILY_ROOT_TOTAL")
@@ -200,6 +222,7 @@ def test_ready_external_primary_printed_total_keeps_note_axis_and_existing_finan
     proof = adapter["primary_candidate_proof"]
     assert proof["signed_display_proof"]["source_values_changed"] is False
     assert proof["post_merge_root_closure"]["status"] == "EXACT_ALL_OBSERVED_LANES"
+    assert family.validate_gemini_json_income_tax_replay_v1(**options) == options["trials"]
     assert records == original
 
 
