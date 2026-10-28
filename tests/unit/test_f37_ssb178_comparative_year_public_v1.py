@@ -226,6 +226,7 @@ def test_note_only_with_printed_roles_is_ready_without_a_primary_root_total():
 def test_note_only_date_only_headers_are_not_a_printed_role():
     trial = _run(_note_only(_pages()))
     assert trial["status"] != READY
+    assert "F37_ROOTLESS_LANE_ROLE_NOT_PRINTED" in trial["reasons"]
 
 
 def test_note_only_inverted_date_only_pair_is_withheld():
@@ -235,6 +236,7 @@ def test_note_only_inverted_date_only_pair_is_withheld():
     })
     trial = _run(pages)
     assert trial["status"] != READY
+    assert "F37_ROOTLESS_LANE_ROLE_NOT_PRINTED" in trial["reasons"]
 
 
 def test_note_only_printed_roles_against_the_date_order_are_withheld():
@@ -256,3 +258,23 @@ def test_present_but_period_unresolved_primary_carrier_closes_the_note_only_rout
     })
     trial = _run(pages)
     assert trial["status"] != READY
+    assert "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED" in trial["reasons"]
+
+
+def test_unresolved_primary_carrier_is_retained_in_the_source_authority():
+    # Codex 0588: the carrier and its exact lane-axis reason survive in the final source authority receipt.
+    from bctc_ai.evaluation.gemini_json_credit_risk_provision_expense_family_v1 import _family37_document_plan_v1
+
+    pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+    document = {"document_id": "gfpstorev1:document:" + "5" * 64, "document_ordinal": 1,
+                "source_logical_name": PROVENANCE["source_logical_name"], "source_sha256": PROVENANCE["source_sha256"]}
+    axis = [{**document, "page_json_version_id": version_id, "physical_page": physical_page,
+             "selected_page_ordinal": ordinal}
+            for ordinal, (version_id, physical_page, _page) in enumerate(pages, 1)]
+    plan = _family37_document_plan_v1(document=document, selected_page_axis=axis,
+                                      source_pages={version_id: page for version_id, _number, page in pages},
+                                      compiled_specs=_compiled())
+    carriers = plan["adapter_receipt"]["source_authority_receipt"]["unresolved_primary_root_carrier_axis"]
+    assert [item["locator"]["physical_page"] for item in carriers] == [6]
+    assert carriers[0]["lane_axis_reasons"] == ["DURATION_PERIOD_PRECISION_DIFFERS_ACROSS_MONEY_COLUMNS"]
+    assert "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED" in plan["blocking_reasons"]

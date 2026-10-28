@@ -4963,6 +4963,18 @@ def _family37_document_plan_v1(
     roots = _primary_roots_compatible_with_observations(
         roots, transposed_observations
     )
+    # Codex 0588: when N1 closes every root-less lane the transposed receipt is None, so the
+    # carriers and the reason are kept here, in the source authority, not only in that receipt.
+    unresolved_primary_carriers = (
+        _family37_period_unresolved_primary_carriers_v1(
+            pages=pages,
+            selected_page_axis=selected_page_axis,
+            document_ordinal=document["document_ordinal"],
+            compiled_specs=compiled_specs,
+        )
+        if transposed_observations and not roots
+        else []
+    )
     transposed_receipt = _transposed_detail_receipt(
         document=document,
         selected_page_axis=selected_page_axis,
@@ -5052,6 +5064,20 @@ def _family37_document_plan_v1(
                 and _family37_all_observations_conflict_with_root_period_v1(
                     observations=transposed_observations, root=roots[0]
                 )
+                else "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED"
+                if unresolved_primary_carriers
+                else "F37_ROOTLESS_LANE_ROLE_NOT_PRINTED"
+                if not roots
+                and any(
+                    type(item.get("role_duration_surface_axes")) is dict
+                    and type(item.get("period_key")) is list
+                    and len(item["period_key"]) == 2
+                    and item["period_key"][0] == "SEMANTIC_ROLE"
+                    and not _family37_rootless_lane_role_printed_v1(
+                        item, item["period_key"][1]
+                    )
+                    for item in transposed_observations
+                )
                 else "F37_TRANSPOSED_PRESENTATION_NOT_UNIQUE"
             )
     positive_owner = bool(
@@ -5137,6 +5163,7 @@ def _family37_document_plan_v1(
         "movement_continuation_rejection_axis": movement_rejections,
         "normal_continuation_rejection_axis": normal_rejections,
         "normal_owner_record_axis": normal_records,
+        "unresolved_primary_root_carrier_axis": unresolved_primary_carriers,
         "owned_region_axis": owned_regions,
         "page_identity_axis": page_identity_axis,
         "period_authority_axis": period_authority_axis,
