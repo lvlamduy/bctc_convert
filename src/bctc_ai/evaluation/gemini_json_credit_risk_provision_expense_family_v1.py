@@ -932,6 +932,103 @@ def _primary_root_observations(
     return result
 
 
+def _family37_period_unresolved_primary_carriers_v1(
+    *,
+    pages: Mapping[str, dict[str, Any]],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+    document_ordinal: int,
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """PRIMARY KQKD tables that print the family root row but whose period lanes did not resolve.
+
+    Codex 0584 (N1): a carrier discarded by lane parsing is not proof that no PRIMARY evidence
+    exists, so it is kept with its exact lane-axis reasons. Only a period/lane failure is a
+    carrier here; a table rejected for its unit alone is a monetary-root admission question and
+    stays out of this period veto.
+    """
+
+    axis_by_version = {
+        item["page_json_version_id"]: item
+        for item in selected_page_axis
+        if item.get("document_ordinal") == document_ordinal
+    }
+    result = []
+    for version_id, page in pages.items():
+        page_axis = axis_by_version.get(version_id)
+        if page_axis is None or page.get("status") != "PRIMARY_FINANCIAL_STATEMENT":
+            continue
+        for section_ordinal, section in enumerate(page.get("sections", []), start=1):
+            if (
+                type(section) is not dict
+                or section.get("content_kind") != "PRIMARY_STATEMENT"
+                or section.get("statement_type") != "INCOME_STATEMENT"
+            ):
+                continue
+            for table_ordinal, table in enumerate(section.get("tables", []), start=1):
+                if type(table) is not dict:
+                    continue
+                lane_axis = _multitable_lane_axis(
+                    section, table, compiled_specs=compiled_specs
+                )
+                money_ordinals = lane_axis.get("money_column_ordinals")
+                if (
+                    lane_axis.get("complete") is True
+                    and type(money_ordinals) is list
+                    and len(money_ordinals) == 2
+                ):
+                    continue
+                rows = table.get("rows")
+                if not any(
+                    type(row) is dict
+                    and _is_parent_label(row.get("label_exact"), compiled_specs=compiled_specs)
+                    for row in (rows if type(rows) is list else [])
+                ):
+                    continue
+                result.append(
+                    {
+                        "lane_axis_complete": lane_axis.get("complete") is True,
+                        "lane_axis_reasons": sorted(lane_axis.get("reasons") or []),
+                        "locator": {
+                            "page_json_version_id": version_id,
+                            "physical_page": page_axis["physical_page"],
+                            "section_id": f"s{section_ordinal}",
+                            "table_id": f"t{table_ordinal}",
+                        },
+                        "money_column_ordinals": canonical_clone_v1(money_ordinals),
+                    }
+                )
+    result.sort(key=canonical_json_sha256_v1)
+    return result
+
+
+def _family37_rootless_lane_role_printed_v1(
+    observation: Mapping[str, Any], semantic_role: str
+) -> bool:
+    """Codex 0584 (N2): without a PRIMARY root, a note lane's role must be printed by the note.
+
+    Its own column header (for separate general/specific tables: every role table's header) or
+    its own table title must carry the CURRENT/COMPARATIVE marker ("Kỳ này", "Năm nay", "Kỳ
+    trước", "Năm trước"), or an owned narrative layout binding must assign exactly this lane.
+    Later-date order of two dated columns is not a role; the dates stay raw window evidence.
+    """
+
+    if type(observation.get("layout_period_binding_receipt_id")) is str:
+        layout = observation.get("layout_period_scope")
+        return type(layout) is dict and layout.get("semantic_role") == semantic_role
+    if _transposed_period_marker(observation.get("table_title_exact")) == semantic_role:
+        return True
+    role_axes = observation.get("role_duration_surface_axes")
+    axes = (
+        list(role_axes.values())
+        if type(role_axes) is dict and role_axes
+        else [observation.get("duration_surface_axis")]
+    )
+    return all(
+        type(axis) is list and _transposed_period_marker(axis) == semantic_role
+        for axis in axes
+    )
+
+
 def _primary_roots_compatible_with_observations(
     roots: Sequence[Mapping[str, Any]],
     observations: Sequence[Mapping[str, Any]],
@@ -4143,6 +4240,16 @@ def _transposed_detail_receipt(
     if len(roots) > 1:
         return None
     root = roots[0] if roots else None
+    unresolved_primary_carriers = (
+        _family37_period_unresolved_primary_carriers_v1(
+            pages=pages,
+            selected_page_axis=selected_page_axis,
+            document_ordinal=document["document_ordinal"],
+            compiled_specs=compiled_specs,
+        )
+        if root is None
+        else []
+    )
     excluded_position_control = None
     excluded_noncomparable_duration_control = None
     position_current = [
@@ -4331,13 +4438,23 @@ def _transposed_detail_receipt(
             )
             period_key = observation.get("period_key")
             lane_is_explicit = period_key == ["SEMANTIC_ROLE", semantic_role]
+            supported = _family37_supported_duration_scope_v1(detail_scope)
+            role_printed = _family37_rootless_lane_role_printed_v1(
+                observation, semantic_role
+            )
             allowed = bool(
                 lane_is_explicit
-                and _family37_supported_duration_scope_v1(detail_scope)
+                and supported
+                and role_printed
+                and not unresolved_primary_carriers
             )
             compatibility = (
                 "DETAIL_EXACT_SCOPE_SELF_AUTHORIZED"
                 if allowed
+                else "PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED"
+                if unresolved_primary_carriers
+                else "F37_ROOTLESS_LANE_ROLE_NOT_PRINTED"
+                if lane_is_explicit and supported
                 else "DETAIL_WITHOUT_EXACT_SEMANTIC_LANE_DURATION_AUTHORITY"
             )
             period_compatibility_axis.append(
@@ -4478,6 +4595,7 @@ def _transposed_detail_receipt(
         "period_compatibility_axis": period_compatibility_axis,
         "primary_root_duration_accepted": primary_root_duration_accepted,
         "source_only_rows": source_only_rows,
+        "unresolved_primary_root_carrier_axis": unresolved_primary_carriers,
     }
     return {
         **material,

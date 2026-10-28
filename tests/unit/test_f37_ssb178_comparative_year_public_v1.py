@@ -178,3 +178,81 @@ def test_unknown_current_primary_year_withholds_although_comparative_is_explicit
         pages = _with_current_detail_header(pages, current_detail)
     trial = _run(pages)
     assert trial["status"] != READY
+
+
+# Codex 0584 N1 / N2: the root-less (note-only) route.
+
+CURRENT_HEADER = "Kỳ ba tháng kết thúc ngày 31/03/2025"
+COMPARATIVE_HEADER = "Kỳ ba tháng kết thúc ngày 31/03/2024"
+
+
+def _note_only(pages):
+    """Genuinely absent PRIMARY: only the note page p32 is selected."""
+    return [item for item in copy.deepcopy(pages) if item[1] == 32]
+
+
+def _with_note_headers(pages, by_header):
+    pages = copy.deepcopy(pages)
+    page = next(page for _version_id, physical_page, page in pages if physical_page == 32)
+    changed = 0
+    for section in page["sections"]:
+        for table in section["tables"]:
+            for column in table["columns"]:
+                path = column.get("header_path_exact") or []
+                if path and path[0] in by_header:
+                    column["header_path_exact"] = [*by_header[path[0]], *path[1:]]
+                    changed += 1
+    assert changed == 4  # both movement tables, both money columns
+    return pages
+
+
+def _mapped_values(trial):
+    return {m["role"]: [v.get("source_text") for v in m["values"]] for m in trial["mappings"]}
+
+
+def test_note_only_with_printed_roles_is_ready_without_a_primary_root_total():
+    pages = _with_note_headers(_note_only(_pages()), {
+        CURRENT_HEADER: ["Kỳ này", CURRENT_HEADER],
+        COMPARATIVE_HEADER: ["Kỳ trước", COMPARATIVE_HEADER],
+    })
+    trial = _run(pages)
+    assert trial["status"] == READY, trial["reasons"]
+    values = _mapped_values(trial)
+    assert values["CUSTOMER_GENERAL"] == ["48.928", "3.877"]
+    assert values["CUSTOMER_SPECIFIC"] == ["385.903", "235.152"]
+    assert "FAMILY_ROOT_TOTAL" not in values  # only note facts are admitted
+
+
+def test_note_only_date_only_headers_are_not_a_printed_role():
+    trial = _run(_note_only(_pages()))
+    assert trial["status"] != READY
+
+
+def test_note_only_inverted_date_only_pair_is_withheld():
+    pages = _with_note_headers(_note_only(_pages()), {
+        CURRENT_HEADER: ["Kỳ ba tháng kết thúc ngày 31/03/2023"],
+        COMPARATIVE_HEADER: [COMPARATIVE_HEADER],
+    })
+    trial = _run(pages)
+    assert trial["status"] != READY
+
+
+def test_note_only_printed_roles_against_the_date_order_are_withheld():
+    pages = _with_note_headers(_note_only(_pages()), {
+        CURRENT_HEADER: ["Kỳ này", "Kỳ ba tháng kết thúc ngày 31/03/2023"],
+        COMPARATIVE_HEADER: ["Kỳ trước", COMPARATIVE_HEADER],
+    })
+    trial = _run(pages)
+    assert trial["status"] != READY
+
+
+@pytest.mark.parametrize("current_detail", [CURRENT_HEADER, "Kỳ ba tháng kết thúc ngày 31/03/2023"])
+def test_present_but_period_unresolved_primary_carrier_closes_the_note_only_route(current_detail):
+    # The KQKD root row is printed, but its lanes ("Năm nay | Năm 2024") do not resolve: not absence.
+    pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+    pages = _with_note_headers(pages, {
+        CURRENT_HEADER: ["Kỳ này", current_detail],
+        COMPARATIVE_HEADER: ["Kỳ trước", COMPARATIVE_HEADER],
+    })
+    trial = _run(pages)
+    assert trial["status"] != READY
