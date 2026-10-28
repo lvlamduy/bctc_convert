@@ -20,12 +20,16 @@ from test_f36_notes_whole_stream_v1 import _old_sweep, _real_source_case
 from test_gemini_income_tax_raw_money_census_v1 import _fixture
 
 from bctc_ai.evaluation import gemini_json_f36_notes_core_adapter_v1 as adapter
-from bctc_ai.evaluation import gemini_json_f36_notes_stream_v1 as spool
 from bctc_ai.evaluation import gemini_json_f36_notes_stream_store_v1 as target
+from bctc_ai.evaluation import gemini_json_f36_notes_stream_v1 as spool
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1, canonical_json_sha256_v1
 from bctc_ai.storage import gemini_accounting_family_store_v1 as old_store
-from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import build_current_corpus_manifest_index_v1
-from bctc_ai.storage.gemini_current_document_manifest_selection_v1 import build_current_document_manifest_selection_v1
+from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (
+    build_current_corpus_manifest_index_v1,
+)
+from bctc_ai.storage.gemini_current_document_manifest_selection_v1 import (
+    build_current_document_manifest_selection_v1,
+)
 from bctc_ai.storage.gemini_financial_page_store_v1 import build_financial_document_manifest_v1
 
 ROOT = Path(__file__).resolve().parents[2]

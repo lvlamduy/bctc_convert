@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import os
 import stat
+from collections.abc import Iterable
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, BinaryIO, Iterable
+from typing import Any, BinaryIO
 
 from bctc_ai.evaluation import gemini_json_f36_notes_core_adapter_v1 as adapter
 from bctc_ai.source_structure.contracts_v1 import (
