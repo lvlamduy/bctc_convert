@@ -3,7 +3,8 @@
 The KQKD comparative lane prints "Lũy kế từ đầu năm đến cuối quý này / Năm trước" under "Quý I năm 2025"; note 6
 movements print "Kỳ ba tháng kết thúc ngày 31/03/2025 | 31/03/2024". The comparative year 2024 must come from the
 PRIMARY lane's own label + title (recorded derivation), never from the detail's date: the same detail moved to
-31/03/2023 or 31/03/2025 must withhold permission although every amount still closes.
+31/03/2023, 31/03/2025, a wrong end/quarter or a shifted range must withhold permission although every amount
+still closes.
 """
 import copy
 import hashlib
@@ -77,7 +78,7 @@ def _run(pages):
     return trials[0]
 
 
-def _with_comparative_detail_year(pages, year):
+def _with_comparative_detail_header(pages, header):
     pages = copy.deepcopy(pages)
     page = next(page for _version_id, physical_page, page in pages if physical_page == 32)
     changed = 0
@@ -86,7 +87,7 @@ def _with_comparative_detail_year(pages, year):
             for column in table["columns"]:
                 path = column.get("header_path_exact") or []
                 if path and path[0] == "Kỳ ba tháng kết thúc ngày 31/03/2024":
-                    path[0] = f"Kỳ ba tháng kết thúc ngày 31/03/{year}"
+                    path[0] = header
                     changed += 1
     assert changed == 2  # general and specific movement, comparative column only
     return pages
@@ -101,7 +102,13 @@ def test_ssb178_comparative_2024_is_ready_with_the_printed_values():
     assert values["FAMILY_ROOT_TOTAL"] == ["(434.831)", "(239.029)"]
 
 
-@pytest.mark.parametrize("year", [2023, 2025])
-def test_wrong_comparative_detail_year_withholds_permission(year):
-    trial = _run(_with_comparative_detail_year(_pages(), year))
+@pytest.mark.parametrize("header", [
+    "Kỳ ba tháng kết thúc ngày 31/03/2023",    # wrong year
+    "Kỳ ba tháng kết thúc ngày 31/03/2025",    # the current year
+    "Kỳ ba tháng kết thúc ngày 30/06/2024",    # same year and month count, wrong end
+    "Từ ngày 01/02/2024 đến ngày 30/04/2024",  # shifted three-month range
+    "Quý II năm 2024",                          # same year, wrong quarter
+])
+def test_wrong_comparative_detail_window_withholds_permission(header):
+    trial = _run(_with_comparative_detail_header(_pages(), header))
     assert trial["status"] != READY

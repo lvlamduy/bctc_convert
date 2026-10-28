@@ -87,11 +87,34 @@ def test_comparative_column_with_its_own_year_still_conflicts():
 @pytest.mark.parametrize("detail_text", [
     "Kỳ sáu tháng kết thúc ngày 30/06/2024",   # different elapsed window
     "Năm 2024",                                 # full prior year, not prior YTD
+    "Kỳ ba tháng kết thúc ngày 30/06/2024",    # same year and month count, wrong end (Q2, not Q1)
+    "Kỳ ba tháng kết thúc ngày 31/12/2024",    # same year and month count, wrong end (Q4)
+    "Từ ngày 01/02/2024 đến ngày 30/04/2024",  # shifted three-month range
+    "Quý II năm 2024",                          # same year, wrong quarter
 ])
 def test_comparative_window_must_still_match_by_printed_duration(detail_text):
     root = _root("COMPARATIVE_PERIOD", [YTD, "Năm trước"])
     detail = _detail(detail_text, "COMPARATIVE_PERIOD")
     assert _family37_period_compatibility_v1(detail, root)[0] is False
+
+
+@pytest.mark.parametrize(("detail_text", "allowed"), [
+    ("Quý I năm 2024", True),
+    ("Quý II năm 2024", False),
+    ("Kỳ ba tháng kết thúc ngày 30/06/2024", False),
+])
+def test_single_quarter_comparative_lane_has_no_unknown_end_wildcard(detail_text, allowed):
+    root = _root("COMPARATIVE_PERIOD", ["Quý I", "Năm trước"])
+    assert (root["basis"], root["calendar_year"], root["quarter_ordinal"]) == ("SINGLE_QUARTER", 2024, 1)
+    detail = _detail(detail_text, "COMPARATIVE_PERIOD")
+    assert _family37_period_compatibility_v1(detail, root)[0] is allowed
+
+
+def test_current_lane_has_no_unknown_end_wildcard_either():
+    root = _root("CURRENT_PERIOD", [YTD, "Năm nay"])
+    assert root["end_date"] is None
+    wrong_end = _detail("Kỳ ba tháng kết thúc ngày 30/06/2025", "CURRENT_PERIOD")
+    assert _family37_period_compatibility_v1(wrong_end, root) == (False, "EXACT_DATE_RANGE_ENDPOINT_CONFLICT")
 
 
 def test_title_words_are_kept_only_dates_and_years_are_dropped():

@@ -2341,6 +2341,30 @@ def _family37_has_owned_calendar_q1_start_v1(scope: Mapping[str, Any], year: int
     return year_start_asserted
 
 
+def _family37_basis_window_end_v1(scope: Mapping[str, Any]) -> str | None:
+    """The end a parsed window states by its own basis when no end date is printed.
+
+    "Lũy kế từ đầu năm ... quý này" / "Quý I năm Y" printed as m elapsed months or quarter q of year Y
+    end on the last day of month m (or 3q) of Y. Used only to REJECT a detail whose printed end differs
+    (Codex 0568: no unknown-end wildcard); it never grants a binding on its own. FULL_YEAR is not
+    expanded (an off-calendar fiscal year must keep its own printed dates).
+    """
+
+    year = scope.get("calendar_year")
+    if scope.get("end_date") is not None or type(year) is not int:
+        return scope.get("end_date")
+    basis = scope.get("basis")
+    if basis == "ELAPSED_FROM_YEAR_START":
+        month = scope.get("elapsed_month_count")
+    elif basis == "SINGLE_QUARTER" and scope.get("quarter_ordinal") in (1, 2, 3, 4):
+        month = scope["quarter_ordinal"] * 3
+    else:
+        return None
+    if type(month) is not int or not 1 <= month <= 12:
+        return None
+    return date(year, month, monthrange(year, month)[1]).isoformat()
+
+
 def _family37_period_compatibility_v1(
     detail: Mapping[str, Any], root: Mapping[str, Any]
 ) -> tuple[bool, str]:
@@ -2350,10 +2374,10 @@ def _family37_period_compatibility_v1(
         return False, PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN
     detail_basis = detail.get("basis")
     root_basis = root.get("basis")
+    detail_end = _family37_basis_window_end_v1(detail)
+    root_end = _family37_basis_window_end_v1(root)
     known_end_conflict = (
-        detail.get("end_date") is not None
-        and root.get("end_date") is not None
-        and detail["end_date"] != root["end_date"]
+        detail_end is not None and root_end is not None and detail_end != root_end
     )
     if detail_basis == "RELATIVE_REPORTING_PERIOD":
         invalid_parent_reasons = {
