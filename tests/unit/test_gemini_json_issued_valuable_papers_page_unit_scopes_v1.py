@@ -289,7 +289,9 @@ def test_private_unit_scope_twin_local_donor_inherits_but_page_only_kind_cannot(
 
 
 def test_valid_foreign_global_claim_does_not_change_other_document_ready_bytes():
-    from test_gemini_json_issued_valuable_papers_current_four_metric_v1 import _context as four_metric_context
+    from test_gemini_json_issued_valuable_papers_current_four_metric_v1 import (
+        _context as four_metric_context,
+    )
 
     baseline, context = four_metric_context()
     assert baseline["status"] == READY
