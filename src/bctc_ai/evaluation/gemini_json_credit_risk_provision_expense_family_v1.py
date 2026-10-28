@@ -1723,10 +1723,51 @@ def _family37_root_lane_surfaces_v1(
     if semantic_role == "COMPARATIVE_PERIOD" and not any(
         _FAMILY37_YEAR_TOKEN.search(item) for item in local_surfaces
     ):
+        prior_fiscal_year = _family37_annual_prior_year_surface_v1(
+            local_surfaces, common_surfaces
+        )
         common_surfaces = [
             _FAMILY37_DATE_OR_YEAR_TOKEN.sub(" ", item) for item in common_surfaces
         ]
+        if prior_fiscal_year is not None:
+            common_surfaces.append(prior_fiscal_year)
     return [*local_surfaces, *common_surfaces]
+
+
+_FAMILY37_ANNUAL_FISCAL_YEAR_END = re.compile(
+    r"\bcho nam (?:tai chinh )?ket thuc (?:vao )?ngay 31 thang 12 nam (20\d{2})\b"
+    r"|\bcho nam (?:tai chinh )?ket thuc (?:vao )?ngay 31 12 (20\d{2})\b"
+)
+
+
+def _family37_annual_prior_year_surface_v1(
+    local_surfaces: list[str], common_surfaces: list[str]
+) -> str | None:
+    """D2: an annual PRIMARY column printed exactly "Năm trước" is the fiscal year before the title's.
+
+    Only when the statement's own title prints one fiscal-year end "cho năm (tài chính) kết thúc
+    ngày 31 tháng 12 năm Y" (or 31/12/Y) and the column's own header is exactly "Năm trước" -
+    never for interim titles, "Kỳ trước", or anything read from amounts. The returned surface is
+    marked as derived and names the label and the title year it was derived from.
+    """
+
+    labels = [_normalized(item).strip(" :") for item in local_surfaces]
+    if labels != ["nam truoc"]:
+        return None
+    years = {
+        int(match.group(1) or match.group(2))
+        for item in common_surfaces
+        for match in _FAMILY37_ANNUAL_FISCAL_YEAR_END.finditer(_normalized(item))
+    }
+    if len(years) != 1 or any(
+        len(_FAMILY37_YEAR_TOKEN.findall(item)) > 1 for item in common_surfaces
+    ):
+        return None
+    prior = years.pop() - 1
+    return (
+        f"[F37 D2 derived: Năm trước under an annual title] "
+        f"cho năm kết thúc ngày 31/12/{prior}"
+    )
 
 
 def _family37_source_dates_v1(surface: str) -> list[date] | None:
@@ -2647,6 +2688,32 @@ def _family37_split_movement_narrative_v1(value: Any) -> bool:
     )
 
 
+def _family37_split_customer_movement_v1(owner: Mapping[str, Any], table: Any) -> bool:
+    """D1 (split-section path only): the owner section titled for customer-loan provisions.
+
+    Besides the generic credit-risk movement owner, accept an owner section title naming
+    "dự phòng rủi ro cho vay khách hàng" when the table itself carries exactly the
+    general/specific role columns and provision actions. A competing owner still vetoes.
+    """
+
+    if _family37_layout_member_kind_v1(owner, table) == "CUSTOMER_MOVEMENT":
+        return True
+    if type(table) is not dict:
+        return False
+    role_axis = _transposed_role_axis(table)
+    if role_axis is None or not {"CUSTOMER_GENERAL", "CUSTOMER_SPECIFIC"} <= set(role_axis):
+        return False
+    if not any(
+        type(row) is dict and _transposed_action_kind(row.get("label_exact")) is not None
+        for row in table.get("rows", [])
+    ):
+        return False
+    surface = " ".join((str(owner.get("title_exact") or ""), str(table.get("title_exact") or "")))
+    if _movement_owner_kind(surface) in {"INTERBANK", "PURCHASED_DEBT", "SECURITIES_CONTROL"}:
+        return False
+    return "du phong rui ro cho vay khach hang" in _normalized(surface)
+
+
 def _family37_split_section_period_layouts_v1(
     page_json_version_id: str,
     page: dict[str, Any],
@@ -2685,7 +2752,7 @@ def _family37_split_section_period_layouts_v1(
                 or len(tables) != 1
                 or not _family37_split_movement_narrative_v1(narratives[0])
                 or type(tables[0]) is not dict
-                or _family37_layout_member_kind_v1(owner, tables[0]) != "CUSTOMER_MOVEMENT"
+                or not _family37_split_customer_movement_v1(owner, tables[0])
                 or any("_family37_period_layout_binding_v1" in table for table in tables)
             ):
                 members = []
