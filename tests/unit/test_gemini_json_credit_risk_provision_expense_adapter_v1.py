@@ -1074,8 +1074,15 @@ def test_separate_general_and_specific_period_tables_are_combined_by_lane() -> N
         ],
         "status": "FINANCIAL_NOTE_CONTENT",
     }
-    _indexed, trials, _pages = _run_pages(
+    # Codex 0570: a PRIMARY root printing no year anywhere ("Năm nay | Năm trước" under "Báo cáo kết quả
+    # hoạt động") has no proven comparative year and grants nothing; the lane combination itself is checked
+    # under a root printing its exact windows.
+    _indexed, yearless, _pages = _run_pages(
         [(VERSION_1, 1, _primary_page("(100)", "(80)")), (VERSION_2, 2, note)]
+    )
+    assert yearless[0]["status"] != READY
+    _indexed, trials, _pages = _run_pages(
+        [(VERSION_1, 1, _primary_page_with_exact_ranges("(100)", "(80)")), (VERSION_2, 2, note)]
     )
     assert trials[0]["status"] == READY
     mapped = _mapped(trials[0])
@@ -3126,6 +3133,10 @@ def test_specific_table_never_inherits_the_general_window(
 
     assert same_typed_json_v1(pages[1][VERSION_2], before)
     mapped = _mapped(trials[0])
+    if expected == READY and not exact_root:
+        # Codex 0570: the yearless root ("Năm nay | Năm trước", no year printed) proves no comparative year.
+        assert trials[0]["status"] != READY
+        return
     if expected == READY:
         assert trials[0]["status"] == READY
         assert [cell["coefficient"] for cell in mapped["CUSTOMER_PROVISION"]["values"]] == [100, 80]

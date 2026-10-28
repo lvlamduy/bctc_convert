@@ -2374,21 +2374,39 @@ def _family37_basis_window_bounds_v1(
     )
 
 
-def _family37_window_bounds_v1(
-    scope: Mapping[str, Any],
-) -> tuple[str | None, str | None] | None:
-    """Printed bounds completed by the basis-stated ones; None when a printed bound contradicts them."""
+def _family37_printed_dates_contradict_stated_window_v1(scope: Mapping[str, Any]) -> bool:
+    """A printed start or end that differs from the window the scope's own basis states.
 
-    stated = _family37_basis_window_bounds_v1(scope)
-    bounds = []
-    for printed, implied in zip((scope.get("start_date"), scope.get("end_date")), stated, strict=True):
-        if printed is not None and implied is not None and printed != implied:
-            return None
-        bounds.append(printed if printed is not None else implied)
-    return bounds[0], bounds[1]
+    A date printed twice is parsed as start == end; that is one date, not a start, so only the end
+    is compared then (FULL271 docs 13 / 19 shape "Lũy kế từ đầu kỳ đến ngày 31/12/2025 ... kết thúc
+    ngày 31 tháng 12 năm 2025").
+    """
+
+    stated_start, stated_end = _family37_basis_window_bounds_v1(scope)
+    start, end = scope.get("start_date"), scope.get("end_date")
+    if start is not None and start == end:
+        start = None
+    return any(
+        printed is not None and stated is not None and printed != stated
+        for printed, stated in ((start, stated_start), (end, stated_end))
+    )
 
 
 def _family37_period_compatibility_v1(
+    detail: Mapping[str, Any], root: Mapping[str, Any]
+) -> tuple[bool, str]:
+    allowed, reason = _family37_period_compatibility_core_v1(detail, root)
+    if allowed and any(
+        _family37_printed_dates_contradict_stated_window_v1(scope) for scope in (detail, root)
+    ):
+        # Codex 0570: "Kỳ ba tháng từ ngày 01/02/2024 đến ngày 31/03/2024" - three months from the
+        # year start cannot begin on 1 February; a matching end does not make it exact. Reject-only:
+        # every reason the core already gives is kept.
+        return False, "PRINTED_DATES_CONTRADICT_STATED_WINDOW"
+    return allowed, reason
+
+
+def _family37_period_compatibility_core_v1(
     detail: Mapping[str, Any], root: Mapping[str, Any]
 ) -> tuple[bool, str]:
     if detail.get("semantic_role") != root.get("semantic_role"):
@@ -2397,15 +2415,10 @@ def _family37_period_compatibility_v1(
         return False, PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN
     detail_basis = detail.get("basis")
     root_basis = root.get("basis")
-    detail_bounds_known = _family37_window_bounds_v1(detail)
-    root_bounds_known = _family37_window_bounds_v1(root)
-    if detail_bounds_known is None or root_bounds_known is None:
-        # e.g. "Kỳ ba tháng từ ngày 01/02/2024 đến ngày 31/03/2024": three months from the year
-        # start cannot begin on 1 February - a stated span with contradicting printed dates.
-        return False, "PRINTED_DATES_CONTRADICT_STATED_WINDOW"
-    known_end_conflict = any(
-        mine is not None and theirs is not None and mine != theirs
-        for mine, theirs in zip(detail_bounds_known, root_bounds_known, strict=True)
+    detail_end = detail.get("end_date") or _family37_basis_window_bounds_v1(detail)[1]
+    root_end = root.get("end_date") or _family37_basis_window_bounds_v1(root)[1]
+    known_end_conflict = (
+        detail_end is not None and root_end is not None and detail_end != root_end
     )
     if detail_basis == "RELATIVE_REPORTING_PERIOD":
         invalid_parent_reasons = {
