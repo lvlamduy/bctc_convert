@@ -22,6 +22,7 @@ from bctc_ai.evaluation.gemini_json_credit_risk_provision_expense_family_v1 impo
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
     READY,
+    _multitable_lane_axis,
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
     coalesce_gemini_json_multitable_hierarchical_document_v1,
 )
@@ -254,17 +255,48 @@ def test_note_only_printed_roles_against_the_date_order_are_withheld():
     assert trial["status"] != READY
 
 
-@pytest.mark.parametrize("current_detail", [CURRENT_HEADER, "Kỳ ba tháng kết thúc ngày 31/03/2023"])
-def test_present_but_period_unresolved_primary_carrier_closes_the_note_only_route(current_detail):
+@pytest.mark.parametrize(("current_detail", "comparative_detail"), [
+    (CURRENT_HEADER, COMPARATIVE_HEADER),
+    # Printed roles agree with the note's own dates but are other years: still no report-period authority.
+    (COMPARATIVE_HEADER, "Kỳ ba tháng kết thúc ngày 31/03/2023"),
+])
+def test_present_but_period_unresolved_primary_carrier_closes_the_note_only_route(current_detail, comparative_detail):
     # The KQKD root row is printed, but its lanes ("Năm nay | Năm 2024") do not resolve: not absence.
     pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
     pages = _with_note_headers(pages, {
         CURRENT_HEADER: ["Kỳ này", current_detail],
+        COMPARATIVE_HEADER: ["Kỳ trước", comparative_detail],
+    })
+    run = _run_full(pages)  # indexed -> trial -> fresh replay of indexed evidence and trials
+    assert run["trial"]["status"] != READY
+    assert "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED" in run["trial"]["reasons"]
+    assert run["trial"]["mappings"] == []
+    (carrier,) = _carrier_axis(run["indexed"])
+    assert carrier["locator"]["physical_page"] == 6
+    assert carrier["lane_axis_reasons"] == ["DURATION_PERIOD_PRECISION_DIFFERS_ACROSS_MONEY_COLUMNS"]
+
+
+def test_note_roles_against_their_own_dates_are_rejected_by_the_shared_lane_axis_first():
+    # "Kỳ này" printed on the 31/03/2023 column, "Kỳ trước" on 31/03/2024: the shared duration lane axis rejects
+    # both note movement tables (DATE_SEMANTIC_PERIOD_CONFLICT) before any F37 observation or N1 check exists.
+    pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+    pages = _with_note_headers(pages, {
+        CURRENT_HEADER: ["Kỳ này", "Kỳ ba tháng kết thúc ngày 31/03/2023"],
         COMPARATIVE_HEADER: ["Kỳ trước", COMPARATIVE_HEADER],
     })
     trial = _run(pages)
     assert trial["status"] != READY
-    assert "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED" in trial["reasons"]
+    assert trial["mappings"] == []
+    compiled = _compiled()
+    page = next(page for _version_id, physical_page, page in pages if physical_page == 32)
+    movement_tables = [(section, table) for section in page["sections"] for table in section["tables"]
+                       if any("Kỳ này" in (column.get("header_path_exact") or []) for column in table["columns"])]
+    assert len(movement_tables) == 2
+    for section, table in movement_tables:
+        lane_axis = _multitable_lane_axis(section, table, compiled_specs=compiled)
+        assert lane_axis["complete"] is False
+        assert lane_axis["reasons"] and all(
+            reason.startswith("DATE_SEMANTIC_PERIOD_CONFLICT:c") for reason in lane_axis["reasons"])
 
 
 def test_unresolved_primary_carrier_is_retained_in_the_source_authority():
