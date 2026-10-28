@@ -6,6 +6,7 @@ như sau:" above a transposed table (Dự phòng chung | Dự phòng cụ thể 
 above the second table in an untitled section. At 7b9756c6 this was held F37_TRANSPOSED_PRESENTATION_NOT_UNIQUE.
 """
 import copy
+import hashlib
 import json
 from pathlib import Path
 
@@ -46,7 +47,7 @@ def _pages():
     pages = []
     for item in PROVENANCE["pages"]:
         raw = (FIXTURES / item["file"]).read_bytes()
-        assert canonical_json_sha256_v1(json.loads(raw)) == item["canonical_json_sha256"]
+        assert hashlib.sha256(raw).hexdigest() == item["canonical_json_sha256"]  # stored canonical bytes
         pages.append((item["page_json_version_id"], item["physical_page"], json.loads(raw)))
     return pages
 
