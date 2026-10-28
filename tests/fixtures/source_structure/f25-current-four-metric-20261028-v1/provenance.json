@@ -1,0 +1,551 @@
+{
+    "format_version":  "F25_ORIGINAL_CURRENT_FOUR_METRIC_FIXTURE_V1",
+    "base_commit":  "425c897780e0ea169d010c6f92914b5663137161",
+    "source_publication":  "restore-receipts/F25_VAB241_WHOLE53_SOURCE_20261028_V4/source-receipt.json",
+    "source_publication_sha256":  "56e61b93379c6e5feb7c6ebae9a1cbfd9fd7bd299517af9417b339761998f301",
+    "original_document_manifest_sha256":  "e0a0daeecc852082884aab42eb2963dd996dd981dd73957254fe65aa1e4e890a",
+    "original_document_selection_sha256":  "d51354ae228c6988db3dd761a54ab00e54436915441ef415474d13425a1a158e",
+    "source":  {
+                   "document_id":  "gfpstorev1:document:34be6a3483bca82c311b771dfc3c63453c649ce944ee1cabd0fd585c21ff90c5",
+                   "source_logical_name":  "vietstock_bctc/VAB/2025/20250815 - VAB - BCTC HN BAN NIEN 2025_0001.pdf",
+                   "source_sha256":  "925bc21f1378480890477dd3d4b54208b597c8865c752cdabd0b05206ad6d7b0",
+                   "source_size_bytes":  14783264
+               },
+    "original_source_ordinal":  241,
+    "pages":  [
+                  {
+                      "physical_page":  1,
+                      "file":  "page-001-ac73efdde6cc94f6.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:ac73efdde6cc94f6355f6cd7e4cbd14378fa192381a5aac0980a529d97d617e9",
+                      "page_id":  "gfpstorev1:page:5864713b70b77398f9e16b2a2a22906e12caa45c737f2a83077adb9bbc2c04dd",
+                      "extraction_run_id":  "gfpstorev1:run:3ae36fb28c428faeaf89793c1e4ddb34c553d56aaf002f16e536a2f70664b1fe",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  2,
+                      "file":  "page-002-65ced8e101f8d360.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:65ced8e101f8d3605613c9faf6f05621f3e4bea906ed2a62d7e75dc37039a2c1",
+                      "page_id":  "gfpstorev1:page:4b1c5031ce0b21742dab23b7a9e31e58ebdb074329ff99e9da07dd05515fa406",
+                      "extraction_run_id":  "gfpstorev1:run:646f6a2d0cfe436e5d2a3806561040d4a9e8e57d08e08d00e1b4409f4030d7ed",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  3,
+                      "file":  "page-003-e09a9b74689d351b.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:e09a9b74689d351b15cdf7ee0d2354bde1904245fab55706c983174cc9910260",
+                      "page_id":  "gfpstorev1:page:cee479105ba5e68cd581d3dab279633aade6225bfe8c7670d083d579122447db",
+                      "extraction_run_id":  "gfpstorev1:run:1c51cc9cf732ac7507e9b0ea1ac5071ab73e49975b2253a430740b4c9e351043",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  4,
+                      "file":  "page-004-06c965dbdc55b43b.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:06c965dbdc55b43b0b86ccd42e3ba906191218229a088627785f9b75db9f4d16",
+                      "page_id":  "gfpstorev1:page:f6e570f5ea10b5534d475ca0bddb293e0ba858a60f217893f3b24c065eb12ddd",
+                      "extraction_run_id":  "gfpstorev1:run:b24523e5179bb2a725b46e5e95db8b69fbb034acfb2fc14c98190f3f38c00ae0",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  5,
+                      "file":  "page-005-7c993ca8baa6eee7.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:7c993ca8baa6eee7c831caafa54abd06eb7f0e604c98155b6cce856019593bc1",
+                      "page_id":  "gfpstorev1:page:e16bf4afb16fad89a6dcc2c88713b2fffd06829e812df2e617a2ce3f8f575d48",
+                      "extraction_run_id":  "gfpstorev1:run:c6136255b8b57c883cbd4237a073a2e36878f823035260c7a56312605b024452",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  6,
+                      "file":  "page-006-c3cc63386708bbca.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:c3cc63386708bbca31041c347ab66f90401b22162827c6d238a1e386378b9e7e",
+                      "page_id":  "gfpstorev1:page:2dfecfa78a5fda8aec3cfec2483e03c703cb8c22400524b5adf0bf08bdf7615e",
+                      "extraction_run_id":  "gfpstorev1:run:f0896860be466676eff66074b1626af292bf6505c112fb0f1638969ab36a6b27",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  7,
+                      "file":  "page-007-df8a151b55111179.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:df8a151b55111179caa5c1085fbfc5be80dc7ef496730413bf67f56436c08822",
+                      "page_id":  "gfpstorev1:page:d91184674c95a5fa7ce20ee1d378e5df69121df1dd9a904954dd4c2820eecf41",
+                      "extraction_run_id":  "gfpstorev1:run:2bd8d4a5c022a4c5769d4f2488c9e1a563a940a2f8decfa0a5698959e4e8ec57",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  8,
+                      "file":  "page-008-591b73931fb27833.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:591b73931fb27833923fbb2f9efb008035afff8885be1a15c59c55acb6429c70",
+                      "page_id":  "gfpstorev1:page:d32abcaa6c0e49f2688bb155de6b2143ff23c2dd371c80eff77f287ad160fec1",
+                      "extraction_run_id":  "gfpstorev1:run:4e2e53c03f1e08cb41f86ecb8bf4f58e0f5eeb8348e3a8f3b3e911ec3f534847",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  9,
+                      "file":  "page-009-149310b14ae7be77.json",
+                      "size_bytes":  136,
+                      "stored_two_lf_sha256":  "91aaffdaa4d31dfb2d9cafc2c38ea4cfb4139a8ca7f2d1fb5ce9385417d2ed67",
+                      "page_json_version_id":  "gfpstorev1:json:149310b14ae7be772595c6caff52a86730b8c24693187bf82d7a80f0af3c31e6",
+                      "page_id":  "gfpstorev1:page:0c6e8f36cd2c9ae2146e65ddd8937caa9a50837087a5f1a093b1cbe3084a2f00",
+                      "extraction_run_id":  "gfpstorev1:run:fef2b11d84f11422426839e0ca0fd133b5598378b4336bb787168bdfd32e9e8d",
+                      "status":  "NO_RELEVANT_FINANCIAL_CONTENT"
+                  },
+                  {
+                      "physical_page":  10,
+                      "file":  "page-010-280b0daae71c51a3.json",
+                      "size_bytes":  7662,
+                      "stored_two_lf_sha256":  "9ab8b03f43b180603b8b35e8605437c7c1ab09180318be32160dceeb07250fd9",
+                      "page_json_version_id":  "gfpstorev1:json:280b0daae71c51a3242f8e7615ae46e399fdec51c3a4d6a93cf373a994cc4dcc",
+                      "page_id":  "gfpstorev1:page:5dc6a94a9956f9a3f4a56898b77e585ca30a2a11b7a984a5b1682f742f5ccfa9",
+                      "extraction_run_id":  "gfpstorev1:run:bd0b590cce57f029c2390ba706a513c188e69a508d119db1df5160d400a2261d",
+                      "status":  "PRIMARY_FINANCIAL_STATEMENT"
+                  },
+                  {
+                      "physical_page":  11,
+                      "file":  "page-011-21ac026c41bdbce8.json",
+                      "size_bytes":  6434,
+                      "stored_two_lf_sha256":  "a63b7e71eecf991caad5f90b00a862e9c38457b2fe6b3d1b4bd51d0d53df0353",
+                      "page_json_version_id":  "gfpstorev1:json:21ac026c41bdbce80bd56cf3e1f16b582d80ca9087a227fcc7bc93a3e2d2c7bc",
+                      "page_id":  "gfpstorev1:page:c590d0beb98115716955ecea12f8e8fb5fbf8cc87e8ed88f9b65f0ee88472aaf",
+                      "extraction_run_id":  "gfpstorev1:run:89850c1dee4159fb5dc03f5f6e640b756373f2fae24679761ddf00dd7c477ead",
+                      "status":  "PRIMARY_FINANCIAL_STATEMENT"
+                  },
+                  {
+                      "physical_page":  12,
+                      "file":  "page-012-0b0fd979c35281aa.json",
+                      "size_bytes":  3107,
+                      "stored_two_lf_sha256":  "eb89ed91426346a40ab8a2ef07651bbc19ac973e834bca54630972183a4e2e2b",
+                      "page_json_version_id":  "gfpstorev1:json:0b0fd979c35281aa73227821e4045488bb7208cd58cbaf1593c6490224d78e2d",
+                      "page_id":  "gfpstorev1:page:d4ea63b35160c37283750a5c95097cf81405eb60f9bc5f41709ac204ad3311d5",
+                      "extraction_run_id":  "gfpstorev1:run:86f7135ccdf68376c8d6c20e81f6e2c6580c00b4607826fe668bd2424a71b1e9",
+                      "status":  "PRIMARY_FINANCIAL_STATEMENT"
+                  },
+                  {
+                      "physical_page":  13,
+                      "file":  "page-013-dea0ef8cf9e67290.json",
+                      "size_bytes":  6330,
+                      "stored_two_lf_sha256":  "ddfb395a979c90322364d205b7a3c8ed3e09b15ed747422ce89e298a50fd18ad",
+                      "page_json_version_id":  "gfpstorev1:json:dea0ef8cf9e672908368bc63d078899afe32f892ad21c4535da20a62db9b64b9",
+                      "page_id":  "gfpstorev1:page:1e1f9b72ea0bf52a72cb19567ede351b2915451f56f684f54ebaeb9ccc20f579",
+                      "extraction_run_id":  "gfpstorev1:run:cfea1f42b8736f69a338b3aa73f3e2ea22e6a7fdea6a70f7a8517f7beab5eaac",
+                      "status":  "PRIMARY_FINANCIAL_STATEMENT"
+                  },
+                  {
+                      "physical_page":  14,
+                      "file":  "page-014-3f546d65fadf388a.json",
+                      "size_bytes":  9859,
+                      "stored_two_lf_sha256":  "276a4603980c2e0f09a013bd4c038c43fc6cb77b1150567adf59125bf1de8fff",
+                      "page_json_version_id":  "gfpstorev1:json:3f546d65fadf388ae56d4cabe7ab402c8315cf20e16b93db0b483462bf41b124",
+                      "page_id":  "gfpstorev1:page:f2275bb6c5829e749c955aba7778884bb35ff3599c743f733fb0fc15129d0a98",
+                      "extraction_run_id":  "gfpstorev1:run:3b83bf46a18d2e7c3a47f3df27eac76f83ce496f2105af65747f29f086e28cee",
+                      "status":  "PRIMARY_FINANCIAL_STATEMENT"
+                  },
+                  {
+                      "physical_page":  15,
+                      "file":  "page-015-0a21cd1fb9897197.json",
+                      "size_bytes":  3514,
+                      "stored_two_lf_sha256":  "cbfdbb4fbab017958dbe2a892c67ac219e79c10df51c851e0249d5cca1c795c4",
+                      "page_json_version_id":  "gfpstorev1:json:0a21cd1fb9897197bde63feb3877e082f5f3058a3f19a7ae0320bb5c9bb97e29",
+                      "page_id":  "gfpstorev1:page:84bbd13be15280eece7d804a88b0961a675cd3c44f631a2025023d4ac445ccdc",
+                      "extraction_run_id":  "gfpstorev1:run:ffeda91bf795e548a92c849786dab57b95ed4dc8c2edd461588e933ee1de466b",
+                      "status":  "PRIMARY_FINANCIAL_STATEMENT"
+                  },
+                  {
+                      "physical_page":  16,
+                      "file":  "page-016-46c59c97e82edae1.json",
+                      "size_bytes":  4014,
+                      "stored_two_lf_sha256":  "09e1e7caf5d34ace8df55942586b12d1080cb284229e84b22db1ff2e60a05c76",
+                      "page_json_version_id":  "gfpstorev1:json:46c59c97e82edae1e312537ddef0e9a7c6b21968bfadef3f794ad362acdd6c8b",
+                      "page_id":  "gfpstorev1:page:a568083b089c67d5d48340c16dff20e81e534f7cf5a810afb5f0f2cf3be55040",
+                      "extraction_run_id":  "gfpstorev1:run:653b60859805d483c8bfb7f72fbba37069392035002c9b2590718db58016954e",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  17,
+                      "file":  "page-017-f9ec0f849155314b.json",
+                      "size_bytes":  4845,
+                      "stored_two_lf_sha256":  "d322616feeff72857671821d7bf47eeb41fb1e21292baa136494399ca8fceb62",
+                      "page_json_version_id":  "gfpstorev1:json:f9ec0f849155314b2e06c1497077b556ab731e7540685e15de550a44c2c0ddb0",
+                      "page_id":  "gfpstorev1:page:fcd9fa06f116177bc95d28ea2a11ae9d7864770a5919905db960b16f19bbb7f9",
+                      "extraction_run_id":  "gfpstorev1:run:0e1e1aa4d3737a869f7ec61a33109ff6703266fd90e89ca899054188df6fcbcf",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  18,
+                      "file":  "page-018-37ec05c42ec06229.json",
+                      "size_bytes":  4478,
+                      "stored_two_lf_sha256":  "3d58d01f3ebc0b878070226cf18564b80280d45a871f54225d02aa6d66a71809",
+                      "page_json_version_id":  "gfpstorev1:json:37ec05c42ec0622959e3a18e1c13089ed6a0f3c7cb1358b21fb61e87fd638f7a",
+                      "page_id":  "gfpstorev1:page:9dc4c236cfba87719697c38d83471f2420e6ccd7a9d82cddb91ee02dbafc721f",
+                      "extraction_run_id":  "gfpstorev1:run:66edb3f8d578a45cfb70ebbba2e16b52188b245bd620a06b6b71c610d7ba90ed",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  19,
+                      "file":  "page-019-30a7fdf4cca313e1.json",
+                      "size_bytes":  5648,
+                      "stored_two_lf_sha256":  "b5a415330bd521be8b5a7775c8227645abb9f8b84cf748eb5070288bc36ba130",
+                      "page_json_version_id":  "gfpstorev1:json:30a7fdf4cca313e1366984788921ed4048a6877d6d1207118ac3633de322a98d",
+                      "page_id":  "gfpstorev1:page:5650b7eff877dc7803616ab1b8eb0743afac53dbe63c51638118be827605d53e",
+                      "extraction_run_id":  "gfpstorev1:run:a4d27937bdf9fba55e3bf30b2176d919a486da30c3dadd965d13d69561b0fdae",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  20,
+                      "file":  "page-020-d150dada6e965c01.json",
+                      "size_bytes":  4701,
+                      "stored_two_lf_sha256":  "5c7cec18591b9841f28cb26ced3921ed3c940fc8f55eee563bf8a89f8a256308",
+                      "page_json_version_id":  "gfpstorev1:json:d150dada6e965c013022eb7ba4c744878cb9fa3f5ccfa95a36d67b48e808ee3a",
+                      "page_id":  "gfpstorev1:page:a797fa25d3bcd05af8a49e0d97a5a29f70b4c28b8dbddc819ce559ad81876f95",
+                      "extraction_run_id":  "gfpstorev1:run:efe93441aaabaf8eb00424d11d824af023d20da60cb9fd4d2e9fda0a947cfffd",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  21,
+                      "file":  "page-021-310e95139d99f340.json",
+                      "size_bytes":  5098,
+                      "stored_two_lf_sha256":  "90622db78e118d9b27c2f0519a7f2351717ce129dbcdf77198fa289ccea4c36f",
+                      "page_json_version_id":  "gfpstorev1:json:310e95139d99f340db0bf5ff1e54950d570275fe2ed8819b5496c5d1d381ff94",
+                      "page_id":  "gfpstorev1:page:337f3064d49bfbb08cd291eb51e40f3cb3d06028220406f5341fdec9dc5e738c",
+                      "extraction_run_id":  "gfpstorev1:run:0a4c63e377376c675c4bdafd422df7b7985c3b2981e1e7709295c687b463605a",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  22,
+                      "file":  "page-022-4c00e675bc539e0b.json",
+                      "size_bytes":  5381,
+                      "stored_two_lf_sha256":  "337201d05fb461f048595aab0dbe3d7d8ebf789e8ad09154384c8a724af801c1",
+                      "page_json_version_id":  "gfpstorev1:json:4c00e675bc539e0bd95f7af0911d9834c17e9a38395f09fa2e5f81151e4ed013",
+                      "page_id":  "gfpstorev1:page:b6b7d382af6b1bd367c98553160c456683e0e1a1f9560aeefd3320ef5a50db1f",
+                      "extraction_run_id":  "gfpstorev1:run:f7189a1f1718ed67253bde610789c66bd93698716c346f46cad2767f0223b477",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  23,
+                      "file":  "page-023-e8af41a3eeb7e40c.json",
+                      "size_bytes":  5823,
+                      "stored_two_lf_sha256":  "93dc77358ad0431c36ad5eafdb2dbfbbf32f86e47e4286b586df2d216674d732",
+                      "page_json_version_id":  "gfpstorev1:json:e8af41a3eeb7e40cd6f40bdc423272a89c72a231423ae072c8ce09a33ac7adca",
+                      "page_id":  "gfpstorev1:page:d812dabd2fba75d011d977cd956d009155da15326ee745e7a49ecf43d6a34af2",
+                      "extraction_run_id":  "gfpstorev1:run:0acedcdc115d3d88b08dcaf2b182f886854ec0f27dec5e77228773f80ac9eef6",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  24,
+                      "file":  "page-024-25ad2835e79e4a40.json",
+                      "size_bytes":  5303,
+                      "stored_two_lf_sha256":  "490bb7d7a00affd01b65e218bf3424b7ee33311d704049a2256c9992f88b3824",
+                      "page_json_version_id":  "gfpstorev1:json:25ad2835e79e4a40bcb5c4c2aa2fc4cc341e6d45e5e2d2c63fdd148bb161b9df",
+                      "page_id":  "gfpstorev1:page:162c84b4a8270830ea42be4b091f560e64f890d3be6e8dc868fc8be851b37a4b",
+                      "extraction_run_id":  "gfpstorev1:run:a3a468b95698783498bb2b2d16f0fcae622970b0688ce3969add965fb75e3d81",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  25,
+                      "file":  "page-025-f79f98403898d560.json",
+                      "size_bytes":  4691,
+                      "stored_two_lf_sha256":  "f4fa37d7538663df2a1082336be0ba97d5d463a46e696143fe6176eb162b634e",
+                      "page_json_version_id":  "gfpstorev1:json:f79f98403898d5608cb13618ebb4636cda24d013e87a49ae06eee1d4baf8f566",
+                      "page_id":  "gfpstorev1:page:f1df041ed31b3f7e479bb6c2d5e7b5e01639c52296c512f8e167bbce19701353",
+                      "extraction_run_id":  "gfpstorev1:run:8a18fbae816aa263b0ae4ce23155e866aa3da5df998f461b3ebe8518fd61e516",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  26,
+                      "file":  "page-026-5d6f17f4129c442f.json",
+                      "size_bytes":  5028,
+                      "stored_two_lf_sha256":  "c39804f409fa8acf619ab898dc7af112c0072e2a4796d232bf42950e43e83c41",
+                      "page_json_version_id":  "gfpstorev1:json:5d6f17f4129c442fdc983e25f3c9c4ebd7af659c9233287e54e8337b370617ff",
+                      "page_id":  "gfpstorev1:page:74bbecf27c653ff06ba9f9cfd3c9787e0df526564fbeb37c0ec06536a678b9b0",
+                      "extraction_run_id":  "gfpstorev1:run:eb0fda57b81600b141884de01dbb8eaab4d753d6ffa1c2fa599064d667cb6229",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  27,
+                      "file":  "page-027-cd93efb981fbeeec.json",
+                      "size_bytes":  4186,
+                      "stored_two_lf_sha256":  "da67b13456a63a4c3d51c11b5788d486c71f07c2dd362016ec11d5d647410c41",
+                      "page_json_version_id":  "gfpstorev1:json:cd93efb981fbeeec9c624cde97c3777253b7b7ee784ea9d18feaa6db9bd55173",
+                      "page_id":  "gfpstorev1:page:25261ce594c0afcfbdf7a85b9c3ee6e449d4e59f0fbbcbe7ece75d478667a7fd",
+                      "extraction_run_id":  "gfpstorev1:run:949a6d3679298939330627762f3f9961aaf25dc625ec06752d308cad7233920d",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  28,
+                      "file":  "page-028-03511d133e911ee5.json",
+                      "size_bytes":  5677,
+                      "stored_two_lf_sha256":  "a344148644c405b4b4264d3cf592ab91508233f31abf1202107835bebefa2383",
+                      "page_json_version_id":  "gfpstorev1:json:03511d133e911ee5b12390bf61d3c2841f33855646b6419080c5b08b81c155b6",
+                      "page_id":  "gfpstorev1:page:b3c2dca1420ece5370e55fbc52e6af2474cea50a38c61f5a20b0bcb714169229",
+                      "extraction_run_id":  "gfpstorev1:run:c82065a681b3ad1c12be75ec4cb36723f0893b75a8ccca38a26d4bf2b6fa67d6",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  29,
+                      "file":  "page-029-e0509a082c1ebace.json",
+                      "size_bytes":  5450,
+                      "stored_two_lf_sha256":  "4413122d6140585774bd5a5da83427cb93e8160ca562b108305e2243230139b9",
+                      "page_json_version_id":  "gfpstorev1:json:e0509a082c1ebace8c91d4c9c5335b603eedd693e41160222e7ae3f3b2b4cb12",
+                      "page_id":  "gfpstorev1:page:16c3e0a8bd1e92f9b025a788dea5d4ba62254595bf8d9acdcf4273c53de33b83",
+                      "extraction_run_id":  "gfpstorev1:run:70f08cff599cf566de0422ad86aeefaf15b1b912835ac5129dde7f30873db426",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  30,
+                      "file":  "page-030-f48ea4983630a4b6.json",
+                      "size_bytes":  5490,
+                      "stored_two_lf_sha256":  "39b3e9b909db6d03fd32b9b474960774e6bac14c7fab4693484dba71c0d1c933",
+                      "page_json_version_id":  "gfpstorev1:json:f48ea4983630a4b6293e315987738ea74b5f2faff31cba6830deb77d5d7c4dcf",
+                      "page_id":  "gfpstorev1:page:d3df7d7c3a50acb5772c85e41bb57648704c6fb9558df49a0918125ddda3302e",
+                      "extraction_run_id":  "gfpstorev1:run:27e7a6b24301ee99d5a02797f08e3f51297d9fb56715ec72d0353255ce0b2735",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  31,
+                      "file":  "page-031-90304a82223ddeda.json",
+                      "size_bytes":  6577,
+                      "stored_two_lf_sha256":  "44869e68e49c80561a742cbf6ef0143a186b8b47f9375740a46a7ef7fcaf585c",
+                      "page_json_version_id":  "gfpstorev1:json:90304a82223ddeda59c000a62b42a781e87823205dc3f6fd46983a1caa3bcf11",
+                      "page_id":  "gfpstorev1:page:d09306a96c38e5996b10be1705e8febf99c2276393104c333ba59f27707c2f79",
+                      "extraction_run_id":  "gfpstorev1:run:e620aae4e0b3056a9f99ee8aeec966e4c1df68fa35b84275b5175081e6b9d7f4",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  32,
+                      "file":  "page-032-12f6ec0dd30a9508.json",
+                      "size_bytes":  4038,
+                      "stored_two_lf_sha256":  "da674f140fd003ced405605060059527adf4f6d0a0d27bafac83ed09169aaf5d",
+                      "page_json_version_id":  "gfpstorev1:json:12f6ec0dd30a9508538f97fadcc12cd91adc8f09e721c0d9d53f7ccbc66af9e1",
+                      "page_id":  "gfpstorev1:page:e11d0459956c6838f8c8ce0b3bc3522b2bb557b37ca18f5719a61a3ce4728e44",
+                      "extraction_run_id":  "gfpstorev1:run:efeef83fedb9a1029ede4b565c675f7c5c73f88a4b4aa4c36d873ec54b6021bf",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  33,
+                      "file":  "page-033-bbffc047bf9bf53c.json",
+                      "size_bytes":  4198,
+                      "stored_two_lf_sha256":  "8faac28aeafc4aa18aa8077ef4e94897b9dfd3bd2af0e9edab0f6ff16727219f",
+                      "page_json_version_id":  "gfpstorev1:json:bbffc047bf9bf53c4cb6bd6625800353aeb9d25d82c34823f9027024db60e5a8",
+                      "page_id":  "gfpstorev1:page:4fbb26d5d310edea6dec520c2798b09215d34473e48151dd777b80a312611dd4",
+                      "extraction_run_id":  "gfpstorev1:run:31d5ac6cb1d2621b3105ab0219523158952cec00e9af8b5d922c74b817c21340",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  34,
+                      "file":  "page-034-60b6a30fba57e893.json",
+                      "size_bytes":  3223,
+                      "stored_two_lf_sha256":  "5caaed0ceeb230d2033ab806ecd7f130a4a7914c496f91accedb8e444461cfa5",
+                      "page_json_version_id":  "gfpstorev1:json:60b6a30fba57e893bac1326cc096c12170961adc7a8fec00d20e6ef9851a5436",
+                      "page_id":  "gfpstorev1:page:fc0cb0e250e0b60d39c5e1255a04e778cdf2cb8f22a25d8aa36c9f9f6de6c600",
+                      "extraction_run_id":  "gfpstorev1:run:d519278a9584316be5d734b6ef7a129ad8df6437c5d65dd8d6623a31963293bd",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  35,
+                      "file":  "page-035-5ba0b01578b651f3.json",
+                      "size_bytes":  7268,
+                      "stored_two_lf_sha256":  "24766d1ad6bdaae91e0047881557f50f5137952c98257430a96bbfa11cd905a3",
+                      "page_json_version_id":  "gfpstorev1:json:5ba0b01578b651f3954fbb52114dbd424a970eda6f6df9ec31c15a7cd09e9fcb",
+                      "page_id":  "gfpstorev1:page:66e046bee2d0111327ae28ac98be331269ec5a8c65bf72f28dcd8d4882f33ab3",
+                      "extraction_run_id":  "gfpstorev1:run:4fc4e3f5aa34ebe88e4495d1e6210cdc6344fb4439c118949ed8571fe1ddf2b0",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  36,
+                      "file":  "page-036-803cebce78d0d3f5.json",
+                      "size_bytes":  6475,
+                      "stored_two_lf_sha256":  "a483b81653df9894eda8db7802efc4376154c3862e492e1166083479ecf8cda5",
+                      "page_json_version_id":  "gfpstorev1:json:803cebce78d0d3f5317f0fc28552d4bdac74f8ce5a9f80a5f51c7d7fc8854b41",
+                      "page_id":  "gfpstorev1:page:136cace14228eb716272f366a3d627de88d0753c02124228d63e4618ee84e7dd",
+                      "extraction_run_id":  "gfpstorev1:run:1e92a818ed8d3bb73296ae3115bd799fbe41bb128f8087aef0a366a09b33b105",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  37,
+                      "file":  "page-037-681ed3c99b83ea74.json",
+                      "size_bytes":  6318,
+                      "stored_two_lf_sha256":  "abc9b3dd080fce83749d081595e758cc6f6c1017aaad4579bd70d751c3cb433a",
+                      "page_json_version_id":  "gfpstorev1:json:681ed3c99b83ea74aa864f00c0c9581ab7335cb7b623c25b8976acb2ef94f7cd",
+                      "page_id":  "gfpstorev1:page:bbb308814e62a1a88252ee637208e77b6a7bb3827aa1e8f8e95809577f130a45",
+                      "extraction_run_id":  "gfpstorev1:run:ed30d6327100f19862e1035566c26b24742fc3c8a16f9204546a5c937d29555a",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  38,
+                      "file":  "page-038-3a820e1f99fb48e8.json",
+                      "size_bytes":  5714,
+                      "stored_two_lf_sha256":  "866aab886dd93a2d25759ae8be7538fe9f48d135032aa5c5572df26a2b2b9a4b",
+                      "page_json_version_id":  "gfpstorev1:json:3a820e1f99fb48e8f855fb99708643758c96e6314f76ecbb518802f911d1f7aa",
+                      "page_id":  "gfpstorev1:page:dc8f8dbb7f866477733375c727b2413775927be5ac34433824c42578bf81c9fd",
+                      "extraction_run_id":  "gfpstorev1:run:fbf5fc2e2a76afa22da5869f929023919443b3562aa836bc0c6ef0090a32b686",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  39,
+                      "file":  "page-039-7b8f1f8f8dc7f860.json",
+                      "size_bytes":  5069,
+                      "stored_two_lf_sha256":  "ccf0c5be8fcfdc0a8790443c0fbd0c7317013de885f586c97d24998468d62a04",
+                      "page_json_version_id":  "gfpstorev1:json:7b8f1f8f8dc7f860c75dafadc0fd1176dede99396ad943bd3adfb246202d8986",
+                      "page_id":  "gfpstorev1:page:7a57701c220cbaab3151c64d4b686fed82f3e5534bf202fdef738fa253e54324",
+                      "extraction_run_id":  "gfpstorev1:run:9671f0e752b54071eaec3e33f3fe666928d6a77b90fcaf536889f1e804794ab5",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  40,
+                      "file":  "page-040-53ef46d59d164364.json",
+                      "size_bytes":  5056,
+                      "stored_two_lf_sha256":  "88762c548c4337aa55d1924358d0233f02743f543ed4b1b81f12ce4f33ba6f5b",
+                      "page_json_version_id":  "gfpstorev1:json:53ef46d59d164364b617d1002213f01ed1204bf586fb5595cf04ffc1422f8e1e",
+                      "page_id":  "gfpstorev1:page:6428e46399238abb8570c90a9b586c74b53fb94627296873ed7390bd74b3641a",
+                      "extraction_run_id":  "gfpstorev1:run:c1839759472b072ee365798f89eab40e444fd3246742e64ca130c979a86a7cb5",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  41,
+                      "file":  "page-041-fd88bf270cd3693f.json",
+                      "size_bytes":  5271,
+                      "stored_two_lf_sha256":  "b534151f64e19ca3db3fcb321ee76bea4123887f33faf98f9dd5c5313d259806",
+                      "page_json_version_id":  "gfpstorev1:json:fd88bf270cd3693fcf7845b2191fd819d0403112c6651cd5700c0c2f04c12638",
+                      "page_id":  "gfpstorev1:page:65366c891b63c10493d41cef0caa085312f480af670b2044c0f97e5f2f5d8839",
+                      "extraction_run_id":  "gfpstorev1:run:209731ee50043ef45537e70758dca28855e1c7574e66e74ee89babb90a9b3589",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  42,
+                      "file":  "page-042-8e3f1cb3776deb55.json",
+                      "size_bytes":  8333,
+                      "stored_two_lf_sha256":  "842c426fce696f8bff88d6fa19c9acf8039ccc519b69e51ca48f070f179ca8f9",
+                      "page_json_version_id":  "gfpstorev1:json:8e3f1cb3776deb55438aef96a52e2d1bfa6e2d42da9fb6ec19a913f05b73bd20",
+                      "page_id":  "gfpstorev1:page:9be916940b3e5929f31c5690f91e655088854353f7d359c63febb83b63eaf77d",
+                      "extraction_run_id":  "gfpstorev1:run:1ea4d709cfcbd71f824cd60c3204382e0e317f91b631d431b485d6e2b96b84bd",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  43,
+                      "file":  "page-043-5725f8248893e551.json",
+                      "size_bytes":  7210,
+                      "stored_two_lf_sha256":  "c7dec058dc8a8703b2165b6573d183fbc842840ab2f4ac0dd2cf409a19aed9d1",
+                      "page_json_version_id":  "gfpstorev1:json:5725f8248893e551db9216a4543166e844762e7effe08e5f6f2ae51d5d72ec6d",
+                      "page_id":  "gfpstorev1:page:3be33b19b703cfb378e81198ea18a75aa0e1d9bc392b4535fcb3899dfe2d3c78",
+                      "extraction_run_id":  "gfpstorev1:run:8bf7411d3e63595357487da0a319ba7596aa6dcf5ca4692494448d42ebcd5f9c",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  44,
+                      "file":  "page-044-c04b07650bc09ce7.json",
+                      "size_bytes":  5613,
+                      "stored_two_lf_sha256":  "a5c01a96d9b4d4c852a8fb281de56af3b263182c10bc3bb053c64b8266ddc828",
+                      "page_json_version_id":  "gfpstorev1:json:c04b07650bc09ce7d419adc1bc522300af76e5dffbce177b71627cd0de25dab0",
+                      "page_id":  "gfpstorev1:page:cfa67072f52cd6092914e94e970282c3f8c39a4627eab5b0e98b4e8e65bf348f",
+                      "extraction_run_id":  "gfpstorev1:run:9c5d170838ca6dd769f80626d5783c457f23251380fd69b33a4fe01ad059415f",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  45,
+                      "file":  "page-045-82e2b180dcbd7c51.json",
+                      "size_bytes":  6456,
+                      "stored_two_lf_sha256":  "5da294ebc8f03e91c423a546a26ba2452e5e8810e8c20f8ef989dc3fad77c465",
+                      "page_json_version_id":  "gfpstorev1:json:82e2b180dcbd7c517063a2a7288a8c9c1c4a5765605ef51669d52adab9ebd74b",
+                      "page_id":  "gfpstorev1:page:c9f473faa9cb736e382cc57a812173cdadd3dab4565d8c866c8261c9636b17fc",
+                      "extraction_run_id":  "gfpstorev1:run:6c8a7fe8737d99beb74438d5e1bf465b6d9adad54fb966e3499f8bc02c886ea7",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  46,
+                      "file":  "page-046-3f11f93bbd78f804.json",
+                      "size_bytes":  5164,
+                      "stored_two_lf_sha256":  "93e282aaa2ba47c00922a5d7625338eca991d14f50638d5495eaa412c4726b42",
+                      "page_json_version_id":  "gfpstorev1:json:3f11f93bbd78f804e220de975565904b23605ecfabbb88519877d71bd39ac352",
+                      "page_id":  "gfpstorev1:page:6c268f3290e4d86f9680fec25363f15cdcf1a42543884ecbbc2d12083ed0f3fa",
+                      "extraction_run_id":  "gfpstorev1:run:824411849cf3fc8b0e3b109e9af97414a16f42bf299f10a60e775cbbbc997f34",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  47,
+                      "file":  "page-047-c6668e2a8e5b059d.json",
+                      "size_bytes":  5810,
+                      "stored_two_lf_sha256":  "09fbd06963dc62d01dd6c52184d9676f567f0d97376e4524bac95af3a3f46864",
+                      "page_json_version_id":  "gfpstorev1:json:c6668e2a8e5b059d7d5806ea08ed64f42f53c589ea2b273a6ab58289eebcf519",
+                      "page_id":  "gfpstorev1:page:bb9cf6ea8fde84ac67309c472fa6bf32a705ee551fb50d8b11f9c7179f209a59",
+                      "extraction_run_id":  "gfpstorev1:run:a373be4f7623035a6c42c819b91d6641a9a958e101ce07b3d8cf2aef8ca63407",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  48,
+                      "file":  "page-048-bdadd159eb612121.json",
+                      "size_bytes":  7004,
+                      "stored_two_lf_sha256":  "76f5a82d2d75ecfe4cd451595e79931e3f84a436cd20598143b9cc5c16138d2a",
+                      "page_json_version_id":  "gfpstorev1:json:bdadd159eb612121a658ffca1112c0ab9180c5b37f000e39eb0fb1617e4a348e",
+                      "page_id":  "gfpstorev1:page:f1efcacdc45030614c56152604a7170eff9f098cc915ad5e3f083c90472dc8e0",
+                      "extraction_run_id":  "gfpstorev1:run:f1aa4dfba1da3de911275e7b72f20b9a8a41d5a95ac1cbc4cec3d4c9fac4635e",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  49,
+                      "file":  "page-049-a54846884053a667.json",
+                      "size_bytes":  7673,
+                      "stored_two_lf_sha256":  "dcfe77338dad92843e2b9297bdc26599053c21e02e024945da6a285c5af5c3b3",
+                      "page_json_version_id":  "gfpstorev1:json:a54846884053a6670269a8682f29ea844b982be67d7296894d56bd75d0c359d5",
+                      "page_id":  "gfpstorev1:page:e17391f797145d60959a0ef0318c9e67c603da22413cd81a9ac877fbf58adf94",
+                      "extraction_run_id":  "gfpstorev1:run:0857bf168f32e7217f85d0c96f5ec7f21c78956672e842ab9164a4e305d506fe",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  50,
+                      "file":  "page-050-ba2120ce3ae52fa3.json",
+                      "size_bytes":  6638,
+                      "stored_two_lf_sha256":  "550c4573660ac3931c65bb834e76cbba8531f552a59c016ea5d432d7dc2815fb",
+                      "page_json_version_id":  "gfpstorev1:json:ba2120ce3ae52fa3e0096546bfb0004fd66300920eb130b9416fadfae32499b9",
+                      "page_id":  "gfpstorev1:page:1db648b04c1cd0a836e9ea2c94fbef3e44c4cde49c6bdcfcf9400e4903fad735",
+                      "extraction_run_id":  "gfpstorev1:run:372ef5c5c73d2db0940e911590b1ee8231dddb8b7c4cf43c13ef240f2dbd8b10",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  51,
+                      "file":  "page-051-63262375790c7383.json",
+                      "size_bytes":  5971,
+                      "stored_two_lf_sha256":  "9eb428f46d96fc6fb0f06f25c43346c5468cc7b6ae4d313d561e745bdb6d61bd",
+                      "page_json_version_id":  "gfpstorev1:json:63262375790c73831ddca45de0d0f04002d8bc4208854982f23c231308a79033",
+                      "page_id":  "gfpstorev1:page:ddabebb708c958af25bdf68988f6b1f32cd3e784c7e99cf0f0129171a8ed2c61",
+                      "extraction_run_id":  "gfpstorev1:run:de457227e6556f2d42c0f8b8bc481e56327c97ffeb17d619fa13c77b3ede7ef9",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  52,
+                      "file":  "page-052-b093aafa7b187dc8.json",
+                      "size_bytes":  5651,
+                      "stored_two_lf_sha256":  "1241d4c195593c859fe6fc0876149c580dbfa0e1b0f108ff8dfa73510284f546",
+                      "page_json_version_id":  "gfpstorev1:json:b093aafa7b187dc835297dcb5221bb7057c881917f824e7fb0677f7db56444cf",
+                      "page_id":  "gfpstorev1:page:099a85abdc8941d867c847de84527b8ac1a83df513790aee818c8b9a4a747c72",
+                      "extraction_run_id":  "gfpstorev1:run:17e45785d16760a901138f1a68647c396addbd352eb90f4582c26c5100a183b8",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  },
+                  {
+                      "physical_page":  53,
+                      "file":  "page-053-db6d8e6fbabb15e8.json",
+                      "size_bytes":  4223,
+                      "stored_two_lf_sha256":  "2c5df7066827af4c5238346fc171bfa590c62b1a0a6999447c36db55fc7c6452",
+                      "page_json_version_id":  "gfpstorev1:json:db6d8e6fbabb15e8e0d531bd11a9ddb04629ab1404f825513963a852e90dae06",
+                      "page_id":  "gfpstorev1:page:4645af3bd68b5f77b0f86fd63ef626c547cd825938eda54b75fee61caf0d3bbd",
+                      "extraction_run_id":  "gfpstorev1:run:13649f3bf92f09b2da3c878fd7ad0758ce5263d20694283d13a0a6b603d58f21",
+                      "status":  "FINANCIAL_NOTE_CONTENT"
+                  }
+              ],
+    "test_frontier":  "All53 exact original selected pages from the authenticated original manifest. Single-document unit index uses ordinal1; physical/selected page ordinals remain1..53. Six PRIMARY pages included; none filtered/projected. This fixture does not grant production acceptance.",
+    "hash_domain":  "Raw store bytes contain two LF. VID hashes canonical material containing stored_two_lf_sha256, page_id, extraction_run_id; VID is not raw payload SHA.",
+    "financial_acceptance":  false,
+    "runtime":  "UNRUN"
+}

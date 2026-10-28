@@ -271,9 +271,33 @@ def _patch_source_replay_fixture(monkeypatch: pytest.MonkeyPatch) -> tuple[dict,
         "accepted_clusters": [
             {"component_regions": [region], "document_ordinal": 1}
         ],
-        "selected_page_axis": [],
+        "selected_page_axis": [{"document_ordinal": 1, "page_json_version_id": "page-1",
+                                "physical_page": 1, "selected_page_ordinal": 1}],
     }
     trial = {"document_ordinal": 1, "fixture": "source-replayed"}
+    payload_provenance = [{"page_json_version_id": "page-1", "fixture": "authenticated-metadata-io"}]
+
+    def metadata_io(source_database, *, selected_ids):
+        assert source_database.name == "source.sqlite3"
+        assert selected_ids == ["page-1"]
+        return payload_provenance
+
+    def query_receipt(regions, *, selected_page_axis, selected_page_provenance):
+        assert regions == [region]
+        assert selected_page_axis is indexed["selected_page_axis"]
+        assert selected_page_provenance is payload_provenance
+        return {"query": "receipt"}
+
+    def evaluate(**kwargs):
+        assert kwargs["selected_page_axis"] is indexed["selected_page_axis"]
+        assert kwargs["selected_page_provenance"] is payload_provenance
+        return {"candidate": "evaluated"}
+
+    def replay(candidate, **kwargs):
+        assert kwargs["selected_page_axis"] is indexed["selected_page_axis"]
+        assert kwargs["selected_page_provenance"] is payload_provenance
+        return candidate
+
     monkeypatch.setattr(runner.generic, "_json", lambda _path: {"repairs": []})
     monkeypatch.setattr(
         runner,
@@ -292,23 +316,28 @@ def _patch_source_replay_fixture(monkeypatch: pytest.MonkeyPatch) -> tuple[dict,
     )
     monkeypatch.setattr(
         runner,
+        "_selected_payload_provenance_v1",
+        metadata_io,
+    )
+    monkeypatch.setattr(
+        runner,
         "adapt_gemini_json_issued_valuable_papers_indexed_query_evidence_v1",
         lambda value, **_kwargs: (value, []),
     )
     monkeypatch.setattr(
         runner,
         "build_gemini_json_issued_valuable_papers_region_query_receipt_v1",
-        lambda _regions: {"query": "receipt"},
+        query_receipt,
     )
     monkeypatch.setattr(
         runner,
         "evaluate_gemini_json_issued_valuable_papers_family_cluster_v1",
-        lambda **_kwargs: {"candidate": "evaluated"},
+        evaluate,
     )
     monkeypatch.setattr(
         runner,
         "validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1",
-        lambda candidate, **_kwargs: candidate,
+        replay,
     )
     monkeypatch.setattr(
         runner.generic,

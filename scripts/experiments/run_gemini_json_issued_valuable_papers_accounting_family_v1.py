@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 from hashlib import sha256
 from io import BytesIO
@@ -69,6 +70,7 @@ from bctc_ai.storage.gemini_current_corpus_manifest_index_v1 import (  # noqa: E
 )
 from bctc_ai.storage.gemini_financial_page_store_v1 import (  # noqa: E402
     query_selected_multitable_hierarchical_family_regions_v1,
+    selected_page_json_provenance_receipts_v1,
 )
 
 
@@ -163,6 +165,38 @@ def _authenticate_source_repairs_v1(
     return checked
 
 
+def _selected_payload_provenance_v1(database: Path, *, selected_ids: list[str]) -> list[dict[str, Any]]:
+    """Read exact selected payload identities from the authenticated snapshot."""
+    provenance = selected_page_json_provenance_receipts_v1(database, page_json_version_ids=selected_ids)
+    connection = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
+    connection.row_factory = sqlite3.Row
+    try:
+        connection.execute("CREATE TEMP TABLE f25_selected_payload_provenance(ordinal INTEGER PRIMARY KEY, page_json_version_id TEXT NOT NULL UNIQUE)")
+        connection.executemany("INSERT INTO f25_selected_payload_provenance VALUES (?,?)", enumerate(selected_ids, 1))
+        rows = [dict(row) for row in connection.execute("""
+            SELECT selected.page_json_version_id, version.canonical_json_sha256,
+                   version.page_id, version.extraction_run_id,
+                   page.physical_page, document.document_id,
+                   document.source_sha256, document.source_logical_name
+            FROM f25_selected_payload_provenance AS selected
+            JOIN page_json_version AS version USING(page_json_version_id)
+            JOIN page USING(page_id) JOIN document USING(document_id)
+            ORDER BY selected.ordinal
+        """)]
+    finally:
+        connection.close()
+    if len(rows) != len(selected_ids) or len(provenance) != len(rows):
+        raise _error("issued-paper selected payload provenance is incomplete")
+    for ordinal, (row, receipt) in enumerate(zip(rows, provenance, strict=True)):
+        if (row["page_json_version_id"] != selected_ids[ordinal]
+                or any(row[field] != receipt[field] for field in
+                       ("page_json_version_id", "source_sha256", "source_logical_name", "physical_page"))
+                or row["page_json_version_id"] != "gfpstorev1:json:" + canonical_json_sha256_v1({
+                    key: row[key] for key in ("canonical_json_sha256", "extraction_run_id", "page_id")})):
+            raise _error("issued-paper selected payload provenance identity drifted")
+    return rows
+
+
 def replay_issued_valuable_papers_trials_from_source_v1(
     *,
     source_page_database: Path,
@@ -187,6 +221,7 @@ def replay_issued_valuable_papers_trials_from_source_v1(
         selected_ids=list(selected_page_json_version_ids),
         selected_page_axis=raw_indexed["selected_page_axis"],
     )
+    payload_provenance = _selected_payload_provenance_v1(source_page_database, selected_ids=list(selected_page_json_version_ids))
     adapted_indexed, _receipts = (
         adapt_gemini_json_issued_valuable_papers_indexed_query_evidence_v1(
             raw_indexed,
@@ -207,9 +242,11 @@ def replay_issued_valuable_papers_trials_from_source_v1(
             regions=regions,
             page_json_by_version=page_json_by_document[ordinal],
             compiled_specs=family_compiled,
+            selected_page_axis=adapted_indexed["selected_page_axis"],
+            selected_page_provenance=payload_provenance,
             query_receipt=(
                 build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-                    regions
+                    regions, selected_page_axis=adapted_indexed["selected_page_axis"], selected_page_provenance=payload_provenance
                 )
             ),
         )
@@ -219,9 +256,11 @@ def replay_issued_valuable_papers_trials_from_source_v1(
                 regions=regions,
                 page_json_by_version=page_json_by_document[ordinal],
                 compiled_specs=family_compiled,
+                selected_page_axis=adapted_indexed["selected_page_axis"],
+                selected_page_provenance=payload_provenance,
                 query_receipt=(
                     build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-                        regions
+                        regions, selected_page_axis=adapted_indexed["selected_page_axis"], selected_page_provenance=payload_provenance
                     )
                 ),
             )
@@ -620,6 +659,7 @@ def _run_with_authenticated_database(
         selected_ids=selected_ids,
         selected_page_axis=indexed["selected_page_axis"],
     )
+    payload_provenance = _selected_payload_provenance_v1(database, selected_ids=selected_ids)
     indexed, query_recovery_receipts = (
         adapt_gemini_json_issued_valuable_papers_indexed_query_evidence_v1(
             indexed,
@@ -635,8 +675,10 @@ def _run_with_authenticated_database(
                 regions=regions,
                 page_json_by_version=page_json_by_document[cluster["document_ordinal"]],
                 compiled_specs=compiled,
+                selected_page_axis=indexed["selected_page_axis"],
+                selected_page_provenance=payload_provenance,
                 query_receipt=build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-                    regions
+                    regions, selected_page_axis=indexed["selected_page_axis"], selected_page_provenance=payload_provenance
                 ),
             )
         )
@@ -661,9 +703,11 @@ def _run_with_authenticated_database(
                 regions=regions,
                 page_json_by_version=page_json_by_document[ordinal],
                 compiled_specs=compiled,
+                selected_page_axis=indexed["selected_page_axis"],
+                selected_page_provenance=payload_provenance,
                 query_receipt=(
                     build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-                        regions
+                        regions, selected_page_axis=indexed["selected_page_axis"], selected_page_provenance=payload_provenance
                     )
                 ),
             )
@@ -699,7 +743,7 @@ def _run_with_authenticated_database(
     del (
         audit, indexed, page_json_by_document, candidates_by_ordinal, trials,
         replayed_candidates_by_ordinal, replayed_trials, query_recovery_receipts,
-        source_observation_contract,
+        source_observation_contract, payload_provenance,
     )
     implementation_paths = (
         ROOT

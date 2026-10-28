@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from hashlib import sha256
 from typing import Any
 
 from bctc_ai.evaluation.gemini_json_customer_deposit_family_v1 import _two_period_axis
@@ -341,11 +342,69 @@ def compile_gemini_json_issued_valuable_papers_family_specs_v1(
 
 
 def build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-    regions: Any,
+    regions: Any, *, selected_page_axis: Sequence[Mapping[str, Any]] | None = None,
+    selected_page_provenance: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Seal the unchanged shared query-region axis."""
+    """Bind optional document-owned selected context without adding regions."""
 
-    return build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions)
+    shared = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions)
+    if selected_page_axis is None:
+        return shared
+    axis = _selected_document_page_axis_v1(regions, selected_page_axis)
+    material = {"format_version": "ISSUED_PAPERS_SELECTED_SOURCE_QUERY_RECEIPT_V1",
+        "component_regions": [{key: region[key] for key in ("page_json_version_id", "physical_page",
+            "section_id", "table_id", "source_logical_name", "source_sha256")} for region in shared["region_axis"]],
+        "shared_query_receipt": shared, "selected_document_page_axis_sha256": canonical_json_sha256_v1(axis),
+        "selected_document_page_count": len(axis), "selected_payload_provenance_sha256":
+        canonical_json_sha256_v1(_selected_payload_axis_v1(axis, selected_page_provenance))
+        if selected_page_provenance is not None else None}
+    return {**material, "query_receipt_id": "gjivpsqv1:receipt:" + canonical_json_sha256_v1(material)}
+
+
+def _selected_document_page_axis_v1(regions, selected_page_axis):
+    identity_fields = ("document_id", "document_ordinal", "source_logical_name", "source_sha256")
+    identity = {tuple(region[field] for field in identity_fields) for region in regions}
+    if len(identity) != 1 or type(selected_page_axis) not in {list, tuple}:
+        raise _error("issued-paper selected document identity is invalid")
+    source = next(iter(identity))
+    axis = [canonical_clone_v1(item) for item in selected_page_axis if type(item) is dict
+            and tuple(item.get(field) for field in identity_fields) == source]
+    fields = {*identity_fields, "page_json_version_id", "physical_page", "selected_page_ordinal"}
+    if (not axis or any(set(item) != fields or type(item["page_json_version_id"]) is not str
+            or re.fullmatch(r"gfpstorev1:json:[0-9a-f]{64}", item["page_json_version_id"]) is None
+            or type(item["physical_page"]) is not int or item["physical_page"] <= 0
+            or item["selected_page_ordinal"] != ordinal for ordinal, item in enumerate(axis, 1))
+            or len({item["page_json_version_id"] for item in axis}) != len(axis)
+            or len({item["physical_page"] for item in axis}) != len(axis)):
+        raise _error("issued-paper selected document page axis is invalid")
+    by_version = {item["page_json_version_id"]: item for item in axis}
+    if any(region["page_json_version_id"] not in by_version or any(
+            region[field] != by_version[region["page_json_version_id"]][field]
+            for field in (*identity_fields, "physical_page", "selected_page_ordinal")) for region in regions):
+        raise _error("issued-paper selected axis does not bind note fragments")
+    return axis
+
+
+def _selected_payload_axis_v1(axis, provenance):
+    identity = {key: axis[0][key] for key in ("document_id", "source_logical_name", "source_sha256")}
+    if type(provenance) not in {list, tuple}:
+        raise _error("issued-paper selected payload provenance is invalid")
+    versions = [item["page_json_version_id"] for item in axis]
+    own = [item for item in provenance if type(item) is dict and item.get("page_json_version_id") in versions
+           and all(item.get(key) == value for key, value in identity.items())]
+    if len(own) != len(axis) or [item.get("page_json_version_id") for item in own] != versions:
+        raise _error("issued-paper selected payload provenance does not bind selected frontier")
+    for selected, item in zip(axis, own, strict=True):
+        if (set(item) != {*identity, "page_json_version_id", "physical_page", "canonical_json_sha256", "page_id", "extraction_run_id"}
+                or item.get("physical_page") != selected["physical_page"]
+                or any(type(item.get(key)) is not str for key in ("canonical_json_sha256", "page_id", "extraction_run_id"))
+                or re.fullmatch(r"[0-9a-f]{64}", item.get("canonical_json_sha256", "")) is None
+                or re.fullmatch(r"gfpstorev1:page:[0-9a-f]{64}", item.get("page_id", "")) is None
+                or re.fullmatch(r"gfpstorev1:run:[0-9a-f]{64}", item.get("extraction_run_id", "")) is None
+                or item["page_json_version_id"] != "gfpstorev1:json:" + canonical_json_sha256_v1({
+                    key: item[key] for key in ("canonical_json_sha256", "extraction_run_id", "page_id")})):
+            raise _error("issued-paper selected payload provenance version formula drifted")
+    return canonical_clone_v1(own)
 
 
 def _exact_owner_alias(
@@ -3471,6 +3530,7 @@ def _project_adjacent_source_syntax_v1(
     regions: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
     original_pages: Mapping[str, dict[str, Any]] | None = None,
+    original_lane_inventory: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Restore only the missing sender edge and blank receiver axes.
 
@@ -3682,6 +3742,12 @@ def _project_adjacent_source_syntax_v1(
         prior_index = receiver_index - 1
         prior_region = projected_regions[prior_index]
         receiver_region = projected_regions[receiver_index]
+        if original_lane_inventory is not None:
+            original_proofs = [item for item in original_lane_inventory["tables"]
+                if _source_unit_scope_key_v1(item["region"]) == _source_unit_scope_key_v1(receiver_region)
+                and item.get("period_rule") == "AUTHENTICATED_REPORT_CURRENT_DATE_FOUR_METRIC_CONTINUATION"]
+            if original_proofs and any(item["status"] != "SOURCE_OWNED" for item in original_proofs):
+                continue
         prior_table = _region_table(projected_pages, prior_region)
         receiver_table = _region_table(projected_pages, receiver_region)
         if (
@@ -4304,6 +4370,12 @@ def _project_adjacent_source_syntax_v1(
             continue
         prior_region = projected_regions[prior_index]
         receiver_region = projected_regions[receiver_index]
+        if original_lane_inventory is not None:
+            proofs = [item for item in original_lane_inventory["tables"]
+                if _source_unit_scope_key_v1(item["region"]) == _source_unit_scope_key_v1(receiver_region)
+                and item.get("period_rule") == "AUTHENTICATED_REPORT_CURRENT_DATE_FOUR_METRIC_CONTINUATION"]
+            if proofs and any(item["status"] != "SOURCE_OWNED" for item in proofs):
+                continue
         prior_table = _region_table(projected_pages, prior_region)
         receiver_table = _region_table(projected_pages, receiver_region)
         if (
@@ -6588,17 +6660,300 @@ def _raw_transposed_block_v2(table, region, columns, start, end, marker, lane_ke
         "period_marker_exact": marker, "lane_key": list(lane_key)}
 
 
-def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observation_pages=None, authenticated_repairs=()):
+def _four_metric_columns_v1(table):
+    aliases = {"menh gia": "FACE_VALUE", "chiet khau": "DISCOUNT",
+               "phu troi": "PREMIUM", "gia tri thuan": "CARRYING_VALUE"}
+    columns = table.get("columns", [])
+    roles = {}
+    for ordinal, column in enumerate(columns, 1):
+        role = aliases.get(_normalized(" ".join(column.get("header_path_exact", []))))
+        if column.get("value_kind") != "MONEY" or role is None or role in roles:
+            return None
+        roles[role] = ordinal
+    return roles if len(columns) == len(roles) == 4 else None
+
+
+def _primary_reporting_veto_surfaces_v1(section):
+    """Read explicit CURRENT ends/entity qualifiers; never a flow start/year."""
+    surfaces = [("SECTION_TITLE", section.get("title_exact"), None, None)]
+    surfaces.extend(("SECTION_NARRATIVE", text, None, ordinal)
+                    for ordinal, text in enumerate(section.get("narratives_exact", []), 1))
+    for table_ordinal, table in enumerate(section.get("tables", []), 1):
+        surfaces.append(("TABLE_TITLE", table.get("title_exact"), table_ordinal, None))
+        surfaces.extend(("COLUMN_HEADER", " ".join(column.get("header_path_exact", [])), table_ordinal, ordinal)
+                        for ordinal, column in enumerate(table.get("columns", []), 1))
+    date_literal = r"[0-9]{1,2}(?: thang)? [0-9]{1,2}(?: nam)? [0-9]{4}"
+    observations = []
+    for kind, exact, table_ordinal, ordinal in surfaces:
+        folded = _normalized(exact)
+        if not folded:
+            continue
+        comparative = bool(re.search(r"\b(?:ky truoc|nam truoc|cung ky|so sanh)\b", folded)
+                           or "COMPARATIVE_PERIOD" in _semantic_period_roles(folded))
+        current = bool(re.search(r"\b(?:ky nay|nam nay|ky hien tai|ky bao cao)\b", folded)
+                       or _semantic_period_roles(folded) == ["CURRENT_PERIOD"])
+        reporting_surface = (kind in {"SECTION_TITLE", "TABLE_TITLE"}
+            or bool(re.match(r"(?:bao cao|cho ky|cho nam|cho giai doan|tu ngay)\b", folded)) or current)
+        endpoints = set()
+        if not comparative and reporting_surface:
+            end_literals = re.findall(r"\bket thuc(?: tai)?(?: ngay)? (" + date_literal + r")\b", folded)
+            end_literals.extend(match.group(2) for match in re.finditer(
+                r"\btu(?: ngay)? (" + date_literal + r") (?:den|toi)(?: ngay)? (" + date_literal + r")\b", folded))
+            for literal in end_literals:
+                numbers = re.findall(r"[0-9]+", literal)
+                endpoints.update(value.isoformat() for value in _surface_dates("/".join(numbers)))
+            # A sole date in an explicitly current column is an endpoint only
+            # when the source did not label it as a flow's starting date.
+            if (not end_literals and current and kind == "COLUMN_HEADER"
+                    and re.search(r"\b(?:tu|bat dau)(?: ngay)? " + date_literal, folded) is None):
+                dates = _surface_dates(exact)
+                if len(dates) == 1:
+                    endpoints.update(value.isoformat() for value in dates)
+        entity = None
+        if reporting_surface and kind != "COLUMN_HEADER":
+            qualified = re.search(r"\bcua (?:cong ty|ngan hang|don vi|tap doan|chi nhanh)\b.*", folded)
+            if qualified is not None:
+                entity = re.split(r"\b(?:tai ngay|cho ky|cho nam|cho giai doan|tu ngay)\b", qualified.group())[0].strip()
+        if endpoints or entity is not None:
+            observations.append({"surface_kind": kind, "surface_exact": exact,
+                "table_ordinal": table_ordinal, "source_ordinal": ordinal,
+                "explicit_current_end_dates": sorted(endpoints), "entity_qualifier": entity,
+                "rule": "EXPLICIT_CURRENT_COLUMN_OR_REPORTING_WINDOW_END_NEVER_START_COMPARATIVE_OR_LATEST_DATE"})
+    return observations
+
+
+def _selected_current_reporting_proof_v1(*, pages, regions, selected_page_axis, selected_page_provenance):
+    """Read typed reporting headers only; PRIMARY amounts/units grant nothing."""
+    axis = _selected_document_page_axis_v1(regions, selected_page_axis)
+    if set(pages) != {item["page_json_version_id"] for item in axis}:
+        return {"failures": ["SELECTED_SOURCE_PAGE_FRONTIER_NOT_EXACT"], "anchors": []}
+    if selected_page_provenance is None:
+        return {"failures": ["SELECTED_SOURCE_PAYLOAD_PROVENANCE_ABSENT"], "anchors": []}
+    payloads = _selected_payload_axis_v1(axis, selected_page_provenance)
+    if any(sha256(canonical_json_bytes_v1(pages[item["page_json_version_id"]]) + b"\n").hexdigest()
+           != item["canonical_json_sha256"] for item in payloads):
+        return {"failures": ["SELECTED_SOURCE_TWO_LF_PAYLOAD_HASH_DRIFT"], "anchors": []}
+    anchors, dates, scopes, owners, failures = [], set(), set(), set(), []
+    primary_veto_observations, balance_sheet_entities = [], set()
+    for item in axis:
+        page = pages[item["page_json_version_id"]]
+        for section_ordinal, section in enumerate(page.get("sections", []), 1):
+            if section.get("content_kind") != "PRIMARY_STATEMENT":
+                continue
+            surfaces = [section.get("title_exact"), *[table.get("title_exact") for table in section.get("tables", [])]]
+            local_scopes = {scope for text in surfaces for scope, alias in
+                            (("CONSOLIDATED", "hop nhat"), ("SEPARATE", "rieng"))
+                            if alias in _normalized(text)}
+            scopes.update(local_scopes)
+            vetoes = _primary_reporting_veto_surfaces_v1(section)
+            primary_veto_observations.extend({**observation, "selected_page": item,
+                "section_id": f"s{section_ordinal}", "statement_type": section.get("statement_type")}
+                for observation in vetoes)
+            if section.get("statement_type") == "BALANCE_SHEET":
+                balance_sheet_entities.update(observation["entity_qualifier"] for observation in vetoes
+                                              if observation["entity_qualifier"] is not None)
+            if section.get("statement_type") != "BALANCE_SHEET":
+                continue
+            for surface in surfaces:
+                if not _normalized(surface):
+                    continue
+                owner = re.sub(r"\btai ngay [0-9]{1,2}(?: thang)? [0-9]{1,2}(?: nam)? [0-9]{4}\b", "", _normalized(surface))
+                owner = owner.replace(" giua nien do", "").replace(" tiep theo", "")
+                owner = owner.replace("bao cao tinh hinh tai chinh", "balance sheet").replace("bang can doi ke toan", "balance sheet")
+                owners.add(" ".join(owner.split()))
+            local_dates = {value.isoformat() for text in surfaces for value in _surface_dates(text)}
+            dates.update(local_dates)
+            for table_ordinal, table in enumerate(section.get("tables", []), 1):
+                period = _two_period_axis(table)
+                money = period.get("money_column_ordinals", [])
+                semantic = [_semantic_period_roles(" ".join(table["columns"][column - 1]["header_path_exact"])) for column in money]
+                for column in table.get("columns", []):
+                    header = " ".join(column.get("header_path_exact", []))
+                    if _semantic_period_roles(header) == ["CURRENT_PERIOD"]:
+                        header_dates = {value.isoformat() for value in _surface_dates(header)}
+                        dates.update(header_dates)
+                        if header_dates and local_dates and header_dates != local_dates:
+                            failures.append("CONFLICTING_PRIMARY_CURRENT_HEADER_DATE")
+                narratives = [text for text in section.get("narratives_exact", [])
+                              if re.fullmatch(r"cac thuyet minh kem theo la mot bo phan hop thanh cua bao cao tai chinh(?: hop nhat| rieng)? nay", _normalized(text))]
+                if (len(local_dates) == len(local_scopes) == 1 and period.get("complete") is True
+                        and semantic == [["CURRENT_PERIOD"], ["COMPARATIVE_PERIOD"]] and len(narratives) == 1):
+                    anchors.append({"selected_page": item, "section_id": f"s{section_ordinal}", "table_id": f"t{table_ordinal}",
+                        "page_contract_sha256": canonical_json_sha256_v1(page),
+                        "stored_two_lf_sha256": sha256(canonical_json_bytes_v1(page) + b"\n").hexdigest(),
+                        "section_title_exact": section.get("title_exact"), "table_title_exact": table.get("title_exact"),
+                        "columns_exact": canonical_clone_v1(table["columns"]), "notes_declaration_exact": narratives[0],
+                        "current_date": next(iter(local_dates)), "report_scope": next(iter(local_scopes))})
+            if len(local_dates) > 1 or len(local_scopes) > 1:
+                failures.append("CONFLICTING_PRIMARY_REPORTING_HEADER")
+    if not anchors or len(dates) != 1 or len(scopes) != 1 or len(owners) != 1:
+        failures.append("PRIMARY_CURRENT_DATE_OR_REPORT_SCOPE_NOT_UNIQUE")
+    if any(anchor["current_date"] not in dates or anchor["report_scope"] not in scopes for anchor in anchors):
+        failures.append("PRIMARY_REPORTING_ANCHOR_CONFLICT")
+    # Only the balance sheet can supply the CURRENT anchor. Other PRIMARY
+    # statements can veto it through an explicitly dated current endpoint or
+    # an entity-qualified presentation outside that same report scope.
+    if len(dates) == 1:
+        for observation in primary_veto_observations:
+            if any(value not in dates for value in observation["explicit_current_end_dates"]):
+                failures.append("CONFLICTING_PRIMARY_EXPLICIT_CURRENT_END")
+            entity = observation["entity_qualifier"]
+            if (entity is not None and observation["statement_type"] != "BALANCE_SHEET"
+                    and balance_sheet_entities != {entity}):
+                failures.append("PRIMARY_ENTITY_QUALIFIER_NOT_BOUND_TO_BALANCE_SHEET_SCOPE")
+    return {"selected_document_page_axis_sha256": canonical_json_sha256_v1(axis),
+        "selected_payload_provenance_sha256": canonical_json_sha256_v1(payloads), "anchors": anchors,
+        "current_date": next(iter(dates)) if len(dates) == 1 else None,
+        "report_scope": next(iter(scopes)) if len(scopes) == 1 else None, "failures": sorted(set(failures)),
+        "primary_balance_sheet_owner_headers": sorted(owners),
+        "all_primary_veto_observations": primary_veto_observations,
+        "hash_domain": "PAGE_CONTRACT_ONE_LF_AND_PAGE_STORE_CANONICAL_PLUS_ONE_LF_EXPLICIT_SEPARATE_DOMAINS",
+        "rule": "SAME_SELECTED_DOCUMENT_PRIMARY_BALANCE_SHEET_CURRENT_END_AND_OWNED_NOTES_DECLARATION_NO_AMOUNT_OR_UNIT_DONATION"}
+
+
+def _raw_current_four_metric_table_v1(*, pages, regions, index, units, compiled_specs, reporting):
+    region = regions[index]
+    page = pages[region["page_json_version_id"]]
+    section = page["sections"][int(region["section_id"][1:]) - 1]
+    table = _region_table(pages, region)
+    item = {"region": canonical_clone_v1(region), "original_unit_proof": units.get(_source_unit_scope_key_v1(region)),
+        "raw_table_sha256": canonical_json_sha256_v1(table), "raw_page_sha256": canonical_json_sha256_v1(page),
+        "authenticated_observation_table_sha256": canonical_json_sha256_v1(table), "blocks": [], "failures": [],
+        "period_rule": "AUTHENTICATED_REPORT_CURRENT_DATE_FOUR_METRIC_CONTINUATION", "reporting_period_proof": reporting}
+    failures = item["failures"]
+    failures.extend(reporting["failures"])
+    metric = _four_metric_columns_v1(table)
+    if metric is None:
+        failures.append("FOUR_UNIQUE_EXACT_PRINTED_METRIC_HEADERS_NOT_PROVEN")
+    detail_dates = {value.isoformat() for value in _surface_dates(table.get("title_exact"))}
+    if len(detail_dates) != 1 or detail_dates != {reporting.get("current_date")}:
+        failures.append("DETAIL_DATE_NOT_AUTHENTICATED_REPORT_CURRENT_END")
+    # Printed footnote scope precedes all coefficient/arithmetic checks.
+    marker = re.fullmatch(r"\(([^)]+)\)\s*Chi tiết tại ngày\s+[^:]+:", table.get("title_exact") or "", re.IGNORECASE)
+    prior = regions[index - 1] if index else None
+    if prior is None:
+        failures.append("ADJACENT_OWNED_SUMMARY_NOT_PRESENT")
+        return item
+    prior_page = pages[prior["page_json_version_id"]]
+    prior_section = prior_page["sections"][int(prior["section_id"][1:]) - 1]
+    prior_table = _region_table(pages, prior)
+    prior_unit = units.get(_source_unit_scope_key_v1(prior))
+    prior_axis = _two_period_axis(prior_table)
+    summary_semantic = [_semantic_period_roles(" ".join(prior_table["columns"][column - 1]["header_path_exact"]))
+                        for column in prior_axis.get("money_column_ordinals", [])]
+    summary_current_dates = {date.isoformat() for column in prior_table.get("columns", [])
+        if _semantic_period_roles(" ".join(column.get("header_path_exact", []))) == ["CURRENT_PERIOD"]
+        for text in column.get("header_path_exact", []) for date in _surface_dates(text)}
+    if summary_current_dates and summary_current_dates != {reporting.get("current_date")}:
+        failures.append("PRINTED_SUMMARY_CURRENT_DATE_CONFLICTS_WITH_REPORT")
+    if (any(prior[field] != region[field] for field in ("document_id", "document_ordinal", "source_logical_name", "source_sha256"))
+            or prior["physical_page"] + 1 != region["physical_page"]
+            or prior["selected_page_ordinal"] + 1 != region["selected_page_ordinal"]
+            or section.get("content_kind") != "FINANCIAL_NOTE" or _normalized(section.get("title_exact"))
+            or prior_section.get("content_kind") != "FINANCIAL_NOTE"
+            or _exact_owner_alias(prior_section.get("title_exact"), compiled_specs=compiled_specs) is None
+            or _exact_owner_alias(prior_table.get("title_exact"), compiled_specs=compiled_specs) is None
+            or table.get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE"
+            or prior_table.get("continuation") not in {"NONE", "CONTINUES_ON_NEXT_PAGE"}
+            or not _table_is_page_edge_v1(page=prior_page, section_id=prior["section_id"], table_id=prior["table_id"], edge="LAST")
+            or not _table_is_page_edge_v1(page=page, section_id=region["section_id"], table_id=region["table_id"], edge="FIRST")
+            or marker is None or prior_axis.get("complete") is not True
+            or summary_semantic != [["CURRENT_PERIOD"], ["COMPARATIVE_PERIOD"]]
+            or any(unit is None or unit.get("source_kind") != "ORIGINAL_TABLE_OR_ALL_MONEY_COLUMN_UNIT" for unit in (prior_unit, item["original_unit_proof"]))
+            or prior_unit and item["original_unit_proof"] and prior_unit["canonical_unit"] != item["original_unit_proof"]["canonical_unit"]):
+        failures.append("ORIGINAL_FOUR_METRIC_OWNER_CONTINUATION_OR_LOCAL_UNIT_NOT_PROVEN")
+    item["continuation_source"] = {"sender_region": canonical_clone_v1(prior),
+        "sender_original_marker": prior_table.get("continuation"), "receiver_original_marker": table.get("continuation"),
+        "both_original_markers_asserted": prior_table.get("continuation") == "CONTINUES_ON_NEXT_PAGE",
+        "printed_detail_title_exact": table.get("title_exact")}
+    if failures:
+        return item
+    declared_details = [text for text in section.get("narratives_exact", [])
+        if text.startswith(f"({marker.group(1)})") and "chi tiet trai phieu" in _normalized(text)]
+    if (len(declared_details) != 1 or {date.isoformat() for date in _surface_dates(declared_details[0])} != detail_dates):
+        failures.append("PRINTED_FOOTNOTE_DETAIL_REPORT_DATE_SCOPE_NOT_EXACT")
+        return item
+    rows = table["rows"]
+    if len(rows) != 6:
+        failures.append("FOUR_METRIC_COMPLETE_INSTRUMENT_FRONTIER_NOT_PROVEN")
+        return item
+    current = ["SEMANTIC_ALIAS", "CURRENT_PERIOD"]
+    observations, equations, population, structural = [], [], [], []
+    for start in (0, 3):
+        carrier, leaf, subtotal = rows[start:start + 3]
+        parent = _exact_declared_role(carrier.get("label_exact"), compiled_specs=compiled_specs,
+            roles={"BOND", "CERTIFICATE_OF_DEPOSIT"}, within_role=None)
+        roles = {"BOND_SHORT", "BOND_MEDIUM", "BOND_LONG", "BOND_PRINTED_BELOW_FIVE_YEARS"} if parent == "BOND" else {"CD_SHORT", "CD_MEDIUM", "CD_LONG", "CD_PRINTED_OVER_TWELVE_MONTHS"}
+        role = _exact_declared_role(leaf.get("label_exact"), compiled_specs=compiled_specs, roles=roles, within_role=parent)
+        if (parent is None or role is None or carrier.get("row_kind") != "GROUP"
+                or carrier.get("values_exact") != [None] * 4 or carrier.get("hierarchy_path_exact") != [carrier.get("label_exact")]
+                or leaf.get("row_kind") != "ITEM" or leaf.get("hierarchy_path_exact") != [carrier["label_exact"], leaf.get("label_exact")]
+                or subtotal.get("row_kind") != "SUBTOTAL" or subtotal.get("label_exact") is not None
+                or subtotal.get("hierarchy_path_exact") != [carrier["label_exact"], None]):
+            failures.append("FOUR_METRIC_RAW_INSTRUMENT_TENOR_HIERARCHY_NOT_EXACT")
+            continue
+        prior_labels = [row["label_exact"] for row in prior_table["rows"] if row["row_kind"] == "GROUP"
+                        and _exact_declared_role(re.sub(r"\s*\([^)]*\)\s*$", "", row.get("label_exact") or ""), compiled_specs=compiled_specs,
+                            roles={parent}, within_role=None) == parent]
+        if len(prior_labels) != 1 or parent == "BOND" and not prior_labels[0].endswith(f"({marker.group(1)})"):
+            failures.append("PRINTED_SUMMARY_INSTRUMENT_FOOTNOTE_SCOPE_NOT_EXACT")
+        refs, cells = [], []
+        for ordinal, row in ((start + 2, leaf), (start + 3, subtotal)):
+            values = _raw_lane_cells_v2(row, [metric[name] for name in ("FACE_VALUE", "DISCOUNT", "PREMIUM", "CARRYING_VALUE")])
+            if values is None:
+                failures.append("FOUR_METRIC_PRINTED_NET_OR_CONTROL_NOT_OBSERVED")
+                continue
+            if values[0]["coefficient"] - values[1]["coefficient"] + values[2]["coefficient"] != values[3]["coefficient"]:
+                failures.append("FOUR_METRIC_SOURCE_EQUATION_NOT_EXACT")
+            refs.append(_raw_lane_source_ref_v2(region, ordinal, row, [metric["CARRYING_VALUE"]]))
+            cells.append(values[3])
+            item.setdefault("source_metric_rows", []).append({"row_ordinal": ordinal,
+                "metric_ordinals": metric, "metric_cells": dict(zip(("FACE_VALUE", "DISCOUNT", "PREMIUM", "CARRYING_VALUE"), values, strict=True))})
+        if len(cells) != 2 or cells[0]["coefficient"] != cells[1]["coefficient"]:
+            failures.append("FOUR_METRIC_SOURCE_TENOR_SUBTOTAL_NOT_EXACT")
+            continue
+        qualifier = {"instrument": parent, "tenor_role": role, "carrier_label_exact": carrier["label_exact"],
+            "metric_role": "CARRYING_VALUE", "metric_header_exact": table["columns"][metric["CARRYING_VALUE"] - 1]["header_path_exact"]}
+        for observed_role, ref, cell in ((role, refs[0], cells[0]), (parent, refs[1], cells[1])):
+            observations.append({"role": observed_role, "lane_key": current, "cell": cell, "source_ref": ref, "economic_qualifier": qualifier})
+        structural.append({"role": parent, "source_ref": _raw_lane_source_ref_v2(region, start + 1, carrier, [metric["CARRYING_VALUE"]]),
+            "state": "BLANK_STRUCTURAL_CARRIER_NO_FINANCIAL_VALUE"})
+        equation = _raw_lane_equation_v2("EXACT_F25_RAW_CURRENT_NET_TENOR_FRONTIER",
+            [{"role": role, "cells": [cells[0]], "source_refs": [refs[0]]}],
+            {"role": parent, "cells": [cells[1]], "source_refs": [refs[1]]}, [current])
+        if equation is not None:
+            equations.append(equation)
+        population.append(qualifier)
+    if {item["instrument"] for item in population} != {"BOND", "CERTIFICATE_OF_DEPOSIT"}:
+        failures.append("FOUR_METRIC_NAMED_INSTRUMENT_POPULATION_NOT_COMPLETE")
+    if not failures:
+        item["blocks"] = [{"observations": observations, "equations": equations, "population": population,
+            "structural_source_refs": structural, "lane_key": current, "source_start_row": 1, "source_end_row": len(rows)}]
+    return item
+
+
+def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observation_pages=None, authenticated_repairs=(), selected_page_axis=None, selected_page_provenance=None):
     """Compute raw permission before any private period/unit/row projection."""
     units = _original_source_unit_proofs_v1(pages=pages, regions=regions, compiled_specs=compiled_specs)
     tables, direct, pending = [], [], []
     current_sentence = re.compile(r"chi tiet ky han cua (?:cac )?giay to co gia phat hanh(?: theo menh gia)? tai thoi diem cuoi (?:ky|nam|quy) nhu sau")
-    for region in regions:
+    reporting = None
+    for region_index, region in enumerate(regions):
         original_page = pages[region["page_json_version_id"]]
         page = (observation_pages if observation_pages is not None else pages)[region["page_json_version_id"]]
         section = page["sections"][int(region["section_id"][1:]) - 1]
         table = _region_table(observation_pages if observation_pages is not None else pages, region)
         original_table = _region_table(pages, region)
+        metric_headers = {_normalized(" ".join(column.get("header_path_exact", []))) for column in original_table.get("columns", [])}
+        previous_axis = _two_period_axis(_region_table(pages, regions[region_index - 1])) if region_index else {}
+        if (selected_page_axis is not None and previous_axis.get("complete") is True
+                and len(metric_headers & {"menh gia", "chiet khau", "phu troi", "gia tri thuan"}) >= 2):
+            if reporting is None:
+                reporting = _selected_current_reporting_proof_v1(pages=pages, regions=regions,
+                    selected_page_axis=selected_page_axis, selected_page_provenance=selected_page_provenance)
+            tables.append(_raw_current_four_metric_table_v1(pages=pages, regions=regions, index=region_index,
+                units=units, compiled_specs=compiled_specs, reporting=reporting))
+            continue
         classification = classify_gemini_json_multitable_hierarchical_table_v1(page, section, table, compiled_specs=compiled_specs)
         unit = units.get(_source_unit_scope_key_v1(region))
         owner = section.get("content_kind") == "FINANCIAL_NOTE" and _exact_owner_alias(section.get("title_exact"), compiled_specs=compiled_specs) is not None
@@ -6800,6 +7155,12 @@ def _enforce_original_source_mapping_lanes_v2(candidate, *, inventory, original_
         for ref in refs:
             same_direct = [item for item in anchors if _raw_lane_ref_equal_v2(ref, item["source_ref"])]
             if same_direct:
+                continue
+            structural = [item for table in tables for block in table["blocks"]
+                for item in block.get("structural_source_refs", [])
+                if item["role"] == mapping["role"] and _raw_lane_ref_equal_v2(ref, item["source_ref"])]
+            if chosen is not None and len(structural) == 1:
+                # A blank GROUP is a population carrier, never an observed amount.
                 continue
             matches = [atom for atom in atoms if atom["role"] == mapping["role"] and _raw_lane_ref_equal_v2(ref, atom["source_ref"])]
             if len(matches) != 1:
@@ -7249,11 +7610,20 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
     page_json_by_version: Mapping[str, dict[str, Any]],
     compiled_specs: Mapping[str, Any],
     query_receipt: Mapping[str, Any],
+    selected_page_axis: Sequence[Mapping[str, Any]] | None = None,
+    selected_page_provenance: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Evaluate Family 25 after applying only authenticated dash observations."""
 
     if compiled_specs.get("topology", {}).get("family_id") != FAMILY_ID:
         raise _error("issued-paper adapter received another family")
+    outer_query_receipt = query_receipt
+    if selected_page_axis is not None and regions:
+        expected_query = build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
+            regions, selected_page_axis=selected_page_axis, selected_page_provenance=selected_page_provenance)
+        if not same_typed_json_v1(query_receipt, expected_query):
+            raise _error("issued-paper selected-source query receipt drifted")
+        query_receipt = expected_query["shared_query_receipt"]
     if type(regions) not in {list, tuple} or not regions:
         return evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
             regions=regions,
@@ -7269,6 +7639,8 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
     original_lane_inventory = _original_source_lane_inventory_v2(
         pages=page_json_by_version, regions=regions, compiled_specs=compiled_specs,
         observation_pages=pages, authenticated_repairs=repairs,
+        selected_page_axis=selected_page_axis,
+        selected_page_provenance=selected_page_provenance,
     )
     primary_projection = None
     if len(regions) == 1:
@@ -7298,6 +7670,7 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
             candidate, original_pages=page_json_by_version, regions=regions,
             compiled_specs=compiled_specs,
         )
+        candidate["closure_receipt"]["query_receipt"] = canonical_clone_v1(outer_query_receipt)
         return _reseal_candidate(
             candidate,
             adjacent_source_syntax_projection_receipts=[],
@@ -7320,6 +7693,7 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
             regions=regions,
             compiled_specs=compiled_specs,
             original_pages=page_json_by_version,
+            original_lane_inventory=original_lane_inventory,
         )
     )
     adjacent_projected_query_receipt = (
@@ -7471,6 +7845,7 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
         })
         candidate["closure_receipt"]["structural_root_receipt"]["source_mapping_lane_receipt_id"] = source_mapping_lane_receipt["source_mapping_lane_receipt_id"]
         printed_total_receipt = None
+    candidate["closure_receipt"]["query_receipt"] = canonical_clone_v1(outer_query_receipt)
     return _reseal_candidate(
         candidate,
         adjacent_source_syntax_projection_receipts=adjacent_receipts,
@@ -7499,6 +7874,8 @@ def validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
     page_json_by_version: Mapping[str, dict[str, Any]],
     compiled_specs: Mapping[str, Any],
     query_receipt: Mapping[str, Any],
+    selected_page_axis: Sequence[Mapping[str, Any]] | None = None,
+    selected_page_provenance: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Replay the complete adapter path from immutable selected JSON."""
 
@@ -7507,6 +7884,8 @@ def validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
         page_json_by_version=page_json_by_version,
         compiled_specs=compiled_specs,
         query_receipt=query_receipt,
+        selected_page_axis=selected_page_axis,
+        selected_page_provenance=selected_page_provenance,
     )
     if type(value) is not dict or not same_typed_json_v1(value, expected):
         raise _error("issued-paper family adapter candidate replay drifted")
