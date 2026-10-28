@@ -16,6 +16,7 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (
     validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (
+    NOT_OBSERVED,
     READY,
     UNRESOLVED,
     build_gemini_json_indexed_multitable_hierarchical_query_evidence_v1,
@@ -204,7 +205,7 @@ def test_primary_amounts_and_unit_are_not_note_financial_or_unit_donors():
 
 @pytest.mark.parametrize("mutation", ["missing_net", "duplicate_net", "missing_date", "mismatched_date",
     "missing_primary_date", "conflicting_primary_date", "foreign_primary_scope", "foreign_primary_entity", "missing_notes_declaration",
-    "continuation_break", "owner_break", "footnote_break", "blank_net", "blank_discount", "local_unit_break",
+    "continuation_break", "footnote_break", "blank_net", "blank_discount", "local_unit_break",
     "primary_current_header_break", "duplicate_tenor", "summary_current_date_conflict"])
 def test_coherent_counterfactuals_hold_without_date_metric_scope_or_observed_net(mutation):
     _provenance, pages = _original()
@@ -246,8 +247,6 @@ def test_coherent_counterfactuals_hold_without_date_metric_scope_or_observed_net
                     section["narratives_exact"] = []
     elif mutation == "continuation_break":
         detail["continuation"] = "NONE"
-    elif mutation == "owner_break":
-        summary_section["title_exact"] = summary_section["tables"][0]["title_exact"] = "4.14 Tiền gửi của khách hàng"
     elif mutation == "footnote_break":
         summary_section["tables"][0]["rows"][0]["label_exact"] = "Trái phiếu (**)"
         summary_section["tables"][0]["rows"][0]["hierarchy_path_exact"] = ["Trái phiếu (**)"]
@@ -273,6 +272,35 @@ def test_coherent_counterfactuals_hold_without_date_metric_scope_or_observed_net
     assert candidate["status"] == UNRESOLVED and candidate.get("mappings", []) == []
     if context is not None:
         _audit_replay(candidate, context)
+
+
+def test_replacing_the_only_note_owner_with_customer_deposits_has_no_f25_anchor_or_permission():
+    _provenance, pages = _original()
+    section = pages[36]["sections"][2]
+    section["title_exact"] = section["tables"][0]["title_exact"] = "4.14 Tiền gửi của khách hàng"
+    candidate, context = _context(pages, mutation="owner_break")
+    # The immutable source values still exist, but the foreign note owner
+    # removes the F25 query anchor. This is not an evaluated financial HOLD.
+    assert context is None and candidate["status"] == NOT_OBSERVED
+    assert candidate["component_regions"] == [] and candidate["owner_receipt"] is None
+    assert candidate.get("mappings", []) == []
+
+
+@pytest.mark.parametrize("header", [[None], ["Giá trị thuần", None], ["Giá trị thuần", 7]],
+                         ids=["null-only", "metric-with-null", "metric-with-number"])
+def test_public_new_metric_permission_holds_for_incomplete_or_nonstring_source_header(header):
+    _provenance, pages = _original()
+    table = pages[37]["sections"][0]["tables"][0]
+    table["columns"][3]["header_path_exact"] = copy.deepcopy(header)
+    before = copy.deepcopy(pages)
+    candidate, context = _context(pages, mutation="unsupported-net-header-" + canonical_json_sha256_v1(header))
+    assert context is not None and candidate["status"] == UNRESOLVED and candidate["mappings"] == []
+    proof = _receipt(candidate)["source_lane_inventory"]["tables"][0]
+    assert proof["period_rule"] == "AUTHENTICATED_REPORT_CURRENT_DATE_FOUR_METRIC_CONTINUATION"
+    assert "FOUR_UNIQUE_EXACT_PRINTED_METRIC_HEADERS_NOT_PROVEN" in proof["failures"]
+    assert proof["blocks"] == []
+    assert list(context["page_json_by_version"].values()) == before
+    _audit_replay(candidate, context)
 
 
 def test_foreign_primary_same_version_cannot_replace_own_selected_membership():
@@ -339,7 +367,10 @@ def test_all_primary_flow_current_end_and_entity_contradictions_veto_balance_she
     if mutation == "foreign_entity":
         assert any(observation["entity_qualifier"] == "cua cong ty con" for observation in witnesses)
     else:
-        assert any(observation["explicit_current_end_dates"] == ["2024-12-31"] for observation in witnesses)
+        conflicting = [observation for observation in witnesses
+                       if "2024-12-31" in observation["explicit_current_end_dates"]]
+        assert conflicting
+        assert all("31/12/2024" in observation["surface_exact"] for observation in conflicting)
     _audit_replay(candidate, context)
 
 

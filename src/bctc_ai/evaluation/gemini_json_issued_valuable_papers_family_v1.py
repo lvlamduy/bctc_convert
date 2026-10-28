@@ -6660,13 +6660,20 @@ def _raw_transposed_block_v2(table, region, columns, start, end, marker, lane_ke
         "period_marker_exact": marker, "lane_key": list(lane_key)}
 
 
+def _complete_source_header_text_v1(column):
+    parts = column.get("header_path_exact")
+    if type(parts) is not list or not parts or any(type(part) is not str for part in parts):
+        return None
+    return " ".join(parts)
+
+
 def _four_metric_columns_v1(table):
     aliases = {"menh gia": "FACE_VALUE", "chiet khau": "DISCOUNT",
                "phu troi": "PREMIUM", "gia tri thuan": "CARRYING_VALUE"}
     columns = table.get("columns", [])
     roles = {}
     for ordinal, column in enumerate(columns, 1):
-        role = aliases.get(_normalized(" ".join(column.get("header_path_exact", []))))
+        role = aliases.get(_normalized(_complete_source_header_text_v1(column)))
         if column.get("value_kind") != "MONEY" or role is None or role in roles:
             return None
         roles[role] = ordinal
@@ -6680,7 +6687,7 @@ def _primary_reporting_veto_surfaces_v1(section):
                     for ordinal, text in enumerate(section.get("narratives_exact", []), 1))
     for table_ordinal, table in enumerate(section.get("tables", []), 1):
         surfaces.append(("TABLE_TITLE", table.get("title_exact"), table_ordinal, None))
-        surfaces.extend(("COLUMN_HEADER", " ".join(column.get("header_path_exact", [])), table_ordinal, ordinal)
+        surfaces.extend(("COLUMN_HEADER", _complete_source_header_text_v1(column), table_ordinal, ordinal)
                         for ordinal, column in enumerate(table.get("columns", []), 1))
     date_literal = r"[0-9]{1,2}(?: thang)? [0-9]{1,2}(?: nam)? [0-9]{4}"
     observations = []
@@ -6766,9 +6773,9 @@ def _selected_current_reporting_proof_v1(*, pages, regions, selected_page_axis, 
             for table_ordinal, table in enumerate(section.get("tables", []), 1):
                 period = _two_period_axis(table)
                 money = period.get("money_column_ordinals", [])
-                semantic = [_semantic_period_roles(" ".join(table["columns"][column - 1]["header_path_exact"])) for column in money]
+                semantic = [_semantic_period_roles(_complete_source_header_text_v1(table["columns"][column - 1])) for column in money]
                 for column in table.get("columns", []):
-                    header = " ".join(column.get("header_path_exact", []))
+                    header = _complete_source_header_text_v1(column)
                     if _semantic_period_roles(header) == ["CURRENT_PERIOD"]:
                         header_dates = {value.isoformat() for value in _surface_dates(header)}
                         dates.update(header_dates)
@@ -6839,10 +6846,10 @@ def _raw_current_four_metric_table_v1(*, pages, regions, index, units, compiled_
     prior_table = _region_table(pages, prior)
     prior_unit = units.get(_source_unit_scope_key_v1(prior))
     prior_axis = _two_period_axis(prior_table)
-    summary_semantic = [_semantic_period_roles(" ".join(prior_table["columns"][column - 1]["header_path_exact"]))
+    summary_semantic = [_semantic_period_roles(_complete_source_header_text_v1(prior_table["columns"][column - 1]))
                         for column in prior_axis.get("money_column_ordinals", [])]
     summary_current_dates = {date.isoformat() for column in prior_table.get("columns", [])
-        if _semantic_period_roles(" ".join(column.get("header_path_exact", []))) == ["CURRENT_PERIOD"]
+        if _semantic_period_roles(_complete_source_header_text_v1(column)) == ["CURRENT_PERIOD"]
         for text in column.get("header_path_exact", []) for date in _surface_dates(text)}
     if summary_current_dates and summary_current_dates != {reporting.get("current_date")}:
         failures.append("PRINTED_SUMMARY_CURRENT_DATE_CONFLICTS_WITH_REPORT")
@@ -6944,16 +6951,18 @@ def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observ
         section = page["sections"][int(region["section_id"][1:]) - 1]
         table = _region_table(observation_pages if observation_pages is not None else pages, region)
         original_table = _region_table(pages, region)
-        metric_headers = {_normalized(" ".join(column.get("header_path_exact", []))) for column in original_table.get("columns", [])}
-        previous_axis = _two_period_axis(_region_table(pages, regions[region_index - 1])) if region_index else {}
-        if (selected_page_axis is not None and previous_axis.get("complete") is True
-                and len(metric_headers & {"menh gia", "chiet khau", "phu troi", "gia tri thuan"}) >= 2):
-            if reporting is None:
-                reporting = _selected_current_reporting_proof_v1(pages=pages, regions=regions,
-                    selected_page_axis=selected_page_axis, selected_page_provenance=selected_page_provenance)
-            tables.append(_raw_current_four_metric_table_v1(pages=pages, regions=regions, index=region_index,
-                units=units, compiled_specs=compiled_specs, reporting=reporting))
-            continue
+        if selected_page_axis is not None and region_index:
+            previous_axis = _two_period_axis(_region_table(pages, regions[region_index - 1]))
+            if previous_axis.get("complete") is True:
+                metric_headers = {_normalized(_complete_source_header_text_v1(column))
+                                  for column in original_table.get("columns", [])}
+                if len(metric_headers & {"menh gia", "chiet khau", "phu troi", "gia tri thuan"}) >= 2:
+                    if reporting is None:
+                        reporting = _selected_current_reporting_proof_v1(pages=pages, regions=regions,
+                            selected_page_axis=selected_page_axis, selected_page_provenance=selected_page_provenance)
+                    tables.append(_raw_current_four_metric_table_v1(pages=pages, regions=regions, index=region_index,
+                        units=units, compiled_specs=compiled_specs, reporting=reporting))
+                    continue
         classification = classify_gemini_json_multitable_hierarchical_table_v1(page, section, table, compiled_specs=compiled_specs)
         unit = units.get(_source_unit_scope_key_v1(region))
         owner = section.get("content_kind") == "FINANCIAL_NOTE" and _exact_owner_alias(section.get("title_exact"), compiled_specs=compiled_specs) is not None
