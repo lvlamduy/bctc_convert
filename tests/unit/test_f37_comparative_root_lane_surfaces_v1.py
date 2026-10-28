@@ -114,7 +114,29 @@ def test_current_lane_has_no_unknown_end_wildcard_either():
     root = _root("CURRENT_PERIOD", [YTD, "Năm nay"])
     assert root["end_date"] is None
     wrong_end = _detail("Kỳ ba tháng kết thúc ngày 30/06/2025", "CURRENT_PERIOD")
-    assert _family37_period_compatibility_v1(wrong_end, root) == (False, "EXACT_DATE_RANGE_ENDPOINT_CONFLICT")
+    assert _family37_period_compatibility_v1(wrong_end, root)[0] is False
+
+
+@pytest.mark.parametrize(("local", "titles"), [
+    (["Năm trước"], ["Quý I"]),          # Codex 0570: no year printed anywhere
+    (["Năm trước"], []),
+    ([YTD, "Năm trước"], ["BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG"]),
+])
+def test_comparative_lane_without_any_printed_year_withholds_permission(local, titles):
+    root = _family37_root_lane_scope_v1("COMPARATIVE_PERIOD", local, titles)
+    assert root["calendar_year"] is None and PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN in root["reasons"]
+    for text in ("Quý I năm 2023", "Quý I năm 2024", "Kỳ ba tháng kết thúc ngày 31/03/2023"):
+        detail = _detail(text, "COMPARATIVE_PERIOD")
+        assert _family37_period_compatibility_v1(detail, root) == (False, PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN)
+
+
+def test_matching_end_does_not_hide_a_contradicting_printed_start():
+    # Codex 0570: "three months" from 01/02 ends 31/03 like the root window but is not the year-start window.
+    root = _root("COMPARATIVE_PERIOD", [YTD, "Năm trước"])
+    detail = _detail("Kỳ ba tháng từ ngày 01/02/2024 đến ngày 31/03/2024", "COMPARATIVE_PERIOD")
+    assert _family37_period_compatibility_v1(detail, root) == (False, "PRINTED_DATES_CONTRADICT_STATED_WINDOW")
+    exact = _detail("Kỳ ba tháng từ ngày 01/01/2024 đến ngày 31/03/2024", "COMPARATIVE_PERIOD")
+    assert _family37_period_compatibility_v1(exact, root) == (True, "EXACT_COMPATIBLE")
 
 
 def test_title_words_are_kept_only_dates_and_years_are_dropped():

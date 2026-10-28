@@ -108,7 +108,19 @@ def test_ssb178_comparative_2024_is_ready_with_the_printed_values():
     "Kỳ ba tháng kết thúc ngày 30/06/2024",    # same year and month count, wrong end
     "Từ ngày 01/02/2024 đến ngày 30/04/2024",  # shifted three-month range
     "Quý II năm 2024",                          # same year, wrong quarter
+    "Kỳ ba tháng từ ngày 01/02/2024 đến ngày 31/03/2024",  # matching end, contradicting printed start
 ])
 def test_wrong_comparative_detail_window_withholds_permission(header):
     trial = _run(_with_comparative_detail_header(_pages(), header))
+    assert trial["status"] != READY
+
+
+def test_comparative_root_without_any_printed_year_withholds_permission():
+    # Codex 0570: the same KQKD with the title year removed ("Quý I"), detail still 31/03/2024.
+    pages = copy.deepcopy(_pages())
+    page = next(page for _version_id, physical_page, page in pages if physical_page == 6)
+    section = next(item for item in page["sections"] if item.get("statement_type") == "INCOME_STATEMENT")
+    assert section["title_exact"] == "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I năm 2025"
+    section["title_exact"] = "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG RIÊNG\nQuý I"
+    trial = _run(pages)
     assert trial["status"] != READY

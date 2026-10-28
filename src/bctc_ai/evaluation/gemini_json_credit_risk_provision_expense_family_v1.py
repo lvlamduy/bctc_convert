@@ -1743,23 +1743,26 @@ def _family37_root_lane_scope_v1(
         _family37_root_lane_surfaces_v1(semantic_role, local_surfaces, common_surfaces),
         semantic_role=semantic_role,
     )
-    if (
-        semantic_role != "COMPARATIVE_PERIOD"
-        or any(_FAMILY37_YEAR_TOKEN.search(item) for item in local_surfaces)
-        or not any(_FAMILY37_DATE_OR_YEAR_TOKEN.search(item) for item in common_surfaces)
-    ):
+    if semantic_role != "COMPARATIVE_PERIOD":
         return scope
     material = {key: value for key, value in scope.items() if key != "receipt_id"}
-    derivation = _family37_prior_year_derivation_v1(local_surfaces, common_surfaces, scope)
-    if derivation is None:
+    if not any(
+        _FAMILY37_YEAR_TOKEN.search(item) for item in local_surfaces
+    ) and any(_FAMILY37_DATE_OR_YEAR_TOKEN.search(item) for item in common_surfaces):
+        derivation = _family37_prior_year_derivation_v1(local_surfaces, common_surfaces, scope)
+        if derivation is not None:
+            material.update(
+                calendar_year=derivation["derived_calendar_year"],
+                start_date=derivation["derived_start_date"],
+                end_date=derivation["derived_end_date"],
+                derivation=derivation,
+            )
+    if material.get("calendar_year") is None:
+        # Every unresolved PRIMARY comparative year - stripped title year, or no year printed
+        # anywhere (Codex 0570: "Năm trước" under "Quý I") - withholds permission.
         material["reasons"] = [*material["reasons"], PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN]
-    else:
-        material.update(
-            calendar_year=derivation["derived_calendar_year"],
-            start_date=derivation["derived_start_date"],
-            end_date=derivation["derived_end_date"],
-            derivation=derivation,
-        )
+    elif "derivation" not in material:
+        return scope
     return {
         **material,
         "receipt_id": "gjcrpefav1:period-scope:" + canonical_json_sha256_v1(material),
@@ -2341,28 +2344,48 @@ def _family37_has_owned_calendar_q1_start_v1(scope: Mapping[str, Any], year: int
     return year_start_asserted
 
 
-def _family37_basis_window_end_v1(scope: Mapping[str, Any]) -> str | None:
-    """The end a parsed window states by its own basis when no end date is printed.
+def _family37_basis_window_bounds_v1(
+    scope: Mapping[str, Any],
+) -> tuple[str | None, str | None]:
+    """The (start, end) a parsed window states by its own basis, independent of printed dates.
 
     "Lũy kế từ đầu năm ... quý này" / "Quý I năm Y" printed as m elapsed months or quarter q of year Y
-    end on the last day of month m (or 3q) of Y. Used only to REJECT a detail whose printed end differs
-    (Codex 0568: no unknown-end wildcard); it never grants a binding on its own. FULL_YEAR is not
-    expanded (an off-calendar fiscal year must keep its own printed dates).
+    run from 1 January (or the quarter's first day) to the last day of month m (or 3q) of Y. Used only
+    to REJECT (Codex 0568/0570: no unknown-end wildcard, no matching end hiding a contradicting start);
+    it never grants a binding on its own. FULL_YEAR is not expanded (an off-calendar fiscal year must
+    keep its own printed dates).
     """
 
     year = scope.get("calendar_year")
-    if scope.get("end_date") is not None or type(year) is not int:
-        return scope.get("end_date")
+    if type(year) is not int:
+        return None, None
     basis = scope.get("basis")
     if basis == "ELAPSED_FROM_YEAR_START":
-        month = scope.get("elapsed_month_count")
+        first_month, month = 1, scope.get("elapsed_month_count")
     elif basis == "SINGLE_QUARTER" and scope.get("quarter_ordinal") in (1, 2, 3, 4):
-        month = scope["quarter_ordinal"] * 3
+        first_month, month = scope["quarter_ordinal"] * 3 - 2, scope["quarter_ordinal"] * 3
     else:
-        return None
+        return None, None
     if type(month) is not int or not 1 <= month <= 12:
-        return None
-    return date(year, month, monthrange(year, month)[1]).isoformat()
+        return None, None
+    return (
+        date(year, first_month, 1).isoformat(),
+        date(year, month, monthrange(year, month)[1]).isoformat(),
+    )
+
+
+def _family37_window_bounds_v1(
+    scope: Mapping[str, Any],
+) -> tuple[str | None, str | None] | None:
+    """Printed bounds completed by the basis-stated ones; None when a printed bound contradicts them."""
+
+    stated = _family37_basis_window_bounds_v1(scope)
+    bounds = []
+    for printed, implied in zip((scope.get("start_date"), scope.get("end_date")), stated, strict=True):
+        if printed is not None and implied is not None and printed != implied:
+            return None
+        bounds.append(printed if printed is not None else implied)
+    return bounds[0], bounds[1]
 
 
 def _family37_period_compatibility_v1(
@@ -2374,10 +2397,15 @@ def _family37_period_compatibility_v1(
         return False, PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN
     detail_basis = detail.get("basis")
     root_basis = root.get("basis")
-    detail_end = _family37_basis_window_end_v1(detail)
-    root_end = _family37_basis_window_end_v1(root)
-    known_end_conflict = (
-        detail_end is not None and root_end is not None and detail_end != root_end
+    detail_bounds_known = _family37_window_bounds_v1(detail)
+    root_bounds_known = _family37_window_bounds_v1(root)
+    if detail_bounds_known is None or root_bounds_known is None:
+        # e.g. "Kỳ ba tháng từ ngày 01/02/2024 đến ngày 31/03/2024": three months from the year
+        # start cannot begin on 1 February - a stated span with contradicting printed dates.
+        return False, "PRINTED_DATES_CONTRADICT_STATED_WINDOW"
+    known_end_conflict = any(
+        mine is not None and theirs is not None and mine != theirs
+        for mine, theirs in zip(detail_bounds_known, root_bounds_known, strict=True)
     )
     if detail_basis == "RELATIVE_REPORTING_PERIOD":
         invalid_parent_reasons = {
