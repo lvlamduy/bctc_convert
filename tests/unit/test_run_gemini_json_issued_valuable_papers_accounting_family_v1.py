@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import copy
 import importlib.util
+import inspect
 from pathlib import Path
 
 import pytest
@@ -259,7 +260,7 @@ def test_run_rejects_nonregistered_source_repair_before_reading_inputs(
         runner.run(args)
 
 
-def _patch_source_replay_fixture(monkeypatch: pytest.MonkeyPatch) -> tuple[dict, list[dict]]:
+def _patch_source_replay_fixture(monkeypatch: pytest.MonkeyPatch, *, expected_page_unit_claims=None) -> tuple[dict, list[dict]]:
     region = {
         "document_ordinal": 1,
         "page_json_version_id": "page-1",
@@ -282,20 +283,23 @@ def _patch_source_replay_fixture(monkeypatch: pytest.MonkeyPatch) -> tuple[dict,
         assert selected_ids == ["page-1"]
         return payload_provenance
 
-    def query_receipt(regions, *, selected_page_axis, selected_page_provenance):
+    def query_receipt(regions, *, selected_page_axis, selected_page_provenance, authenticated_page_unit_claims):
         assert regions == [region]
         assert selected_page_axis is indexed["selected_page_axis"]
         assert selected_page_provenance is payload_provenance
+        assert authenticated_page_unit_claims is expected_page_unit_claims
         return {"query": "receipt"}
 
     def evaluate(**kwargs):
         assert kwargs["selected_page_axis"] is indexed["selected_page_axis"]
         assert kwargs["selected_page_provenance"] is payload_provenance
+        assert kwargs["authenticated_page_unit_claims"] is expected_page_unit_claims
         return {"candidate": "evaluated"}
 
     def replay(candidate, **kwargs):
         assert kwargs["selected_page_axis"] is indexed["selected_page_axis"]
         assert kwargs["selected_page_provenance"] is payload_provenance
+        assert kwargs["authenticated_page_unit_claims"] is expected_page_unit_claims
         return candidate
 
     monkeypatch.setattr(runner.generic, "_json", lambda _path: {"repairs": []})
@@ -419,3 +423,138 @@ def test_source_replay_hook_ref_drift_and_exception_fail_closed(
             indexed_query_evidence=indexed,
             expected_trials=trials,
         )
+
+
+def test_current_cold_adapter_is_byte_bound_and_freshly_authenticates_on_each_call(monkeypatch, tmp_path):
+    from test_gemini_json_issued_valuable_papers_page_unit_scopes_v1 import _catalog
+    from test_gemini_json_issued_valuable_papers_source_total_lanes_v1 import _compiled
+
+    claims = []  # Protocol-only fake DB; no financial permission is mocked in.
+    indexed, trials = _patch_source_replay_fixture(monkeypatch, expected_page_unit_claims=claims)
+    monkeypatch.setattr(runner, "bind_gemini_json_issued_valuable_papers_source_repairs_v1", lambda *_args: _compiled())
+    loads, authentications = [], []
+
+    def load(root):
+        assert root == ROOT
+        loads.append(root)
+        return _catalog()
+
+    def authenticate(**kwargs):
+        assert kwargs["source_pdf_root"] == tmp_path
+        assert kwargs["selected_page_axis"] is indexed["selected_page_axis"]
+        assert kwargs["selected_page_provenance"][0]["fixture"] == "authenticated-metadata-io"
+        assert kwargs["page_json_by_document"] == {1: {"page-1": {}}}
+        authentications.append(kwargs)
+        return claims
+
+    monkeypatch.setattr(runner.page_units, "load_registered_page_unit_catalog_v1", load)
+    monkeypatch.setattr(runner.page_units, "authenticate_registered_page_unit_scopes_v1", authenticate)
+    callback = runner._fresh_page_unit_source_replay_adapter_v1(tmp_path)
+    captured = inspect.getclosurevars(callback).nonlocals
+    assert set(captured) == {"pdf_root"}
+    assert captured == {"pdf_root": tmp_path}
+    assert list(inspect.signature(callback).parameters) == ["source_page_database", "selected_page_json_version_ids",
+                                                           "compiled_specs", "indexed_query_evidence"]
+    reference = runner.generic._file_ref(RUNNER_PATH, root=ROOT)
+    for _ in range(2):
+        _run_checked_source_replay_adapter_v1(callback, adapter_ref=reference, implementation_refs=[reference],
+            source_page_database=tmp_path / "source.sqlite3", selected_page_json_version_ids=["page-1"],
+            compiled_specs={"topology": {}, "evaluation": {}, "schema": {}}, indexed_query_evidence=indexed,
+            expected_trials=trials)
+    assert len(loads) == 4  # Fresh descriptor frontier + fresh compiler load per call.
+    assert len(authentications) == 2
+
+    def unavailable(**_kwargs):
+        raise ValueError("fresh PDF source is unavailable")
+
+    monkeypatch.setattr(runner.page_units, "authenticate_registered_page_unit_scopes_v1", unavailable)
+    with pytest.raises(ValueError, match="fresh PDF source is unavailable"):
+        _run_checked_source_replay_adapter_v1(callback, adapter_ref=reference, implementation_refs=[reference],
+            source_page_database=tmp_path / "source.sqlite3", selected_page_json_version_ids=["page-1"],
+            compiled_specs={"topology": {}, "evaluation": {}, "schema": {}}, indexed_query_evidence=indexed,
+            expected_trials=trials)
+
+
+def test_audit_content_rejects_resealed_unit_registration_lineage_drift():
+    from test_gemini_json_issued_valuable_papers_page_unit_scopes_v1 import _catalog, _context
+
+    catalog, context = _context()
+    audit = _sealed_audit()
+    audit["axes"]["page_unit_scopes"] = context["authenticated_page_unit_claims"]
+    audit["spec_refs"] = {"page_unit_catalog": {"sha256": runner.PAGE_UNIT_CATALOG_SHA256},
+        "page_unit_review": catalog["review_ref"], "page_unit_renderer": catalog["renderer_ref"]}
+
+    def reseal():
+        audit["axis_counts"] = {k: len(v) for k, v in audit["axes"].items()}
+        audit["axis_sha256"] = {k: canonical_json_sha256_v1(v) for k, v in audit["axes"].items()}
+        audit["audit_id"] = "gjivpfeav1:audit:" + canonical_json_sha256_v1({
+            k: v for k, v in audit.items() if k != "audit_id"})
+
+    reseal()
+    assert runner.validate_issued_valuable_papers_experimental_audit_content_v1(audit) == audit
+    assert _catalog() == catalog
+    claim = audit["axes"]["page_unit_scopes"][0]
+    claim["selected_source"]["source_sha256"] = "0" * 64
+    claim["unit_claim_id"] = "gjivppuv1:claim:" + canonical_json_sha256_v1({
+        k: v for k, v in claim.items() if k != "unit_claim_id"})
+    reseal()
+    with pytest.raises(ValueError, match="registration/lineage"):
+        runner.validate_issued_valuable_papers_experimental_audit_content_v1(audit)
+
+
+@pytest.mark.parametrize("stage", ["after_ingest", "after_export"])
+def test_outer_run_cannot_return_success_after_late_page_unit_pdf_drift(tmp_path, monkeypatch, stage):
+    from contextlib import contextmanager
+
+    from test_f25_registered_page_unit_pdf_auth_v1 import _held_protocol
+
+    catalog, options, held_options = _held_protocol(tmp_path, monkeypatch)
+    hold = runner.page_units.hold_registered_page_unit_inputs_v1
+    monkeypatch.setattr(runner.page_units, "hold_registered_page_unit_inputs_v1", lambda **_kwargs: hold(**held_options))
+    selected = list(held_options["selected_page_json_version_ids"])
+    database = tmp_path / "never-opened.sqlite3"
+    monkeypatch.setattr(runner.generic, "_json", lambda _path: {})
+    monkeypatch.setattr(runner, "validate_current_corpus_manifest_index_v1", lambda _value: {"database_ref": {}})
+    monkeypatch.setattr(runner.generic, "_content_ref", lambda *_args: database)
+    monkeypatch.setattr(runner.generic, "_selected_page_axis", lambda **_kwargs: selected)
+    # Negative lifecycle protocol only: no financial candidate/validator is
+    # substituted with a passing result, and no database API is executed.
+    monkeypatch.setattr(runner, "compile_gemini_json_issued_valuable_papers_family_specs_v1",
+        lambda *_args, **_kwargs: {"topology": {"family_id": runner.FAMILY_ID},
+            "issued_valuable_papers_source_repairs": [], "issued_valuable_papers_page_unit_catalog": catalog})
+    monkeypatch.setattr(runner, "_authenticate_source_repairs_v1", lambda **_kwargs: [])
+
+    @contextmanager
+    def snapshot(*_args, **_kwargs):
+        yield argparse.Namespace(path=database)
+
+    monkeypatch.setattr(runner.generic, "_authenticated_sqlite_snapshot", snapshot)
+    reached = []
+    partial = tmp_path / "provisional-protocol-output.txt"
+
+    def body(_args, **_kwargs):
+        assert runner.page_units.authenticate_registered_page_unit_scopes_v1(**options)
+        reached.append("authenticated")
+        partial.write_text("provisional lifecycle protocol only", encoding="utf-8")
+        reached.append(stage)
+        path = options["source_pdf_root"] / "synthetic.pdf"
+        if stage == "after_ingest":
+            path.unlink()
+        else:
+            replacement = path.with_name("replacement.pdf")
+            replacement.write_bytes(path.read_bytes())
+            replacement.replace(path)
+        return {"disposition": "SUCCEEDED"}  # Must not escape the real outer guard.
+
+    monkeypatch.setattr(runner, "_run_with_authenticated_database", body)
+    config = ROOT / "config/families"
+    args = argparse.Namespace(run_kind="EXPERIMENTAL", historical_comparator_policy=runner.DISJOINT_EXPANSION,
+        source_repair_spec=runner.SOURCE_REPAIR_SPEC_PATH, corpus_index=tmp_path / "unused-index.json",
+        artifact_root=tmp_path, source_pdf_root=options["source_pdf_root"],
+        topology_spec=config / "tm-issued-valuable-papers-topology-v1.json",
+        evaluation_spec=config / "tm-issued-valuable-papers-evaluation-v1.json",
+        schema_binding_spec=config / "tm-issued-valuable-papers-schema-binding-v1.json")
+    with pytest.raises((ValueError, FileNotFoundError)):
+        runner.run(args)
+    assert reached == ["authenticated", stage]
+    assert partial.is_file() and not database.exists()

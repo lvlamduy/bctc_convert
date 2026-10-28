@@ -99,6 +99,11 @@ ADJACENT_SOURCE_SYNTAX_PROJECTION_RECEIPT_FORMAT_VERSION = (
 SOURCE_REPAIR_FORMAT_VERSION = (
     "GEMINI_JSON_ISSUED_VALUABLE_PAPERS_AUTHENTICATED_SOURCE_REPAIR_SPEC_V1"
 )
+PAGE_UNIT_CATALOG_PATH = "data/registered/gemini_json_issued_valuable_papers_page_unit_scopes_v1.json"
+PAGE_UNIT_CATALOG_SHA256 = "6a69a7e5c68a0808fa43055eee76d3c680f12ffd9c18151f8e635b0f0ee3381f"
+PAGE_UNIT_VISUAL_REVIEW_SHA256 = "64256a2eb7758ac7c1465ff8f16ec0f317a5f49433f3d86003a1f06c36a769a8"
+PAGE_UNIT_CLAIM_FORMAT = "GEMINI_JSON_ISSUED_VALUABLE_PAPERS_AUTHENTICATED_PAGE_UNIT_CLAIM_V1"
+PAGE_UNIT_SOURCE_KIND = "AUTHENTICATED_PRINTED_PAGE_UNIT_TRANSCRIPTION"
 ADAPTER_CLAIM_BOUNDARY = (
     "MANIFEST_SELECTED_GEMINI_JSON_ONLY_FAMILY25_EXACT_LOCAL_OR_INTERNAL_ROOT_"
     "ROW_OWNER_FACE_VALUE_WRAPPER_TENOR_CARRIER_AND_UNSHADOWED_PRIMARY_ROOT_"
@@ -325,30 +330,150 @@ def bind_gemini_json_issued_valuable_papers_source_repairs_v1(
     return compiled
 
 
+def bind_gemini_json_issued_valuable_papers_page_unit_scopes_v1(compiled_specs, catalog):
+    """Bind the independently source-pinned additive registration, not caller policy."""
+    if (type(catalog) is not dict
+            or canonical_json_sha256_v1(catalog) != PAGE_UNIT_CATALOG_SHA256
+            or catalog.get("family_id") != FAMILY_ID
+            or len(catalog.get("claims", [])) != 1 or catalog["claims"][0]["before_unit_exact"] is not None):
+        raise _error("issued-paper registered page-unit catalog drifted")
+    for registration in catalog["claims"]:
+        if registration["registration_id"] != "gjivppuv1:registration:" + canonical_json_sha256_v1({
+                k: v for k, v in registration.items() if k != "registration_id"}):
+            raise _error("issued-paper page-unit registration identity drifted")
+    compiled = canonical_clone_v1(compiled_specs)
+    if compiled.get("topology", {}).get("family_id") != FAMILY_ID:
+        raise _error("issued-paper page-unit catalog received another family")
+    compiled["issued_valuable_papers_page_unit_catalog"] = canonical_clone_v1(catalog)
+    return compiled
+
+
+def build_gemini_json_issued_valuable_papers_page_unit_claim_v1(registration, selected, provenance):
+    """Deterministic claim bytes; IO owners must freshly authenticate its PDF/render."""
+    material = {"format_version": PAGE_UNIT_CLAIM_FORMAT, "catalog_sha256": PAGE_UNIT_CATALOG_SHA256,
+        "registration_id": registration["registration_id"],
+        "target_locator": canonical_clone_v1(registration["locator"]),
+        "image_sha256": registration["render"]["image_sha256"],
+        "review_sha256": PAGE_UNIT_VISUAL_REVIEW_SHA256,
+        "render_receipt_sha256": registration["render"]["render_receipt_sha256"],
+        "renderer_identity": canonical_clone_v1(registration["render"]["renderer_identity"]),
+        "selected_source": {**canonical_clone_v1(selected), **canonical_clone_v1(provenance)}}
+    return {**material, "unit_claim_id": "gjivppuv1:claim:" + canonical_json_sha256_v1(material)}
+
+
+def validate_gemini_json_issued_valuable_papers_page_unit_claim_registration_v1(claim, catalog):
+    """Check static registration/lineage bindings, not fresh PDF or admission."""
+    if type(catalog) is not dict or canonical_json_sha256_v1(catalog) != PAGE_UNIT_CATALOG_SHA256:
+        raise _error("issued-paper registered page-unit catalog drifted")
+    if (type(claim) is not dict or type(claim.get("selected_source")) is not dict
+            or set(claim) != {"format_version", "catalog_sha256", "registration_id", "render_receipt_sha256",
+                              "image_sha256", "review_sha256", "target_locator", "renderer_identity",
+                              "selected_source", "unit_claim_id"}):
+        raise _error("issued-paper page-unit claim shape drifted")
+    registration = next((r for r in catalog["claims"] if r["registration_id"] == claim["registration_id"]), None)
+    source = claim["selected_source"]
+    axis_keys = {"document_id", "document_ordinal", "source_logical_name", "source_sha256",
+                 "page_json_version_id", "physical_page", "selected_page_ordinal"}
+    provenance_keys = {"document_id", "source_logical_name", "source_sha256", "page_json_version_id",
+                       "physical_page", "canonical_json_sha256", "page_id", "extraction_run_id"}
+    if (registration is None or set(source) != axis_keys | provenance_keys
+            or any(type(source.get(k)) is not int or source[k] <= 0
+                   for k in ("document_ordinal", "physical_page", "selected_page_ordinal"))
+            or any(type(source.get(k)) is not str for k in provenance_keys - {"physical_page"})
+            or any(source.get(k) != v for k, v in registration["source"].items() if k != "source_size_bytes")
+            or any(source.get(k) != registration["locator"][k] for k in ("page_json_version_id", "physical_page"))
+            or source["canonical_json_sha256"] != registration["original_payload"]["sha256"]
+            or _PAGE_VERSION.fullmatch(source["page_json_version_id"]) is None
+            or re.fullmatch(r"gfpstorev1:page:[0-9a-f]{64}", source["page_id"]) is None
+            or re.fullmatch(r"gfpstorev1:run:[0-9a-f]{64}", source["extraction_run_id"]) is None
+            or source["page_json_version_id"] != "gfpstorev1:json:" + canonical_json_sha256_v1({
+                k: source[k] for k in ("canonical_json_sha256", "extraction_run_id", "page_id")})):
+        raise _error("issued-paper page-unit registration/lineage binding drifted")
+    expected = build_gemini_json_issued_valuable_papers_page_unit_claim_v1(registration,
+        {k: source[k] for k in axis_keys}, {k: source[k] for k in provenance_keys})
+    if not same_typed_json_v1(claim, expected):
+        raise _error("issued-paper page-unit claim seal drifted")
+    return canonical_clone_v1(claim)
+
+
+def _registered_page_unit_claims_v1(*, pages, regions, compiled_specs, selected_page_axis,
+                                 selected_page_provenance, authenticated_page_unit_claims):
+    if not authenticated_page_unit_claims:
+        return []
+    if type(authenticated_page_unit_claims) not in {list, tuple}:
+        raise _error("issued-paper page-unit claim axis is invalid")
+    catalog = compiled_specs.get("issued_valuable_papers_page_unit_catalog")
+    bind_gemini_json_issued_valuable_papers_page_unit_scopes_v1(compiled_specs, catalog)
+    if selected_page_axis is None or selected_page_provenance is None:
+        raise _error("issued-paper page unit requires selected payload authority")
+    axis = _selected_document_page_axis_v1(regions, selected_page_axis)
+    provenance = _selected_payload_axis_v1(axis, selected_page_provenance)
+    registrations = {r["registration_id"]: r for r in catalog["claims"]}
+    selected = {r["page_json_version_id"]: r for r in axis}
+    payloads = {r["page_json_version_id"]: r for r in provenance}
+    own = []
+    for claim in authenticated_page_unit_claims:
+        validate_gemini_json_issued_valuable_papers_page_unit_claim_registration_v1(claim, catalog)
+        registration = registrations[claim["registration_id"]]
+        identity = claim.get("selected_source", {})
+        if identity.get("document_id") != axis[0]["document_id"]:
+            continue
+        locator = registration["locator"]
+        version = locator["page_json_version_id"]
+        if (version not in selected or version not in pages
+                or any(selected[version].get(k) != v for k, v in registration["source"].items()
+                       if k != "source_size_bytes")
+                or selected[version]["physical_page"] != locator["physical_page"]
+                or not same_typed_json_v1(claim, build_gemini_json_issued_valuable_papers_page_unit_claim_v1(
+                    registration, selected[version], payloads[version]))):
+            raise _error("issued-paper page-unit selected source binding drifted")
+        raw = canonical_json_bytes_v1(pages[version]) + b"\n"
+        original = registration["original_payload"]
+        if (len(raw) != original["size_bytes"] or sha256(raw).hexdigest() != original["sha256"]
+                or payloads[version]["canonical_json_sha256"] != original["sha256"]
+                or not any(all(r.get(k) == locator[k] for k in ("page_json_version_id", "physical_page", "section_id", "table_id"))
+                           for r in regions)):
+            raise _error("issued-paper page-unit original payload/target differs")
+        if any(r["unit_claim_id"] == claim["unit_claim_id"] for r in own):
+            raise _error("issued-paper page-unit claim is duplicate")
+        own.append(canonical_clone_v1(claim))
+    return own
+
+
 def compile_gemini_json_issued_valuable_papers_family_specs_v1(
     topology_spec: Any,
     evaluation_spec: Any,
     schema_binding_spec: Any,
     source_repair_spec: Any,
+    *, page_unit_scope_spec: Any = None,
 ) -> dict[str, Any]:
     """Compile the declarative Family-25 specs and bind source repairs."""
 
     compiled = compile_gemini_json_multitable_hierarchical_family_specs_v1(
         topology_spec, evaluation_spec, schema_binding_spec
     )
-    return bind_gemini_json_issued_valuable_papers_source_repairs_v1(
+    compiled = bind_gemini_json_issued_valuable_papers_source_repairs_v1(
         compiled, source_repair_spec
     )
+    return (bind_gemini_json_issued_valuable_papers_page_unit_scopes_v1(compiled, page_unit_scope_spec)
+            if page_unit_scope_spec is not None else compiled)
 
 
 def build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
     regions: Any, *, selected_page_axis: Sequence[Mapping[str, Any]] | None = None,
     selected_page_provenance: Sequence[Mapping[str, Any]] | None = None,
+    authenticated_page_unit_claims: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Bind optional document-owned selected context without adding regions."""
 
     shared = build_gemini_json_multitable_hierarchical_region_query_receipt_v1(regions)
+    if authenticated_page_unit_claims and (type(authenticated_page_unit_claims) not in {list, tuple}
+            or any(type(c) is not dict or type(c.get("selected_source")) is not dict
+                   or type(c.get("unit_claim_id")) is not str for c in authenticated_page_unit_claims)):
+        raise _error("issued-paper page-unit query claim axis is invalid")
     if selected_page_axis is None:
+        if authenticated_page_unit_claims:
+            raise _error("issued-paper page unit requires selected source axis")
         return shared
     axis = _selected_document_page_axis_v1(regions, selected_page_axis)
     material = {"format_version": "ISSUED_PAPERS_SELECTED_SOURCE_QUERY_RECEIPT_V1",
@@ -358,6 +483,12 @@ def build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
         "selected_document_page_count": len(axis), "selected_payload_provenance_sha256":
         canonical_json_sha256_v1(_selected_payload_axis_v1(axis, selected_page_provenance))
         if selected_page_provenance is not None else None}
+    if authenticated_page_unit_claims:
+        claims = [canonical_clone_v1(claim) for claim in authenticated_page_unit_claims
+                  if claim.get("selected_source", {}).get("document_id") == axis[0]["document_id"]]
+        if claims:
+            material["authenticated_page_unit_claim_ids"] = [c["unit_claim_id"] for c in claims]
+            material["authenticated_page_unit_claims_sha256"] = canonical_json_sha256_v1(claims)
     return {**material, "query_receipt_id": "gjivpsqv1:receipt:" + canonical_json_sha256_v1(material)}
 
 
@@ -3265,6 +3396,7 @@ def _numbered_source_unit_owner_surface_v1(value: Any, *, compiled_specs: Mappin
 def _original_source_unit_proofs_v1(
     *, pages: Mapping[str, dict[str, Any]], regions: Sequence[Mapping[str, Any]],
     compiled_specs: Mapping[str, Any],
+    authenticated_page_unit_claims=(),
 ) -> dict[tuple[Any, ...], dict[str, Any]]:
     """Read unit authority from original surfaces, never projected metadata."""
     by_key = {_source_unit_scope_key_v1(region): region for region in regions}
@@ -3303,6 +3435,21 @@ def _original_source_unit_proofs_v1(
         if (table.get("unit_exact") is not None or unit.get("evidence")
                 or unit.get("undeclared_evidence")):
             return None
+        # A reviewed page declaration owns ONLY its registered original target.
+        # The caller already authenticated the exact selected payload and claim.
+        catalog = compiled_specs.get("issued_valuable_papers_page_unit_catalog", {})
+        for claim in authenticated_page_unit_claims:
+            registration = next(r for r in catalog["claims"] if r["registration_id"] == claim["registration_id"])
+            locator = registration["locator"]
+            if (all(region.get(k) == v for k, v in locator.items())
+                    and not unit.get("conflicts")
+                    and all(region.get(k) == v for k, v in registration["source"].items() if k != "source_size_bytes")):
+                proof = {**material, "canonical_unit": registration["canonical_unit"],
+                    "source_kind": PAGE_UNIT_SOURCE_KIND, "authenticated_page_unit_claim": canonical_clone_v1(claim),
+                    "printed_unit_exact": registration["printed_unit_exact"],
+                    "source_values_used_as_unit_authority": False}
+                proved[key] = proof
+                return proof
         # Preserve only the already-declared, independently note-owned
         # numbered-subsection rule. Its printed outline supplies the scope;
         # period equality merely vetoes an inconsistent source graph.
@@ -3346,7 +3493,7 @@ def _original_source_unit_proofs_v1(
                         or not same_typed_json_v1(prior_axis.get("signatures"), current_axis.get("signatures"))):
                     continue
                 prior_proof = resolve(prior_key, visiting | {key})
-                if prior_proof is not None:
+                if prior_proof is not None and prior_proof.get("source_kind") != PAGE_UNIT_SOURCE_KIND:
                     numbered.append({**material, "canonical_unit": prior_proof["canonical_unit"],
                         "source_kind": "EXISTING_RAW_EXPLICIT_OWNER_NUMBERED_SUBSECTION",
                         "prior_source_proof": prior_proof,
@@ -3410,7 +3557,7 @@ def _original_source_unit_proofs_v1(
             if not repeated and not (blank_receiver and _two_period_axis(prior_table).get("complete") is True):
                 continue
             prior_proof = resolve(prior_key, visiting | {key})
-            if prior_proof is None:
+            if prior_proof is None or prior_proof.get("source_kind") == PAGE_UNIT_SOURCE_KIND:
                 continue
             candidates.append({**material, "canonical_unit": prior_proof["canonical_unit"],
                 "source_kind": "EXPLICIT_RAW_CONTINUATION_OF_SOURCE_OWNED_UNIT",
@@ -3434,11 +3581,13 @@ def _original_source_unit_proofs_v1(
 def _enforce_original_source_unit_ownership_v1(
     candidate: dict[str, Any], *, original_pages: Mapping[str, dict[str, Any]],
     regions: Sequence[Mapping[str, Any]], compiled_specs: Mapping[str, Any],
+    authenticated_page_unit_claims=(),
 ) -> dict[str, Any]:
     """Veto units donated through values, projected units or document consensus."""
     original_regions = {_source_unit_scope_key_v1(region): region for region in regions}
     proofs = _original_source_unit_proofs_v1(
         pages=original_pages, regions=regions, compiled_specs=compiled_specs,
+        authenticated_page_unit_claims=authenticated_page_unit_claims,
     )
     scopes: dict[tuple[Any, ...], dict[str, Any]] = {}
     failures = set()
@@ -6985,9 +7134,10 @@ def _raw_current_four_metric_table_v1(*, pages, regions, index, units, compiled_
     return item
 
 
-def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observation_pages=None, authenticated_repairs=(), selected_page_axis=None, selected_page_provenance=None):
+def _original_source_lane_inventory_v2(*, pages, regions, compiled_specs, observation_pages=None, authenticated_repairs=(), selected_page_axis=None, selected_page_provenance=None, authenticated_page_unit_claims=()):
     """Compute raw permission before any private period/unit/row projection."""
-    units = _original_source_unit_proofs_v1(pages=pages, regions=regions, compiled_specs=compiled_specs)
+    units = _original_source_unit_proofs_v1(pages=pages, regions=regions, compiled_specs=compiled_specs,
+                                           authenticated_page_unit_claims=authenticated_page_unit_claims)
     tables, direct, pending = [], [], []
     current_sentence = re.compile(r"chi tiet ky han cua (?:cac )?giay to co gia phat hanh(?: theo menh gia)? tai thoi diem cuoi (?:ky|nam|quy) nhu sau")
     reporting = None
@@ -7697,6 +7847,7 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
     query_receipt: Mapping[str, Any],
     selected_page_axis: Sequence[Mapping[str, Any]] | None = None,
     selected_page_provenance: Sequence[Mapping[str, Any]] | None = None,
+    authenticated_page_unit_claims: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Evaluate Family 25 after applying only authenticated dash observations."""
 
@@ -7705,17 +7856,25 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
     outer_query_receipt = query_receipt
     if selected_page_axis is not None and regions:
         expected_query = build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-            regions, selected_page_axis=selected_page_axis, selected_page_provenance=selected_page_provenance)
+            regions, selected_page_axis=selected_page_axis, selected_page_provenance=selected_page_provenance,
+            authenticated_page_unit_claims=authenticated_page_unit_claims)
         if not same_typed_json_v1(query_receipt, expected_query):
             raise _error("issued-paper selected-source query receipt drifted")
         query_receipt = expected_query["shared_query_receipt"]
     if type(regions) not in {list, tuple} or not regions:
+        if authenticated_page_unit_claims:
+            raise _error("issued-paper page-unit claim has no selected target")
         return evaluate_gemini_json_multitable_hierarchical_family_cluster_v1(
             regions=regions,
             page_json_by_version=page_json_by_version,
             compiled_specs=compiled_specs,
             query_receipt=query_receipt,
         )
+    page_unit_claims = _registered_page_unit_claims_v1(
+        pages=page_json_by_version, regions=regions, compiled_specs=compiled_specs,
+        selected_page_axis=selected_page_axis, selected_page_provenance=selected_page_provenance,
+        authenticated_page_unit_claims=authenticated_page_unit_claims,
+    )
     pages, repairs = _apply_authenticated_source_repairs(
         regions=regions,
         page_json_by_version=page_json_by_version,
@@ -7726,7 +7885,19 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
         observation_pages=pages, authenticated_repairs=repairs,
         selected_page_axis=selected_page_axis,
         selected_page_provenance=selected_page_provenance,
+        authenticated_page_unit_claims=page_unit_claims,
     )
+    if page_unit_claims:
+        # Expose only the independently reviewed unit to a PRIVATE evaluation
+        # clone. Original lane inventory and final guards keep original bytes.
+        unit_proofs = _original_source_unit_proofs_v1(
+            pages=page_json_by_version, regions=regions, compiled_specs=compiled_specs,
+            authenticated_page_unit_claims=page_unit_claims)
+        pages = canonical_clone_v1(pages)
+        for region in regions:
+            proof = unit_proofs.get(_source_unit_scope_key_v1(region))
+            if proof is not None and proof["source_kind"] == PAGE_UNIT_SOURCE_KIND:
+                _region_table(pages, region)["unit_exact"] = proof["printed_unit_exact"]
     primary_projection = None
     if len(regions) == 1:
         identified_projection = _primary_statement_exact_root_projection_v1(
@@ -7754,6 +7925,7 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
         unit_ownership_receipt = _enforce_original_source_unit_ownership_v1(
             candidate, original_pages=page_json_by_version, regions=regions,
             compiled_specs=compiled_specs,
+            authenticated_page_unit_claims=page_unit_claims,
         )
         candidate["closure_receipt"]["query_receipt"] = canonical_clone_v1(outer_query_receipt)
         return _reseal_candidate(
@@ -7915,6 +8087,7 @@ def evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(
     unit_ownership_receipt = _enforce_original_source_unit_ownership_v1(
         candidate, original_pages=page_json_by_version, regions=regions,
         compiled_specs=compiled_specs,
+        authenticated_page_unit_claims=page_unit_claims,
     )
     printed_total_receipt = _bind_printed_total_from_closed_net_frontier_v1(
         candidate, pages=pages, compiled_specs=compiled_specs
@@ -7961,6 +8134,7 @@ def validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
     query_receipt: Mapping[str, Any],
     selected_page_axis: Sequence[Mapping[str, Any]] | None = None,
     selected_page_provenance: Sequence[Mapping[str, Any]] | None = None,
+    authenticated_page_unit_claims: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Replay the complete adapter path from immutable selected JSON."""
 
@@ -7971,6 +8145,7 @@ def validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1(
         query_receipt=query_receipt,
         selected_page_axis=selected_page_axis,
         selected_page_provenance=selected_page_provenance,
+        authenticated_page_unit_claims=authenticated_page_unit_claims,
     )
     if type(value) is not dict or not same_typed_json_v1(value, expected):
         raise _error("issued-paper family adapter candidate replay drifted")

@@ -1,0 +1,244 @@
+{
+    "format_version":  "F25_VAB245_AUTHENTICATED_PAGE_UNIT_VISUAL_REVIEW_V1",
+    "status":  "VERIFIED_PRINTED_PAGE_UNIT_TRANSCRIPTION_GAP_NOT_REGISTERED_NOT_FINANCIAL_ACCEPTANCE",
+    "reviewer":  "/root/f25_lanes_resume",
+    "review_method":  "Existing authenticated full-page PNG viewed at original2475x3492 resolution; native receipt/hash/raw/source-text checks only",
+    "visual_review_performed":  true,
+    "physical_page":  38,
+    "printed_footer_page":  "35",
+    "source":  {
+                   "canonical_json_sha256":  "dd7164db205359417503c999366ffa0887974d1ca9ad1a961b6bb22651f8ac25",
+                   "canonical_json_size_bytes":  7864,
+                   "document_id":  "gfpstorev1:document:a31b3210b3037cc1a4d6b34474d2bc9bfb2574479fee7a6f9a637d66a6e00d61",
+                   "extraction_page_id":  "gfpstorev1:page:22544d24f24359699deb9810bc3613072b339288944e07abcd82648506a533a2",
+                   "extraction_run_id":  "gfpstorev1:run:e27470b990b752ea2092f5ceeda46b4f37345f0c2d5998fac6eb8935c9b12a2b",
+                   "image_sha256":  "cfbd5ad9f06b822a3140023e14041206115c8855f001aedb27814e7ecb07e3cb",
+                   "image_size_bytes":  1161995,
+                   "media_type":  "image/png",
+                   "page_id":  "gfpstorev1:page:22544d24f24359699deb9810bc3613072b339288944e07abcd82648506a533a2",
+                   "page_json_version_id":  "gfpstorev1:json:6a42eaa24496423635de7951465d3db8a7a7ef100821b4829bb4f6ac866ede98",
+                   "page_status":  "FINANCIAL_NOTE_CONTENT",
+                   "physical_page":  38,
+                   "pixel_height":  3492,
+                   "pixel_width":  2475,
+                   "render_dpi":  300,
+                   "response_id_sha256":  "481857978b00ffaa87a90d280a02d85a9b32c7a9070d5d30f99d86c364769737",
+                   "selected_model":  "google/gemini-3.7-flash",
+                   "selected_service_tier":  "flex",
+                   "source_logical_name":  "vietstock_bctc/VAB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                   "source_sha256":  "9949cf278a3f1cb10c98e8264d0dc975d5ed6705a1d8130dcee5104f1d08938c",
+                   "source_size_bytes":  12269931
+               },
+    "authenticated_qa_refs":  [
+                                  {
+                                      "path":  "D:\\bctc_bank\\restore-receipts\\F25_VAB245_AUTHENTICATED_PAGE_QA_20261029_V1\\rendered\\f25_d245_p038.png",
+                                      "sha256":  "cfbd5ad9f06b822a3140023e14041206115c8855f001aedb27814e7ecb07e3cb",
+                                      "size_bytes":  1161995
+                                  },
+                                  {
+                                      "path":  "D:\\bctc_bank\\restore-receipts\\F25_VAB245_AUTHENTICATED_PAGE_QA_20261029_V1\\rendered\\render-receipt.json",
+                                      "sha256":  "78541701bf5814bb4e6327f39914071c5d4e1794a1dff7073f7632df3e1a4551",
+                                      "size_bytes":  652
+                                  },
+                                  {
+                                      "path":  "D:\\bctc_bank\\restore-receipts\\F25_VAB245_AUTHENTICATED_PAGE_QA_20261029_V1\\rendered\\manifest.json",
+                                      "sha256":  "a53b996a5100df7875b97836de3c193c92e715882631586a753460d9fb043bfa",
+                                      "size_bytes":  6709
+                                  },
+                                  {
+                                      "path":  "D:\\bctc_bank\\restore-receipts\\F25_VAB245_AUTHENTICATED_PAGE_QA_20261029_V1\\exit-code.txt",
+                                      "sha256":  "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+                                      "size_bytes":  2
+                                  },
+                                  {
+                                      "path":  "D:\\bctc_bank\\restore-receipts\\F25_VAB245_AUTHENTICATED_PAGE_QA_20261029_V1\\helpers-before.sha256",
+                                      "sha256":  "6f9a69b964479d37f2feed28fdb130634e4950b2b73b0455dd609c48a19ed2d1",
+                                      "size_bytes":  459
+                                  },
+                                  {
+                                      "path":  "D:\\bctc_bank\\restore-receipts\\F25_VAB245_AUTHENTICATED_PAGE_QA_20261029_V1\\helpers-after.sha256",
+                                      "sha256":  "6f9a69b964479d37f2feed28fdb130634e4950b2b73b0455dd609c48a19ed2d1",
+                                      "size_bytes":  459
+                                  }
+                              ],
+    "qa_status":  "PASS_EXACT_SELECTED_IMAGE_QA_ONLY_NO_UNIT_PERMISSION",
+    "source_provenance_refs":  [
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/restore-receipts/F25_FOUR_PAIR_ORIGINAL_SOURCE_20261028_V1/source-receipt.json",
+                                       "sha256":  "ffc52c4b6e784ae4e7f80cf4b9fa0218ff4266dd3742f4fe25f6479f72c69118",
+                                       "size_bytes":  29223
+                                   },
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/restore-receipts/F25_FOUR_PAIR_ORIGINAL_SOURCE_20261028_V1/selected-source-membership.json",
+                                       "sha256":  "50d15be76d2676ddbbdfaf1f2ade04ed9f3b91267f0f2af8a10ea1f5e2335837",
+                                       "size_bytes":  20146
+                                   },
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/restore-receipts/F25_FOUR_PAIR_ORIGINAL_SOURCE_20261028_V1/doc-245-page-038-6a42eaa244964236.json",
+                                       "sha256":  "dd7164db205359417503c999366ffa0887974d1ca9ad1a961b6bb22651f8ac25",
+                                       "size_bytes":  7864
+                                   },
+                                   {
+                                       "path":  "/srv/bctc-restore/dev-shm/bctc-ai-27-bank-complete-corpus-v1.BSOm0s/artifacts/current-corpus-manifest-indexes/8d0a2a14b822d72a082ab3f0d5b416681fa998c964bb5462d5a067ea6706ce3a.json",
+                                       "sha256":  "969ff5f80732c39e4b7543ca1f5c1e5b5b827260f19981ed02945fe0c7379219",
+                                       "size_bytes":  422971
+                                   },
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/bctc-codex-f25-printed-header-grammar-v1/src/bctc_ai/__init__.py",
+                                       "sha256":  "64493c2a975d7a185a1c3e43d9f2d1c9bac3a3d01eda9caf33c2b3e38a33df74",
+                                       "size_bytes":  46
+                                   },
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/bctc-codex-f25-printed-header-grammar-v1/src/bctc_ai/evaluation/__init__.py",
+                                       "sha256":  "9ee38e4604e0f92f1bbd272c373763537bf815181be6846a566c5c707b82029b",
+                                       "size_bytes":  78
+                                   },
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/bctc-codex-f25-printed-header-grammar-v1/src/bctc_ai/evaluation/gemini_json_first_page_render_v1.py",
+                                       "sha256":  "db593f207cd5675de65cc67e660fcd673c60b37293751689ab3816342a92c791",
+                                       "size_bytes":  12306
+                                   },
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/restore-20260905T014806Z/source/vietstock_bctc/VAB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+                                       "sha256":  "9949cf278a3f1cb10c98e8264d0dc975d5ed6705a1d8130dcee5104f1d08938c",
+                                       "size_bytes":  12269931
+                                   },
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/restore-tools/runtime/f25-vab245-page-unit-qa-20261029-v1/plan.json",
+                                       "sha256":  "973a4a45507976582eb48a71a83d3f50597a28f897267d6de0922b3482605438",
+                                       "size_bytes":  7364
+                                   },
+                                   {
+                                       "path":  "/mnt/d/bctc_bank/restore-tools/runtime/f25-vab245-page-unit-qa-20261029-v1/render_one_page.py",
+                                       "sha256":  "217a6d149d852bd6db5f4237496df4d8c387c6ccae971778430e55c3637e8ef5",
+                                       "size_bytes":  6662
+                                   }
+                               ],
+    "source_input_beforeafter_equal":  true,
+    "qa_helpers_beforeafter_equal":  true,
+    "actual_exit_file":  "0LF",
+    "root_reported_unit_terminal":  {
+                                        "unit":  "codex-f25-vab245-page-unit-qa-20261029-v1",
+                                        "finished_local":  "2026-10-29 00:52:21 Asia/Bangkok",
+                                        "exit":  0,
+                                        "basis":  "Root reported journalverified; reviewer independently read retained exit0 and source/hash evidence, not systemctl"
+                                    },
+    "literal_visual_finding":  {
+                                   "document_header_exact":  "THUYẾT MINH BÁO CÁO TÀI CHÍNH RIÊNG (tiếp theo)",
+                                   "unit_declaration_exact":  "Đơn vị tính: VND",
+                                   "unit_token_exact":  "VND",
+                                   "location":  "Top page header, to the right of report heading, above a page-wide horizontal rule and above every financial table",
+                                   "printed_scope":  "GLOBAL_FOR_THIS_PHYSICAL_PAGE",
+                                   "requested_target_scope":  "Only selected F25 original table s1/t4 on this physical page",
+                                   "target_heading_exact":  "4.14 Phát hành giấy tờ có giá thông thường",
+                                   "target_heading_below_same_page_header":  true,
+                                   "no_intervening_unit_reset_visible":  true,
+                                   "no_target_local_unit_override_visible":  true,
+                                   "no_conflicting_unit_multiplier_visible_on_page":  true,
+                                   "page_continuation_heading_is_not_period_permission":  true,
+                                   "scope_basis":  "Direct whole-page typography/declaration and absence of local override; not money magnitudes, sums, another document or the raw t1 field",
+                                   "row_currency_labels_not_used_as_unit_grant":  true
+                               },
+    "original_json_finding":  {
+                                  "raw_ref":  {
+                                                  "path":  "D:\\bctc_bank\\restore-receipts\\F25_FOUR_PAIR_ORIGINAL_SOURCE_20261028_V1\\doc-245-page-038-6a42eaa244964236.json",
+                                                  "sha256":  "dd7164db205359417503c999366ffa0887974d1ca9ad1a961b6bb22651f8ac25",
+                                                  "size_bytes":  7864,
+                                                  "byte_domain":  "ORIGINAL_STORED_TWO_LF_BYTES"
+                                              },
+                                  "page_narratives":  [
+
+                                                      ],
+                                  "target_section_id":  "s1",
+                                  "target_table_id":  "t4",
+                                  "target_title_exact":  "4.14 Phát hành giấy tờ có giá thông thường",
+                                  "target_unit_exact":  null,
+                                  "target_headers_exact":  [
+                                                               "Số cuối năm",
+                                                               "Số đầu năm"
+                                                           ],
+                                  "target_rows":  [
+                                                      {
+                                                          "label_exact":  "Trái phiếu (*)",
+                                                          "row_kind":  "GROUP",
+                                                          "values_exact":  [
+                                                                               "1.458.830.500.000",
+                                                                               "1.000.000.000.000"
+                                                                           ]
+                                                      },
+                                                      {
+                                                          "label_exact":  "- Bằng VND",
+                                                          "row_kind":  "ITEM",
+                                                          "values_exact":  [
+                                                                               "1.458.830.500.000",
+                                                                               "1.000.000.000.000"
+                                                                           ]
+                                                      },
+                                                      {
+                                                          "label_exact":  "Chứng chỉ tiền gửi",
+                                                          "row_kind":  "GROUP",
+                                                          "values_exact":  [
+                                                                               "3.500.000.000.000",
+                                                                               "1.145.000.000.000"
+                                                                           ]
+                                                      },
+                                                      {
+                                                          "label_exact":  "- Bằng VND",
+                                                          "row_kind":  "ITEM",
+                                                          "values_exact":  [
+                                                                               "3.500.000.000.000",
+                                                                               "1.145.000.000.000"
+                                                                           ]
+                                                      },
+                                                      {
+                                                          "label_exact":  "Tổng cộng",
+                                                          "row_kind":  "TOTAL",
+                                                          "values_exact":  [
+                                                                               "4.958.830.500.000",
+                                                                               "2.145.000.000.000"
+                                                                           ]
+                                                      }
+                                                  ],
+                                  "target_literals_match_viewed_page":  true,
+                                  "target_row_count":  5,
+                                  "target_values_blank_or_dash_present":  false,
+                                  "unrelated_table_t1_unit_exact":  "Đơn vị tính: VND",
+                                  "unrelated_t1_is_not_donor":  true,
+                                  "omission":  "An explicit printed page-header unit is absent from the page/section JSON surfaces and is attached only to unrelated t1; t4 has no own original unit authority"
+                              },
+    "current_code_interpretation":  {
+                                        "head":  "65e58adcb7e944d286a64cd3914c2a407fefb074",
+                                        "module":  "src/bctc_ai/evaluation/gemini_json_issued_valuable_papers_family_v1.py",
+                                        "unit_proof_lines":  "3265-3304",
+                                        "unit_hold_lines":  "3486-3488",
+                                        "repair_schema_lines":  "155-207",
+                                        "original_lane_inventory_lines":  "6990,7724-7728",
+                                        "all_route_guard_lines":  "7754-7757,7915-7918",
+                                        "interpretation":  "Current HOLD is correct for the original JSON evidence. Existing dash-only repair grammar cannot establish this page unit. A separate typed authenticated transcription claim is required before any new permission."
+                                    },
+    "capabilities":  {
+                         "unit_literal_and_target_scope_visually_supported":  true,
+                         "unit_transcription_registered":  false,
+                         "financial_permission_granted":  false,
+                         "financial_candidate_admitted":  false,
+                         "source_values_or_units_changed":  false,
+                         "original_json_changed":  false,
+                         "production_code_changed":  false,
+                         "new_unit_policy_implemented":  false,
+                         "period_or_owner_permission_granted":  false,
+                         "family_terminal_claimed":  false,
+                         "other_documents_reviewed_or_promoted":  false
+                     },
+    "controls_retained":  [
+                              "VAB255 existing genuine ambiguity remains unchanged and was not re-audited here.",
+                              "TPB227 absent-period U/0 control remains unchanged.",
+                              "No t1 donation, VAB249 identity/filename inference, magnitude/sum/unit inference or report-wide inheritance.",
+                              "No new code, registered artifact, source JSON, DB row, source amount/blank/null/dash state or old receipt changed."
+                          ],
+    "limits":  [
+                   "This is one physical-page source review and a design proposal, not current financial acceptance or family/corpus closure.",
+                   "Existing raw t4 five-row numeric strings were visually checked, not recomputed. No actual candidate output/value-state artifact is asserted or created.",
+                   "No Python/import/AST/test/WSL runtime/SQL/PDF/render/provider/evaluator was executed by reviewer. Only already-created PNG/receipt/raw metadata were read.",
+                   "The old diagnostic PNG is superseded as visual authority only by this exact selected-image QA chain; old bytes remain preserved."
+               ]
+}

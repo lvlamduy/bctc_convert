@@ -21,6 +21,7 @@ if str(ROOT / "src") not in sys.path:
 if str(ROOT / "scripts/experiments") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts/experiments"))
 
+import f25_registered_page_unit_pdf_auth_v1 as page_units  # noqa: E402
 import run_gemini_json_multitable_hierarchical_accounting_family_v1 as generic  # noqa: E402
 
 from bctc_ai.evaluation.gemini_json_first_page_render_v1 import (  # noqa: E402
@@ -31,12 +32,16 @@ from bctc_ai.evaluation.gemini_json_flat_accounting_family_v1 import (  # noqa: 
     validate_gemini_json_flat_family_sweep_v1,
 )
 from bctc_ai.evaluation.gemini_json_issued_valuable_papers_family_v1 import (  # noqa: E402
+    PAGE_UNIT_CATALOG_PATH,
+    PAGE_UNIT_CATALOG_SHA256,
     adapt_gemini_json_issued_valuable_papers_indexed_query_evidence_v1,
+    bind_gemini_json_issued_valuable_papers_page_unit_scopes_v1,
     bind_gemini_json_issued_valuable_papers_source_repairs_v1,
     build_gemini_json_issued_valuable_papers_region_query_receipt_v1,
     compile_gemini_json_issued_valuable_papers_family_specs_v1,
     evaluate_gemini_json_issued_valuable_papers_family_cluster_v1,
     validate_gemini_json_issued_valuable_papers_family_candidate_replay_v1,
+    validate_gemini_json_issued_valuable_papers_page_unit_claim_registration_v1,
 )
 from bctc_ai.evaluation.gemini_json_multitable_hierarchical_family_v1 import (  # noqa: E402
     READY,
@@ -197,12 +202,13 @@ def _selected_payload_provenance_v1(database: Path, *, selected_ids: list[str]) 
     return rows
 
 
-def replay_issued_valuable_papers_trials_from_source_v1(
+def _replay_issued_valuable_papers_trials_from_source_v1(
     *,
     source_page_database: Path,
     selected_page_json_version_ids: tuple[str, ...],
     compiled_specs: dict[str, Any],
     indexed_query_evidence: dict[str, Any],
+    source_pdf_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Re-query, evaluate, and replay the complete Family-25 trial axis."""
 
@@ -211,6 +217,9 @@ def replay_issued_valuable_papers_trials_from_source_v1(
         compiled_specs,
         source_repairs,
     )
+    if source_pdf_root is not None:
+        family_compiled = bind_gemini_json_issued_valuable_papers_page_unit_scopes_v1(
+            family_compiled, page_units.load_registered_page_unit_catalog_v1(ROOT))
     raw_indexed = query_selected_multitable_hierarchical_family_regions_v1(
         source_page_database,
         selected_page_json_version_ids=selected_page_json_version_ids,
@@ -222,6 +231,10 @@ def replay_issued_valuable_papers_trials_from_source_v1(
         selected_page_axis=raw_indexed["selected_page_axis"],
     )
     payload_provenance = _selected_payload_provenance_v1(source_page_database, selected_ids=list(selected_page_json_version_ids))
+    page_unit_claims = (page_units.authenticate_registered_page_unit_scopes_v1(
+        source_pdf_root=source_pdf_root, selected_page_axis=raw_indexed["selected_page_axis"],
+        selected_page_provenance=payload_provenance, page_json_by_document=page_json_by_document,
+    ) if source_pdf_root is not None else None)
     adapted_indexed, _receipts = (
         adapt_gemini_json_issued_valuable_papers_indexed_query_evidence_v1(
             raw_indexed,
@@ -244,9 +257,11 @@ def replay_issued_valuable_papers_trials_from_source_v1(
             compiled_specs=family_compiled,
             selected_page_axis=adapted_indexed["selected_page_axis"],
             selected_page_provenance=payload_provenance,
+            authenticated_page_unit_claims=page_unit_claims,
             query_receipt=(
                 build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-                    regions, selected_page_axis=adapted_indexed["selected_page_axis"], selected_page_provenance=payload_provenance
+                    regions, selected_page_axis=adapted_indexed["selected_page_axis"], selected_page_provenance=payload_provenance,
+                    authenticated_page_unit_claims=page_unit_claims
                 )
             ),
         )
@@ -258,9 +273,11 @@ def replay_issued_valuable_papers_trials_from_source_v1(
                 compiled_specs=family_compiled,
                 selected_page_axis=adapted_indexed["selected_page_axis"],
                 selected_page_provenance=payload_provenance,
+                authenticated_page_unit_claims=page_unit_claims,
                 query_receipt=(
                     build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-                        regions, selected_page_axis=adapted_indexed["selected_page_axis"], selected_page_provenance=payload_provenance
+                        regions, selected_page_axis=adapted_indexed["selected_page_axis"], selected_page_provenance=payload_provenance,
+                        authenticated_page_unit_claims=page_unit_claims
                     )
                 ),
             )
@@ -269,6 +286,30 @@ def replay_issued_valuable_papers_trials_from_source_v1(
         indexed=adapted_indexed,
         candidates_by_ordinal=candidates_by_ordinal,
     )
+
+
+def replay_issued_valuable_papers_trials_from_source_v1(*, source_page_database,
+        selected_page_json_version_ids, compiled_specs, indexed_query_evidence):
+    """Legacy no-page-unit route; retain the public four-keyword adapter API."""
+    return _replay_issued_valuable_papers_trials_from_source_v1(
+        source_page_database=source_page_database, selected_page_json_version_ids=selected_page_json_version_ids,
+        compiled_specs=compiled_specs, indexed_query_evidence=indexed_query_evidence)
+
+
+def _fresh_page_unit_source_replay_adapter_v1(source_pdf_root):
+    """Capture location only; the catalog pin lives in authenticated loader bytes."""
+    pdf_root = Path(source_pdf_root).absolute()
+    if pdf_root.resolve(strict=True) != pdf_root:
+        raise _error("issued-paper cold PDF root must be canonical")
+
+    def replay(*, source_page_database, selected_page_json_version_ids, compiled_specs, indexed_query_evidence):
+        with page_units.hold_registered_page_unit_inputs_v1(source_pdf_root=pdf_root,
+                selected_page_json_version_ids=selected_page_json_version_ids):
+            return _replay_issued_valuable_papers_trials_from_source_v1(
+                source_page_database=source_page_database, selected_page_json_version_ids=selected_page_json_version_ids,
+                compiled_specs=compiled_specs, indexed_query_evidence=indexed_query_evidence, source_pdf_root=pdf_root)
+
+    return replay
 
 
 def _normalised_historical_oracle_rows(
@@ -465,6 +506,7 @@ def build_issued_valuable_papers_experimental_audit_v1(
     trials: list[dict[str, Any]],
     compiled_specs: dict[str, Any],
     spec_refs: dict[str, Any],
+    authenticated_page_unit_claims: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Seal semantic axes and the authenticated historical-corpus relation."""
 
@@ -473,6 +515,8 @@ def build_issued_valuable_papers_experimental_audit_v1(
     axes = _semantic_axes(trials=trials)
     axes["query_recoveries"] = canonical_clone_v1(query_recovery_receipts)
     axes["source_repairs"] = canonical_clone_v1(source_repair_authentication)
+    if authenticated_page_unit_claims is not None:
+        axes["page_unit_scopes"] = canonical_clone_v1(authenticated_page_unit_claims)
     comparator, policy_receipt = _historical_comparator(
         policy=historical_comparator_policy,
         index=index,
@@ -559,6 +603,8 @@ def validate_issued_valuable_papers_experimental_audit_content_v1(
         "source_repairs",
         "source_only_rows",
     }
+    if type(value) is dict and type(value.get("axes")) is dict and "page_unit_scopes" in value["axes"]:
+        axis_names.add("page_unit_scopes")
     if (
         type(value) is not dict
         or set(value) != fields
@@ -573,6 +619,17 @@ def validate_issued_valuable_papers_experimental_audit_content_v1(
     hashes = {name: canonical_json_sha256_v1(axis) for name, axis in value["axes"].items()}
     if value.get("axis_counts") != counts or value.get("axis_sha256") != hashes:
         raise _error("issued-paper experimental audit axis seal drifted")
+    if "page_unit_scopes" in axis_names:
+        catalog = page_units.load_registered_page_unit_catalog_v1(ROOT)
+        if (value["spec_refs"].get("page_unit_catalog", {}).get("sha256") != PAGE_UNIT_CATALOG_SHA256
+                or value["spec_refs"].get("page_unit_review", {}).get("sha256") != catalog["review_ref"]["sha256"]
+                or value["spec_refs"].get("page_unit_renderer", {}).get("sha256") != catalog["renderer_ref"]["sha256"]):
+            raise _error("issued-paper page-unit audit registration refs drifted")
+        for claim in value["axes"]["page_unit_scopes"]:
+            validate_gemini_json_issued_valuable_papers_page_unit_claim_registration_v1(claim, catalog)
+        ids = [c["unit_claim_id"] for c in value["axes"]["page_unit_scopes"]]
+        if len(ids) != len(set(ids)):
+            raise _error("issued-paper page-unit audit claim axis is duplicate")
     receipt = value.get("historical_comparator_policy_receipt")
     policy = receipt.get("policy") if type(receipt) is dict else None
     disposition = receipt.get("disposition") if type(receipt) is dict else None
@@ -660,6 +717,9 @@ def _run_with_authenticated_database(
         selected_page_axis=indexed["selected_page_axis"],
     )
     payload_provenance = _selected_payload_provenance_v1(database, selected_ids=selected_ids)
+    page_unit_claims = page_units.authenticate_registered_page_unit_scopes_v1(
+        source_pdf_root=args.source_pdf_root, selected_page_axis=indexed["selected_page_axis"],
+        selected_page_provenance=payload_provenance, page_json_by_document=page_json_by_document)
     indexed, query_recovery_receipts = (
         adapt_gemini_json_issued_valuable_papers_indexed_query_evidence_v1(
             indexed,
@@ -677,8 +737,10 @@ def _run_with_authenticated_database(
                 compiled_specs=compiled,
                 selected_page_axis=indexed["selected_page_axis"],
                 selected_page_provenance=payload_provenance,
+                authenticated_page_unit_claims=page_unit_claims,
                 query_receipt=build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-                    regions, selected_page_axis=indexed["selected_page_axis"], selected_page_provenance=payload_provenance
+                    regions, selected_page_axis=indexed["selected_page_axis"], selected_page_provenance=payload_provenance,
+                    authenticated_page_unit_claims=page_unit_claims
                 ),
             )
         )
@@ -705,9 +767,11 @@ def _run_with_authenticated_database(
                 compiled_specs=compiled,
                 selected_page_axis=indexed["selected_page_axis"],
                 selected_page_provenance=payload_provenance,
+                authenticated_page_unit_claims=page_unit_claims,
                 query_receipt=(
                     build_gemini_json_issued_valuable_papers_region_query_receipt_v1(
-                        regions, selected_page_axis=indexed["selected_page_axis"], selected_page_provenance=payload_provenance
+                        regions, selected_page_axis=indexed["selected_page_axis"], selected_page_provenance=payload_provenance,
+                        authenticated_page_unit_claims=page_unit_claims
                     )
                 ),
             )
@@ -730,6 +794,7 @@ def _run_with_authenticated_database(
         trials=trials,
         compiled_specs=compiled,
         spec_refs=spec_refs,
+        authenticated_page_unit_claims=page_unit_claims,
     )
     validate_issued_valuable_papers_experimental_audit_content_v1(audit)
     database_guard.validate()
@@ -743,7 +808,7 @@ def _run_with_authenticated_database(
     del (
         audit, indexed, page_json_by_document, candidates_by_ordinal, trials,
         replayed_candidates_by_ordinal, replayed_trials, query_recovery_receipts,
-        source_observation_contract, payload_provenance,
+        source_observation_contract, payload_provenance, page_unit_claims,
     )
     implementation_paths = (
         ROOT
@@ -761,6 +826,10 @@ def _run_with_authenticated_database(
         ROOT / "src/bctc_ai/storage/gemini_accounting_family_store_v1.py",
         ROOT / "src/bctc_ai/storage/gemini_financial_page_store_v1.py",
         SOURCE_REPAIR_SPEC_PATH,
+        ROOT / PAGE_UNIT_CATALOG_PATH,
+        ROOT / "scripts/experiments/f25_registered_page_unit_pdf_auth_v1.py",
+        ROOT / compiled["issued_valuable_papers_page_unit_catalog"]["review_ref"]["path"],
+        ROOT / compiled["issued_valuable_papers_page_unit_catalog"]["renderer_ref"]["path"],
     )
     implementation_refs = [
         generic._file_ref(path, root=ROOT) for path in implementation_paths
@@ -779,7 +848,7 @@ def _run_with_authenticated_database(
         source_page_database=database,
         selected_page_json_version_ids=selected_ids,
         corpus_artifact_root=args.artifact_root.resolve(),
-        source_replay_adapter=replay_issued_valuable_papers_trials_from_source_v1,
+        source_replay_adapter=_fresh_page_unit_source_replay_adapter_v1(args.source_pdf_root),
         source_replay_adapter_ref=runner_ref,
     )
     stored_sweep = load_gemini_accounting_family_sweep_v1(
@@ -827,7 +896,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     schema = generic._json(args.schema_binding_spec)
     source_repairs = generic._json(args.source_repair_spec)
     compiled = compile_gemini_json_issued_valuable_papers_family_specs_v1(
-        topology, evaluation, schema, source_repairs
+        topology, evaluation, schema, source_repairs,
+        page_unit_scope_spec=page_units.load_registered_page_unit_catalog_v1(ROOT),
     )
     if compiled["topology"]["family_id"] != FAMILY_ID:
         raise _error("runner received a non-issued-paper family")
@@ -836,26 +906,32 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "schema_binding": generic._file_ref(args.schema_binding_spec, root=ROOT),
         "source_repair": generic._file_ref(args.source_repair_spec, root=ROOT),
         "topology": generic._file_ref(args.topology_spec, root=ROOT),
+        "page_unit_catalog": generic._file_ref(ROOT / PAGE_UNIT_CATALOG_PATH, root=ROOT),
+        "page_unit_helper": generic._file_ref(ROOT / "scripts/experiments/f25_registered_page_unit_pdf_auth_v1.py", root=ROOT),
+        "page_unit_review": generic._file_ref(ROOT / compiled["issued_valuable_papers_page_unit_catalog"]["review_ref"]["path"], root=ROOT),
+        "page_unit_renderer": generic._file_ref(ROOT / compiled["issued_valuable_papers_page_unit_catalog"]["renderer_ref"]["path"], root=ROOT),
     }
     source_repair_authentication = _authenticate_source_repairs_v1(
         repairs=compiled["issued_valuable_papers_source_repairs"],
         source_pdf_root=args.source_pdf_root,
     )
-    with generic._authenticated_sqlite_snapshot(
-        database, reference=index["database_ref"]
-    ) as database_guard:
-        return _run_with_authenticated_database(
-            args,
-            index=index,
-            database_guard=database_guard,
-            selected_ids=selected_ids,
-            topology=topology,
-            evaluation=evaluation,
-            schema=schema,
-            compiled=compiled,
-            spec_refs=spec_refs,
-            source_repair_authentication=source_repair_authentication,
-        )
+    with page_units.hold_registered_page_unit_inputs_v1(source_pdf_root=args.source_pdf_root,
+            selected_page_json_version_ids=selected_ids):
+        with generic._authenticated_sqlite_snapshot(
+            database, reference=index["database_ref"]
+        ) as database_guard:
+            return _run_with_authenticated_database(
+                args,
+                index=index,
+                database_guard=database_guard,
+                selected_ids=selected_ids,
+                topology=topology,
+                evaluation=evaluation,
+                schema=schema,
+                compiled=compiled,
+                spec_refs=spec_refs,
+                source_repair_authentication=source_repair_authentication,
+            )
 
 
 def _parser() -> argparse.ArgumentParser:
