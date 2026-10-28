@@ -189,18 +189,21 @@ def test_late_fixed_authority_byte_drift_still_rejects_without_period_cache(rela
     base = _base(records, compiled)
     actual_core = family._recover_income_tax_query_cluster_from_prepared_v1
     actual_read = Path.read_bytes
-    changed = False
+    core_completed = False
+    changed_reads = 0
     target = ROOT / relative
 
     def real_core_then_change_epoch(**kwargs):
-        nonlocal changed
+        nonlocal core_completed
         result = actual_core(**kwargs)
-        changed = True
+        core_completed = True
         return result
 
     def changed_source_read(path):
+        nonlocal changed_reads
         raw = actual_read(path)
-        if changed and path == target:
+        if core_completed and path == target:
+            changed_reads += 1
             return raw + b"\n"
         return raw
 
@@ -208,10 +211,20 @@ def test_late_fixed_authority_byte_drift_still_rejects_without_period_cache(rela
     # Negative I/O injection only: actual reads and every financial validator run.
     # No source file is written and no passing financial result is fabricated.
     monkeypatch.setattr(Path, "read_bytes", changed_source_read)
+    expected_error = (
+        r"^income-tax caption envelope declaration is invalid$"
+        if relative == family.DEFAULT_SOURCE_REPAIR_SPEC_PATH
+        else r"authority.*(bytes|pin)"
+    )
     with family.income_tax_document_period_evaluation_scope_v1(enabled=False):
-        with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error, match="authority.*(bytes|pin)"):
+        with pytest.raises(family.GeminiJsonIncomeTaxFamilyV1Error, match=expected_error) as caught:
             family.recover_gemini_json_income_tax_query_cluster_v1(
                 page_records=records, base_cluster=base, compiled_specs=compiled)
+    assert core_completed, "Actual recovery core must finish before the late authority check"
+    assert changed_reads > 0, "The late target authority read must actually receive changed bytes"
+    if relative == family.DEFAULT_SOURCE_REPAIR_SPEC_PATH:
+        assert type(caught.value.__cause__) is family.GeminiJsonIncomeTaxFamilyV1Error
+        assert str(caught.value.__cause__) == "income-tax caption authority actual bytes differ from independent pin"
 
 
 @pytest.mark.parametrize("name", [
