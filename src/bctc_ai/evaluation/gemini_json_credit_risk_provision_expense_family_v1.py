@@ -891,7 +891,9 @@ def _primary_root_observations(
                     ]
                     period_scope_by_lane[semantic_role] = (
                         _family37_period_scope_v1(
-                            [*local_surfaces, *common_period_surfaces],
+                            _family37_root_lane_surfaces_v1(
+                                semantic_role, local_surfaces, common_period_surfaces
+                            ),
                             semantic_role=semantic_role,
                         )
                     )
@@ -1697,6 +1699,34 @@ def _surface_years(value: Any) -> list[int]:
         if year not in result:
             result.append(year)
     return result
+
+
+_FAMILY37_YEAR_TOKEN = re.compile(r"(?<!\d)20\d{2}(?!\d)")
+_FAMILY37_DATE_OR_YEAR_TOKEN = re.compile(
+    r"(?<!\d)\d{1,2}[./-]\d{1,2}[./-]20\d{2}(?!\d)"
+    r"|ng[aà]y\s+\d{1,2}\s+th[aá]ng\s+\d{1,2}\s+n[aă]m\s+20\d{2}"
+    r"|(?<!\d)20\d{2}(?!\d)",
+    flags=re.IGNORECASE,
+)
+
+
+def _family37_root_lane_surfaces_v1(
+    semantic_role: str, local_surfaces: list[str], common_surfaces: list[str]
+) -> list[str]:
+    """Period surfaces of one PRIMARY root lane: its column header first, then the titles.
+
+    A statement/section title dates the CURRENT period. Its words still describe the
+    comparative duration, but its dates and years are not the comparative column's, so
+    they are dropped for a comparative column whose own header prints no year.
+    """
+
+    if semantic_role == "COMPARATIVE_PERIOD" and not any(
+        _FAMILY37_YEAR_TOKEN.search(item) for item in local_surfaces
+    ):
+        common_surfaces = [
+            _FAMILY37_DATE_OR_YEAR_TOKEN.sub(" ", item) for item in common_surfaces
+        ]
+    return [*local_surfaces, *common_surfaces]
 
 
 def _family37_source_dates_v1(surface: str) -> list[date] | None:
