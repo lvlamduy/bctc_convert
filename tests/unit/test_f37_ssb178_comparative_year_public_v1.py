@@ -54,6 +54,10 @@ def _pages():
 
 
 def _run(pages):
+    return _run_full(pages)["trial"]
+
+
+def _run_full(pages):
     compiled = _compiled()
     document = {"document_id": "gfpstorev1:document:" + "5" * 64, "document_ordinal": 1,
                 "source_logical_name": PROVENANCE["source_logical_name"], "source_sha256": PROVENANCE["source_sha256"]}
@@ -76,7 +80,8 @@ def _run(pages):
     validate_gemini_json_credit_risk_provision_expense_replay_v1(
         base_indexed_query_evidence=base, indexed_query_evidence=indexed, trials=trials,
         page_json_by_document=page_json_by_document, compiled_specs=compiled)
-    return trials[0]
+    return {"base": base, "compiled": compiled, "indexed": indexed, "page_json_by_document": page_json_by_document,
+            "trial": trials[0], "trials": trials}
 
 
 def _with_comparative_detail_header(pages, header):
@@ -277,3 +282,35 @@ def test_unresolved_primary_carrier_is_retained_in_the_source_authority():
     assert [item["locator"]["physical_page"] for item in carriers] == [6]
     assert carriers[0]["lane_axis_reasons"] == ["DURATION_PERIOD_PRECISION_DIFFERS_ACROSS_MONEY_COLUMNS"]
     assert "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED" in plan["blocking_reasons"]
+
+
+def _carrier_axis(indexed):
+    (disposition,) = indexed["candidate_dispositions"]
+    receipt = disposition["cluster"]["credit_risk_provision_expense_query_adapter_receipt"]
+    return receipt["source_authority_receipt"]["unresolved_primary_root_carrier_axis"]
+
+
+def test_unresolved_carrier_survives_indexed_trial_and_fresh_replay_with_no_mapping():
+    # Codex 0589: indexed -> trial -> fresh replay keep the explicit reason, the exact PRIMARY locator and lane
+    # rejection reasons, and admit no mapping.
+    pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+    run = _run_full(pages)  # _run_full already replays indexed evidence and trials from the page JSON
+    assert run["trial"]["status"] != READY
+    assert "F37_PRIMARY_ROOT_CARRIER_PERIOD_UNRESOLVED" in run["trial"]["reasons"]
+    assert run["trial"]["mappings"] == []
+    (carrier,) = _carrier_axis(run["indexed"])
+    assert carrier["locator"]["physical_page"] == 6
+    assert carrier["locator"]["page_json_version_id"] == PROVENANCE["pages"][0]["page_json_version_id"]
+    assert carrier["lane_axis_reasons"] == ["DURATION_PERIOD_PRECISION_DIFFERS_ACROSS_MONEY_COLUMNS"]
+    assert carrier["lane_axis_complete"] is False
+
+
+def test_tampered_carrier_axis_fails_the_fresh_replay():
+    pages = _with_primary_lane_labels(_pages(), current="Năm nay", comparative="Năm 2024")
+    run = _run_full(pages)
+    tampered = copy.deepcopy(run["indexed"])
+    _carrier_axis(tampered).clear()
+    with pytest.raises(Exception, match="replay drifted"):
+        validate_gemini_json_credit_risk_provision_expense_replay_v1(
+            base_indexed_query_evidence=run["base"], indexed_query_evidence=tampered, trials=run["trials"],
+            page_json_by_document=run["page_json_by_document"], compiled_specs=run["compiled"])
