@@ -198,14 +198,25 @@ def test_caller_resealed_catalog_cannot_approve_a_different_unit_or_source():
 @pytest.mark.parametrize("scope", ["same_page_other_table", "next_page_continuation"])
 def test_registered_page_target_never_donates_to_another_null_unit_scope(scope):
     _catalog_value, context = _context()
-    target = context["regions"][0]
+    target = copy.deepcopy(context["regions"][0])
     page = context["page_json_by_version"][target["page_json_version_id"]]
+    raw_before = canonical_json_bytes_v1(page) + b"\n"
     other = copy.deepcopy(target)
     if scope == "same_page_other_table":
+        # The original t3 is a customer-deposit breakdown, not a second F25
+        # financial fragment. Keep the real t4 query for public evaluation.
+        candidate = family.evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(**context)
+        assert candidate["status"] == READY and len(candidate["mappings"]) == 3
+        assert {m["report_norm_id"] for m in candidate["mappings"]} == {1100, 1101, 1109}
+        _checked(candidate, context)
         other["table_id"] = "t3"
         assert page["sections"][0]["tables"][2]["unit_exact"] is None
+        classification = family.classify_gemini_json_multitable_hierarchical_table_v1(
+            page, page["sections"][0], page["sections"][0]["tables"][2],
+            compiled_specs=context["compiled_specs"])
+        other["component_roles"] = family._classification_component_roles_v1(classification)
         target["fragment_ordinal"] = 2
-        context["regions"] = [other, target]
+        proof_regions = [other, target]  # Unit resolver boundary only.
     else:
         # Separate coherent synthetic continuation page. Original physical38,
         # including sender marker NONE, is unchanged; no original39 is claimed.
@@ -225,15 +236,30 @@ def test_registered_page_target_never_donates_to_another_null_unit_scope(scope):
         context["selected_page_axis"].append(selected)
         context["selected_page_provenance"].append(payload)
         context["regions"].append(other)
+        proof_regions = context["regions"]
     _query(context)
     claims = family._registered_page_unit_claims_v1(pages=context["page_json_by_version"],
-        regions=context["regions"], compiled_specs=context["compiled_specs"],
+        regions=proof_regions, compiled_specs=context["compiled_specs"],
         selected_page_axis=context["selected_page_axis"], selected_page_provenance=context["selected_page_provenance"],
         authenticated_page_unit_claims=context["authenticated_page_unit_claims"])
     proofs = family._original_source_unit_proofs_v1(pages=context["page_json_by_version"],
-        regions=context["regions"], compiled_specs=context["compiled_specs"], authenticated_page_unit_claims=claims)
+        regions=proof_regions, compiled_specs=context["compiled_specs"], authenticated_page_unit_claims=claims)
     assert proofs[family._source_unit_scope_key_v1(target)]["source_kind"] == family.PAGE_UNIT_SOURCE_KIND
     assert family._source_unit_scope_key_v1(other) not in proofs
+    if scope == "same_page_other_table":
+        forged = copy.deepcopy(context)
+        claim = forged["authenticated_page_unit_claims"][0]
+        claim["target_locator"]["table_id"] = "t3"
+        claim["unit_claim_id"] = "gjivppuv1:claim:" + canonical_json_sha256_v1({
+            k: v for k, v in claim.items() if k != "unit_claim_id"})
+        _query(forged)
+        with pytest.raises(family.GeminiJsonIssuedValuablePapersFamilyV1Error,
+                           match=r"^issued-paper page-unit claim seal drifted$"):
+            family.evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(**forged)
+        assert context["regions"][0]["table_id"] == "t4"
+        assert canonical_json_bytes_v1(page) + b"\n" == raw_before
+        assert raw_before == (FIXTURE / "original-page-038.json").read_bytes()
+        return
     candidate = family.evaluate_gemini_json_issued_valuable_papers_family_cluster_v1(**context)
     assert candidate["status"] == UNRESOLVED and candidate["mappings"] == []
     _checked(candidate, context)
