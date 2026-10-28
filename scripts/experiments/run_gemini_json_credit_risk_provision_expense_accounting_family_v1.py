@@ -1035,6 +1035,9 @@ def _run_with_database(
         page_json_by_document=pages,
         compiled_specs=compiled,
     )
+    # Release each first-pass object after its last use: the store's ingest below runs a
+    # complete independent source replay, which must not coexist with this pass's copies.
+    del base_indexed
     sweep = build_gemini_json_flat_family_sweep_v1(
         corpus_manifest_index_id=index["corpus_manifest_index_id"],
         topology_spec=topology,
@@ -1053,6 +1056,7 @@ def _run_with_database(
             compiled_specs=compiled,
         )
     )
+    del pages
     source_repair_authentication = _authenticate_source_repairs_v1(
         compiled_specs=compiled,
         index=index,
@@ -1104,6 +1108,7 @@ def _run_with_database(
         spec_refs=spec_refs,
     )
     validate_experimental_audit_content_v1(audit)
+    del indexed, trials
     database_guard.validate()
     generic._write_once(args.output, sweep)
     audit_output = args.output.with_suffix(".audit.json")
