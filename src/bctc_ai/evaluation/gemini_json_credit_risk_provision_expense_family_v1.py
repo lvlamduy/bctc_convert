@@ -2622,6 +2622,145 @@ def _project_family37_same_section_period_layouts_v1(
                     "semantic_role": binding["semantic_role"],
                 }
                 receipts.append(receipt)
+        receipts.extend(
+            _family37_split_section_period_layouts_v1(
+                page_json_version_id,
+                page,
+                source_page_sha256=source_page_sha256,
+                roots=roots,
+                compiled_specs=compiled_specs,
+            )
+        )
+    return receipts
+
+
+def _family37_split_movement_narrative_v1(value: Any) -> bool:
+    """An owner narrative introducing one movement table ("Biến động ... dự phòng ... như sau:")."""
+
+    if type(value) is not str or not value.strip():
+        return False
+    surface = _normalized(value)
+    return (
+        ("bien dong" in surface or "thay doi" in surface)
+        and "du phong" in surface
+        and surface.rstrip(" :").endswith("nhu sau")
+    )
+
+
+def _family37_split_section_period_layouts_v1(
+    page_json_version_id: str,
+    page: dict[str, Any],
+    *,
+    source_page_sha256: str,
+    roots: Sequence[Mapping[str, Any]],
+    compiled_specs: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Bind two movement tables split over a titled owner section and the untitled section after it.
+
+    Each of the two sections holds exactly one owner narrative and exactly one customer movement table
+    (EIB parent annual 2025 p32). The narratives must each match exactly one exact root lane, in the order
+    current then comparative, with one complete shared unit - the same checks as the same-section layout.
+    """
+
+    sections = page.get("sections")
+    if type(sections) is not list:
+        return []
+    receipts = []
+    for owner_index in range(len(sections) - 1):
+        owner, follower = sections[owner_index], sections[owner_index + 1]
+        if type(owner) is not dict or type(follower) is not dict:
+            continue
+        if not (type(owner.get("title_exact")) is str and owner["title_exact"].strip()):
+            continue
+        if follower.get("title_exact") not in (None, ""):
+            continue
+        members = []
+        for section in (owner, follower):
+            narratives = section.get("narratives_exact")
+            tables = section.get("tables")
+            if (
+                type(narratives) is not list
+                or type(tables) is not list
+                or len(narratives) != 1
+                or len(tables) != 1
+                or not _family37_split_movement_narrative_v1(narratives[0])
+                or type(tables[0]) is not dict
+                or _family37_layout_member_kind_v1(owner, tables[0]) != "CUSTOMER_MOVEMENT"
+                or any("_family37_period_layout_binding_v1" in table for table in tables)
+            ):
+                members = []
+                break
+            unit_axis = _unit_axis(tables[0], compiled_specs=compiled_specs, document_unit_context=None)
+            if unit_axis.get("complete") is not True:
+                members = []
+                break
+            members.append((section, narratives[0], tables[0], unit_axis))
+        if len(members) != 2 or len({item[3].get("canonical_unit") for item in members}) != 1:
+            continue
+        matching_roots = [
+            root
+            for root in roots
+            if root.get("canonical_unit") == members[0][3].get("canonical_unit")
+            and _family37_root_has_exact_period_axis_v1(root)
+        ]
+        if len(matching_roots) != 1:
+            continue
+        root = matching_roots[0]
+        bindings = []
+        for offset, (_section, narrative_exact, _table, unit_axis) in enumerate(members):
+            lane_matches = []
+            for semantic_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
+                detail_scope = _family37_layout_period_scope_v1(narrative_exact, semantic_role=semantic_role)
+                root_scope = root["period_scope_by_lane"][semantic_role]
+                allowed, compatibility = _family37_period_compatibility_v1(detail_scope, root_scope)
+                if allowed and _family37_supported_duration_scope_v1(detail_scope):
+                    lane_matches.append((semantic_role, detail_scope, root_scope, compatibility))
+            if len(lane_matches) != 1:
+                bindings = []
+                break
+            semantic_role, detail_scope, root_scope, compatibility = lane_matches[0]
+            bindings.append(
+                {
+                    "compatibility": compatibility,
+                    "detail_scope": detail_scope,
+                    "narrative_exact": narrative_exact,
+                    "narrative_ordinal": 1,
+                    "root_locator": canonical_clone_v1(root["locator"]),
+                    "root_scope": canonical_clone_v1(root_scope),
+                    "semantic_role": semantic_role,
+                    "section_ordinal": owner_index + 1 + offset,
+                    "table_ordinal": 1,
+                    "unit_axis": canonical_clone_v1(unit_axis),
+                }
+            )
+        if [item["semantic_role"] for item in bindings] != ["CURRENT_PERIOD", "COMPARATIVE_PERIOD"]:
+            continue
+        for binding, (_section, _narrative, table, _unit) in zip(bindings, members, strict=True):
+            material = {
+                **binding,
+                "format_version": ADAPTER_FORMAT_VERSION,
+                "locator": {
+                    "page_json_version_id": page_json_version_id,
+                    "section_id": f"s{binding['section_ordinal']}",
+                    "table_id": "t1",
+                },
+                "rule": (
+                    "SAME_AUTHENTICATED_PAGE_TITLED_OWNER_AND_UNTITLED_NEXT_SECTION_SINGLE_"
+                    "NARRATIVE_TABLE_TYPE_COMPATIBLE_EXACT_ROOT_PERIOD_BINDING"
+                ),
+                "source_page_canonical_json_sha256_before_projection": source_page_sha256,
+            }
+            receipt = {
+                **material,
+                "receipt_id": "gjcrpefav1:period-layout-projection:" + canonical_json_sha256_v1(material),
+            }
+            table["_family37_period_layout_binding_v1"] = {
+                "detail_scope": canonical_clone_v1(binding["detail_scope"]),
+                "narrative_exact": binding["narrative_exact"],
+                "receipt_id": receipt["receipt_id"],
+                "semantic_role": binding["semantic_role"],
+            }
+            receipts.append(receipt)
     return receipts
 
 

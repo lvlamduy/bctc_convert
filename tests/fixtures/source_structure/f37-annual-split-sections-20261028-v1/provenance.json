@@ -1,0 +1,17 @@
+{
+  "purpose": "F37 P1 real-shape control: annual transposed movement tables in two consecutive sections, each owned by one narrative 'cho nam tai chinh ket thuc ngay 31 thang 12 nam Y'",
+  "source_logical_name": "vietstock_bctc/EIB/2025/BCTC Công ty mẹ Kiểm toán năm 2025.pdf",
+  "source_sha256": "ca19e5491e9cb188dfb702cec49b22739205e50514f42f1f8345ee98383d110f",
+  "page_store_sha256": "ea9dec62fc52705298fc590f64302c031bc298fb204297afb3186b10585e18d7",
+  "corpus_document_ordinal": 39,
+  "pages": [
+    {"file": "eib039_p011.json", "physical_page": 11, "page_json_version_id": "gfpstorev1:json:322deeacfc83a14acd644caf8337eaf5b2f5b4edcb52c01a8e67c9356a336b84",
+     "canonical_json_sha256": "8e481aefb55e80fee4bc79889775de9903e99afbeb8edd226536ffd7b6b76d3b",
+     "published_in": "restore-receipts/F39_T6_POLICY_PACKETS_20_39_20261028_V1/eib-doc039/page-011-322deeacfc83a14a.json"},
+    {"file": "eib039_p032.json", "physical_page": 32, "page_json_version_id": "gfpstorev1:json:2096bdae03cebf488eb8f5c4d9880da7b446fc1801cede8afaffcdc32c35e248",
+     "canonical_json_sha256": "4fcb0e1172aa3fff9d87912401fc4732b9ff0491a7ec41fe9591270c398c50bf",
+     "published_in": "restore-receipts/F37_RAW_FIXTURES_20261028_V1/EIB_p032_2096bdae03cebf48.json"}
+  ],
+  "pdf_render_review": "restore-receipts/F37_RESIDUAL_RENDERS_20261028_V1 (f37_d039_p032.png) and F39 policy packet render-p011.png",
+  "bytes_modified": false
+}
