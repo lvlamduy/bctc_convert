@@ -94,7 +94,11 @@ def _p032(pages):
     return next(page for _version_id, physical_page, page in pages if physical_page == 32)
 
 
-@pytest.mark.parametrize("mutation", ["same_year_twice", "narrative_without_year", "swap_years", "extra_narrative"])
+@pytest.mark.parametrize("mutation", [
+    "same_year_twice", "narrative_without_year", "swap_years", "extra_narrative",
+    "owner_narrative_names_credit_institutions", "follower_narrative_names_purchased_debt",
+    "owner_table_title_names_securities", "follower_table_title_names_tctd",
+])
 def test_split_sections_fail_closed_on_altered_owner_narratives(mutation):
     pages = copy.deepcopy(_pages())
     page = _p032(pages)
@@ -105,7 +109,17 @@ def test_split_sections_fail_closed_on_altered_owner_narratives(mutation):
         second["narratives_exact"] = [second["narratives_exact"][0].replace(" năm 2024", "")]
     elif mutation == "swap_years":
         first["narratives_exact"], second["narratives_exact"] = second["narratives_exact"], first["narratives_exact"]
-    else:
+    elif mutation == "extra_narrative":
         second["narratives_exact"] = [*second["narratives_exact"], "Thuyết minh bổ sung cho năm 2023 như sau:"]
+    elif mutation == "owner_narrative_names_credit_institutions":
+        first["narratives_exact"] = [first["narratives_exact"][0].replace(
+            "cho vay khách hàng", "cho vay khách hàng và các tổ chức tín dụng khác")]
+    elif mutation == "follower_narrative_names_purchased_debt":
+        second["narratives_exact"] = [second["narratives_exact"][0].replace(
+            "cho vay khách hàng", "cho vay khách hàng và các khoản mua nợ")]
+    elif mutation == "owner_table_title_names_securities":
+        first["tables"][0]["title_exact"] = "Dự phòng rủi ro chứng khoán đầu tư"
+    else:
+        second["tables"][0]["title_exact"] = "Dự phòng rủi ro cho vay các TCTD khác"
     trial = _run(pages)
     assert trial["status"] == UNRESOLVED

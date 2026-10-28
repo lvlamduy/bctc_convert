@@ -889,13 +889,8 @@ def _primary_root_observations(
                         )
                         if type(item) is str and item.strip()
                     ]
-                    period_scope_by_lane[semantic_role] = (
-                        _family37_period_scope_v1(
-                            _family37_root_lane_surfaces_v1(
-                                semantic_role, local_surfaces, common_period_surfaces
-                            ),
-                            semantic_role=semantic_role,
-                        )
+                    period_scope_by_lane[semantic_role] = _family37_root_lane_scope_v1(
+                        semantic_role, local_surfaces, common_period_surfaces
                     )
                 rows = table.get("rows")
                 for row_ordinal, row in enumerate(
@@ -1723,51 +1718,121 @@ def _family37_root_lane_surfaces_v1(
     if semantic_role == "COMPARATIVE_PERIOD" and not any(
         _FAMILY37_YEAR_TOKEN.search(item) for item in local_surfaces
     ):
-        prior_fiscal_year = _family37_annual_prior_year_surface_v1(
-            local_surfaces, common_surfaces
-        )
         common_surfaces = [
             _FAMILY37_DATE_OR_YEAR_TOKEN.sub(" ", item) for item in common_surfaces
         ]
-        if prior_fiscal_year is not None:
-            common_surfaces.append(prior_fiscal_year)
     return [*local_surfaces, *common_surfaces]
 
 
-_FAMILY37_ANNUAL_FISCAL_YEAR_END = re.compile(
-    r"\bcho nam (?:tai chinh )?ket thuc (?:vao )?ngay 31 thang 12 nam (20\d{2})\b"
-    r"|\bcho nam (?:tai chinh )?ket thuc (?:vao )?ngay 31 12 (20\d{2})\b"
-)
+PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN = "PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN"
 
 
-def _family37_annual_prior_year_surface_v1(
-    local_surfaces: list[str], common_surfaces: list[str]
-) -> str | None:
-    """D2: an annual PRIMARY column printed exactly "Năm trước" is the fiscal year before the title's.
+def _family37_root_lane_scope_v1(
+    semantic_role: str, local_surfaces: list[str], common_surfaces: list[str]
+) -> dict[str, Any]:
+    """Period scope of one PRIMARY root lane.
 
-    Only when the statement's own title prints one fiscal-year end "cho năm (tài chính) kết thúc
-    ngày 31 tháng 12 năm Y" (or 31/12/Y) and the column's own header is exactly "Năm trước" -
-    never for interim titles, "Kỳ trước", or anything read from amounts. The returned surface is
-    marked as derived and names the label and the title year it was derived from.
+    When the title's year/date was dropped from a comparative lane, the comparative year is
+    either derived from the lane's own printed label (see the derivation below, recorded as a
+    separate structured field next to the exact title and column labels) or the lane carries
+    PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN and grants no period permission. An unknown year is
+    never treated as compatible with a detail's printed year.
+    """
+
+    scope = _family37_period_scope_v1(
+        _family37_root_lane_surfaces_v1(semantic_role, local_surfaces, common_surfaces),
+        semantic_role=semantic_role,
+    )
+    if (
+        semantic_role != "COMPARATIVE_PERIOD"
+        or any(_FAMILY37_YEAR_TOKEN.search(item) for item in local_surfaces)
+        or not any(_FAMILY37_DATE_OR_YEAR_TOKEN.search(item) for item in common_surfaces)
+    ):
+        return scope
+    material = {key: value for key, value in scope.items() if key != "receipt_id"}
+    derivation = _family37_prior_year_derivation_v1(local_surfaces, common_surfaces, scope)
+    if derivation is None:
+        material["reasons"] = [*material["reasons"], PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN]
+    else:
+        material.update(
+            calendar_year=derivation["derived_calendar_year"],
+            start_date=derivation["derived_start_date"],
+            end_date=derivation["derived_end_date"],
+            derivation=derivation,
+        )
+    return {
+        **material,
+        "receipt_id": "gjcrpefav1:period-scope:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _family37_prior_year_date_v1(value: str | None) -> str | None | bool:
+    if value is None:
+        return None
+    parsed = date.fromisoformat(value)
+    if parsed.month == 2 and parsed.day == 29:
+        return False
+    return parsed.replace(year=parsed.year - 1).isoformat()
+
+
+def _family37_prior_year_derivation_v1(
+    local_surfaces: list[str],
+    common_surfaces: list[str],
+    stripped_scope: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """The comparative lane of a PRIMARY statement printed "Năm trước" is the title's window one year earlier.
+
+    Circular 49 B02/B03 statements print "Năm nay | Năm trước" for the same window in the
+    current and the prior year (SSB Q1: "Lũy kế từ đầu năm đến cuối quý này / Năm trước" under
+    "Quý I năm 2025"; EIB annual: "Năm trước" under "Cho năm tài chính kết thúc ngày 31 tháng 12
+    năm 2025"). Required: the lane's last header label is exactly "Năm trước" and no other header
+    label names a period role; the titles print exactly one year Y; the title window parsed with
+    and without its year/date is the same duration. Never for "Kỳ trước", never from amounts or
+    a detail's dates. A 29 February endpoint is not shifted (no derivation).
     """
 
     labels = [_normalized(item).strip(" :") for item in local_surfaces]
-    if labels != ["nam truoc"]:
-        return None
-    years = {
-        int(match.group(1) or match.group(2))
-        for item in common_surfaces
-        for match in _FAMILY37_ANNUAL_FISCAL_YEAR_END.finditer(_normalized(item))
-    }
-    if len(years) != 1 or any(
-        len(_FAMILY37_YEAR_TOKEN.findall(item)) > 1 for item in common_surfaces
+    if not labels or labels[-1] != "nam truoc" or any(
+        marker in label
+        for label in labels[:-1]
+        for marker in ("nam nay", "nam truoc", "ky nay", "ky truoc")
     ):
         return None
-    prior = years.pop() - 1
-    return (
-        f"[F37 D2 derived: Năm trước under an annual title] "
-        f"cho năm kết thúc ngày 31/12/{prior}"
+    title_years = {
+        int(year) for item in common_surfaces for year in _FAMILY37_YEAR_TOKEN.findall(item)
+    }
+    if len(title_years) != 1:
+        return None
+    title_scope = _family37_period_scope_v1(
+        [*local_surfaces, *common_surfaces], semantic_role="COMPARATIVE_PERIOD"
     )
+    (title_year,) = title_years
+    if (
+        title_scope.get("calendar_year") != title_year
+        or title_scope.get("reasons")
+        or stripped_scope.get("reasons")
+        or any(
+            title_scope.get(key) != stripped_scope.get(key)
+            for key in ("basis", "elapsed_month_count", "quarter_ordinal")
+        )
+        or not _family37_supported_duration_scope_v1(
+            {**title_scope, "calendar_year": title_year - 1}
+        )
+    ):
+        return None
+    start = _family37_prior_year_date_v1(title_scope.get("start_date"))
+    end = _family37_prior_year_date_v1(title_scope.get("end_date"))
+    if start is False or end is False:
+        return None
+    return {
+        "column_header_path_exact": list(local_surfaces),
+        "derived_calendar_year": title_year - 1,
+        "derived_end_date": end,
+        "derived_start_date": start,
+        "rule": "PRIMARY_COMPARATIVE_NAM_TRUOC_IS_THE_TITLE_WINDOW_ONE_YEAR_EARLIER_V1",
+        "title_calendar_year": title_year,
+        "title_surfaces_exact": list(common_surfaces),
+    }
 
 
 def _family37_source_dates_v1(surface: str) -> list[date] | None:
@@ -2281,6 +2346,8 @@ def _family37_period_compatibility_v1(
 ) -> tuple[bool, str]:
     if detail.get("semantic_role") != root.get("semantic_role"):
         return False, "SEMANTIC_LANE_CONFLICT"
+    if PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN in (root.get("reasons") or []):
+        return False, PRIMARY_COMPARATIVE_YEAR_NOT_PROVEN
     detail_basis = detail.get("basis")
     root_basis = root.get("basis")
     known_end_conflict = (
@@ -2688,6 +2755,30 @@ def _family37_split_movement_narrative_v1(value: Any) -> bool:
     )
 
 
+_FAMILY37_COMPETING_OWNER_MARKERS = (
+    "mua no",
+    "chung khoan",
+    "trai phieu",
+    "tctd",
+    "to chuc tin dung",
+)
+
+
+def _family37_split_competing_owner_surface_v1(surfaces: Sequence[Any]) -> bool:
+    """Any one original owner/table/narrative surface naming a competing provision owner.
+
+    Checked per surface and independently of _movement_owner_kind's order (which returns
+    CUSTOMER before it looks for credit institutions), so "cho vay khách hàng" in one surface
+    never hides "tổ chức tín dụng", "mua nợ" or securities in another or in the same one.
+    """
+
+    return any(
+        type(surface) is str
+        and any(marker in _normalized(surface) for marker in _FAMILY37_COMPETING_OWNER_MARKERS)
+        for surface in surfaces
+    )
+
+
 def _family37_split_customer_movement_v1(owner: Mapping[str, Any], table: Any) -> bool:
     """D1 (split-section path only): the owner section titled for customer-loan provisions.
 
@@ -2763,6 +2854,14 @@ def _family37_split_section_period_layouts_v1(
                 break
             members.append((section, narratives[0], tables[0], unit_axis))
         if len(members) != 2 or len({item[3].get("canonical_unit") for item in members}) != 1:
+            continue
+        if _family37_split_competing_owner_surface_v1(
+            [
+                owner.get("title_exact"),
+                *(item[2].get("title_exact") for item in members),
+                *(item[1] for item in members),
+            ]
+        ):
             continue
         matching_roots = [
             root

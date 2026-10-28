@@ -1,0 +1,16 @@
+{
+  "purpose": "F37 comparative-year control: SSB parent Q1 2025 KQKD 'Lũy kế từ đầu năm đến cuối quý này / Năm trước' under 'Quý I năm 2025', note 6 movements 'Kỳ ba tháng kết thúc ngày 31/03/2025 | 31/03/2024'",
+  "source_logical_name": "vietstock_bctc/SSB/2025/BCTC Công ty mẹ quý 1 năm 2025.pdf",
+  "source_sha256": "edb42067f98964f5a04c25e5422d862dfc200769f000fb576befa6f71c3b8393",
+  "corpus_document_ordinal": 178,
+  "pages": [
+    {"file": "ssb178_p006.json", "physical_page": 6, "page_json_version_id": "gfpstorev1:json:8500cbffd9b6187a8867d5458d3972e50457f578af40441ec54c49859daf7cc1",
+     "canonical_json_sha256": "53ffdc0c0dc7b3cd92dea0420604b6dc98922768ced2129c2b670348f2016eb5",
+     "published_in": "restore-receipts/F37_RAW_FIXTURES_20261028_V1/SSB_p006_8500cbffd9b6187a.json"},
+    {"file": "ssb178_p032.json", "physical_page": 32, "page_json_version_id": "gfpstorev1:json:101490ad647b8c72f42d6244e709c2241d85ffae6b044f3edafeef8a1f3452bc",
+     "canonical_json_sha256": "c479947caf5830fe9db10a0bf8aea028fbbc49867bae0b7bd37331b1a92948a0",
+     "published_in": "restore-receipts/F37_RAW_FIXTURES_20261028_V1/SSB_p032_101490ad647b8c72.json"}
+  ],
+  "pdf_render_review": "msg 0554 (doc 178 PDF check) and restore-receipts/F37_WHOLE_CORPUS_DELTA_6996DAE0_VS_7B9756C6_20261028_V1",
+  "bytes_modified": false
+}
