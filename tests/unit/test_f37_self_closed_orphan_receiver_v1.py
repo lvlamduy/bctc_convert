@@ -186,8 +186,8 @@ def test_receiver_previous_page_lookup_is_scoped_to_its_own_document():
 def test_conflicting_self_closed_prior_year_movement_does_not_authorize_customer_child_roles():
     pages = copy.deepcopy(_pages())
     charge = _page(pages, 41)["sections"][0]["tables"][0]["rows"][1]
-    assert charge["values_exact"][2] == "398.827"
-    charge["values_exact"][2] = "398.828"
+    assert charge["values_exact"] == ["323.849", "74.978", "398.827"]
+    charge["values_exact"][0], charge["values_exact"][2] = "323.850", "398.828"  # still adds up; only differs from p40
     trial = _run(pages)
     assert trial["status"] == READY, trial["reasons"]
     assert _values(trial)["CUSTOMER_PROVISION"] == ["476.404", "398.827"]  # the direct p40 cells only
