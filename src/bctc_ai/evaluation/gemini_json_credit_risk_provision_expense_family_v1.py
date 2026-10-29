@@ -4711,6 +4711,76 @@ def _family37_movement_continuation_rejections_v1(
     return rejected
 
 
+_FAMILY37_ANNUAL_OPENING_DATE_RE = re.compile(r"ngay 0?1 thang 0?1 nam (\d{4})")
+_FAMILY37_ANNUAL_CLOSING_DATE_RE = re.compile(r"ngay 31 thang 12 nam (\d{4})")
+
+
+def _family37_self_closed_orphan_receiver_v1(
+    *,
+    rejection: Mapping[str, Any],
+    pages: Mapping[str, dict[str, Any]],
+    selected_page_axis: Sequence[Mapping[str, Any]],
+) -> bool:
+    """A FROM-marked movement receiver with no sender that prints its own year boundaries is not an open population.
+
+    Real shape: COMMON204 doc 17 (BVB separate audited 2025) p41 "11.1 ... (tiếp theo)" prints the complete prior-year
+    customer movement "Ngày 1 tháng 1 năm 2024" -> "Ngày 31 tháng 12 năm 2024" under the continued note heading, and
+    no table on p40 is marked as continuing. Only the normal-route veto uses this; every other marker, a selected
+    previous page with any next marker, a missing previous page or an unbounded table stays rejected.
+    """
+
+    if rejection.get("continuation") != "CONTINUES_FROM_PREVIOUS_PAGE":
+        return False
+    region = rejection.get("region")
+    if type(region) is not dict:
+        return False
+    previous_axis = [
+        axis
+        for axis in selected_page_axis
+        if axis.get("selected_page_ordinal") == region["selected_page_ordinal"] - 1
+    ]
+    if (
+        len(previous_axis) != 1
+        or previous_axis[0].get("physical_page") != region["physical_page"] - 1
+    ):
+        return False
+    previous_page = pages.get(previous_axis[0].get("page_json_version_id"))
+    if type(previous_page) is not dict or type(previous_page.get("sections")) is not list:
+        return False
+    for section in previous_page["sections"]:
+        tables = section.get("tables") if type(section) is dict else None
+        if type(tables) is not list:
+            return False
+        if any(
+            type(table) is not dict
+            or table.get("continuation") not in {"NONE", "CONTINUES_FROM_PREVIOUS_PAGE"}
+            for table in tables
+        ):
+            return False
+    _section, table = _source_table(
+        pages[region["page_json_version_id"]],
+        section_id=region["section_id"],
+        table_id=region["table_id"],
+    )
+    rows = table.get("rows")
+    if type(rows) is not list or len(rows) < 3 or any(type(row) is not dict for row in rows):
+        return False
+    opening, closing = rows[0], rows[-1]
+    if opening.get("row_kind") != "ITEM" or closing.get("row_kind") != "TOTAL":
+        return False
+    opening_match = _FAMILY37_ANNUAL_OPENING_DATE_RE.fullmatch(
+        _normalized(opening.get("label_exact") or "")
+    )
+    closing_match = _FAMILY37_ANNUAL_CLOSING_DATE_RE.fullmatch(
+        _normalized(closing.get("label_exact") or "")
+    )
+    return bool(
+        opening_match
+        and closing_match
+        and opening_match.group(1) == closing_match.group(1)
+    )
+
+
 def _family37_all_observations_conflict_with_root_period_v1(
     *,
     observations: Sequence[Mapping[str, Any]],
@@ -4990,8 +5060,17 @@ def _family37_document_plan_v1(
     accepted_regions: list[dict[str, Any]] = []
     split_receipts: list[dict[str, Any]] = []
 
+    # A self-closed orphan receiver is a complete table, so it cannot veto one closed normal population; every
+    # other route still sees all movement rejections (COMMON204 doc 17).
+    open_movement_rejections = [
+        item
+        for item in movement_rejections
+        if not _family37_self_closed_orphan_receiver_v1(
+            rejection=item, pages=pages, selected_page_axis=selected_page_axis
+        )
+    ]
     if len(normal_groups) == 1:
-        if positive_normal_rejections or movement_rejections:
+        if positive_normal_rejections or open_movement_rejections:
             blocking_reasons.append("F37_SOURCE_CONTINUATION_NOT_CLOSED")
         else:
             accepted_regions, split_receipts = _split_duplicate_other_rows(

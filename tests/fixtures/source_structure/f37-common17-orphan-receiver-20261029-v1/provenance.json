@@ -1,0 +1,36 @@
+{
+  "description": "Exact stored canonical page JSON bytes of COMMON204 doc 17 (BVB separate audited 2025) physical pages 11/39/40/41, exported unchanged from COMMON DB a14904a4 by the root ORIGINAL-JSON reader (controlfix, actual PASS 2026-10-29).",
+  "packet": {
+    "path": "restore-receipts/CODEX_SAFE_PAUSE_HANDOFF_20261029_V42/source-packet/PACKET.json",
+    "sha256": "97164a946fbb531319f679851492768a802902ed719af72f748a3e7a7b14bd1d"
+  },
+  "source_logical_name": "vietstock_bctc/BVB/2025/VI_BaoCaoTaiChinhRiengLe_Kiemtoan_2025.pdf",
+  "source_sha256": "28143226be9db63d79b7d2019e5a4230169a65bf6fac061d3bdb451f5b7b611e",
+  "source_size_bytes": 11842474,
+  "pages": [
+    {
+      "file": "bvb017_p011.json",
+      "physical_page": 11,
+      "page_json_version_id": "gfpstorev1:json:b44351b1ab7d53d76aecb0e9956709cc7557d329c4e76ac5418e2d5ec2ed32de",
+      "canonical_json_sha256": "e63f5caec969aa18fa995d491adc1b0ffa9d38779e9b07e7d72beff7362efc47"
+    },
+    {
+      "file": "bvb017_p039.json",
+      "physical_page": 39,
+      "page_json_version_id": "gfpstorev1:json:0bf56aa575b22d379862a2e278f2ea613175337df1f1ee145bef71b3fe641c21",
+      "canonical_json_sha256": "db7c17e317385d5fe4636c0a3f245677fae15f8e8bd5d7c69b5663205f6e5a32"
+    },
+    {
+      "file": "bvb017_p040.json",
+      "physical_page": 40,
+      "page_json_version_id": "gfpstorev1:json:4bb1190f2c2852d58544d44b41f175f808b5de82c8ede7111edb95fbae2a0e77",
+      "canonical_json_sha256": "a0bb72e638ea4f6185c12c896f95ef7295b440efb83bdb43b212a854246d9392"
+    },
+    {
+      "file": "bvb017_p041.json",
+      "physical_page": 41,
+      "page_json_version_id": "gfpstorev1:json:8b2f2dc63210366f3b4da5aa1035bc267bcefad59fb9eb8acc1443438d0a3ad7",
+      "canonical_json_sha256": "fe5ee8a3249dede735d0e17619be34b0722af79c96390e8258e9737ac3e872cf"
+    }
+  ]
+}
