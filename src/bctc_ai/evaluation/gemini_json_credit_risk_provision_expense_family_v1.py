@@ -4734,10 +4734,13 @@ def _family37_self_closed_orphan_receiver_v1(
     region = rejection.get("region")
     if type(region) is not dict:
         return False
+    # selected_page_ordinal restarts per document and the axis covers the whole batch.
     previous_axis = [
         axis
         for axis in selected_page_axis
-        if axis.get("selected_page_ordinal") == region["selected_page_ordinal"] - 1
+        if axis.get("document_ordinal") == region["document_ordinal"]
+        and axis.get("page_json_version_id") in pages
+        and axis.get("selected_page_ordinal") == region["selected_page_ordinal"] - 1
     ]
     if (
         len(previous_axis) != 1
