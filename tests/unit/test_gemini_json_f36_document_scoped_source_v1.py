@@ -11,7 +11,6 @@ import json
 import sqlite3
 from contextlib import closing
 from copy import deepcopy
-from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
 
@@ -92,13 +91,18 @@ def test_actual_financial_trials_keep_exact_all_original_statuses_and_source_byt
     source_bytes, primary_bytes = corpus.db_path.read_bytes(), primary.read_bytes()
     contexts = adapter.load_primary_context_v1(primary, compiled["evaluation"]["primary_store_ref"]["sha256"])
     config = load_notes_config_v1(ROOT)
-    old_source = NotesSource(corpus)
     wanted = set(compiled["topology"]["documents_requested"])
-    captures = old_source.annual_policies_v1({n: c.scope for n, c in contexts.items() if n in wanted})
-    old_contexts = {n: replace(c, annual_policy=captures.get(n)) for n, c in contexts.items()}
-    original = adapter.rebuild_f36_notes_trials_v1(
-        source=old_source, contexts=old_contexts, config=config, compiled_specs=compiled,
-    )
+    def parent_full_query_source(corpus, metrics, *, original_loader, document):
+        # Parent83e used this real full-corpus SQL source for each original output.
+        # The document keyword belongs only to the new constructor call boundary.
+        return NotesSource(corpus, metrics, original_loader=original_loader)
+
+    with monkeypatch.context() as parent_factory:
+        parent_factory.setattr(adapter, "_F36DocumentScopedNotesSource", parent_full_query_source)
+        original = list(adapter.iter_rebuild_f36_notes_trials_v1(
+            source=NotesSource(corpus), contexts=contexts, config=config, compiled_specs=compiled,
+        ))
+    storage._check_bindings()  # Real factory restored before evaluating the candidate.
     current = list(adapter.iter_rebuild_f36_notes_trials_v1(
         source=NotesSource(corpus), contexts=contexts, config=config, compiled_specs=compiled,
     ))
